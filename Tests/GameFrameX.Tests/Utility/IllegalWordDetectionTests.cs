@@ -546,6 +546,69 @@ namespace GameFrameX.Tests.Utility
             Assert.Equal(badWord.Length, findResult.Values.Single());
         }
 
+        #region GFX-1174（C434）CR-M06/CR-M07 重初始化、损坏表与文化一致性
+
+        /// <summary>
+        /// 重新 Init 后旧词必须立即失效：删词热更重载不再被残留静态结构拦截。
+        /// </summary>
+        [Fact]
+        public void Init_Twice_RemovesRetiredWords()
+        {
+            IllegalWordDetection.Init(new[] { "oldword" }, false);
+            Assert.True(IllegalWordDetection.HasBlockWords("oldword"));
+
+            IllegalWordDetection.Init(new[] { "newword" }, false);
+
+            Assert.False(IllegalWordDetection.HasBlockWords("oldword"));
+            Assert.True(IllegalWordDetection.HasBlockWords("newword"));
+        }
+
+        /// <summary>
+        /// 检测与注册必须使用同一 ASCII 折叠：tr-TR 文化下含 I 的英文敏感词不得漏检。
+        /// </summary>
+        [Fact]
+        public void HasBlockWords_UnderTurkishCulture_DetectsWordContainingI()
+        {
+            var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("tr-TR");
+                IllegalWordDetection.Init(new[] { "pink" }, false);
+
+                Assert.True(IllegalWordDetection.HasBlockWords("PINK"));
+                Assert.True(IllegalWordDetection.HasBlockWords("Pink"));
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+            }
+        }
+
+        /// <summary>
+        /// 损坏的词表（字段长度为负/越过表末尾）必须显式失败：清空旧表且不注册任何新词，而不是静默半表上线。
+        /// </summary>
+        [Fact]
+        public void Init_WithCorruptedLengthField_ClearsPreviousWordsAndRegistersNothing()
+        {
+            // 合法表：fieldNum=2（两个 string 字段），names=["w","x"]，记录：(skip "a", word "badword")
+            var validTable = new byte[]
+            {
+                0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x00, 0x01, (byte)'w', 0x00, 0x01, (byte)'x',
+                0x00, 0x01, (byte)'a', 0x00, 0x07, (byte)'b', (byte)'a', (byte)'d', (byte)'w', (byte)'o', (byte)'r', (byte)'d',
+            };
+            IllegalWordDetection.Init(validTable, 1, false);
+            Assert.True(IllegalWordDetection.HasBlockWords("badword"));
+
+            // 损坏表：fieldNum=1（string 字段），names=["w"]，记录首字段长度 30000 越过表末尾
+            var corruptedTable = new byte[] { 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x01, (byte)'w', 0x75, 0x30 };
+            var exception = Record.Exception(() => IllegalWordDetection.Init(corruptedTable, 1, false));
+
+            Assert.Null(exception); // 异常在 Init 内部记录日志，不外抛
+            Assert.False(IllegalWordDetection.HasBlockWords("badword")); // 旧表已按可重入语义清空
+        }
+
+        #endregion
+
         #endregion
     }
 }

@@ -81,7 +81,7 @@ public sealed class HotfixWrapperGeneratorAttributeParsingTests
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         // Discard 分支执行：async 修饰符被剥除、生成丢弃体（true 入队 + CompletedTask），而非等待调用体
         Assert.Contains("public override Task FlushAsync()", generatedText);
-        Assert.Contains("EnqueueAsync(()=>base.FlushAsync(), callChainId, true)", generatedText);
+        Assert.Contains("EnqueueAsync(async ()=> await base.FlushAsync(), callChainId, true)", generatedText);
         Assert.Contains("return Task.CompletedTask;", generatedText);
     }
 
@@ -92,7 +92,7 @@ public sealed class HotfixWrapperGeneratorAttributeParsingTests
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         // 超时值取自命中的 TimeOut 特性自身参数，而非属性列表首个特性
-        Assert.Contains("EnqueueAsync(()=>base.SaveAsync(), callChainId, true, 3000)", generatedText);
+        Assert.Contains("EnqueueAsync(async ()=> await base.SaveAsync(), callChainId, true, 3000)", generatedText);
     }
 
     [Fact]

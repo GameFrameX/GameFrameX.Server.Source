@@ -191,6 +191,32 @@ public class GlobalSettingsSettingConflictTests : IDisposable
     }
 
     /// <summary>
+    /// Secret 类密钥字段（不含 "Password" 子串）冲突时，异常消息同样省略两侧值——
+    /// 修复前 HttpSignSecret/InterNodeAuthSecret 的明文会直接进异常消息并随启动日志输出。
+    /// </summary>
+    [Fact]
+    public void SetCurrentSetting_ConflictingSecretField_MessageOmitsValues()
+    {
+        var firstSetting = CreateSetting("Game");
+        firstSetting.InterNodeAuthSecret = "node-secret-expected";
+        firstSetting.HttpSignSecret = "sign-secret-expected";
+        GlobalSettings.SetCurrentSetting(firstSetting);
+
+        var secondSetting = CreateSetting("Social");
+        secondSetting.InterNodeAuthSecret = "node-secret-actual";
+        secondSetting.HttpSignSecret = "sign-secret-actual";
+
+        var exception = Assert.Throws<SettingConflictException>(() => GlobalSettings.SetCurrentSetting(secondSetting));
+
+        Assert.Contains(nameof(AppSetting.InterNodeAuthSecret), exception.Message);
+        Assert.Contains(nameof(AppSetting.HttpSignSecret), exception.Message);
+        Assert.DoesNotContain("node-secret-expected", exception.Message);
+        Assert.DoesNotContain("node-secret-actual", exception.Message);
+        Assert.DoesNotContain("sign-secret-expected", exception.Message);
+        Assert.DoesNotContain("sign-secret-actual", exception.Message);
+    }
+
+    /// <summary>
     /// 冲突抛出后 CurrentSetting 保持原值（不被部分更新）。
     /// </summary>
     [Fact]

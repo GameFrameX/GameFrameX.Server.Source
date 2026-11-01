@@ -39,12 +39,12 @@ using Xunit;
 namespace GameFrameX.Tests.Hotfix;
 
 /// <summary>
-/// <see cref="HotfixWrapperGenerator"/> 组件代理基类识别测试：基类名精确匹配四个组件代理基类
-/// （含泛型与限定名形态），基类名仅包含子串（如 NonStateComponentAgent）的类不被识别为组件代理。
+/// <see cref="HotfixWrapperGenerator"/> 组件代理基类识别测试：基类名精确匹配三个组件代理基类
+/// （StateComponentAgent、FuncComponentAgent、BaseComponentAgent，含泛型与限定名形态），基类名仅包含
+/// 子串（如 NonStateComponentAgent）的类不被识别为组件代理。
 /// Tests for component agent base type recognition in <see cref="HotfixWrapperGenerator"/>: base names
-/// must match the four component agent base classes exactly (including generic and qualified forms), while
+/// must match the three component agent base classes exactly (including generic and qualified forms), while
 /// classes whose base names merely contain the substring (e.g. NonStateComponentAgent) are not recognized.
-/// </summary>
 public sealed class HotfixWrapperGeneratorBaseNameMatchTests
 {
     /// <summary>
@@ -55,7 +55,7 @@ public sealed class HotfixWrapperGeneratorBaseNameMatchTests
     private const string TestSource = @"
 namespace GameFrameX.Hotfix.Player
 {
-    // 负例基类：名称仅包含组件代理基类名子串，不属于四个基类之一
+    // 负例基类：名称仅包含组件代理基类名子串，不属于三个基类之一
     public class NonStateComponentAgent { }
     public class MyFuncComponentAgentFactory { }
     public class MyQueryComponentAgentHelper { }
@@ -96,7 +96,7 @@ namespace GameFrameX.Hotfix.Player
     }
 
     // 正例：限定名基类（QualifiedNameSyntax 兜底分支）
-    public class QualifiedAgent : GameFrameX.Agents.QueryComponentAgent
+    public class QualifiedAgent : GameFrameX.Agents.FuncComponentAgent
     {
         [Service]
         public virtual System.Threading.Tasks.Task<int> GetQualifiedValueAsync() { return null; }
@@ -105,8 +105,8 @@ namespace GameFrameX.Hotfix.Player
 ";
 
     /// <summary>
-    /// 基类名与四个组件代理基类精确一致（泛型 / 非泛型 / 限定名形态）时生成包装器。
-    /// Wrapper generation must happen when base names exactly equal one of the four component agent
+    /// 基类名与三个组件代理基类精确一致（泛型 / 非泛型 / 限定名形态）时生成包装器。
+    /// Wrapper generation must happen when base names exactly equal one of the three component agent
     /// base classes (generic / non-generic / qualified forms).
     /// </summary>
     [Fact]

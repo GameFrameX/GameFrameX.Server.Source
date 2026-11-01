@@ -4,6 +4,8 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <!-- RS2008（analyzer release tracking）：与分析器项目同约定不启用 release tracking，诊断 ID 变更走 CHANGELOG 披露 -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
         <Description>GameFrameX.Hotfix.WrapperGenerator,GameFrameX 框架的 Hotfix Wrapper Roslyn 源码生成器模块. Hotfix Wrapper Roslyn source generator module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Hotfix,WrapperGenerator,SourceGenerator,Roslyn,Analyzer,Server,GameServer</PackageTags>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>

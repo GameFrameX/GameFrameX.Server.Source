@@ -218,7 +218,8 @@ public class WorkerActor : IWorkerActor
 
     private static InvalidOperationException CreateQueueRejectedException(WorkWrapper wrapper)
     {
-        return new InvalidOperationException($"WorkerActor queue rejected work. actorId: {wrapper.Owner?.Id}, trace: {GetTraceSafely(wrapper)}");
+        // Localization: CoreExceptions.WorkerActor.QueueRejected - WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueRejected, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
     }
 
     private static string GetTraceSafely(WorkWrapper wrapper)
@@ -229,7 +230,8 @@ public class WorkerActor : IWorkerActor
         }
         catch (Exception exception)
         {
-            return $"trace unavailable: {exception.Message}";
+            // Localization: CoreExceptions.WorkerActor.TraceUnavailable - trace不可用：{0}
+            return LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.TraceUnavailable, exception.Message);
         }
     }
 
@@ -284,7 +286,8 @@ public class WorkerActor : IWorkerActor
 
         if (sendTask.IsFaulted)
         {
-            CompleteFailedPost(wrapper, sendTask.Exception?.GetBaseException() ?? new InvalidOperationException("WorkerActor queue post failed."), completeOnFailure);
+            // Localization: CoreExceptions.WorkerActor.QueueFailed - WorkerActor 队列投递失败。actorId:{0} trace:{1}
+            CompleteFailedPost(wrapper, sendTask.Exception?.GetBaseException() ?? new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueFailed, wrapper.Owner?.Id, GetTraceSafely(wrapper))), completeOnFailure);
             return;
         }
 
@@ -303,7 +306,8 @@ public class WorkerActor : IWorkerActor
             return;
         }
 
-        Log.Warning(exception, "WorkerActor queue rejected fire-and-forget work");
+        // Localization: CoreExceptions.WorkerActor.QueueRejected - WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+        Log.Warning(exception, LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueRejected, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
         wrapper.ForceSetResult();
     }
 
@@ -315,7 +319,8 @@ public class WorkerActor : IWorkerActor
             return;
         }
 
-        Log.Warning("WorkerActor queue post was cancelled. actorId: {ActorId}, trace: {Trace}", wrapper.Owner?.Id, GetTraceSafely(wrapper));
+        // Localization: CoreExceptions.WorkerActor.QueueCancelled - WorkerActor 队列投递被取消。actorId:{0} trace:{1}
+        Log.Warning(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueCancelled, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
         wrapper.ForceSetResult();
     }
 
@@ -327,7 +332,8 @@ public class WorkerActor : IWorkerActor
             return;
         }
 
-        Log.Warning(exception, "WorkerActor queue post failed. actorId: {ActorId}, trace: {Trace}", wrapper.Owner?.Id, GetTraceSafely(wrapper));
+        // Localization: CoreExceptions.WorkerActor.QueueFailed - WorkerActor 队列投递失败。actorId:{0} trace:{1}
+        Log.Warning(exception, LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueFailed, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
         wrapper.ForceSetResult();
     }
 

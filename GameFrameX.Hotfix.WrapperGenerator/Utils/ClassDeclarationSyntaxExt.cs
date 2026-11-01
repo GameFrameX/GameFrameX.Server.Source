@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -61,52 +59,44 @@ public static class ClassDeclarationSyntaxExt
     public const string NamespaceClassDelimiter = ".";
 
     /// <summary>
-    /// 获取类声明的完全限定名，包含命名空间和嵌套类路径。
+    /// 获取类声明的完全限定名，包含命名空间和嵌套类型路径。
     /// </summary>
     /// <remarks>
-    /// Gets the fully qualified name of the class declaration, including namespace and nested class path.
+    /// Gets the fully qualified name of the class declaration, including namespace and nested type path.
+    /// 向上收集容器链：命名空间段自带尾部「.」、嵌套类型段自带尾部「+」，直接连接后追加类名，
+    /// 任意声明形态（块/文件作用域命名空间、无命名空间、嵌套类型容器）都返回确定值：
+    /// 有命名空间时为 <c>Namespace.OuterClass+InnerClass</c>；无命名空间时仅返回类型链（<c>OuterClass+InnerClass</c> 或短名）。
+    /// Collects the container chain upward: each namespace segment carries a trailing "." and each nested
+    /// type segment a trailing "+"; concatenating them and appending the class name yields a deterministic
+    /// value for any declaration shape (block/file-scoped namespace, no namespace, nested type containers).
     /// </remarks>
     /// <param name="source">类声明语法节点 / Class declaration syntax node</param>
     /// <returns>完全限定名（如 Namespace.OuterClass+InnerClass）/ Fully qualified name (e.g., Namespace.OuterClass+InnerClass)</returns>
     public static string GetFullName(this ClassDeclarationSyntax source)
     {
-        Contract.Requires(null != source);
-
-        var items = new List<string>();
-        var parent = source.Parent;
-        while (parent.IsKind(SyntaxKind.ClassDeclaration))
+        if (source == null)
         {
-            var parentClass = parent as ClassDeclarationSyntax;
-            Contract.Assert(null != parentClass);
-            items.Add(parentClass.Identifier.Text);
-
-            parent = parent.Parent;
+            return string.Empty;
         }
 
-        if (parent is FileScopedNamespaceDeclarationSyntax)
+        var containers = new List<string>();
+        for (var node = source.Parent; node != null; node = node.Parent)
         {
-            var nameSpace = parent as FileScopedNamespaceDeclarationSyntax;
-            Contract.Assert(null != nameSpace);
-            var sb = new StringBuilder().Append(nameSpace.Name).Append(NamespaceClassDelimiter);
-            items.Reverse();
-            items.ForEach(i => { sb.Append(i).Append(NestedClassDelimiter); });
-            sb.Append(source.Identifier.Text);
-
-            var result = sb.ToString();
-            return result;
+            if (node is BaseTypeDeclarationSyntax typeDeclaration)
+            {
+                // 嵌套类型容器：类名后跟嵌套分隔符（OuterClass+InnerClass 中的 OuterClass+）
+                containers.Add(typeDeclaration.Identifier.Text + NestedClassDelimiter);
+            }
+            else if (node is BaseNamespaceDeclarationSyntax namespaceDeclaration)
+            {
+                // 命名空间声明名本身已含全部上级段（嵌套命名空间声明为全名），取到即止
+                containers.Add(namespaceDeclaration.Name.ToString() + NamespaceClassDelimiter);
+                break;
+            }
         }
-        else
-        {
-            var nameSpace = parent as NamespaceDeclarationSyntax;
-            Contract.Assert(null != nameSpace);
-            var sb = new StringBuilder().Append(nameSpace.Name).Append(NamespaceClassDelimiter);
-            items.Reverse();
-            items.ForEach(i => { sb.Append(i).Append(NestedClassDelimiter); });
-            sb.Append(source.Identifier.Text);
 
-            var result = sb.ToString();
-            return result;
-        }
+        containers.Reverse();
+        return string.Concat(containers) + source.Identifier.Text;
     }
 
 }

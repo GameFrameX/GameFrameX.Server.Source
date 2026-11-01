@@ -35,6 +35,8 @@ using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility.Setting;
+using GameFrameX.Foundation.Localization.Core;
+
 
 namespace GameFrameX.Core.Session;
 
@@ -153,13 +155,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// <returns>对应的会话对象，如果不存在则返回null。</returns>
     public IPlayerSession GetByPlayerId(long playerId)
     {
-        var roleSession = Get(m => m.PlayerId == playerId);
-        if (roleSession != null && ActorManager.HasActor(roleSession.PlayerId))
-        {
-            return roleSession;
-        }
-
-        return roleSession;
+        return Get(m => m.PlayerId == playerId);
     }
 
     /// <summary>
@@ -487,7 +483,8 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
         }
         catch (Exception exception)
         {
-            LogHelper.Warning(exception, "[PlayerSessionManager] player_route upsert hook failed for player {playerId}; the local PlayerRouteMap stays authoritative and the next SetOnline converges", playerId);
+            // Localization: Core.Session.RouteSyncUpsertFailed - [PlayerSessionManager] 玩家路由 upsert 同步钩子失败，玩家：{0}；本地 PlayerRouteMap 仍为事实源，下次 SetOnline 会重新收敛
+            LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.Core.Session.RouteSyncUpsertFailed, playerId));
         }
     }
 
@@ -521,7 +518,8 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
         }
         catch (Exception exception)
         {
-            LogHelper.Warning(exception, "[PlayerSessionManager] player_route delete hook failed for player {playerId}", playerId);
+            // Localization: Core.Session.RouteSyncDeleteFailed - [PlayerSessionManager] 玩家路由 delete 同步钩子失败，玩家：{0}
+            LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.Core.Session.RouteSyncDeleteFailed, playerId));
         }
     }
 }

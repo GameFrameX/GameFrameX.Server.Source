@@ -61,14 +61,29 @@ public static class IdGenerator
     private static int _intCounter = (int)(DateTime.UtcNow - UtcTimeStart).TotalSeconds;
 
     /// <summary>
+    /// 共享计数器，初始值为当前UTC时间与起始时间的秒数差值。
+    /// 用于生成递增的整数ID。
+    /// </summary>
+    /// <remarks>
+    /// Shared counter with initial value set to the seconds difference between
+    /// current UTC time and the start time. Used for generating incremental integer IDs.
+    /// 唯一性边界：仅保证进程存活期内唯一且递增；进程重启（同秒或时钟回拨）与跨进程场景可能重复，
+    /// 请勿将其用作持久唯一键，持久唯一键请改用 <see cref="GetNextUniqueId"/>（雪花）。
+    /// Uniqueness boundary: unique and increasing only within the lifetime of the current process;
+    /// restarts (same-second or clock rollback) and cross-process usage may repeat values.
+    /// Do not use it as a persistent unique key — use <see cref="GetNextUniqueId"/> (snowflake) instead.
+    /// </remarks>
     /// 使用Interlocked.Increment生成唯一的整数ID。
     /// 通过原子操作确保线程安全。
+    /// 唯一性边界：仅进程内唯一且递增，跨重启/跨进程不保证（见字段 remarks），勿用作持久唯一键。
     /// </summary>
     /// <remarks>
     /// Generates a unique integer ID using Interlocked.Increment.
     /// Ensures thread safety through atomic operations.
+    /// Uniqueness boundary: process-local only (increasing and unique within the current process lifetime);
+    /// not guaranteed across restarts or processes — do not use as a persistent unique key.
     /// </remarks>
-    /// <returns>返回下一个唯一的整数ID，保证递增且不重复 / The next unique integer ID, guaranteed to be incremental and unique</returns>
+    /// <returns>返回下一个唯一的整数ID，保证进程内递增且不重复 / The next unique integer ID, guaranteed incremental and unique within the current process</returns>
     public static int GetNextUniqueIntId()
     {
         // 原子性地递增值，确保线程安全

@@ -16,6 +16,12 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>serverId is less than or equal to 0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>serverId {0} exceeds the maximum server id {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>serverId {0} parsed from ActorId is outside [{1}, {2}]; the ActorId bit layout may be corrupted</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>actor type is invalid</value>
   </data>
@@ -548,6 +554,18 @@
     <value>trace unavailable: {0}</value>
   </data>
 
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor queue rejected work. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor queue post was cancelled. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor queue post failed. actorId:{0} trace:{1}</value>
+  </data>
+
     <!-- Component related exceptions -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>component:[{0}] the actor type is not bound</value>
@@ -601,6 +619,14 @@
 
     <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
     <value>{0} must be a non-abstract closed type implementing {1} with a public parameterless constructor</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version contains forbidden path characters: {0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>Type not found: {0}</value>
   </data>
 
     <!-- Attribute related exceptions -->
@@ -1716,7 +1742,15 @@
   </data>
 
   <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
-    <value>EventDispatcher.Dispatch Actor {0} {1} No listeners found for event type: {2}</value>
+    <value>EventDispatcher.Dispatch Actor {0} type: {1} no listeners found for event type: {2}</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncUpsertFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route upsert hook failed for player {0}; the local PlayerRouteMap stays authoritative and the next SetOnline converges</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncDeleteFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route delete hook failed for player {0}</value>
   </data>
 
   <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
@@ -2176,12 +2210,16 @@
     <value>{0} port [{1}] occupation details: {2}</value>
   </data>
 
-  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Compress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompression failed. Error: {0}.</value>
   </data>
 
-  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Decompress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress input data is truncated; decompression cannot complete.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompressed output exceeds the maximum allowed length: {0}.</value>
   </data>
 
   <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
@@ -2202,6 +2240,21 @@
 
   <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
     <value>IllegalWordDetection.Init Exception details: {0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init is already in progress; the new init request is rejected</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection bad-word table corrupted: invalid field length {0} at offset {1}, data length {2}</value>
+  </data>
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost retire cleanup failed: {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber division by zero</value>
   </data>
 
   <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">

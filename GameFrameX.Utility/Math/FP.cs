@@ -774,7 +774,10 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
 
         if (yl == 0)
         {
-            return MAX_VALUE;
+            // 定点库无 NaN/±∞ 体系：除零按分子符号返回极值哨兵（0/0 归为 +MaxValue），调用方须自行避免零除数
+            // The fixed-point library has no NaN/±∞: division by zero returns the sign-correct extreme sentinel
+            // (0/0 maps to +MaxValue); callers must avoid zero divisors themselves.
+            return ((xl ^ yl) & MIN_VALUE) == 0 ? MaxValue : MinValue;
         }
 
         var remainder = (ulong)(xl >= 0 ? xl : -xl);

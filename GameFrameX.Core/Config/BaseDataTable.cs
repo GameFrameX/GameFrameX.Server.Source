@@ -299,12 +299,19 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
     /// </summary>
     /// <remarks>
     /// Computes the projection value for all objects using the specified function and returns the maximum value.
+    /// 空表返回 <c>default(Tk)</c>，不抛异常。
+    /// An empty table returns <c>default(Tk)</c> instead of throwing.
     /// </remarks>
     /// <typeparam name="Tk">投影值的类型，必须实现 IComparable 接口 / The type of the projection value, must implement IComparable</typeparam>
     /// <param name="func">应用于每个对象的投影函数 / The projection function to apply to each object</param>
-    /// <returns>所有对象投影值中的最大值 / The maximum value among all projected values</returns>
+    /// <returns>所有对象投影值中的最大值；空表返回 <c>default(Tk)</c> / The maximum value among all projected values; <c>default(Tk)</c> for an empty table</returns>
     public Tk Max<Tk>(Func<T, Tk> func)
     {
+        if (DataList.Count == 0)
+        {
+            return default;
+        }
+
         return DataList.Max(func);
     }
 
@@ -313,12 +320,19 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
     /// </summary>
     /// <remarks>
     /// Computes the projection value for all objects using the specified function and returns the minimum value.
+    /// 空表返回 <c>default(Tk)</c>，不抛异常。
+    /// An empty table returns <c>default(Tk)</c> instead of throwing.
     /// </remarks>
     /// <typeparam name="Tk">投影值的类型，必须实现 IComparable 接口 / The type of the projection value, must implement IComparable</typeparam>
     /// <param name="func">应用于每个对象的投影函数 / The projection function to apply to each object</param>
-    /// <returns>所有对象投影值中的最小值 / The minimum value among all projected values</returns>
+    /// <returns>所有对象投影值中的最小值；空表返回 <c>default(Tk)</c> / The minimum value among all projected values; <c>default(Tk)</c> for an empty table</returns>
     public Tk Min<Tk>(Func<T, Tk> func)
     {
+        if (DataList.Count == 0)
+        {
+            return default;
+        }
+
         return DataList.Min(func);
     }
 
@@ -405,6 +419,8 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
 
         if (DataList.Count == 0)
         {
+            // 空表也置位缓存标志：首尾缓存结果（null）一次落定，不再每次访问重算
+            _cacheInitialized = true;
             return;
         }
 
@@ -444,14 +460,9 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
             return;
         }
 
-        var count = Math.Max(LongDataMaps.Count, StringDataMaps.Count);
-        if (count == 0)
-        {
-            _countCache = 0;
-            return;
-        }
-
-        _countCache = count;
+        // 条目数事实源是 DataList：两键字典可能只登记部分键型，取字典 Max 会低估条目数；
+        // 空表同样置位标志，避免每次访问重算
+        _countCache = DataList.Count;
         _countCacheInitialized = true;
     }
 
