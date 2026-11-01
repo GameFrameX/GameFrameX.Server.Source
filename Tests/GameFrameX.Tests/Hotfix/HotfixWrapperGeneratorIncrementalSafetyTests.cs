@@ -104,7 +104,7 @@ public sealed class HotfixWrapperGeneratorIncrementalSafetyTests
         var (generatedText, diagnostics) = RunWrapperGenerator(AgentSource);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("EnqueueAsync(()=>base.SaveAsync(), callChainId, true, 3000)", generatedText);
+        Assert.Contains("EnqueueAsync(async ()=> await base.SaveAsync(), callChainId, true, 3000)", generatedText);
     }
 
     [Fact]

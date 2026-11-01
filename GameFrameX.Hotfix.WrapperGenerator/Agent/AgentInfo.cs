@@ -56,12 +56,13 @@ public class AgentInfo
     public string Name { get; set; }
 
     /// <summary>
-    /// 获取或设置父类（被包装的代理类）名称。
+    /// 获取或设置父类（被包装的代理类）引用名：剥离命名空间后的容器限定名，嵌套代理为 <c>Outer.Inner</c> 形态。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the parent (wrapped agent) class name.
+    /// Gets or sets the parent (wrapped agent) class reference: the container-qualified name with the
+    /// namespace stripped; nested agents use the <c>Outer.Inner</c> form. Top-level agents equal the simple name.
     /// </remarks>
-    /// <value>父类名称 / Parent class name</value>
+    /// <value>父类引用名 / Parent class reference name</value>
     public string Super { get; set; }
 
     /// <summary>

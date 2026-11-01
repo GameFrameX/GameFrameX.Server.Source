@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Hotfix.WrapperGenerator.Utils;
@@ -167,8 +168,9 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
         {
             if (IsCompAgent(c))
             {
+                // 合并键用完全限定名：跨命名空间同简单名的无关 partial 类不得并入代理（幽灵 Wrapper）
                 agents.Add(c);
-                agentNames.Add(c.Identifier.Text);
+                agentNames.Add(c.GetFullName());
             }
             else if (c.Modifiers.Any(m => m.Text == "partial"))
             {
@@ -178,7 +180,7 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
 
         foreach (var p in partials)
         {
-            if (agentNames.Contains(p.Identifier.Text))
+            if (agentNames.Contains(p.GetFullName()))
             {
                 agents.Add(p);
             }
@@ -207,7 +209,12 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             info.UsingSpaces.Add(element.Name.ToString());
         }
 
-        info.UsingSpaces.Add(Tools.GetNameSpace(fullName));
+        // 无命名空间代理 GetNameSpace 返回空串：空 using 会产出非法 C#，跳过发射
+        var agentNameSpace = Tools.GetNameSpace(fullName);
+        if (!string.IsNullOrEmpty(agentNameSpace))
+        {
+            info.UsingSpaces.Add(agentNameSpace);
+        }
 
         foreach (var member in agent.Members)
         {
@@ -237,8 +244,6 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, string fullName, Dictionary<string, int> partialClassCount, out string outFileName)
     {
         var info = new AgentInfo();
-        info.Super = agent.Identifier.Text;
-        info.Name = info.Super + WrapperNameSuffix;
 
         // C292：生成类命名空间镜像代理源命名空间（GameFrameX.Hotfix.Wrapper.Agent + 源命名空间相对
         // GameFrameX.Hotfix. 的段）。仓内存在同名代理（如 Player/Login 与 ServerRole/Login 各一个
@@ -249,6 +254,18 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             ? sourceNamespace.Substring(HotfixNameSpaceNamePrefix.Length)
             : sourceNamespace;
         info.Space = HotfixNameSpaceNamePrefix + WrapperNamespaceSegment + (relativeNamespace.Length == 0 ? string.Empty : "." + relativeNamespace);
+
+        // 基类引用取剥离命名空间后的容器链（嵌套分隔符「+」改写为源码层级的「.」）：
+        // 顶层代理结果与简单名逐字一致；嵌套代理（Outer+Inner）发射 Outer.Inner，配合镜像命名空间
+        // 与 using 源命名空间，生成类的基类在生成文件作用域内可解析。
+        var containerQualifiedTypeName = (sourceNamespace.Length == 0 ? fullName : fullName.Substring(sourceNamespace.Length + 1)).Replace('+', '.');
+        info.Super = containerQualifiedTypeName;
+
+        // wrapper 类名同样携带容器链（容器分隔符折叠为「_」）：镜像命名空间只含真命名空间，同命名空间下
+        // 嵌套代理与顶层同名代理（Outer+FooAgent 与 FooAgent）、不同容器同名嵌套代理若都只取简单名会得到
+        // 同名同命名空间的两个 wrapper（CS0101/CS0263）；仍以 ComponentAgentWrapper 结尾，HotfixModule
+        // 后缀识别不受影响。顶层代理与「简单名+Wrapper」逐字一致。
+        info.Name = containerQualifiedTypeName.Replace('.', '_') + WrapperNameSuffix;
 
         var isPartialClass = agent.Modifiers.ToList().FindIndex(s => s.Text == "partial") >= 0;
         if (isPartialClass)
@@ -317,7 +334,7 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
         mth.ReturnType = method.ReturnType?.ToString() ?? "void";
         foreach (var attributeListSyntax in method.AttributeLists)
         {
-            ApplyAttribute(attributeListSyntax, mth);
+            ApplyAttribute(context, fullName, method, attributeListSyntax, mth);
         }
 
         CollectMethod(context, info, fullName, method, mth);
@@ -367,10 +384,14 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// </summary>
     /// <remarks>
     /// Parses every attribute in a single attribute list, exactly matching Service/Discard/TimeOut/ThreadSafe by name and populating the method metadata.
+    /// TimeOut 实参经防御式解析：无法静态求值时输出 Error 诊断并按未配置超时处理，绝不让异常外泄令生成器整体崩溃。
     /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
     /// <param name="attributeListSyntax">属性列表语法节点 / Attribute list syntax node</param>
     /// <param name="mth">待填充的方法元数据 / Method metadata to populate</param>
-    private static void ApplyAttribute(AttributeListSyntax attributeListSyntax, MethodInfoData mth)
+    private static void ApplyAttribute(SourceProductionContext context, string fullName, MethodDeclarationSyntax method, AttributeListSyntax attributeListSyntax, MethodInfoData mth)
     {
         foreach (var attribute in attributeListSyntax.Attributes)
         {
@@ -392,8 +413,20 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             }
             else if (string.Equals(name, StripAttributeSuffix(TimeOutAttributeName), StringComparison.OrdinalIgnoreCase))
             {
-                mth.HasTimeout = true;
-                mth.TimeOut = ParseTimeout(attribute);
+                mth.TimeOut = ParseTimeout(attribute, out var parsed);
+                if (parsed)
+                {
+                    mth.HasTimeout = true;
+                }
+                else
+                {
+                    // 解析失败降级为未配置超时（走 EnqueueAsync 框架默认值），并以诊断指明写法约束
+                    mth.HasTimeout = false;
+                    var rawArgument = attribute.ArgumentList != null && attribute.ArgumentList.Arguments.Count > 0
+                        ? attribute.ArgumentList.Arguments[0].ToString()
+                        : string.Empty;
+                    context.LogError($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】参数必须是整数字面量（毫秒），当前无法解析：{rawArgument}");
+                }
             }
             else if (string.Equals(name, StripAttributeSuffix(ThreadSafeAttributeName), StringComparison.OrdinalIgnoreCase))
             {
@@ -419,22 +452,96 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 从命中的 TimeOut 特性自身的参数中解析超时时间（毫秒）。
+    /// 从命中的 TimeOut 特性自身的参数中防御式解析超时时间（毫秒）。
     /// </summary>
     /// <remarks>
-    /// Parses the timeout duration (in milliseconds) from the matched TimeOut attribute's own argument.
+    /// Defensively parses the timeout duration (in milliseconds) from the matched TimeOut attribute's own argument.
+    /// 仅数值字面量可静态求值（数字分隔符「_」与负号在字面量/一元负表达式中合法）；常量名、其他表达式、
+    /// 属性赋值、缺参/空参等一切形态都返回 <c>0</c> 并置 <paramref name="parsed"/> 为 <c>false</c>，由调用方
+    /// 降级处理——任何输入形态都不抛异常（生成器异常 = 全部 wrapper 消失）。
+    /// Only numeric literals are statically evaluated (digit separators "_" and a unary minus are legal);
+    /// constant names, any other expression, property assignments and missing/empty argument lists return 0
+    /// with <paramref name="parsed"/> set to <c>false</c> for caller-side degradation — no input shape may
+    /// throw (a generator crash removes every wrapper).
     /// </remarks>
     /// <param name="attribute">命中的 TimeOut 特性语法节点 / The matched TimeOut attribute syntax node</param>
-    /// <returns>超时时间（毫秒）/ Timeout duration (in milliseconds)</returns>
-    private static int ParseTimeout(AttributeSyntax attribute)
+    /// <param name="parsed">是否成功解析出整数字面量 / Whether an integer literal was successfully parsed</param>
+    /// <returns>超时时间（毫秒）；解析失败返回 <c>0</c>（不使用）/ Timeout duration (in milliseconds); 0 when parsing failed (unused)</returns>
+    private static int ParseTimeout(AttributeSyntax attribute, out bool parsed)
     {
-        var argStr = attribute.ArgumentList.Arguments[0].ToString();
-        if (argStr.IndexOf(":", StringComparison.OrdinalIgnoreCase) >= 0)
+        parsed = false;
+        if (attribute.ArgumentList == null || attribute.ArgumentList.Arguments.Count == 0)
         {
-            return int.Parse(argStr.Split(':')[1].Trim());
+            return 0;
         }
 
-        return int.Parse(argStr);
+        var argument = attribute.ArgumentList.Arguments[0];
+        if (argument.NameEquals != null)
+        {
+            // 属性赋值实参（Name = value）不是构造参数，无法取值
+            return 0;
+        }
+
+        var milliseconds = ResolveIntegerLiteral(argument.Expression);
+        if (!milliseconds.HasValue)
+        {
+            return 0;
+        }
+
+        parsed = true;
+        return milliseconds.Value;
+    }
+
+    /// <summary>
+    /// 把实参表达式解析为整数值：仅接受数值字面量（含数字分隔符「_」）与其一元负表达式。
+    /// </summary>
+    /// <remarks>
+    /// Resolves an argument expression to an integer: only numeric literals (digit separators "_" included)
+    /// and their unary-minus expressions are accepted.
+    /// 常量名/其他表达式（含十六进制字面量等 TryParse 不支持的书写）都返回 <c>null</c> 交由调用方降级诊断，
+    /// 杜绝「标识符文本恰好剥掉下划线后成数字」一类静默误析。
+    /// Constant names and any other expression (including hex literals TryParse cannot handle) return
+    /// <c>null</c> for caller-side diagnostic degradation, preventing silent mis-parsing of identifier texts
+    /// that happen to become digits after underscore stripping.
+    /// </remarks>
+    /// <param name="expression">实参表达式语法节点 / The argument expression syntax node</param>
+    /// <returns>整数值；不可静态求值时为 <c>null</c> / The integer value; <c>null</c> when not statically evaluable</returns>
+    private static int? ResolveIntegerLiteral(ExpressionSyntax expression)
+    {
+        if (expression is PrefixUnaryExpressionSyntax prefixUnaryExpression
+            && prefixUnaryExpression.IsKind(SyntaxKind.UnaryMinusExpression)
+            && prefixUnaryExpression.Operand is LiteralExpressionSyntax minusOperand)
+        {
+            var negatedValue = ResolveNumericLiteralToken(minusOperand);
+            return negatedValue.HasValue ? -negatedValue.Value : (int?)null;
+        }
+
+        if (expression is LiteralExpressionSyntax literalExpression)
+        {
+            return ResolveNumericLiteralToken(literalExpression);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 把数值字面量表达式的 token 文本解析为整数（剥除数字分隔符「_」）。
+    /// </summary>
+    /// <remarks>
+    /// Parses the token text of a numeric literal expression into an integer (stripping digit separators "_").
+    /// </remarks>
+    /// <param name="literalExpression">数值字面量表达式 / The numeric literal expression</param>
+    /// <returns>整数值；token 不是数值字面量或越界时为 <c>null</c> / The integer value; <c>null</c> when the token is not a numeric literal or overflows</returns>
+    private static int? ResolveNumericLiteralToken(LiteralExpressionSyntax literalExpression)
+    {
+        if (!literalExpression.Token.IsKind(SyntaxKind.NumericLiteralToken))
+        {
+            return null;
+        }
+
+        return int.TryParse(literalExpression.Token.Text.Replace("_", string.Empty), NumberStyles.Integer, CultureInfo.InvariantCulture, out var milliseconds)
+            ? milliseconds
+            : (int?)null;
     }
 
     /// <summary>
@@ -442,6 +549,7 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// </summary>
     /// <remarks>
     /// Validates attribute combinations, applies skip rules and contract checks for a method whose metadata has been read, and collects it as a wrapped method when eligible.
+    /// 校验先行：阻断违规（ref/out/in 参数、Discard 返回类型契约不满足）的方法输出 Error 诊断后不进入生成面。
     /// </remarks>
     /// <param name="context">源代码生成上下文 / Source production context</param>
     /// <param name="info">代理信息 / Agent info</param>
@@ -458,6 +566,12 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
         }
 
         ReportContractViolations(context, fullName, method, mth);
+
+        // 有阻断违规的方法绝不进入生成面：报 Error 的同时跳过收集，产出保持可编译
+        if (mth.HasBlockingViolation)
+        {
+            return;
+        }
 
         if (mth.IsVirtual)
         {
@@ -517,10 +631,12 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 报告契约相关的诊断错误（非 ThreadSafe 的 Api 必须为异步、标记 Api/ThreadSafe/Discard 必须申明为 virtual）。
+    /// 报告契约相关的诊断错误（非 ThreadSafe 的 Api 必须为异步、标记 Api/ThreadSafe/Discard 必须申明为 virtual），
+    /// 并对无法生成合法包装体的形态（ref/out/in 参数、Discard 返回类型契约不满足）置阻断标记。
     /// </summary>
     /// <remarks>
-    /// Reports diagnostics for contract violations (non-ThreadSafe Api must be async; Api/ThreadSafe/Discard must be declared virtual).
+    /// Reports diagnostics for contract violations (non-ThreadSafe Api must be async; Api/ThreadSafe/Discard must be declared virtual)
+    /// and marks blocking violations (ref/out/in parameters; Discard return-type contract) that can never yield compilable wrappers.
     /// </remarks>
     /// <param name="context">源代码生成上下文 / Source production context</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
@@ -537,13 +653,44 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
         {
             context.LogError($"{fullName}.{method.Identifier.Text}标记了【AsyncApi】【{ThreadSafeAttributeName}】【{DiscardAttributeName}】注解的函数必须申明为virtual");
         }
+
+        // 包装体以 lambda 捕获转发参数：ref/out/in 参数无法跨 Actor 队列转发引用（生成即 CS1628），显式拒绝
+        foreach (var parameter in method.ParameterList.Parameters)
+        {
+            if (parameter.Modifiers.Any(modifier => modifier.Text == "ref" || modifier.Text == "out" || modifier.Text == "in"))
+            {
+                context.LogError($"{fullName}.{method.Identifier.Text}代理方法不允许 ref/out/in 参数（Wrapper 无法跨 Actor 队列转发引用）");
+                mth.HasBlockingViolation = true;
+            }
+        }
+
+        if (mth.Discard)
+        {
+            // 类型名取最后一段比较：System.Threading.Tasks.Task 等全限定写法与短名等价，不误报；
+            // Task<T>/ValueTask<T> 仍拒绝——生成体契约是「返回 Xxx.CompletedTask」，泛型任务无该静态字段
+            var returnTypeName = mth.ReturnType;
+            var lastSegmentStart = returnTypeName.LastIndexOf('.');
+            if (lastSegmentStart >= 0)
+            {
+                returnTypeName = returnTypeName.Substring(lastSegmentStart + 1);
+            }
+
+            var isPlainTask = string.Equals(returnTypeName, nameof(Task), StringComparison.Ordinal)
+                              || string.Equals(returnTypeName, nameof(ValueTask), StringComparison.Ordinal);
+            if (!isPlainTask)
+            {
+                context.LogError($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【{DiscardAttributeName}】注解");
+                mth.HasBlockingViolation = true;
+            }
+        }
     }
 
     /// <summary>
-    /// 将虚方法收集为包装方法：加入代理信息的方法列表，并填充签名与参数元数据。
+    /// 将虚方法收集为包装方法：填充签名与参数元数据并加入代理信息的方法列表（校验已由 ReportContractViolations 先行完成）。
     /// </summary>
     /// <remarks>
-    /// Collects a virtual method as a wrapped method: adds it to the agent info's method list and populates signature and parameter metadata.
+    /// Collects a virtual method as a wrapped method: populates signature and parameter metadata and adds it to the agent info's method list
+    /// (validation already happened up front in ReportContractViolations).
     /// </remarks>
     /// <param name="info">代理信息 / Agent info</param>
     /// <param name="context">源代码生成上下文 / Source production context</param>
@@ -552,20 +699,16 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// <param name="mth">方法元数据 / Method metadata</param>
     private static void AddWrappedMethod(AgentInfo info, SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
     {
-        info.Methods.Add(mth);
         mth.Name = method.Identifier.Text;
         mth.ParamDeclare = method.ParameterList.ToString();
-        if (mth.Discard && !mth.ReturnType.Equals(nameof(Task)) && !mth.ReturnType.Equals(nameof(ValueTask)))
-        {
-            context.LogError($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【Discard】注解");
-        }
-
         mth.Constraint = method.ConstraintClauses.ToString();
         mth.Typeparams = method.TypeParameterList?.ToString();
         foreach (var p in method.ParameterList.Parameters)
         {
             mth.Params.Add(p.Identifier.Text);
         }
+
+        info.Methods.Add(mth);
     }
 
     /// <summary>
