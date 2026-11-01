@@ -236,6 +236,15 @@ public static partial class Keys
             public const string TtlCleanupFailed = "Discovery.Registry.TtlCleanupFailed";
 
             /// <summary>
+            /// [DiscoveryRegistry] 终态心跳写入失败（超时 2s 内未完成），交给 TTL 兜底清除
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.Registry.TerminalHeartbeatFailed
+            /// 用途: Dispose/ProcessExit 终态心跳尽力写入失败或超时时的错误日志
+            /// </remarks>
+            public const string TerminalHeartbeatFailed = "Discovery.Registry.TerminalHeartbeatFailed";
+
+            /// <summary>
             /// 附加广播端点未被发布：服务进程类型 '{0}' 不是本进程心跳承载的首选类型 '{1}'（心跳文档单 Role 模型，非首选类型不跨进程可达）
             /// </summary>
             /// <remarks>
