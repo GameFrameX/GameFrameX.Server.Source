@@ -224,6 +224,8 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `ActorTimeOut` | Actor タスク実行タイムアウト（ミリ秒） | `30000` | `60000` |
 | `ActorQueueTimeOut` | Actor キュータイムアウト（ミリ秒） | `30000` | `60000` |
 | `ActorRecycleTime` | Actor アイドルリサイクル時間（分） | `15` | `30` |
+| `ActorLimitRule` | Actor 呼び出し制限ルール（None/NoBidirectionCall） | `None` | `NoBidirectionCall` |
+| `HotfixVerifyEnabled` | ホットフィックス アセンブリ読み込み SHA-256 検証 | `false` | `true` |
 | `SaveDataInterval` | データ保存間隔（ミリ秒） | `30000` | `60000` |
 | `SaveDataBatchCount` | バッチ保存数 | `500` | `1000` |
 | `SaveDataBatchTimeOut` | バッチ保存タイムアウト（ミリ秒） | `30000` | `60000` |

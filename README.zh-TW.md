@@ -222,6 +222,8 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `ActorTimeOut` | Actor 任務執行逾時（毫秒） | `30000` | `60000` |
 | `ActorQueueTimeOut` | Actor 佇列逾時（毫秒） | `30000` | `60000` |
 | `ActorRecycleTime` | Actor 閒置回收時間（分鐘） | `15` | `30` |
+| `ActorLimitRule` | Actor 呼叫限制規則（None/NoBidirectionCall） | `None` | `NoBidirectionCall` |
+| `HotfixVerifyEnabled` | 熱更程式集載入 SHA-256 驗證開關 | `false` | `true` |
 | `SaveDataInterval` | 資料儲存間隔（毫秒） | `30000` | `60000` |
 | `SaveDataBatchCount` | 批次儲存數量 | `500` | `1000` |
 | `SaveDataBatchTimeOut` | 批次儲存逾時（毫秒） | `30000` | `60000` |

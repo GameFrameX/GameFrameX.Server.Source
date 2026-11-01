@@ -16,6 +16,7 @@
 
 ### Fixed
 
+* Core 热更注册契约、装载信任与行为一致性 13 项（C437，GFX-1177，GitHub #923）：`HotfixModule.GetComponentTypeFromAgent` 统一守卫五处泛型基类反推（契约异常替代 IndexOutOfRangeException）并使 `AddEvent` 组件→Actor 反查带上下文抛出；RPC 注册面工厂化（`_rpcHandlerMap` 值改 `Func<IMessageHandler>`，注册期 CreateFactory 校验、同请求重复注册 fail-fast）与 `MessageRpcMappingAttribute` 改 `(Type, Type)` 形态（原接口实例参数因 CS0181 从未可用，属破坏性修正，零存量消费者）；消息号冲突 fail-fast；HTTP 命令字典改 OrdinalIgnoreCase 且全小写命令单次注册；热更依赖装载随模块可收集上下文同生共死（判重只看默认 ALC，热重载亦装载）；热更装载 SHA-256 哈希校验灰度开关（`HotfixVerifyEnabled` 默认 false + `HotfixLoadOptions.ExpectedSha256`，校验在 ALC 创建前，仅覆盖主程序集）；`DelayAsync(long)` 改 Unix 毫秒时间戳 UTC 同基解释；跨天第二段独立计时；组件 RPC 超时回写 TimeOut 响应（孤儿响应终态归还）；ActorLimit 收敛为真实可用（死代码删除、在飞登记 EndCall 移除含空集合回收、`ActorLimitRule` 配置化默认 None、8 调用点拒绝异常化、`WorkWrapper.CallerActorId`）；未登录玩家消息删除随机 ActorId 回退（Fatal+关通道）；`ComponentRegister.InitAsync` 加锁修复并行初始化字典损坏；六本地化键双语。
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
 * 撮合通知异步执行与停用退订（C407，GFX-1105，GitHub #733）：`ICapabilityEventBus.Subscribe` 返回幂等 `IDisposable` 退订句柄（void → IDisposable 为二进制破坏性变更——包族消费方需重新编译；源码侧忽略返回值的既有调用不受影响）；online-match 模块撮合分配事件回调改为纯入队（移除同步总线回调内 `ResolveAssignmentAsync` / `session.WriteAsync` 两处 `GetAwaiter().GetResult()` 死锁面），新增 `match-assignment-notification-tick` 每轮有限批次（64）异步解析并推送（条目级失败不阻断同批其余条目，异常交调度器既有日志路径）；`DeactivateAsync` 停用收口——关闭入队、退订、清空待处理并等待在途批次完成，热更/停机后旧模块零通知。回归 13 例：总线退订契约 5 + 模块生命周期 8（含对旧同步实现确定性红的发布不同步解析 / 停用退订 / 停用清空 / 容错批次）。
 
