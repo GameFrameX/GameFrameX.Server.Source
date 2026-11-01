@@ -708,38 +708,50 @@ public static class RandomHelper
         var idxSet = new HashSet<int>();
         for (var i = 0; i < num; i++)
         {
-            var totalWeight = 0;
-            for (var j = 0; j < array.Count; j++)
-            {
-                if (!idxSet.Contains(j))
-                {
-                    totalWeight += array[j][weightIndex];
-                }
-            }
-
-            // positiveWeightCount 预检保证每一轮仍有正权重可选，子集和恒 > 0。
-            var r = ConcurrentCryptoRandom.Next(totalWeight);
-            var temp = 0;
-            var idx = 0;
-            for (var j = 0; j < array.Count; j++)
-            {
-                if (!idxSet.Contains(j))
-                {
-                    temp += array[j][weightIndex];
-                    if (temp > r)
-                    {
-                        idx = j;
-                        break;
-                    }
-                }
-            }
-
+            var idx = PickWeightedIndexExcluding(array, weightIndex, idxSet);
             idxSet.Add(idx);
             results.Add(array[idx]);
         }
 
         return results;
     }
+
+    /// <summary>
+    /// 在排除集之外按权重随机抽取一个下标（轮内单次抽取）。
+    /// </summary>
+    /// <param name="array">权重数组，每个元素为[id, weight]</param>
+    /// <param name="weightIndex">权重索引</param>
+    /// <param name="excludedIndexes">本轮已选中的下标集合（不再参与抽取）</param>
+    /// <returns>抽中的条目下标 / The drawn entry index</returns>
+    private static int PickWeightedIndexExcluding(IReadOnlyList<int[]> array, int weightIndex, HashSet<int> excludedIndexes)
+    {
+        var totalWeight = 0;
+        for (var j = 0; j < array.Count; j++)
+        {
+            if (!excludedIndexes.Contains(j))
+            {
+                totalWeight += array[j][weightIndex];
+            }
+        }
+
+        // 调用方 positiveWeightCount 预检保证每一轮仍有正权重可选，子集和恒 > 0。
+        var threshold = ConcurrentCryptoRandom.Next(totalWeight);
+        var accumulatedWeight = 0;
+        for (var j = 0; j < array.Count; j++)
+        {
+            if (!excludedIndexes.Contains(j))
+            {
+                accumulatedWeight += array[j][weightIndex];
+                if (accumulatedWeight > threshold)
+                {
+                    return j;
+                }
+            }
+        }
+
+        return 0;
+    }
+
 
     /// <summary>
     /// 可重复随机选取
