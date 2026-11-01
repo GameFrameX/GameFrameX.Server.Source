@@ -200,17 +200,14 @@
     <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>data verification failed</value>
   </data>
+    <data name="Network.Http.RequestBodyNotJsonObject" xml:space="preserve">
+    <value>request body must be a JSON object</value>
+  </data>
     <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http command missing validation parameters {0} and {1}</value>
   </data>
     <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>undefined command</value>
-  </data>
-    <data name="Network.Http.NotFoundCommand" xml:space="preserve">
-    <value>not found command</value>
-  </data>
-    <data name="Network.Http.CheckFailedCommand" xml:space="preserve">
-    <value>check failed command</value>
   </data>
     <data name="Network.Http.ServerError" xml:space="preserve">
     <value>server error</value>

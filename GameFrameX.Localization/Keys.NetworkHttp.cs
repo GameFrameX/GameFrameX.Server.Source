@@ -197,6 +197,15 @@ public static partial class Keys
         public const string DataVerificationFailed = "Network.Http.DataVerificationFailed";
 
         /// <summary>
+        /// 请求体必须是 JSON 对象
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestBodyNotJsonObject
+        /// 用途: 当JSON请求体不是对象（null字面量/数组/标量/空体）时返回参数错误
+        /// </remarks>
+        public const string RequestBodyNotJsonObject = "Network.Http.RequestBodyNotJsonObject";
+
+        /// <summary>
         /// http命令未包含验证参数{0} 和 {1}
         /// </summary>
         /// <remarks>
@@ -214,24 +223,6 @@ public static partial class Keys
         /// 用途: 使用未定义命令时的错误消息
         /// </remarks>
         public const string UndefinedCommand = "Network.Http.UndefinedCommand";
-
-        /// <summary>
-        /// not found command
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.NotFoundCommand
-        /// 用途: 命令未找到时的错误消息
-        /// </remarks>
-        public const string NotFoundCommand = "Network.Http.NotFoundCommand";
-
-        /// <summary>
-        /// check failed command
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.CheckFailedCommand
-        /// 用途: 命令验证失败时的错误消息
-        /// </remarks>
-        public const string CheckFailedCommand = "Network.Http.CheckFailedCommand";
 
         /// <summary>
         /// server error

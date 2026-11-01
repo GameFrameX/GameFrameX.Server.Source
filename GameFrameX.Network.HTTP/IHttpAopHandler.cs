@@ -53,6 +53,8 @@ public interface IHttpAopHandler
     /// </summary>
     /// <remarks>
     /// Executes the interception processing logic.
+    /// 契约：返回 <c>false</c> 表示拒绝该请求并终止后续处理；若实现未自行写出响应，管线将回写统一校验失败响应（HttpJsonResultData 校验失败信封），客户端不会收到空响应。
+    /// Contract: returning <c>false</c> rejects the request and stops further processing; if the implementation has not written a response itself, the pipeline writes the unified validation-failure response (the HttpJsonResultData validation-failure envelope), so the client never receives an empty response.
     /// </remarks>
     /// <param name="httpContext">HTTP 上下文 / HTTP context</param>
     /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
