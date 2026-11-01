@@ -159,22 +159,7 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             {
                 // Localization: Core.MessageHandler.RpcComponentExecutionTimeout - BaseRpcComponentHandler组件RPC执行超时，消息类型:{0} 超时:{1}ms
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcComponentExecutionTimeout, RequestMessage.GetType().FullName, timeout));
-
-                // 超时响应使用独立池化实例：孤儿业务任务仍持有原响应，其写入不得污染已回写的超时响应
-                var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
-                try
-                {
-                    timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
-                    timeoutResponse.SetUniqueId(requestId);
-                    if (NetworkChannel != null && !NetworkChannel.IsClosed())
-                    {
-                        await NetworkChannel.WriteAsync(timeoutResponse);
-                    }
-                }
-                finally
-                {
-                    MessageObjectPoolHelper.Return(timeoutResponse);
-                }
+                await WriteTimeoutResponseAsync(requestId);
 
                 // 原响应经终态延续归还，此处不再写回
                 return;
@@ -212,29 +197,60 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         }
         finally
         {
-            // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽；
-            // 超时孤儿业务任务未到终态时，经终态延续归还（对齐 BaseRpcMessageHandler 模式）
-            if (coreTask == null || coreTask.IsCompleted)
+            ReturnResponseAtTerminalState(coreTask, response);
+        }
+    }
+
+    /// <summary>
+    /// 回写独立的超时响应（池化实例，写完即归还）：孤儿业务任务仍持有原响应，其写入不得污染已回写的超时响应。
+    /// </summary>
+    /// <param name="requestId">请求唯一标识，超时响应需携带 / The request id to carry on the timeout response</param>
+    private async Task WriteTimeoutResponseAsync(int requestId)
+    {
+        var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
+        try
+        {
+            timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
+            timeoutResponse.SetUniqueId(requestId);
+            if (NetworkChannel != null && !NetworkChannel.IsClosed())
             {
-                if (response != null)
-                {
-                    MessageObjectPoolHelper.Return(response);
-                }
-            }
-            else
-            {
-                _ = coreTask.ContinueWith((completedTask, state) =>
-                {
-                    _ = completedTask.Exception;
-                    var orphanResponse = (TResponse)state;
-                    if (orphanResponse != null)
-                    {
-                        MessageObjectPoolHelper.Return(orphanResponse);
-                    }
-                }, response, CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                await NetworkChannel.WriteAsync(timeoutResponse);
             }
         }
+        finally
+        {
+            MessageObjectPoolHelper.Return(timeoutResponse);
+        }
+    }
+
+    /// <summary>
+    /// 在响应到达终态时归还池化实例：核心任务已完成立即归还；孤儿业务任务（取消/超时后仍在运行，
+    /// 持有 response 引用）经终态延续归还，避免并发改写撕裂与对象池耗尽。
+    /// </summary>
+    /// <param name="coreTask">业务核心任务 / The business core task</param>
+    /// <param name="response">本次执行使用的池化响应 / The pooled response used by this execution</param>
+    private static void ReturnResponseAtTerminalState(Task coreTask, TResponse response)
+    {
+        if (coreTask == null || coreTask.IsCompleted)
+        {
+            if (response != null)
+            {
+                MessageObjectPoolHelper.Return(response);
+            }
+
+            return;
+        }
+
+        _ = coreTask.ContinueWith((completedTask, state) =>
+        {
+            _ = completedTask.Exception;
+            var orphanResponse = (TResponse)state;
+            if (orphanResponse != null)
+            {
+                MessageObjectPoolHelper.Return(orphanResponse);
+            }
+        }, response, CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     /// <summary>
