@@ -40,23 +40,6 @@ namespace GameFrameX.Hotfix.WrapperGenerator.Agent;
 public static class AgentTemplate
 {
     /// <summary>
-    /// 生成器标识：写入生成类 GeneratedCodeAttribute 的 tool 名。
-    /// </summary>
-    /// <remarks>
-    /// 架构分析器按此值精确匹配豁免生成产物（与 Architecture.Analyzers 侧
-    /// ArchitectureAnalyzerConstants.WrapperGeneratorToolName 为同值契约，改名须双侧同步）。
-    /// The tool name written into the GeneratedCodeAttribute on generated wrapper classes.
-    /// </remarks>
-    private const string GeneratedCodeToolName = "GameFrameX.Hotfix.WrapperGenerator";
-
-    /// <summary>
-    /// 生成器版本：写入生成类 GeneratedCodeAttribute 的 version 参数。
-    /// </summary>
-    /// <remarks>
-    /// The version argument written into the GeneratedCodeAttribute on generated wrapper classes.
-    /// </remarks>
-    private const string GeneratedCodeVersion = "1.0";
-    /// <summary>
     /// 根据代理信息生成包装器分部类的源代码。
     /// </summary>
     /// <remarks>
@@ -81,7 +64,7 @@ public static class AgentTemplate
         templateStringBuilder.AppendLine("{");
         if (info.EmitGeneratedCodeMarker)
         {
-            templateStringBuilder.AppendLine("\t[global::System.CodeDom.Compiler.GeneratedCodeAttribute(\"" + GeneratedCodeToolName + "\", \"" + GeneratedCodeVersion + "\")]");
+            templateStringBuilder.AppendLine("\t[global::System.CodeDom.Compiler.GeneratedCodeAttribute(\"" + HotfixWrapperGenerator.GeneratedCodeToolName + "\", \"" + HotfixWrapperGenerator.GeneratedCodeVersion + "\")]");
         }
         templateStringBuilder.AppendLine("\tpublic partial class " + info.Name + " : " + info.Super);
         templateStringBuilder.AppendLine("\t{");

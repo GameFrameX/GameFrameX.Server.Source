@@ -588,7 +588,14 @@ public struct FPVector4
     /// <returns>返回向量的哈希码。</returns>
     public override int GetHashCode()
     {
-        return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode() ^ w.GetHashCode();
+        unchecked
+        {
+            var hash = x.RawValue.GetHashCode();
+            hash = (hash * 397) ^ y.RawValue.GetHashCode();
+            hash = (hash * 397) ^ z.RawValue.GetHashCode();
+            hash = (hash * 397) ^ w.RawValue.GetHashCode();
+            return hash;
+        }
     }
 
     /// <summary>

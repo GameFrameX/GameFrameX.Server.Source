@@ -304,7 +304,8 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
             if (c > long.MinValue && c < long.MaxValue)
             {
-                r.Raw = long.Parse(c.ToString()); //未越界
+                // 上方范围检查已保证 c 在 long 范围内；LongValue 直接取低 64 位补码，零分配。
+                r.Raw = c.LongValue(); //未越界
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {
@@ -362,7 +363,8 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
             if (c > long.MinValue && c < long.MaxValue)
             {
-                r.Raw = long.Parse(c.ToString()); //未越界
+                // 上方范围检查已保证 c 在 long 范围内；LongValue 直接取低 64 位补码，零分配。
+                r.Raw = c.LongValue(); //未越界
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {

@@ -105,6 +105,25 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     private const string TimeOutAttributeName = "TimeOut";
 
     /// <summary>
+    /// 生成器标识：写入生成类 GeneratedCodeAttribute 的 tool 名。
+    /// </summary>
+    /// <remarks>
+    /// 架构分析器按此值精确匹配豁免生成产物（与 Architecture.Analyzers 侧
+    /// ArchitectureAnalyzerConstants.WrapperGeneratorToolName 为同值契约，改名须双侧同步）。
+    /// 放在生成器而非 AgentTemplate：模板类契约「无任何静态字段」（见 HotfixWrapperGeneratorDiagnosticReportingTests）。
+    /// The tool name written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    internal const string GeneratedCodeToolName = "GameFrameX.Hotfix.WrapperGenerator";
+
+    /// <summary>
+    /// 生成器版本：写入生成类 GeneratedCodeAttribute 的 version 参数。
+    /// </summary>
+    /// <remarks>
+    /// The version argument written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    internal const string GeneratedCodeVersion = "1.0";
+
+    /// <summary>
     /// 增量管线输出步骤的跟踪名：测试与诊断经 <c>TrackedSteps[该名]</c> 断言逐声明的缓存/重算行为。
     /// </summary>
     /// <remarks>

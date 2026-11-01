@@ -31,10 +31,16 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 全局常量类。
+/// 全局常量类：ID 位布局、Actor 类型、会话/唯一ID 键名与进程级固定值。
 /// </summary>
 /// <remarks>
-/// Global constants class containing server IDs, actor types, and system configuration values.
+/// 职责边界（CR-L04）：
+/// - 本类只放「与具体服务无关、编译期固定」的协议式常量：ID 位掩码与取值范围、ActorType、
+///   键名后缀、全局计时器间隔。
+/// - 服务名称/服务ID 组合常量归 <see cref="GameServerConst"/>。
+/// - 运行期可配置项（端口、密钥、语言、数据库连接等）归 <see cref="AppSetting"/>，
+///   由其仓储 <see cref="GlobalSettings"/> 装载。
+/// - 新增常量前先确认上述三类都不合适；无名意义的「魔法数字」不得入库。
 /// </remarks>
 public static class GlobalConst
 {
@@ -280,14 +286,6 @@ public static class GlobalConst
     /// Data save interval in milliseconds (300,000 ms = 5 minutes).
     /// </remarks>
     internal const int SaveIntervalInMilliSeconds = 300_000; //300_000;
-
-    /// <summary>
-    /// 魔法数字
-    /// </summary>
-    /// <remarks>
-    /// Magic number constant (60).
-    /// </remarks>
-    public const int Magic = 60;
 
     #endregion
 }

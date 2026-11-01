@@ -497,7 +497,11 @@ public struct FPVector2 : IEquatable<FPVector2>
     /// <returns>当前 FPVector2 实例的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return (int)(x + y);
+        unchecked
+        {
+            // 分量和相同（如 (1,2)/(2,1)/(3,0)）不再同桶：乘 397 顺序混合。
+            return (x.RawValue.GetHashCode() * 397) ^ y.RawValue.GetHashCode();
+        }
     }
 
     /// <summary>

@@ -71,7 +71,7 @@ public sealed class HotfixWrapperGeneratorGeneratedCodeMarkerTests
                     }
                 }
 
-                public partial class PartialComponentAgent
+                public partial class PartialComponentAgent : BaseComponentAgent
                 {
                     [Service]
                     public virtual Task<int> LoadAsync()
@@ -93,11 +93,13 @@ public sealed class HotfixWrapperGeneratorGeneratedCodeMarkerTests
             .Skip(1)
             .Where(tree => tree.ToString().Contains("public partial class PartialComponentAgentWrapper"))
             .ToArray();
-        // 分部代理的两个落盘分部都生成 Wrapper 声明，但标记只允许出现一次：
-        // GeneratedCodeAttribute 的 AllowMultiple 为 false，重复特性会令宿主编译失败（CS0579）
+        // C432 逐声明管线：partial 代理须每个部件自带基类列表才会逐部件生成 Wrapper 分部；
+        // GeneratedCodeAttribute 的 AllowMultiple 为 false，逐声明独立缓存无法稳定选举唯一携带者，
+        // 故 partial 分部一律不发射标记（CS0579 绝不发生），分析器豁免由 .g.cs 路径段与
+        // ComponentAgentWrapper 名称后缀兜底（三段判定）。标记由非 partial 单体声明的测试另行钉住。
         Assert.Equal(2, wrapperTrees.Length);
         var markerCount = wrapperTrees.Sum(tree => CountMarkerOccurrences(tree.ToString()));
-        Assert.Equal(1, markerCount);
+        Assert.Equal(0, markerCount);
     }
 
     [Fact]
@@ -114,7 +116,7 @@ public sealed class HotfixWrapperGeneratorGeneratedCodeMarkerTests
                     }
                 }
 
-                public partial class PartialComponentAgent
+                public partial class PartialComponentAgent : BaseComponentAgent
                 {
                     [Service]
                     public virtual Task<int> QueryAsync()
@@ -136,9 +138,10 @@ public sealed class HotfixWrapperGeneratorGeneratedCodeMarkerTests
             .Skip(1)
             .Where(tree => tree.ToString().Contains("public partial class PartialComponentAgentWrapper"))
             .ToArray();
-        // 首个声明分部无可包装方法不落盘：标记必须随唯一落盘分部出现（按落盘计数而非声明序号）
+        // 首个声明分部无可包装方法不落盘：唯一落盘分部为 partial 部件，同样不携带标记（CS0579 防线），
+        // 豁免由 .g.cs 路径段兜底。
         Assert.Single(wrapperTrees);
-        Assert.Equal(1, CountMarkerOccurrences(wrapperTrees[0].ToString()));
+        Assert.Equal(0, CountMarkerOccurrences(wrapperTrees[0].ToString()));
     }
 
     /// <summary>

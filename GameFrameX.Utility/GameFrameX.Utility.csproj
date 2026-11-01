@@ -15,6 +15,15 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!--
+            浮点版 FP 实现（Math/FP.Float.cs，整文件 #if !FP）在本仓两种配置下都不参与编译：
+            Debug/Release 均定义 FP。此处显式排除，避免把它当作本工程源文件修改（改动无法被
+            本仓编译器验证）。浮点实现供客户端工程（不定义 FP）共享，修改需同步客户端仓。
+        -->
+        <Compile Remove="Math/FP.Float.cs"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="GameFrameX.Foundation.Logger" Version="5.0.0"/>
         <PackageReference Include="GameFrameX.Foundation.Options" Version="5.0.0"/>
         <PackageReference Include="GameFrameX.Foundation.Utility" Version="5.0.0"/>
