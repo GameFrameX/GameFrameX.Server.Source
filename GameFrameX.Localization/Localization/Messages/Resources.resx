@@ -716,6 +716,22 @@
     <value>HTTP signature validation is enabled but HttpSignSecret is not configured; every request is rejected (fail-closed).</value>
   </data>
 
+  <data name="Network.Http.SignSecretTooWeak" xml:space="preserve">
+    <value>HttpSignSecret is shorter than {0} characters and can be brute-forced offline; replace it with a strong random secret.</value>
+  </data>
+
+  <data name="Network.Http.SignNonceInvalid" xml:space="preserve">
+    <value>HTTP signature nonce is missing or already used within the validity window (possible replay); the request was rejected.</value>
+  </data>
+
+  <data name="Network.Http.SignVersionOneDeprecated" xml:space="preserve">
+    <value>HTTP signature still uses the legacy v1 (timestamp-only) scheme, which does not protect against tampering or replay; migrate to HttpSignVersion=2.</value>
+  </data>
+
+  <data name="StartUp.HttpServer.SignDisabledWarning" xml:space="preserve">
+    <value>HTTP server started with HttpRequireSign=false: signature validation is disabled, exposing publicly deployed endpoints to captured-request replay; enable signature validation with a strong secret in production.</value>
+  </data>
+
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
     <value>Blank</value>
   </data>

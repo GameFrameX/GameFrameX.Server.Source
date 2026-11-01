@@ -769,6 +769,22 @@
     <value>HTTP 签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝（fail-closed）。</value>
   </data>
 
+  <data name="Network.Http.SignSecretTooWeak" xml:space="preserve">
+    <value>HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥。</value>
+  </data>
+
+  <data name="Network.Http.SignNonceInvalid" xml:space="preserve">
+    <value>HTTP 签名 nonce 缺失或已在时间窗内使用（疑似重放），请求已拒绝。</value>
+  </data>
+
+  <data name="Network.Http.SignVersionOneDeprecated" xml:space="preserve">
+    <value>HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2。</value>
+  </data>
+
+  <data name="StartUp.HttpServer.SignDisabledWarning" xml:space="preserve">
+    <value>HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥。</value>
+  </data>
+
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
     <value>HTTP服务器端口被占用。端口：{0}。</value>
   </data>
