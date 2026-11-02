@@ -44,6 +44,11 @@ public class ConfigComponent
         Tables = new TablesComponent();
     }
 
+    /// <summary>
+    /// 进程唯一实例的静态获取入口（过渡保留：请改经构造参数注入 <see cref="ConfigComponent"/> 实例——
+    /// 宿主 / 模块持有实例引用传递；本实例即注入源的进程缺省）。
+    /// </summary>
+    [Obsolete("静态单例入口过渡保留：请改用经构造参数注入的 ConfigComponent 实例（进程唯一实例即注入源）。Static singleton entry kept for transition; inject the ConfigComponent instance through constructors (this process-unique instance is the injection source).", false)]
     public static ConfigComponent Instance { get; } = new();
 
     private TablesComponent Tables { get; }
