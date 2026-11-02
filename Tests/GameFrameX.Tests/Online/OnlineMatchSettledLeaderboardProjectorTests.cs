@@ -218,17 +218,18 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证模块装配半边二：未配置投影榜 id 或 id 空白 → 不装配投影器、不注册重投 tick job（一轮 tick 比投影形态少执行一个 job），也不报错。
+        /// 验证模块装配半边二（C460 默认开）：零 Settings（缺省装配）与显式配置投影榜 id 均装配投影器 + 重投 tick job
+        ///（两者 tick job 数相同）；显式配置空白榜单 id（覆盖关闭）→ 不装配投影器（一轮 tick 比投影形态少执行一个 job），不报错。
         /// </summary>
         [Fact]
-        public async Task Compose_WithoutProjectionBoard_SkipsProjectorAndRetryJob()
+        public async Task Compose_ZeroSettingsDefaultsProjectionOn_BlankOverrideTurnsItOff()
         {
-            var withProjection = await RunOneTickRoundAsync(ProjectionSettings, true);
-            var withoutSettings = await RunOneTickRoundAsync(null, false);
+            var configured = await RunOneTickRoundAsync(ProjectionSettings, true);
+            var zeroSettings = await RunOneTickRoundAsync(null, true);
             var blankBoard = await RunOneTickRoundAsync("{\"online-competition\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"  \"}}}", false);
 
-            Assert.Equal(withProjection - 1, withoutSettings);
-            Assert.Equal(withProjection - 1, blankBoard);
+            Assert.Equal(configured, zeroSettings);
+            Assert.Equal(configured - 1, blankBoard);
         }
 
         /// <summary>

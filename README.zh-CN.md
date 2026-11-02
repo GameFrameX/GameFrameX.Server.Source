@@ -157,6 +157,8 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
    - 健康检查：`http://localhost:28080/health`（存活探针：`/alive`）
    - 查看控制台日志确认启动成功
 
+   **零 JSON 默认通（黄金路径）**：不写任何 `Online.Settings` 配置直接起服，RPS 样例对局全链（撮合 → 对局 → 结算 → 发奖 → 上榜）默认贯通——`MatchSettledBoardId` 默认投影到默认榜 `match-settled`（装配期自动预建）；如需关闭投影，在 `Online.Settings` 中将 `online-competition.LeaderboardProjection.MatchSettledBoardId` 显式置空即可。
+
 ---
 
 ## 使用示例
