@@ -50,6 +50,7 @@ public static class DiscoveryRoutingWire
     private static IRemoteRoleRouter _remoteRouter;
     private static int _initialized;
     private static int _localDispatcherAttached;
+    private static readonly object AttachLocalDispatcherLock = new();
 
     /// <summary>
     /// 路由缝是否已完成初始化（<see cref="Initialize"/> 成功执行后为 true）。
@@ -63,7 +64,7 @@ public static class DiscoveryRoutingWire
     /// <value>是否已初始化 / Whether the seam is initialized</value>
     public static bool IsInitialized
     {
-        get { return Volatile.Read(ref _initialized) == 1; }
+        get { return Volatile.Read(ref _initialized) == 1 && Volatile.Read(ref _hostedRoles) != null && Volatile.Read(ref _remoteRouter) != null; }
     }
 
     /// <summary>
@@ -116,8 +117,9 @@ public static class DiscoveryRoutingWire
     /// strictly after <see cref="Initialize"/> (the hotfix module loads later in the same startup
     /// sequence, when the Hotfix-side sender components finally exist); a call before
     /// <see cref="Initialize"/> therefore throws instead of quietly degrading case 1 back to
-    /// route-time <see cref="RouteNotFoundException"/>. Idempotent per process: the first call wins,
-    /// later calls (multi-role re-entry) return immediately without rebuilding the router.
+    /// route-time <see cref="RouteNotFoundException"/>. Repeat calls rebuild the router with the
+    /// newest dispatcher in the case 1 slot (the remote chain is reused as-is), mirroring the
+    /// "repeated calls overwrite with the newest instance" semantics of UnifiedMessageSenderHolder.
     /// </remarks>
     /// <param name="dispatcher">本地 envelope 复投器（Hotfix 装配点传入，与 UnifiedMessageSenderHolder 共用同一 IPlayerLocalSender）/ The local envelope dispatcher (sharing the same IPlayerLocalSender as UnifiedMessageSenderHolder)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="dispatcher"/> 为 null 时抛出 / Thrown when dispatcher is null</exception>
@@ -132,12 +134,13 @@ public static class DiscoveryRoutingWire
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.AttachLocalDispatcherOrderInvalid));
         }
 
-        if (Interlocked.CompareExchange(ref _localDispatcherAttached, 1, 0) != 0)
+        lock (AttachLocalDispatcherLock)
         {
-            return;
+            // 重复调用以最新 dispatcher 重建本地槽（远程链原样保留）：与 UnifiedMessageSenderHolder
+            // 「重复调用覆盖为最新实例」同口径，保证本地信封复投与玩家级投递共用同一发送器。
+            RoleRouterHolder.Initialize(new InProcessRoleRouter(_hostedRoles, dispatcher, _remoteRouter));
+            _localDispatcherAttached = 1;
         }
-
-        RoleRouterHolder.Initialize(new InProcessRoleRouter(_hostedRoles, dispatcher, _remoteRouter));
     }
 
     /// <summary>
