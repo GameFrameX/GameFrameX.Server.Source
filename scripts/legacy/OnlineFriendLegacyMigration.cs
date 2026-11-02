@@ -59,20 +59,18 @@ public static class OnlineFriendLegacyMigration
     /// 执行旧好友数据迁移（社交能力模块在激活期、好友域桥发布后调用）。
     /// </summary>
     /// <param name="friends">好友域服务（真实写路径的唯一属主）。</param>
-    /// <param name="tenantId">租户标识（宿主 OnlineScope 三元组）。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>迁移汇总（已建立关系数 / 待答申请数 / 失败数）。</returns>
-    public static async Task<(int Established, int Pending, int Failed)> MigrateAsync(OnlineFriendService friends, long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public static async Task<(int Established, int Pending, int Failed)> MigrateAsync(OnlineFriendService friends, long serverId, CancellationToken cancellationToken = default)
     {
         var domain = new OnlineFriendDomainFace(friends);
 
         // ① 域 120 旧链：FriendRelationState Status=0 → 已建立关系（Establish = 申请 + 立即接受，幂等收敛）。
-        var (established, relationFailed) = await MigrateEstablishedRelationsAsync(domain, tenantId, appId, serverId, cancellationToken).ConfigureAwait(false);
+        var (established, relationFailed) = await MigrateEstablishedRelationsAsync(domain, serverId, cancellationToken).ConfigureAwait(false);
 
         // ② 域 660 旧链：FriendState 档案 Outgoing → 待答申请（对已建立的对幂等无效果）。
-        var (pending, profileFailed) = await MigratePendingRequestsAsync(domain, tenantId, appId, serverId, cancellationToken).ConfigureAwait(false);
+        var (pending, profileFailed) = await MigratePendingRequestsAsync(domain, serverId, cancellationToken).ConfigureAwait(false);
 
         var failed = relationFailed + profileFailed;
         return (established, pending, failed);
@@ -83,12 +81,10 @@ public static class OnlineFriendLegacyMigration
     /// （Establish = 申请 + 立即接受，幂等收敛）；单条失败计数并继续（containment）。
     /// </summary>
     /// <param name="domain">Online 好友域契约面。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>（已建立关系数，失败数）。</returns>
-    private static async Task<(int Established, int Failed)> MigrateEstablishedRelationsAsync(OnlineFriendDomainFace domain, long tenantId, long appId, long serverId, CancellationToken cancellationToken)
+    private static async Task<(int Established, int Failed)> MigrateEstablishedRelationsAsync(OnlineFriendDomainFace domain, long serverId, CancellationToken cancellationToken)
     {
         var established = 0;
         var failed = 0;
@@ -102,7 +98,7 @@ public static class OnlineFriendLegacyMigration
                 continue;
             }
 
-            var result = await domain.EstablishAsync(PlayerScope(tenantId, appId, serverId, low), high, cancellationToken).ConfigureAwait(false);
+            var result = await domain.EstablishAsync(PlayerScope(serverId, low), high, cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess && result.Data.After == OnlineFriendRelationKind.Friend)
             {
                 established++;
@@ -121,12 +117,10 @@ public static class OnlineFriendLegacyMigration
     /// （对已建立的对幂等无效果）。
     /// </summary>
     /// <param name="domain">Online 好友域契约面。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>（待答申请数，失败数）。</returns>
-    private static async Task<(int Pending, int Failed)> MigratePendingRequestsAsync(OnlineFriendDomainFace domain, long tenantId, long appId, long serverId, CancellationToken cancellationToken)
+    private static async Task<(int Pending, int Failed)> MigratePendingRequestsAsync(OnlineFriendDomainFace domain, long serverId, CancellationToken cancellationToken)
     {
         var pending = 0;
         var failed = 0;
@@ -145,7 +139,7 @@ public static class OnlineFriendLegacyMigration
                     continue;
                 }
 
-                var (entryPending, entryFailed) = await MigrateOutgoingRequestsAsync(domain, tenantId, appId, serverId, profile, cancellationToken).ConfigureAwait(false);
+                var (entryPending, entryFailed) = await MigrateOutgoingRequestsAsync(domain, serverId, profile, cancellationToken).ConfigureAwait(false);
                 pending += entryPending;
                 failed += entryFailed;
             }
@@ -159,13 +153,11 @@ public static class OnlineFriendLegacyMigration
     /// 单条失败计数并继续（containment）。
     /// </summary>
     /// <param name="domain">Online 好友域契约面。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="profile">旧 660 好友档案。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>（待答申请数，失败数）。</returns>
-    private static async Task<(int Pending, int Failed)> MigrateOutgoingRequestsAsync(OnlineFriendDomainFace domain, long tenantId, long appId, long serverId, FriendProfileState profile, CancellationToken cancellationToken)
+    private static async Task<(int Pending, int Failed)> MigrateOutgoingRequestsAsync(OnlineFriendDomainFace domain, long serverId, FriendProfileState profile, CancellationToken cancellationToken)
     {
         var pending = 0;
         var failed = 0;
@@ -176,7 +168,7 @@ public static class OnlineFriendLegacyMigration
                 continue;
             }
 
-            var result = await domain.RequestAsync(PlayerScope(tenantId, appId, serverId, profile.PlayerId), targetPlayerId, cancellationToken).ConfigureAwait(false);
+            var result = await domain.RequestAsync(PlayerScope(serverId, profile.PlayerId), targetPlayerId, cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess)
             {
                 pending++;
@@ -191,15 +183,13 @@ public static class OnlineFriendLegacyMigration
     }
 
     /// <summary>
-    /// 构造玩家作用域（三元组取宿主 OnlineScope 值，玩家位为迁移主体）。
+    /// 构造玩家作用域（区服键取宿主 OnlineScope 值，玩家位为迁移主体）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>生效作用域。</returns>
-    private static OnlineScope PlayerScope(long tenantId, long appId, long serverId, long playerId)
+    private static OnlineScope PlayerScope(long serverId, long playerId)
     {
-        return new OnlineScope(tenantId, appId, serverId, playerId);
+        return new OnlineScope(serverId, playerId);
     }
 }
