@@ -260,8 +260,8 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 
 | Option             | Description               | Default | Example                     |
 |:-------------------|:--------------------------|:--------|:----------------------------|
-| `DatabaseProvider` | Database provider         | `Mongo` | `PostgreSql`                |
-| `DataBaseUrl`      | Database connection string | None    | `mongodb://localhost:27017` |
+| `DatabaseProvider` | Database provider         | `Sqlite` | `Mongo`, `PostgreSql`       |
+| `DataBaseUrl`      | Database connection string | None    | `Data Source=data/gameframex.db` |
 | `DataBaseName`     | Database name             | None    | `gameframex`                |
 | `DataBasePassword` | Database password         | None    | `your_password`             |
 

@@ -91,7 +91,7 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
 
 #### 数据库与持久化
 
-- **双数据库 Provider**：通过 `DatabaseProvider` 选择 `Mongo`（默认）或 `PostgreSql`，两个 Provider 共享同一套 `GameFrameX.DataBase` 抽象层
+- **数据库 Provider 三档**：`PostgreSql` 与 `Mongo` 为双主线（两家均全验证——条件写原语、可翻译子集查询、事务原子性在两家双绿，作为发布门禁），外加 `Sqlite` 零依赖上手 + 测试档
 - **MongoDB Provider**：完整的 MongoDB 集成，支持健康状态机（Healthy → Degraded → Unhealthy → Recovering）
 - **PostgreSQL Provider**：基于 Npgsql，具备与 MongoDB Provider 相同的重试 / 恢复 / 可用性 / 健康检查能力
 - **透明持久化**：StateComponent 自动序列化/反序列化，通过定时批量 upsert 操作持久化
@@ -112,7 +112,7 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
 ### 环境要求
 
 - 仅支持 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)，不支持 .NET 8/9。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（默认 Provider；也可通过 `--DatabaseProvider=PostgreSql` 使用 PostgreSQL）
+- 零依赖启动无需安装任何数据库（SQLite 内嵌，示例配置 `Configs/app_config.json` 默认即 Sqlite）；完整生产 Provider 为 MongoDB 与 PostgreSQL，仅在选用对应 Provider 时才需要安装——通过修改配置文件中的两行选择项切换（见[数据库 Provider 三档定位与边界](#数据库-provider-三档定位与边界)）
 - Visual Studio 2022 或 JetBrains Rider（推荐）
 
 ### 安装
@@ -123,37 +123,47 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
    cd GameFrameX.Server.Source
    ```
 
-2. **还原依赖**
-   ```bash
-   dotnet restore
-   ```
+2. **构建并进入输出目录**
 
-3. **构建项目**
+   启动器以工作目录为基准解析 `Configs/` 与 `hotfix/`，因此请从构建输出目录运行（`quick_start-game.bat` 也在该目录）：
    ```bash
    dotnet build
+   cp -r Configs bin/app_debug/Configs
+   cd bin/app_debug
    ```
 
-4. **启动 MongoDB**
-   ```bash
-   # 本地安装方式
-   mongod --dbpath /path/to/data
+3. **五分钟零依赖启动（SQLite）**
 
-   # 或使用 Docker
+   无需安装数据库、无需 Docker——一条命令在单进程中拉起全部角色（示例配置默认即 SQLite，命令行取值与配置文件一致）：
+   ```bash
+   dotnet GameFrameX.Launcher.dll -- \
+       --AllInOne \
+       --DatabaseProvider=Sqlite \
+       --DataBaseUrl="Data Source=data/gameframex.db"
+   ```
+   - 启动日志会打印 HTTP 入口以及解析出的**数据文件绝对路径**和它的读写检查结果。
+   - 健康检查：`http://localhost:28080/health`（存活探针：`/alive`）——示例配置开启了开发模式才会映射这些端点（生产环境请关闭 `HttpIsDevelopment`；安全说明见 `ServiceDefaultsExtensions`）。
+   - 数据落在工作目录下的 `data/gameframex.db`（与 Docker 的 `/app/data` 卷根对齐）。停止并重启进程，账号与状态依然存在。
+   - 想要一个用完即弃的临时数据库？改用 `--DataBaseUrl="Data Source=:memory:"`——启动日志会警告**不做任何持久化**（进程退出后全部丢失）。
+   - 在把部署规模扩展到单进程之外前，请先阅读[数据库 Provider 三档定位与边界](#数据库-provider-三档定位与边界)。
+
+4. **使用 MongoDB / PostgreSQL 启动（完整 Provider）**
+
+   示例 `Configs/app_config.json` 默认为零依赖的 SQLite 档；切换 Provider 只需改配置文件中的两行选择项（启动校验器要求命令行参数与配置文件一致，因此配置文件才是选择载体）：
+   ```bash
+   # 1. 启动数据库（以 MongoDB 为例；PostgreSQL 同理）
    docker run -d -p 27017:27017 --name mongo mongo:8.2
+
+   # 2. 修改 Configs/app_config.json 中的选择项（对每个要启动的角色都要生效）：
+   #    "DatabaseProvider": "Mongo",
+   #    "DataBaseUrl": "mongodb://127.0.0.1:27017"
+   #    （现成样例：Configs/app_config.mongo.json / Configs/app_config.postgres.json）
+
+   # 3. 运行
+   dotnet GameFrameX.Launcher.dll -- --ServerType=Game
    ```
 
-5. **运行服务器**
-   ```bash
-   dotnet run --project GameFrameX.Launcher -- \
-       --ServerType=Game \
-       --ServerId=1000 \
-       --OuterPort=29100 \
-       --HttpPort=28080 \
-       --DataBaseUrl=mongodb://127.0.0.1:27017 \
-       --DataBaseName=gameframex
-   ```
-
-6. **验证启动**
+5. **验证启动**
    - 健康检查：`http://localhost:28080/health`（存活探针：`/alive`）
    - 查看控制台日志确认启动成功
 
@@ -217,7 +227,7 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 
 | 配置项 | 说明 | 默认值 | 示例 |
 |:------|:-----|:------|:----|
-| `DatabaseProvider` | 数据库 Provider | `Mongo` | `PostgreSql` |
+| `DatabaseProvider` | 数据库 Provider | `Sqlite` | `PostgreSql` |
 | `DataBaseUrl` | 数据库连接字符串 | 无 | `mongodb://localhost:27017` |
 | `DataBaseName` | 数据库名称 | 无 | `gameframex` |
 | `DataBasePassword` | 数据库密码 | 无 | `your_password` |

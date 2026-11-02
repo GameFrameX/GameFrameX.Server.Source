@@ -91,7 +91,7 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 
 #### 데이터베이스 및 영속화
 
-- **듀얼 데이터베이스 Provider**: `DatabaseProvider`로 `Mongo`(기본) 또는 `PostgreSql` 선택. 두 Provider 모두 동일한 `GameFrameX.DataBase` 추상 레이어를 공유
+- **데이터베이스 Provider 3등급**: PostgreSQL과 MongoDB를 이중 메인라인으로 제공(조건부 쓰기, 번역 가능 하위 집합 쿼리, 트랜잭션 원자성이 두 Provider에서 모두 그린이어야 릴리스 게이트를 통과)하고, SQLite는 제로 의존성 온보딩 + 테스트 등급으로 제공
 - **MongoDB Provider**: 완전한 MongoDB 통합. 헬스 상태 머신 지원(Healthy → Degraded → Unhealthy → Recovering)
 - **PostgreSQL Provider**: Npgsql 기반. MongoDB Provider와 동일한 재시도 / 복구 / 가용성 / 헬스 체크 능력 제공
 - **투명한 영속화**: StateComponent 자동 직렬화/역직렬화. 정기적 배치 업서트 작업으로 영속화
@@ -112,7 +112,7 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 ### 요구 사항
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)만 지원합니다. .NET 8/9는 지원하지 않습니다.
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)(기본 Provider; `--DatabaseProvider=PostgreSql`로 PostgreSQL 사용 가능)
+- 제로 의존성 시작: 그 외에는 아무것도 필요 없음(SQLite는 임베디드이며 예제 `Configs/app_config.json`도 기본으로 사용). 완전한 프로덕션 Provider는 MongoDB와 PostgreSQL이며, 설정 파일에서 선택 라인 2줄만 수정해 원하는 쪽을 고르면 됩니다([데이터베이스 Provider 3등급 정의와 경계](#데이터베이스-provider-3등급-정의와-경계) 참고). Mongo/PostgreSql Provider를 선택할 때만 해당 데이터베이스 설치가 필요합니다.
 - Visual Studio 2022 또는 JetBrains Rider(권장)
 
 ### 설치
@@ -123,37 +123,46 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
    cd GameFrameX.Server.Source
    ```
 
-2. **종속성 복원**
-   ```bash
-   dotnet restore
-   ```
+2. **빌드 후 출력 디렉터리로 이동**
 
-3. **프로젝트 빌드**
+   런처는 작업 디렉터리를 기준으로 `Configs/`와 `hotfix/`를 해석하므로 빌드 출력 위치에서 실행합니다(`quick_start-game.bat`도 이곳에 있습니다):
    ```bash
    dotnet build
+   cp -r Configs bin/app_debug/Configs
+   cd bin/app_debug
    ```
 
-4. **MongoDB 시작**
-   ```bash
-   # 로컬 설치
-   mongod --dbpath /path/to/data
+3. **5분 제로 의존성 시작(Sqlite)**
 
-   # 또는 Docker 사용
+   데이터베이스 설치도 Docker도 없이, 명령 한 줄로 모든 역할을 단일 프로세스로 부팅합니다(예제 설정이 이미 SQLite 기본이므로 CLI 값과 파일이 일치):
+   ```bash
+   dotnet GameFrameX.Launcher.dll -- \
+       --AllInOne \
+       --DatabaseProvider=Sqlite \
+       --DataBaseUrl="Data Source=data/gameframex.db"
+   ```
+   - 시작 로그에 HTTP 진입점과 데이터 파일의 **절대 경로** 및 읽기/쓰기 검사 결과가 출력됩니다.
+   - 헬스 체크: `http://localhost:28080/health`(라이브니스 프로브: `/alive`) — 예제 설정은 개발 모드가 켜져 있어 이 엔드포인트가 매핑됩니다(프로덕션에서는 `HttpIsDevelopment`를 끄세요. `ServiceDefaultsExtensions`의 보안 참고 사항 확인).
+   - 데이터는 작업 디렉터리의 `data/gameframex.db`에 저장됩니다(Docker의 `/app/data` 볼륨 루트와 정렬). 프로세스를 중지하고 재시작해도 계정과 상태가 그대로 유지됩니다.
+   - 휘발성 스크래치 데이터베이스를 원한다면 `--DataBaseUrl="Data Source=:memory:"`를 사용하세요 — 시작 로그가 **아무것도 영속화되지 않는다**고 경고합니다(프로세스 종료 시 모두 손실).
+   - 단일 프로세스를 넘어 확장하기 전에 [데이터베이스 Provider 3등급 정의와 경계](#데이터베이스-provider-3등급-정의와-경계)를 먼저 확인하세요.
+
+4. **MongoDB / PostgreSQL로 시작(완전한 Provider)**
+   예제 `Configs/app_config.json`은 기본적으로 제로 의존성 SQLite 등급입니다. Provider 선택은 설정 파일 2줄 수정으로 변경합니다(시작 검증기가 CLI 인수와 설정 파일의 일치를 요구하므로 파일이 선택 기준입니다):
+   ```bash
+   # 1. 데이터베이스 시작(MongoDB 예시; PostgreSQL도 동일한 방식)
    docker run -d -p 27017:27017 --name mongo mongo:8.2
+
+   # 2. 실행하는 모든 역할의 Configs/app_config.json에서 선택 변경:
+   #    "DatabaseProvider": "Mongo",
+   #    "DataBaseUrl": "mongodb://127.0.0.1:27017"
+   #    (즉시 사용 가능한 샘플: Configs/app_config.mongo.json / app_config.postgres.json)
+
+   # 3. 실행
+   dotnet GameFrameX.Launcher.dll -- --ServerType=Game
    ```
 
-5. **서버 실행**
-   ```bash
-   dotnet run --project GameFrameX.Launcher -- \
-       --ServerType=Game \
-       --ServerId=1000 \
-       --OuterPort=29100 \
-       --HttpPort=28080 \
-       --DataBaseUrl=mongodb://127.0.0.1:27017 \
-       --DataBaseName=gameframex
-   ```
-
-6. **시작 확인**
+5. **시작 확인**
    - 헬스 체크: `http://localhost:28080/health`(라이브니스 프로브: `/alive`)
    - 콘솔 로그에서 시작 성공 확인
 
@@ -210,7 +219,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
-| `DatabaseProvider` | 데이터베이스 Provider | `Mongo` | `PostgreSql` |
+| `DatabaseProvider` | 데이터베이스 Provider | `Sqlite` | `PostgreSql` |
 | `DataBaseUrl` | 데이터베이스 연결 문자열 | 없음 | `mongodb://localhost:27017` |
 | `DataBaseName` | 데이터베이스 이름 | 없음 | `gameframex` |
 | `DataBasePassword` | 데이터베이스 비밀번호 | 없음 | `your_password` |
