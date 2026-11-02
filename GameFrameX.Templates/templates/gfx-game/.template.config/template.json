@@ -13,7 +13,7 @@
     "language": "C#",
     "type": "project"
   },
-  "description": "生成「用 GameFrameX 做一个游戏」的独立起点工程：以 2.0 NuGet 包消费框架 Online 能力（缺省黄金路径最小集 Foundation+Match+Assets+Leaderboard+Competition，零配置开箱即通），可在任意目录还原、构建与起服。完整官方示例见 Server 游戏仓（四子棋接 Online 桥）。",
+  "description": "生成「用 GameFrameX 做一个游戏」的独立起点工程：以 2.0 NuGet 包消费框架 Online 能力（缺省黄金路径最小集 Foundation+Match+Assets+Leaderboard+Competition，零配置开箱即通）。注意：2.0 包当前仅内部 feed 分发，nuget.config 缺省指向生成目录旁的 ../LocalPackages（需与 GameFrameX 源码仓同级摆放方可还原；公开发布后改指 nuget.org）。完整官方示例见 Server 游戏仓（四子棋接 Online 桥）。",
   "symbols": {
     "Name": {
       "type": "parameter",
