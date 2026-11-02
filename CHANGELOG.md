@@ -1,3 +1,11 @@
+## [2.0.0]
+
+### BREAKING（断代声明）
+
+* 版本线归一 2.0.0（C459，GFX-1194，GitHub #958）：`Version.props` 由 1.7.3 切至 2.0.0.0，全部 27 个可打包项目（运行时基座 15 包 + `GameFrameX.Capability.*` 12 包）统一随 2.0.0 版本线发布。按 D1 裁决为断代升级：**不保留 1.x 兼容层**，1.x 消费方升级须整体切换
+* `GameFrameX.Capability.*`（Hosting×3 + Online×9）随 2.0.0 首发，此前从未发布过任何版本；`GameFrameX.NetWork.Message` / `GameFrameX.Core.Config` 等已并入包以 2.0.0 续线
+* Server 运行仓（`GameFrameX.Server`）的 `GameFrameX.*` 包引用钉住 1.13.0 不随本次升级，待框架 2.0 发布后按收敛计划 P5 阶段统一切换
+
 ## [Unreleased] - PostgreSQL-Only 验证分支（verify/pg-only-no-mongo）
 
 ### Removed

@@ -884,6 +884,8 @@ other hosts.
 | `Swashbuckle.AspNetCore.SwaggerGen` | Swagger documentation for the HTTP API |
 | `xunit` | Unit testing framework |
 
+**Version governance (2.0.0 line):** the source version line of this repository is unified at **2.0.0** (clean break; no 1.x compatibility layer). The server runtime repository (`GameFrameX.Server`) keeps all `GameFrameX.*` package references pinned to **1.13.0** and will move to 2.0.0 only after the framework 2.0 release (convergence stage P5). `GameFrameX.Capability.*` capability packages debut on the 2.0.0 line.
+
 ---
 
 ## Documentation & Resources

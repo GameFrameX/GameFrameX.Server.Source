@@ -44,7 +44,7 @@ namespace GameFrameX.Architecture.Analyzers;
 /// 只在能力包模块内、持有 <c>CapabilityRegistrationContext</c> 参数的 Register 及其辅助方法中合法；</description></item>
 /// <item><description><c>Bridges.Publish&lt;&gt;</c> 只在能力包模块内、持有激活期上下文的 <c>ActivateAsync</c> 及其辅助方法中合法；</description></item>
 /// <item><description><c>CapabilityBridge&lt;&gt;.TryAcquire</c> 只在 Hotfix / Apps 消费侧合法；<c>CapabilityHook&lt;&gt;.Attach</c> 只在 Hotfix 合法；</description></item>
-/// <item><description><c>CapabilityCompositionOptions.Override&lt;&gt;</c> / <c>Configure&lt;&gt;</c> / <c>SetAdminApiPlaneFactory</c> 只在宿主组合入口（Launcher）合法。</description></item>
+/// <item><description><c>CapabilityCompositionOptions.Override&lt;&gt;</c> / <c>Configure&lt;&gt;</c> / <c>SetAdminApiPlaneFactory</c> 只在宿主组合入口合法：精确 <c>GameFrameX.Launcher</c> 程序集，或自身为 ConsoleApplication 输出的可执行组合根宿主（gfx-online 模板生成形态）。</description></item>
 /// </list>
 /// 维护约束：Hosting 机制包是这些 API 的定义方，内部转交不受限；测试工程（精确程序集名）可构造任意阶段夹具。
 /// </remarks>
@@ -92,6 +92,9 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
 
         var registrationPhase = new[] { registration };
         var activationPhase = new[] { activation, publisher };
+        // 宿主组合入口（B1）：可执行组合根本身（ConsoleApplication 输出，如 gfx-online 模板生成的宿主）
+        // 与 Launcher 同为 Override / Configure / SetAdminApiPlaneFactory 的合法调用方；库输出不放宽。
+        var compositionHostOutput = compilation.Options.OutputKind == OutputKind.ConsoleApplication;
         context.RegisterOperationAction(operationContext =>
         {
             var method = operationContext.Operation is IInvocationOperation invocation
@@ -103,7 +106,7 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             }
 
             var phase = kind == BoundaryKind.BridgePublish ? activationPhase : registrationPhase;
-            if (IsAllowed(operationContext.ContainingSymbol, kind, module, phase))
+            if (IsAllowed(operationContext.ContainingSymbol, kind, module, phase, compositionHostOutput))
             {
                 return;
             }
@@ -114,7 +117,7 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
         }, OperationKind.Invocation, OperationKind.MethodReference);
     }
 
-    private static bool IsAllowed(ISymbol caller, BoundaryKind kind, INamedTypeSymbol module, INamedTypeSymbol[] phase)
+    private static bool IsAllowed(ISymbol caller, BoundaryKind kind, INamedTypeSymbol module, INamedTypeSymbol[] phase, bool compositionHostOutput)
     {
         var assembly = caller.ContainingAssembly.Identity.Name;
         if (CapabilityBoundaryFacts.IsTest(assembly) || CapabilityBoundaryFacts.IsMechanism(assembly))
@@ -129,7 +132,8 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             case BoundaryKind.HookAttach:
                 return assembly == ArchitectureAnalyzerConstants.HotfixAssembly;
             case BoundaryKind.HostComposition:
-                return assembly == CapabilityBoundaryFacts.Launcher;
+                // 宿主组合入口 = 可执行组合根（ConsoleApplication 输出）或精确 Launcher 程序集；库程序集仍被拒绝。
+                return compositionHostOutput || assembly == CapabilityBoundaryFacts.Launcher;
             default:
                 if (!CapabilityBoundaryFacts.IsImplementation(assembly))
                 {
@@ -181,7 +185,7 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             case BoundaryKind.HookAttach:
                 return "钩子挂载仅限 Hotfix 程序集经 CapabilityHook<T>.Attach 调用";
             case BoundaryKind.HostComposition:
-                return "Override / Configure / SetAdminApiPlaneFactory 仅限宿主组合入口（Launcher）调用";
+                return "Override / Configure / SetAdminApiPlaneFactory 仅限宿主组合入口（可执行组合根，如 GameFrameX.Launcher 或 gfx-online 生成的宿主进程）调用";
             default:
                 return "Register 期 API 仅限能力包模块（实现 ICapabilityModule）的 Register 及持有 CapabilityRegistrationContext 参数的模块内辅助方法调用";
         }

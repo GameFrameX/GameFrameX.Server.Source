@@ -834,6 +834,8 @@ GameFrameX.Server.Source/
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API용 Swagger 문서 |
 | `xunit` | 단위 테스트 프레임워크 |
 
+**버전 거버넌스(2.0.0 라인):** 본 리포지토리의 소스 버전 라인은 **2.0.0**으로 통일되었습니다(단절 업그레이드, 1.x 호환 계층 없음). 서버 실행 리포지토리(`GameFrameX.Server`)의 `GameFrameX.*` 패키지 참조는 **1.13.0**에 고정된 채로 유지되며, 프레임워크 2.0 출시 후(수렴 계획 P5 단계) 일괄 업그레이드됩니다. `GameFrameX.Capability.*` 역량 패키지는 2.0.0 라인으로 첫 공개됩니다.
+
 ---
 
 ## 문서 및 자료
