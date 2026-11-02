@@ -161,6 +161,12 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
     - Health check: `http://localhost:28080/health` (liveness probe: `/alive`)
     - Check console logs to confirm successful startup
 
+   **Zero-JSON golden path**: start the server without writing any `Online.Settings` and the sample
+   RPS chain (matchmaking → match → settlement → reward grant → leaderboard) works out of the box —
+   `MatchSettledBoardId` projects onto the default board `match-settled` (pre-created during
+   assembly). To turn the projection off, explicitly blank
+   `online-competition.LeaderboardProjection.MatchSettledBoardId` under `Online.Settings`.
+
 ### SQLite Provider Boundaries
 
 SQLite (`--DatabaseProvider=Sqlite`) is positioned for quick starts, development evaluation, and
