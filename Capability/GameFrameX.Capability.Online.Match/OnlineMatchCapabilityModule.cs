@@ -49,7 +49,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 撮合成功通知订阅迁 Register 期机制事件总线（域服务在场才订阅并持有退订句柄）：
 /// 订阅体只入队不做异步 I/O，通知由 match-assignment-notification-tick 任务异步推送（C407）；
 /// 停用收口 = 关闭入队 + 退订 + 清空待处理 + 等待在途，返回后旧模块零通知。
-/// 玩法经 <see cref="OnlineMatchOptions.Games"/> 由宿主 Configure 回调注入（能力包零具体玩法；
+/// 玩法经 <see cref="OnlineMatchOptions.AddGame"/> 由宿主 Configure 回调注入（能力包零具体玩法；
 /// 零玩法形态 = 运行时与结算管线照常、桥与域服务不装配——最小宿主语义）。
 /// </para>
 /// </summary>
