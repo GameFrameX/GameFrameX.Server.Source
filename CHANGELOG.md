@@ -4,7 +4,12 @@
 
 * 版本线归一 2.0.0（C459，GFX-1194，GitHub #958）：`Version.props` 由 1.7.3 切至 2.0.0.0，全部 27 个可打包项目（运行时基座 15 包 + `GameFrameX.Capability.*` 12 包）统一随 2.0.0 版本线发布。按 D1 裁决为断代升级：**不保留 1.x 兼容层**，1.x 消费方升级须整体切换
 * `GameFrameX.Capability.*`（Hosting×3 + Online×9）随 2.0.0 首发，此前从未发布过任何版本；`GameFrameX.NetWork.Message` / `GameFrameX.Core.Config` 等已并入包以 2.0.0 续线
-* Server 运行仓（`GameFrameX.Server`）的 `GameFrameX.*` 包引用钉住 1.13.0 不随本次升级，待框架 2.0 发布后按收敛计划 P5 阶段统一切换
+* 基础设施收敛 P4b（C464，GFX-1200）：①新增 `GameFrameX.ServerLink` 薄门面包（直连拨号 + 固定重试上限默认 3 + `RoleRouteEnvelopeMessage` 信封转发门面 + 玩家路由解析内置默认），作为服间链路推荐入口；②`GameFrameX.Network.RemoteMessaging` 原位收缩——**移除**多版本协商灰度面（`IProtocolVersionNegotiator`/`DefaultProtocolVersionNegotiator`/`ProtocolVersionAttribute`，保留握手帧最小版本号校验与 HMAC 节点互信），**移除** `RemoteMessagingOptions.EnableUnifiedClient` 与环境键 `RemoteMessaging__EnableUnifiedClient`，`EnableRetry` 默认由 true 改为 false、熔断器与端点健康评估默认降级 PassThrough（`WithRetry`/`WithCircuitBreaker`/`EnableCircuitBreaker` 显式开启，接口保留），最小观测计数（Metrics/Trace 拦截器常开不再绑定韧性开关），Unified 治理面（`MessageGovernancePolicy` 与一致性哈希实例选择器）冻结标注不再演进；③`GameFrameX.StartUp` 移除 `MongoDB.Driver` 直接包引用（Mongo 健康检查经 `GameFrameX.DataBase.Mongo` Provider 程序集反射解析，`MongoDbHealthCheck` 新增连接串构造重载）；④数据库三档定档文档化（README×5 三段：三档定位 / 无迁移工具 / 双主线维护代价）+ docker-compose 提供 PostgreSQL 档（`--profile postgres`）与默认 Mongo 档并列示例；⑤契约套件双绿设为发布门禁（release.yml 新增 `database-contract-gate` 前置 job，PG+Mongo service container 真跑条件写/事务原子性/可翻译子集契约；PR 侧 topology-equivalence filter 同步扩入）
+
+### Added
+
+* `GameFrameX.ServerLink` 薄门面包（2.0.0 首发）：`ServerLinkBuilder`（内置默认直连 TCP + 固定重试上限 + PassThrough 韧性）、`ServerLinkEnvelopeForwarder`（跨 Role 信封转发门面）、`ServerLinkPlayerRouting`（统一消息发送器组合 + 本地投递槽补装 + 发现层玩家路由解析适配）；服务间链路用户文档见 `docs/remote-messaging.md`（含跨服调用准入规则收编）
+* Sqlite quickstart 黄金路径四项存量缺陷修复（随 C464 落地，GFX-1200）：①示例配置 `Configs/app_config.json` 按三档定档切为零依赖 Sqlite 档（quickstart/demo 默认载体；生产选型改文件两行，另附 `app_config.mongo.json` / `app_config.postgres.json` 双主线样例与 compose 挂载），解除 README 五分钟命令与启动期校验器的 CliFileValueConflict 死锁；②`OnlineCapabilityOptions.Settings`（`JsonElement` 缺省 `Undefined`）新增 `UndefinedSafeJsonElementConverter`（写侧 Undefined→空对象，读侧不变）——文件配置启动时 `AppSetting.ToFormatString` 序列化未配置能力参数节恒抛 `InvalidOperationException` 的问题修复；③`GameEventDispatcher.DispatchGlobal` 无监听告警路径不再因合法的全局分发 ActorId（0，低于最小服务器 Id）在类型反查中抛 `ArgumentOutOfRangeException` 中断启动；④`HttpIsDevelopment` 开关现在真正驱动 Web 宿主环境（此前 `/health`、`/alive` 仅在 ASP.NET Core 环境为 Development 时映射，开关开启仍 404）——示例配置默认开启开发端点，README 注明生产关闭
 
 ## [Unreleased] - PostgreSQL-Only 验证分支（verify/pg-only-no-mongo）
 

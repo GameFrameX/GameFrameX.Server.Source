@@ -222,6 +222,12 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `DataBaseName` | 数据库名称 | 无 | `gameframex` |
 | `DataBasePassword` | 数据库密码 | 无 | `your_password` |
 
+#### 数据库 Provider 三档定位与边界
+
+- **三档定位**：`PostgreSql` 与 `Mongo` 为双主线全验证档——条件写原语、可翻译子集查询、事务原子性等全部特性在两家 Provider 双实现双验证，契约套件双绿是发布门禁；`Sqlite` 为零依赖上手 + 测试档（quickstart / demo 黄金路径的默认载体，嵌入式、无需安装任何数据库），不承诺生产拓扑。
+- **无数据迁移工具**：仓库不提供 Mongo ↔ PostgreSQL 的数据搬迁实现。切换 Provider 是新装/新服的选型动作（改两行配置）；存量生产库换型需自行完成数据搬迁。
+- **双主线维护代价**：后续每个数据库特性都要在两家 Provider 双实现、双验证（维护面约为单主线的 ×1.5–2）；契约测试套件在 CI 中于 PostgreSQL + MongoDB 双跑，回归由双绿门禁兜底。
+
 #### Actor 配置
 
 | 配置项 | 说明 | 默认值 | 示例 |

@@ -87,11 +87,10 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 - **WebSocket**: Bidirectional communication based on SuperSocket WebSocket
 - **HTTP/HTTPS**: HTTP service based on Kestrel, supporting Swagger documentation, CORS, health checks
 - **KCP**: Reliable UDP transport promoted to officially supported (opt-in); when `KcpPort` is `0` it shares the TCP port
-- **Cross-Process Messaging**: Built-in RemoteMessaging module with circuit breaker, retry strategy, and consistent hashing sharding
+- **Cross-Process Messaging**: Point-to-point inter-server RPC over the `GameFrameX.ServerLink` thin facade (direct dialing with a fixed retry limit, envelope forwarding, and player-route resolution built in); handshake version check and inter-node HMAC authentication included
 
 #### Database & Persistence
-
-- **Dual Database Providers**: `DatabaseProvider` selects `Mongo` (default) or `PostgreSql`; both providers share the same `GameFrameX.DataBase` abstraction layer
+- **Database Provider Tiers**: PostgreSQL and MongoDB as dual mainlines (both fully verified — conditional writes, translatable-subset queries, and transaction atomicity run green on both as a release gate) plus SQLite as the zero-dependency onboarding + testing tier
 - **MongoDB Provider**: Complete MongoDB integration with health state machine (Healthy → Degraded → Unhealthy → Recovering)
 - **PostgreSQL Provider**: Based on Npgsql, with the same retry / recovery / availability / health-check capabilities as the MongoDB provider
 - **Transparent Persistence**: StateComponent automatic serialization/deserialization, persisted through timed batch upsert operations
@@ -112,7 +111,7 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 ### Requirements
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) only. .NET 8/9 are not supported.
-- Zero-dependency start: nothing else (SQLite is embedded). Full production providers remain MongoDB (default) or PostgreSQL via `--DatabaseProvider`.
+- Zero-dependency start: nothing else (SQLite is embedded, and the sample `Configs/app_config.json` defaults to it). Full production providers are MongoDB and PostgreSQL — pick one by editing the two selection lines in the config file (see [Database Provider Tiers and Boundaries](#database-provider-tiers-and-boundaries)).
 - Visual Studio 2022 or JetBrains Rider (recommended)
 
 ### Installation
@@ -123,39 +122,48 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
    cd GameFrameX.Server.Source
    ```
 
-2. **Five-Minute Zero-Dependency Start (SQLite)**
+2. **Build and Enter the Output Directory**
 
-   No database install, no Docker — one command boots all roles in a single process:
+   The launcher resolves `Configs/` and `hotfix/` relative to its working directory, so run it from
+   the build output (this is also where `quick_start-game.bat` lives):
    ```bash
-   dotnet run --project GameFrameX.Launcher -- \
+   dotnet build
+   cp -r Configs bin/app_debug/Configs
+   cd bin/app_debug
+   ```
+
+3. **Five-Minute Zero-Dependency Start (SQLite)**
+
+   No database install, no Docker — one command boots all roles in a single process (the sample
+   config already defaults to SQLite, so the CLI values and the file agree):
+   ```bash
+   dotnet GameFrameX.Launcher.dll -- \
        --AllInOne \
        --DatabaseProvider=Sqlite \
        --DataBaseUrl="Data Source=data/gameframex.db"
    ```
-   - The startup log prints the HTTP entry (`http://localhost:28080/health` for the health check) and the resolved **absolute path of the data file** with its read/write checks.
+   - The startup log prints the HTTP entry and the resolved **absolute path of the data file** with its read/write checks.
+   - Health check: `http://localhost:28080/health` (liveness probe: `/alive`) — the sample config enables development mode, which maps these endpoints (turn `HttpIsDevelopment` off for production; see the security note in `ServiceDefaultsExtensions`).
    - Data lands in `data/gameframex.db` under the working directory (aligned with the Docker `/app/data` volume root). Stop and restart the process — accounts and state are still there.
    - Want an ephemeral scratch database instead? Use `--DataBaseUrl="Data Source=:memory:"` — the startup log then warns that **nothing is persisted** (everything is lost when the process exits).
    - See [SQLite Provider Boundaries](#sqlite-provider-boundaries) before scaling this beyond a single process.
 
-3. **Build the Project**
-   ```bash
-   dotnet build
-   ```
-
 4. **Start with MongoDB / PostgreSQL (full providers)**
+   The sample `Configs/app_config.json` defaults to the zero-dependency SQLite tier; provider
+   selection is a two-line file edit (the startup validator requires CLI arguments and the config
+   file to agree, so the file is the selection carrier):
    ```bash
-   # MongoDB (default provider)
+   # 1. Start the database (MongoDB shown; PostgreSQL works the same way)
    docker run -d -p 27017:27017 --name mongo mongo:8.2
 
-   dotnet run --project GameFrameX.Launcher -- \
-       --ServerType=Game \
-       --ServerId=1000 \
-       --OuterPort=29100 \
-       --HttpPort=28080 \
-       --DataBaseUrl=mongodb://127.0.0.1:27017 \
-       --DataBaseName=gameframex
+   # 2. Switch the selection in Configs/app_config.json for every role you launch:
+   #    "DatabaseProvider": "Mongo",
+   #    "DataBaseUrl": "mongodb://127.0.0.1:27017"
+   #    (ready-made samples: Configs/app_config.mongo.json / Configs/app_config.postgres.json)
+
+   # 3. Run
+   dotnet GameFrameX.Launcher.dll -- --ServerType=Game
    ```
-   PostgreSQL: add `--DatabaseProvider=PostgreSql` and point `--DataBaseUrl` at your instance.
 
 5. **Verify Startup**
     - Health check: `http://localhost:28080/health` (liveness probe: `/alive`)
@@ -184,6 +192,13 @@ Production-scale usage is at the operator's own risk. File-mode tips: prefer a l
 network/SMB shares risks corruption), and prefer forward slashes in custom absolute paths
 (`Data Source=/abs/path/game.db`) — one syntax that works on every platform; drive-letter backslash
 paths are Windows-only and a wrong one surfaces immediately in the startup full-path log.
+
+
+### Database Provider Tiers and Boundaries
+
+- **Three tiers**: `PostgreSql` and `Mongo` are the dual mainlines — both fully verified (conditional-write primitives, translatable-subset queries, and transaction atomicity are implemented and verified on both providers, and the contract suites must pass on both as a release gate). `Sqlite` is the zero-dependency onboarding + testing tier (the default vehicle for the quickstart/demo golden path; embedded, nothing to install) and carries no production-topology commitment (see [SQLite Provider Boundaries](#sqlite-provider-boundaries) above).
+- **No data-migration tooling**: the repository ships no Mongo ↔ PostgreSQL data migration. Switching providers means choosing one for a fresh install or a new server (two lines of configuration); migrating an existing production database to another provider is your responsibility.
+- **Dual-mainline maintenance cost**: every future database feature is implemented and verified on both mainlines (roughly ×1.5–2 the maintenance surface of a single mainline). The contract suites run on PostgreSQL + MongoDB in CI, so regressions are caught by the dual-green gate.
 
 ---
 
