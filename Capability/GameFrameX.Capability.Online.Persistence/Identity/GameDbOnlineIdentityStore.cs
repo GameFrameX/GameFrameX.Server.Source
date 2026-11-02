@@ -31,6 +31,7 @@ namespace GameFrameX.Capability.Online.Persistence.Identity;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.DataBase;
 
@@ -70,16 +71,14 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     /// </summary>
     private const string PlayerIdSequence = "player-id";
 
-    /// <summary>按唯一键 (TenantId, AppId, Kind, Identifier) 查找身份。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>按唯一键 (Kind, Identifier) 查找身份。</summary>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>身份实体；不存在返回 null。</returns>
-    public async Task<OnlineIdentity> FindIdentityAsync(long tenantId, long appId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
+    public async Task<OnlineIdentity> FindIdentityAsync(OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
     {
-        var state = await FindIdentityStateAsync(BuildIdentityKey(tenantId, appId, kind, identifier), cancellationToken).ConfigureAwait(false);
+        var state = await FindIdentityStateAsync(OnlineRowKey.Identity((int)kind, identifier), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
@@ -90,7 +89,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        var uniqueKey = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+        var uniqueKey = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
         var existing = await FindIdentityStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
@@ -123,7 +122,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        var uniqueKey = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+        var uniqueKey = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
         var rowId = await GameDb.NextSequenceAsync<OnlineIdentityState>(IdentityRowIdSequence, cancellationToken).ConfigureAwait(false);
         var state = ToState(identity, uniqueKey, rowId);
         state.RowVersion = 1;
@@ -142,7 +141,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        var uniqueKey = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+        var uniqueKey = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
         var existing = await FindIdentityStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (existing == null)
         {
@@ -212,19 +211,18 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         await GameDb.AddOrUpdateAsync(ToState(player), cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>列出账号在指定 App/Server 归属下的玩家档案（按创建时间升序；并列按 Id 定序）。</summary>
+    /// <summary>列出账号在指定区服归属下的玩家档案（按创建时间升序；并列按 Id 定序）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表。</returns>
-    public async Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long serverId, CancellationToken cancellationToken = default)
     {
-        var states = await GameDb.FindListAsync<OnlinePlayerProfileState>(state => state.GameAccountId == gameAccountId && state.AppId == appId && state.ServerId == serverId, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlinePlayerProfileState>(state => state.GameAccountId == gameAccountId && state.ServerId == serverId, cancellationToken).ConfigureAwait(false);
         return states.OrderBy(state => state.CreatedAtTime).ThenBy(state => state.Id).Select(ToEntity).ToList();
     }
 
-    /// <summary>列出账号下全部玩家档案（不限 App/Server 归属；按创建时间升序，并列按 Id 定序）。</summary>
+    /// <summary>列出账号下全部玩家档案（不限区服归属；按创建时间升序，并列按 Id 定序）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表。</returns>
@@ -241,7 +239,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     /// <returns>设备实体；不存在返回 null。</returns>
     public async Task<OnlinePlayerDevice> FindDeviceAsync(long gameAccountId, string deviceIdentifier, CancellationToken cancellationToken = default)
     {
-        var state = await FindDeviceStateAsync(BuildDeviceKey(gameAccountId, deviceIdentifier), cancellationToken).ConfigureAwait(false);
+        var state = await FindDeviceStateAsync(OnlineRowKey.PlayerDevice(gameAccountId, deviceIdentifier), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
@@ -252,7 +250,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
     {
         ArgumentNullException.ThrowIfNull(device);
 
-        var uniqueKey = BuildDeviceKey(device.GameAccountId, device.DeviceIdentifier);
+        var uniqueKey = OnlineRowKey.PlayerDevice(device.GameAccountId, device.DeviceIdentifier);
         var existing = await FindDeviceStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
@@ -335,26 +333,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return GameDb.FindAsync<OnlinePlayerDeviceState>(state => state.UniqueKey == uniqueKey, isCreateIfNotExists: false, cancellationToken: cancellationToken);
     }
 
-    /// <summary>构造身份唯一键（与 InMemory BuildIdentityKey 同构）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="kind">身份类型。</param>
-    /// <param name="identifier">身份标识串。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildIdentityKey(long tenantId, long appId, OnlineIdentityKind kind, string identifier)
-    {
-        return tenantId + ":" + appId + ":" + (int)kind + ":" + identifier;
-    }
-
-    /// <summary>构造设备唯一键（与 InMemory BuildDeviceKey 同构）。</summary>
-    /// <param name="gameAccountId">游戏账号标识。</param>
-    /// <param name="deviceIdentifier">设备唯一标识串。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildDeviceKey(long gameAccountId, string deviceIdentifier)
-    {
-        return gameAccountId + ":" + deviceIdentifier;
-    }
-
     /// <summary>身份实体 → 行（指定行 Id；RowVersion 由写入路径管理——条件写原语递增 / 盲写回填存量，不作实体映射输入）。</summary>
     private static OnlineIdentityState ToState(OnlineIdentity identity, string uniqueKey, long rowId)
     {
@@ -363,8 +341,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
             Id = rowId,
             UniqueKey = uniqueKey,
             EntityId = identity.Id,
-            TenantId = identity.TenantId,
-            AppId = identity.AppId,
             Kind = (int)identity.Kind,
             Identifier = identity.Identifier,
             GameAccountId = identity.GameAccountId,
@@ -380,8 +356,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return new OnlineIdentity
         {
             Id = state.EntityId,
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             Kind = (OnlineIdentityKind)state.Kind,
             Identifier = state.Identifier,
             GameAccountId = state.GameAccountId,
@@ -398,8 +372,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return new OnlineGameAccountState
         {
             Id = account.Id,
-            TenantId = account.TenantId,
-            AppId = account.AppId,
             Status = (int)account.Status,
             CreatedAtTime = account.CreatedAtTime,
             UpdatedAtTime = account.UpdatedAtTime,
@@ -415,8 +387,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return new OnlineGameAccount
         {
             Id = state.Id,
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             Status = (OnlineGameAccountStatus)state.Status,
             CreatedAtTime = state.CreatedAtTime,
             UpdatedAtTime = state.UpdatedAtTime,
@@ -433,8 +403,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         {
             Id = player.Id,
             GameAccountId = player.GameAccountId,
-            TenantId = player.TenantId,
-            AppId = player.AppId,
             ServerId = player.ServerId,
             Name = player.Name,
             CreatedAtTime = player.CreatedAtTime,
@@ -449,8 +417,6 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         {
             Id = state.Id,
             GameAccountId = state.GameAccountId,
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             ServerId = state.ServerId,
             Name = state.Name,
             CreatedAtTime = state.CreatedAtTime,

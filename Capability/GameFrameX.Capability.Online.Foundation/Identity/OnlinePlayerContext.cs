@@ -33,7 +33,7 @@ using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
-/// 统一玩家上下文（PlayerId + AppId + ServerId + SessionId，后续模块不再各自解析身份）。
+/// 统一玩家上下文（PlayerId + ServerId + SessionId，后续模块不再各自解析身份）。
 /// <para>
 /// 维护约束：登录成功后由服务端生成，客户端不得自行拼接身份关系；
 /// 会话进入终态后本上下文即失效，调用方不得缓存复用；
@@ -42,15 +42,6 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 /// </summary>
 public sealed class OnlinePlayerContext
 {
-    /// <summary>
-    /// 获取租户标识。
-    /// </summary>
-    public long TenantId { get; }
-
-    /// <summary>
-    /// 获取应用标识。
-    /// </summary>
-    public long AppId { get; }
 
     /// <summary>
     /// 获取区服标识。
@@ -58,7 +49,7 @@ public sealed class OnlinePlayerContext
     public long ServerId { get; }
 
     /// <summary>
-    /// 获取玩家标识（GameAccount 下属、App/Server 归属明确）。
+    /// 获取玩家标识（GameAccount 下属、区服归属明确）。
     /// </summary>
     public long PlayerId { get; }
 
@@ -75,16 +66,12 @@ public sealed class OnlinePlayerContext
     /// <summary>
     /// 初始化 <see cref="OnlinePlayerContext"/>。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="gameAccountId">游戏账号标识。</param>
     /// <param name="sessionId">会话标识。</param>
-    public OnlinePlayerContext(long tenantId, long appId, long serverId, long playerId, long gameAccountId, string sessionId)
+    public OnlinePlayerContext(long serverId, long playerId, long gameAccountId, string sessionId)
     {
-        TenantId = tenantId;
-        AppId = appId;
         ServerId = serverId;
         PlayerId = playerId;
         GameAccountId = gameAccountId;
@@ -113,6 +100,6 @@ public sealed class OnlinePlayerContext
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Identity.ScopeMissingPlayerId), nameof(scope));
         }
 
-        return new OnlinePlayerContext(scope.TenantId, scope.AppId, scope.ServerId, scope.PlayerId, gameAccountId, sessionId);
+        return new OnlinePlayerContext(scope.ServerId, scope.PlayerId, gameAccountId, sessionId);
     }
 }

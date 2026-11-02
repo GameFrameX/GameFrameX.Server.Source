@@ -92,7 +92,7 @@ public sealed class OnlineAdminMatchmakingHandlers
     {
         var modeFilter = OnlineAdminApiContract.ReadOptionalString(request, "Mode");
         var regionFilter = OnlineAdminApiContract.ReadOptionalString(request, "Region");
-        var snapshot = OnlineAdminApiContract.Unwrap(await _matchQueueObserver.ObserveAsync(scope.TenantId, scope.AppId, 0, cancellationToken).ConfigureAwait(false));
+        var snapshot = OnlineAdminApiContract.Unwrap(await _matchQueueObserver.ObserveAsync(0, cancellationToken).ConfigureAwait(false));
         var nowMilliseconds = OnlineAdminApiContract.NowSeconds() * 1000;
         var queues = new List<QueueSummaryResponse>();
         if (snapshot.Tickets != null)
@@ -144,7 +144,7 @@ public sealed class OnlineAdminMatchmakingHandlers
         var endTime = OnlineAdminApiContract.ReadOptionalInt64(request, "EndTime");
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
-        var tickets = await _matchTicketStore.ListAllAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
+        var tickets = await _matchTicketStore.ListAllAsync(cancellationToken).ConfigureAwait(false);
         var failed = tickets
                      .Where(ticket => ticket.FailureReason != OnlineMatchFailureReason.None
                                       || ticket.State == OnlineMatchTicketState.Expired
@@ -218,7 +218,7 @@ public sealed class OnlineAdminMatchmakingHandlers
 
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
-        var tickets = await _matchTicketStore.ListAllAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
+        var tickets = await _matchTicketStore.ListAllAsync(cancellationToken).ConfigureAwait(false);
         var nowMilliseconds = OnlineAdminApiContract.NowSeconds() * 1000;
         List<AbnormalTicketView> abnormal;
         if (abnormalKind.Value == 2)
@@ -286,7 +286,7 @@ public sealed class OnlineAdminMatchmakingHandlers
     {
         var ticketId = OnlineAdminApiContract.RequireString(request, "TicketId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var ticket = await _matchTicketStore.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
+        var ticket = await _matchTicketStore.FindAsync(ticketId, cancellationToken).ConfigureAwait(false);
         if (ticket == null)
         {
             // Localization: Online.AdminApi.MatchTicketNotFound - 匹配票据不存在：{0}
@@ -294,7 +294,7 @@ public sealed class OnlineAdminMatchmakingHandlers
         }
 
         var ticketScope = ticket.PlayerIds != null && ticket.PlayerIds.Count > 0
-                              ? new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ticket.PlayerIds[0])
+                              ? new OnlineScope(scope.ServerId, ticket.PlayerIds[0])
                               : scope;
         OnlineAdminApiContract.Unwrap(await _matchTickets.CancelAsync(ticketScope, ticketId, cancellationToken).ConfigureAwait(false));
         return OnlineAdminApiContract.BuildControlledAck(request, ticketId, "Ticket cancelled. Reason: " + reason);
@@ -405,7 +405,7 @@ public sealed class OnlineAdminMatchmakingHandlers
                 continue;
             }
 
-            var assignment = await _matchTicketStore.FindAssignmentAsync(scope.TenantId, scope.AppId, ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
+            var assignment = await _matchTicketStore.FindAssignmentAsync(ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
             if (assignment == null)
             {
                 views.Add(new AbnormalTicketView(ticket, null, null));

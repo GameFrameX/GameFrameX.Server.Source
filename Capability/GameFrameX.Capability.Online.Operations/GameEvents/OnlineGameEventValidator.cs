@@ -34,7 +34,7 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 namespace GameFrameX.Capability.Online.Operations.GameEvents;
 
 /// <summary>
-/// 游戏事件基础校验器：登记表驱动的四类拒绝。
+/// 游戏事件基础校验器：登记表驱动的三类拒绝。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **校验依据全部来自登记表**（<see cref="OnlineGameEventSchema"/>）——事件名、版本上限、必需字段
@@ -48,7 +48,7 @@ namespace GameFrameX.Capability.Online.Operations.GameEvents;
 public static class OnlineGameEventValidator
 {
     /// <summary>
-    /// 执行基础校验（按耗时从低到高的顺序：作用域 → 事件名 → 版本 → 必需字段）。
+    /// 执行基础校验（按耗时从低到高的顺序：事件名 → 版本 → 必需字段）。
     /// </summary>
     /// <param name="onlineEvent">待校验的事件信封。</param>
     /// <returns>校验结果。</returns>
@@ -57,13 +57,6 @@ public static class OnlineGameEventValidator
         if (onlineEvent == null)
         {
             return OnlineGameEventValidationResult.Reject(OnlineGameEventRejectionReason.UnknownEventName, "事件为空");
-        }
-
-        if (onlineEvent.TenantId <= 0 || onlineEvent.AppId <= 0)
-        {
-            return OnlineGameEventValidationResult.Reject(
-                OnlineGameEventRejectionReason.InvalidScope,
-                "事件作用域非法：TenantId=" + onlineEvent.TenantId.ToString(CultureInfo.InvariantCulture) + "，AppId=" + onlineEvent.AppId.ToString(CultureInfo.InvariantCulture));
         }
 
         var descriptor = OnlineGameEventSchema.Find(onlineEvent.EventType);

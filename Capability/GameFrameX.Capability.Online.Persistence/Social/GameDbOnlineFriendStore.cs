@@ -29,6 +29,7 @@
 
 namespace GameFrameX.Capability.Online.Persistence.Social;
 
+using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Social;
 using GameFrameX.DataBase;
 
@@ -80,7 +81,7 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     {
         ArgumentNullException.ThrowIfNull(friendship);
 
-        var uniqueKey = BuildPairKey(friendship.TenantId, friendship.AppId, friendship.LowPlayerId, friendship.HighPlayerId);
+        var uniqueKey = OnlineRowKey.Friendship(friendship.LowPlayerId, friendship.HighPlayerId);
         var existing = await FindRowAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
@@ -112,38 +113,34 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Canonicalizes the two players into the undirected pair first, then looks up by the materialized composite key and returns a copy (either direction of the arguments hits the same record).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="leftPlayerId">一侧玩家标识（无需预先规范化） / One-side player id (no pre-canonicalization needed)</param>
     /// <param name="rightPlayerId">另一侧玩家标识（无需预先规范化） / Other-side player id (no pre-canonicalization needed)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>关系副本；不存在返回 null / Copy of the friendship; null if absent</returns>
-    public async Task<OnlineFriendship> FindAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
+    public async Task<OnlineFriendship> FindAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
     {
         long low;
         long high;
         OnlineFriendship.Canonicalize(leftPlayerId, rightPlayerId, out low, out high);
-        var state = await FindRowAsync(BuildPairKey(tenantId, appId, low, high), cancellationToken).ConfigureAwait(false);
+        var state = await FindRowAsync(OnlineRowKey.Friendship(low, high), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
     /// <summary>
-    /// 以 CAS 语义改写关系状态：按关系标识定位行，作用域或当前状态与期望不符（或记录不存在）时不留写入痕迹并返回 null。
+    /// 以 CAS 语义改写关系状态：按关系标识定位行，当前状态与期望不符（或记录不存在）时不留写入痕迹并返回 null。
     /// </summary>
     /// <remarks>
-    /// Rewrites the friendship state with CAS semantics: locates the row by friendship id and leaves no write trace, returning null on scope mismatch, expected-state mismatch or missing record.
+    /// Rewrites the friendship state with CAS semantics: locates the row by friendship id and leaves no write trace, returning null on expected-state mismatch or missing record.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="transition"/> 为 null 时抛出 / Thrown when <paramref name="transition"/> is null</exception>
-    public async Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default)
+    public async Task<OnlineFriendship> UpdateStateAsync(FriendshipStateTransition transition, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(transition);
 
-        return await TransitionRowAsync(tenantId, appId, transition.FriendshipId ?? string.Empty, current =>
+        return await TransitionRowAsync(transition.FriendshipId ?? string.Empty, current =>
         {
             if ((OnlineFriendshipState)current.State != transition.ExpectedState)
             {
@@ -170,24 +167,17 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Rewrites the friendship state with CAS semantics and enforces the friend limit inside the same method: when the target state is Accepted with a positive limit, counts both sides' established (Accepted) relations first and rejects with zero writes once either side has reached the limit.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
     /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定） / Established friend limit (&lt;= 0 disables the limit check)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空 / Transition outcome: updated copy on success; FriendLimitReached on limit rejection; both empty on CAS failure</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="transition"/> 为 null 时抛出 / Thrown when <paramref name="transition"/> is null</exception>
-    public async Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+    public async Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(transition);
 
         var current = await FindRowByIdAsync(transition.FriendshipId ?? string.Empty, cancellationToken).ConfigureAwait(false);
         if (current == null)
-        {
-            return OnlineFriendStateTransitionOutcome.FromCasConflict();
-        }
-
-        if (current.TenantId != tenantId || current.AppId != appId)
         {
             return OnlineFriendStateTransitionOutcome.FromCasConflict();
         }
@@ -202,8 +192,8 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
             // 计数与写入收在同一方法内：本行此刻尚处 Requested（未计入），两侧任一满员即整体拒绝、零写入。
             // ponytail：跨行「计数 + 覆盖写」依赖 GameDb 行级写收敛；多实例并发下残余窗口以单写者语义收口，
             // 需要硬约束时下沉为数据库内计数事务。
-            if (await CountEstablishedAsync(tenantId, appId, current.RequesterId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit
-                || await CountEstablishedAsync(tenantId, appId, current.AddresseeId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit)
+            if (await CountEstablishedAsync(current.RequesterId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit
+                || await CountEstablishedAsync(current.AddresseeId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit)
             {
                 return OnlineFriendStateTransitionOutcome.FromFriendLimitReached();
             }
@@ -221,19 +211,16 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
-    /// 统计某玩家在作用域内已建立（Accepted）的好友关系数。
+    /// 统计某玩家已建立（Accepted）的好友关系数。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>已建立的好友关系数。</returns>
-    private static async Task<int> CountEstablishedAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken)
+    private static async Task<int> CountEstablishedAsync(long playerId, CancellationToken cancellationToken)
     {
         var acceptedState = (int)OnlineFriendshipState.Accepted;
         var states = await GameDb.FindListAsync<OnlineFriendshipRowState>(
-            state => state.TenantId == tenantId && state.AppId == appId
-                     && state.State == acceptedState
+            state => state.State == acceptedState
                      && (state.LowPlayerId == playerId || state.HighPlayerId == playerId),
             cancellationToken).ConfigureAwait(false);
         return states.Count;
@@ -245,17 +232,15 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Re-initiates a quiescent friendship as a pending request with CAS semantics, writing state, direction and expiry together onto the same row.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="renewal">重新发起载荷（关系标识、期望状态、发起人、被请求方、变更时刻、失效时刻） / Renewal payload (friendship id, expected state, requester, addressee, change time, expiry)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="renewal"/> 为 null 时抛出 / Thrown when <paramref name="renewal"/> is null</exception>
-    public async Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default)
+    public async Task<OnlineFriendship> RenewRequestAsync(FriendshipRenewal renewal, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(renewal);
 
-        return await TransitionRowAsync(tenantId, appId, renewal.FriendshipId ?? string.Empty, current => (OnlineFriendshipState)current.State == renewal.ExpectedState, current =>
+        return await TransitionRowAsync(renewal.FriendshipId ?? string.Empty, current => (OnlineFriendshipState)current.State == renewal.ExpectedState, current =>
         {
             // 三项同临界区落定：状态 + 方向 + 有效期（拆开写会让权限判据读到半成品）。
             current.State = (int)OnlineFriendshipState.Requested;
@@ -267,40 +252,36 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
-    /// 列出作用域内包含指定玩家的全部关系记录（任意状态；双侧等值匹配 + Tenant/App 过滤）。
+    /// 列出包含指定玩家的全部关系记录（任意状态；双侧等值匹配）。
     /// </summary>
     /// <remarks>
-    /// Lists all friendship records in the scope containing the given player (any state; both-side equality plus tenant/app filtering).
+    /// Lists all friendship records containing the given player (any state; both-side equality).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">玩家标识 / Player id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>关系副本列表 / List of friendship copies</returns>
-    public async Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         var states = await GameDb.FindListAsync<OnlineFriendshipRowState>(
-            state => state.TenantId == tenantId && state.AppId == appId && (state.LowPlayerId == playerId || state.HighPlayerId == playerId),
+            state => state.LowPlayerId == playerId || state.HighPlayerId == playerId,
             cancellationToken).ConfigureAwait(false);
         return states.Select(ToEntity).ToList();
     }
 
     /// <summary>
-    /// 列出作用域内处于指定状态的全部关系记录（状态 + Tenant/App 过滤）。
+    /// 列出处于指定状态的全部关系记录（超期扫描输入）。
     /// </summary>
     /// <remarks>
-    /// Lists all friendship records in the scope with the given state (state plus tenant/app filtering).
+    /// Lists all friendship records with the given state (expiry-sweep input).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="state">关系状态 / Friendship state</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>关系副本列表 / List of friendship copies</returns>
-    public async Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(OnlineFriendshipState state, CancellationToken cancellationToken = default)
     {
         var stateValue = (int)state;
         var states = await GameDb.FindListAsync<OnlineFriendshipRowState>(
-            state => state.TenantId == tenantId && state.AppId == appId && state.State == stateValue,
+            state => state.State == stateValue,
             cancellationToken).ConfigureAwait(false);
         return states.Select(ToEntity).ToList();
     }
@@ -328,36 +309,28 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
-    /// CAS 迁移回路：读行（带 RowVersion）→ 作用域与前置校验 → 行版本条件写；冲突时重读重校验，最多 3 次。
+    /// CAS 迁移回路：读行（带 RowVersion）→ 前置校验 → 行版本条件写；冲突时重读重校验，最多 3 次。
     /// </summary>
     /// <remarks>
-    /// The CAS transition loop: read the row (with its <c>RowVersion</c>) → validate scope and the
+    /// The CAS transition loop: read the row (with its <c>RowVersion</c>) → validate the
     /// caller's precondition → conditional write via <c>UpdateIfRowVersionAsync</c>. A <c>false</c> return
     /// means a concurrent writer advanced the row version; the loop re-reads and re-validates up to
     /// <see cref="MaxTransitionAttemptCount"/> times. Preconditions failing on the freshly-read row
-    /// (scope mismatch, expected-state mismatch, missing row) return <c>null</c> immediately — the
+    /// (expected-state mismatch, missing row) return <c>null</c> immediately — the
     /// store-contract CAS failure. Exhausted retries also return <c>null</c> (the caller re-reads the
     /// current fact and converges); no partial writes ever land.
     /// </remarks>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="friendshipId">关系标识。</param>
     /// <param name="precondition">对刚读出的行做期望校验（false = CAS 失败，返回 null，不写入）。</param>
     /// <param name="apply">把目标态写进行对象（在条件写之前应用于本行）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-    private static async Task<OnlineFriendship> TransitionRowAsync(long tenantId, long appId, string friendshipId, Func<OnlineFriendshipRowState, bool> precondition, Action<OnlineFriendshipRowState> apply, CancellationToken cancellationToken)
+    private static async Task<OnlineFriendship> TransitionRowAsync(string friendshipId, Func<OnlineFriendshipRowState, bool> precondition, Action<OnlineFriendshipRowState> apply, CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < MaxTransitionAttemptCount; attempt++)
         {
             var current = await FindRowByIdAsync(friendshipId, cancellationToken).ConfigureAwait(false);
             if (current == null)
-            {
-                return null;
-            }
-
-            // 作用域校验先于任何写入（含存量补全写）。
-            if (current.TenantId != tenantId || current.AppId != appId)
             {
                 return null;
             }
@@ -368,12 +341,12 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
                 return null;
             }
 
-            // 补全/重读之后必须复检作用域与前置条件：存量行补全被并发抢先时，
+            // 补全/重读之后必须复检前置条件：存量行补全被并发抢先时，
             // 重读到的可能是并发写者已推进过的行（状态已变），不复检会把非法迁移写进库。
-            // The scope and the precondition must be re-checked after the backfill/re-read: when a
+            // The precondition must be re-checked after the backfill/re-read: when a
             // concurrent writer wins the legacy backfill, the re-read row may already have moved on,
             // and skipping the re-check would persist an illegal transition.
-            if (current.TenantId != tenantId || current.AppId != appId || !precondition(current))
+            if (!precondition(current))
             {
                 return null;
             }
@@ -423,19 +396,6 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
-    /// 构造无向对唯一键（与 InMemory BuildPairKey 同构）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="lowPlayerId">低标识侧玩家。</param>
-    /// <param name="highPlayerId">高标识侧玩家。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildPairKey(long tenantId, long appId, long lowPlayerId, long highPlayerId)
-    {
-        return "friend:" + tenantId + ":" + appId + ":" + lowPlayerId + ":" + highPlayerId;
-    }
-
-    /// <summary>
     /// 实体 → 行（指定行 Id；全字段物化，唯一键由字段派生）。
     /// </summary>
     /// <param name="friendship">关系实体。</param>
@@ -449,8 +409,6 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
             Id = rowId,
             UniqueKey = uniqueKey,
             FriendshipId = friendship.FriendshipId ?? string.Empty,
-            TenantId = friendship.TenantId,
-            AppId = friendship.AppId,
             ServerId = friendship.ServerId,
             LowPlayerId = friendship.LowPlayerId,
             HighPlayerId = friendship.HighPlayerId,
@@ -474,8 +432,6 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
         return new OnlineFriendship
         {
             FriendshipId = state.FriendshipId,
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             ServerId = state.ServerId,
             LowPlayerId = state.LowPlayerId,
             HighPlayerId = state.HighPlayerId,

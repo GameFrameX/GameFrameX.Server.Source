@@ -36,7 +36,7 @@ using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
-/// 匹配事件发件箱内存实现（C374；单锁串行，条目以 (TenantId, AppId, EventId) 为主键幂等追加）。
+/// 匹配事件发件箱内存实现（C374；单锁串行，条目以 EventId 为主键幂等追加）。
 /// <para>
 /// 维护约束：条目一旦投递成功即标记 Delivered 且不再出现在 <see cref="ListPendingAsync"/> 结果中；
 /// 追加按 EventId 幂等（重复标识跳过不覆盖），保证重放写入不产生重复投递义务。
@@ -49,9 +49,8 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
     /// <summary>并发保护锁（追加 / 查询 / 标记共用一个临界区）。</summary>
     private readonly object _syncRoot = new object();
 
-    /// <summary>发件箱条目表（键 = TenantId:AppId:EventId）。</summary>
+    /// <summary>发件箱条目表（键 = EventId）。</summary>
     private readonly Dictionary<string, OnlineMatchEventOutboxEntry> _entries = new Dictionary<string, OnlineMatchEventOutboxEntry>();
-
     /// <summary>追加序号（同刻写入的稳定排序兜底）。</summary>
     private long _sequence;
 
@@ -77,7 +76,7 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
                     continue;
                 }
 
-                var key = BuildKey(onlineEvent.TenantId, onlineEvent.AppId, onlineEvent.EventId);
+                var key = onlineEvent.EventId;
                 if (_entries.ContainsKey(key))
                 {
                     continue;
@@ -86,8 +85,6 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
                 _entries[key] = new OnlineMatchEventOutboxEntry
                 {
                     EventId = onlineEvent.EventId,
-                    TenantId = onlineEvent.TenantId,
-                    AppId = onlineEvent.AppId,
                     Event = onlineEvent,
                     Delivered = false,
                     SequenceNumber = Interlocked.Increment(ref _sequence),
@@ -99,13 +96,11 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
     }
 
     /// <summary>
-    /// 列出作用域内全部待投递条目（按登记顺序；不含已投递条目）。
+    /// 列出全部待投递条目（按登记顺序；不含已投递条目）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>待投递条目列表。</returns>
-    public Task<IReadOnlyList<OnlineMatchEventOutboxEntry>> ListPendingAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchEventOutboxEntry>> ListPendingAsync(CancellationToken cancellationToken = default)
     {
         var pending = new List<OnlineMatchEventOutboxEntry>();
 
@@ -113,7 +108,7 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
         {
             foreach (var entry in _entries.Values)
             {
-                if (entry.TenantId == tenantId && entry.AppId == appId && !entry.Delivered)
+                if (!entry.Delivered)
                 {
                     pending.Add(entry);
                 }
@@ -128,12 +123,10 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
     /// <summary>
     /// 标记条目已投递；条目不存在时静默返回（重投竞态下对端可能已标记/清理）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="eventId">事件标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
-    public Task MarkDeliveredAsync(long tenantId, long appId, string eventId, CancellationToken cancellationToken = default)
+    public Task MarkDeliveredAsync(string eventId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(eventId))
         {
@@ -142,7 +135,7 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
 
         lock (_syncRoot)
         {
-            var key = BuildKey(tenantId, appId, eventId);
+            var key = eventId;
             if (_entries.TryGetValue(key, out var entry))
             {
                 entry.Delivered = true;
@@ -152,15 +145,4 @@ public sealed class InMemoryOnlineMatchEventOutbox : IOnlineMatchEventOutbox
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// 构造条目主键（TenantId:AppId:EventId）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="eventId">事件标识。</param>
-    /// <returns>条目主键。</returns>
-    private static string BuildKey(long tenantId, long appId, string eventId)
-    {
-        return tenantId.ToString() + ":" + appId.ToString() + ":" + eventId;
-    }
 }

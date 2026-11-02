@@ -69,25 +69,21 @@ public sealed class OnlineGameEventMetricsService
     }
 
     /// <summary>
-    /// 复算指定作用域与时间窗的事件指标。
+    /// 复算指定时间窗的事件指标。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="fromTime">窗口起点（UTC 毫秒，含）。</param>
     /// <param name="toTime">窗口终点（UTC 毫秒，含）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>指标快照。</returns>
-    public async Task<OnlineGameEventMetrics> ComputeAsync(long tenantId, long appId, long fromTime, long toTime, CancellationToken cancellationToken = default)
+    public async Task<OnlineGameEventMetrics> ComputeAsync(long fromTime, long toTime, CancellationToken cancellationToken = default)
     {
         var metrics = new OnlineGameEventMetrics
         {
-            TenantId = tenantId,
-            AppId = appId,
             FromTime = fromTime,
             ToTime = toTime,
         };
 
-        var events = await _eventStore.ListAsync(tenantId, appId, new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime, }, cancellationToken).ConfigureAwait(false);
+        var events = await _eventStore.ListAsync(new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime, }, cancellationToken).ConfigureAwait(false);
         if (events != null)
         {
             var activePlayers = new HashSet<long>();
@@ -116,7 +112,7 @@ public sealed class OnlineGameEventMetricsService
             metrics.ActivePlayerCount = activePlayers.Count;
         }
 
-        var deadLetters = await _deadLetterSink.ListAsync(tenantId, appId, new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime, }, cancellationToken).ConfigureAwait(false);
+        var deadLetters = await _deadLetterSink.ListAsync(new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime, }, cancellationToken).ConfigureAwait(false);
         metrics.RejectedCount = deadLetters == null ? 0 : deadLetters.Count;
         return metrics;
     }

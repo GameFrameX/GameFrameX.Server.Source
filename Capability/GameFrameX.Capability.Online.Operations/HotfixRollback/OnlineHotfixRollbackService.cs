@@ -52,8 +52,8 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// ② <b>登记 / 激活不落审计</b>——登记是发布流水线簿记、激活是装配面初始化入口，回滚是唯一受控操作
 /// （操作者显式命令 + 审计）；回滚审计标识从命令幂等键确定性派生（<c>hotfix-rollback-{幂等键}</c>，
 /// 重复执行同一命令命中同一条审计）；
-/// ③ <b>作用域两键锚定</b>——清单与活跃指针是 App 级资产，服务内统一以 (TenantId, AppId) 定位并归一
-/// ServerId = 0（对齐审计口径）；多实例逐实例回滚编排归运维，本服务单进程语义；
+/// ③ <b>清单与活跃指针是全局资产</b>（单键化后无作用域锚定位；原「App 级资产」口径）——服务内按版本号
+/// 全局定位（对齐审计口径）；多实例逐实例回滚编排归运维，本服务单进程语义；
 /// ④ <b>依赖方向</b>——实际 DLL 加载切换经 <see cref="IOnlineHotfixRollbackExecutor"/> 承载（装配面），
 /// 本模块不引用 Core。
 /// ⑤ <b>状态收敛与轨迹</b>——执行器切换成功后，活跃指针写入失败自动重试（指数退避，至多
@@ -152,7 +152,7 @@ public sealed class OnlineHotfixRollbackService
     /// </summary>
     /// <param name="manifest">待登记清单。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>新登记返回 <c>true</c>；同 (作用域, 版本号) 已存在返回 <c>false</c>；清单非法返回 4001；
+    /// <returns>新登记返回 <c>true</c>；同版本号已存在返回 <c>false</c>；清单非法返回 4001；
     /// 制品获取失败或获取器未装配返回 8002（登记未生效）。</returns>
     public async Task<OnlineResult<bool>> RegisterAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken = default)
     {
@@ -176,7 +176,7 @@ public sealed class OnlineHotfixRollbackService
         var isNew = await _store.RegisterAsync(manifest, cancellationToken).ConfigureAwait(false);
         if (isNew && _eventPublisher != null)
         {
-            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateVersionRegistered(manifest.TenantId, manifest.AppId, manifest.Version, manifest.RegisteredTime, manifest.Messages?.Count ?? 0), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateVersionRegistered(manifest.Version, manifest.RegisteredTime, manifest.Messages?.Count ?? 0), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<bool>.Ok(isNew);
@@ -185,49 +185,35 @@ public sealed class OnlineHotfixRollbackService
     /// <summary>
     /// 激活一个已登记版本为活跃版本（装配面初始化入口：不落审计、不经幂等）。
     /// </summary>
-    /// <param name="scope">生效作用域（只用 TenantId/AppId 两键定位）。</param>
     /// <param name="version">目标版本号（须已登记）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>激活成功（重复激活同版本幂等返回成功）；作用域缺失 4001、版本未登记 4002。</returns>
-    public async Task<OnlineResult<bool>> ActivateAsync(OnlineScope scope, string version, CancellationToken cancellationToken = default)
+    /// <returns>激活成功（重复激活同版本幂等返回成功）；版本未登记 4002。</returns>
+    public async Task<OnlineResult<bool>> ActivateAsync(string version, CancellationToken cancellationToken = default)
     {
-        var scopeValidation = ValidateTwoKeyScope(scope);
-        if (scopeValidation != null)
-        {
-            return scopeValidation;
-        }
-
         if (string.IsNullOrWhiteSpace(version) || version.IndexOf('|') >= 0)
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "版本号必填且禁止包含竖线（回放令牌分隔符）");
         }
 
-        var manifest = await _store.FindAsync(scope.TenantId, scope.AppId, version, cancellationToken).ConfigureAwait(false);
+        var manifest = await _store.FindAsync(version, cancellationToken).ConfigureAwait(false);
         if (manifest == null)
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "目标版本未登记清单，无法激活：" + version);
         }
 
-        await _store.SetActiveAsync(scope.TenantId, scope.AppId, version, cancellationToken).ConfigureAwait(false);
+        await _store.SetActiveAsync(version, cancellationToken).ConfigureAwait(false);
         return OnlineResult<bool>.Ok(true);
     }
 
     /// <summary>
     /// 协议兼容预检（只读演练入口：回滚演练 Runbook / Admin 预检调用；不经幂等、不落审计、不触执行器）。
     /// </summary>
-    /// <param name="scope">生效作用域（只用 TenantId/AppId 两键定位）。</param>
     /// <param name="targetVersion">目标回滚版本号。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>兼容检查报告；作用域缺失 4001、目标未登记 4002、无活跃版本 5001。</returns>
-    public async Task<OnlineResult<OnlineProtocolCompatibilityReport>> CheckProtocolCompatibilityAsync(OnlineScope scope, string targetVersion, CancellationToken cancellationToken = default)
+    /// <returns>兼容检查报告；目标未登记 4002、无活跃版本 5001。</returns>
+    public async Task<OnlineResult<OnlineProtocolCompatibilityReport>> CheckProtocolCompatibilityAsync(string targetVersion, CancellationToken cancellationToken = default)
     {
-        var scopeValidation = ValidateTwoKeyScope(scope);
-        if (scopeValidation != null)
-        {
-            return OnlineResult<OnlineProtocolCompatibilityReport>.Fail(scopeValidation.Code, scopeValidation.Message);
-        }
-
-        var preparation = await PrepareTargetAndCurrentAsync(scope.TenantId, scope.AppId, targetVersion, cancellationToken).ConfigureAwait(false);
+        var preparation = await PrepareTargetAndCurrentAsync(targetVersion, cancellationToken).ConfigureAwait(false);
         if (!preparation.IsSuccess)
         {
             return OnlineResult<OnlineProtocolCompatibilityReport>.Fail(preparation.Code, preparation.Message);
@@ -253,8 +239,9 @@ public sealed class OnlineHotfixRollbackService
             return validation;
         }
 
-        var anchor = new OnlineScope(request.Scope.TenantId, request.Scope.AppId, 0);
-        var outcome = await _idempotencyService.BeginAsync(anchor, request.IdempotencyKey, BuildCanonicalRequestText(anchor, request), false, cancellationToken).ConfigureAwait(false);
+        // 幂等锚点：清单与活跃指针是全局资产（原 App 级），锚定不带区服位——回滚命令的幂等键不随区服分裂。
+        var anchor = new OnlineScope(0);
+        var outcome = await _idempotencyService.BeginAsync(anchor, request.IdempotencyKey, BuildCanonicalRequestText(request), false, cancellationToken).ConfigureAwait(false);
         if (!outcome.CanExecute)
         {
             return await ResolveNonExecuteOutcomeAsync(request, outcome, cancellationToken).ConfigureAwait(false);
@@ -273,13 +260,13 @@ public sealed class OnlineHotfixRollbackService
     /// 回滚命令的清单守卫链（目标可寻 4002 / 有活跃 5001 / 目标≠当前 5003 / 协议兼容 6002；
     /// 任一守卫失败把幂等键落定失败后返回错误——失败命令不得占住幂等占位）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="anchor">全局锚定作用域（幂等键空间锚点）。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>守卫通过返回回滚准备物（目标清单 + 当前清单 + 兼容报告）；否则返回对应错误。</returns>
     private async Task<OnlineResult<RollbackPreparation>> PrepareRollbackAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, CancellationToken cancellationToken)
     {
-        var guard = await PrepareTargetAndCurrentAsync(anchor.TenantId, anchor.AppId, request.TargetVersion, cancellationToken).ConfigureAwait(false);
+        var guard = await PrepareTargetAndCurrentAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
         if (!guard.IsSuccess)
         {
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
@@ -307,14 +294,14 @@ public sealed class OnlineHotfixRollbackService
     /// 回滚执行链（审计先行 → 执行器 → 切活跃（失败指数退避重试，耗尽反切）→ 事件 → 幂等落定；
     /// 全程状态变迁经 <see cref="IOnlineHotfixRollbackLog"/> 落轨迹）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="anchor">全局锚定作用域（幂等落定锚点）。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="preparation">守卫链产物（目标清单 + 当前清单 + 兼容报告）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>回滚回执。</returns>
     private async Task<OnlineResult<OnlineHotfixRollbackResult>> ExecuteRollbackAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
     {
-        var auditFailure = await IngestRollbackAuditAsync(anchor, request, preparation, cancellationToken).ConfigureAwait(false);
+        var auditFailure = await IngestRollbackAuditAsync(request, preparation, cancellationToken).ConfigureAwait(false);
         if (auditFailure != null)
         {
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
@@ -328,7 +315,7 @@ public sealed class OnlineHotfixRollbackService
         }
 
         // 状态轨迹：审计已落、守卫已过——执行链正式启动（此前任何失败点状态零变迁，结果码即终态）。
-        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "chain-started", "previous=" + preparation.Current.Version + "|target=" + request.TargetVersion));
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "chain-started", "previous=" + preparation.Current.Version + "|target=" + request.TargetVersion));
 
         try
         {
@@ -337,15 +324,15 @@ public sealed class OnlineHotfixRollbackService
         catch (Exception ex)
         {
             // 状态轨迹：执行器未切换成功，系统仍在旧版本（状态一致）——失败结果码即终态，无须补偿。
-            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "executor-switch-failed", "target=" + request.TargetVersion + "|error=" + ex.Message));
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "executor-switch-failed", "target=" + request.TargetVersion + "|error=" + ex.Message));
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
             return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.DependencyUnavailable, "回滚执行器执行失败（回滚未生效）：" + ex.Message);
         }
 
         // 状态轨迹：执行器已切到目标版本——此后到活跃指针落定之间是两处状态可能分叉的窗口。
-        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "executor-switched", "target=" + request.TargetVersion));
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "executor-switched", "target=" + request.TargetVersion));
 
-        var switchOutcome = await SwitchActiveVersionWithRetryAsync(anchor, request, preparation, cancellationToken).ConfigureAwait(false);
+        var switchOutcome = await SwitchActiveVersionWithRetryAsync(request, preparation, cancellationToken).ConfigureAwait(false);
         if (!switchOutcome.IsSuccess)
         {
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
@@ -355,12 +342,12 @@ public sealed class OnlineHotfixRollbackService
         var previousVersion = switchOutcome.Data;
 
         // 状态轨迹：活跃指针已切换——执行器与指针同指目标版本，状态回到一致。
-        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "pointer-switched", "previous=" + previousVersion + "|target=" + request.TargetVersion));
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "pointer-switched", "previous=" + previousVersion + "|target=" + request.TargetVersion));
 
         var summary = BuildCompatibilitySummary(preparation.Report);
         if (_eventPublisher != null)
         {
-            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateRolledBack(anchor.TenantId, anchor.AppId, previousVersion, request.TargetVersion, summary), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateRolledBack(previousVersion, request.TargetVersion, summary), cancellationToken).ConfigureAwait(false);
         }
 
         var result = new OnlineHotfixRollbackResult
@@ -373,7 +360,7 @@ public sealed class OnlineHotfixRollbackService
         await _idempotencyService.CompleteAsync(anchor, request.IdempotencyKey, EncodeReplayToken(previousVersion, request.TargetVersion, summary), false, cancellationToken).ConfigureAwait(false);
 
         // 状态轨迹：事件已发、幂等已落定——回滚完成（终态 = 执行器与活跃指针同指目标版本）。
-        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "rollback-completed", "previous=" + previousVersion + "|target=" + request.TargetVersion));
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "rollback-completed", "previous=" + previousVersion + "|target=" + request.TargetVersion));
         return OnlineResult<OnlineHotfixRollbackResult>.Ok(result);
     }
 
@@ -382,12 +369,11 @@ public sealed class OnlineHotfixRollbackService
     /// 第 n 次失败后延迟 基准 × 2^(n-1)；重试耗尽进入反切补偿——执行器已切换而指针未落时，
     /// 不再裸露不一致状态，逐次尝试与耗尽均落状态轨迹）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="preparation">守卫链产物（Current = 反切锚定的旧版本）。</param>
     /// <param name="cancellationToken">取消令牌（取消视同本次尝试失败，照常进入补偿链）。</param>
     /// <returns>成功返回切换前活跃版本号；重试耗尽返回反切结果（已反切 = 状态一致 5000 可重试 / 反切失败 = 须对账 5000）。</returns>
-    private async Task<OnlineResult<string>> SwitchActiveVersionWithRetryAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    private async Task<OnlineResult<string>> SwitchActiveVersionWithRetryAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
     {
         var totalAttempts = 1 + ActivePointerWriteMaxRetryCount;
         Exception lastFailure = null;
@@ -395,7 +381,7 @@ public sealed class OnlineHotfixRollbackService
         {
             try
             {
-                var previousVersion = await _store.SetActiveAsync(anchor.TenantId, anchor.AppId, request.TargetVersion, cancellationToken).ConfigureAwait(false);
+                var previousVersion = await _store.SetActiveAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
                 return OnlineResult<string>.Ok(previousVersion);
             }
             catch (Exception ex)
@@ -409,7 +395,7 @@ public sealed class OnlineHotfixRollbackService
                 var retryDelayMilliseconds = GetExponentialBackoffMilliseconds(attempt);
 
                 // 状态轨迹：指针写入单次失败——记录第几次 / 共几次与退避间隔，失败点可还原。
-                WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "pointer-write-failed", "attempt=" + attempt + "/" + totalAttempts + "|retryInMilliseconds=" + retryDelayMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + ex.Message));
+                WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "pointer-write-failed", "attempt=" + attempt + "/" + totalAttempts + "|retryInMilliseconds=" + retryDelayMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + ex.Message));
                 try
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(retryDelayMilliseconds), cancellationToken).ConfigureAwait(false);
@@ -425,20 +411,19 @@ public sealed class OnlineHotfixRollbackService
         var lastFailureMessage = lastFailure == null ? string.Empty : lastFailure.Message;
 
         // 状态轨迹：重试耗尽——进入反切补偿（此行之后执行器与指针可能短暂分叉，以反切结果行收束）。
-        WriteLog(RollbackLogLevel.Error, BuildTraceMessage(anchor, request, "pointer-write-exhausted", "attempts=" + totalAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + lastFailureMessage));
-        return await RevertExecutorAfterPointerFailureAsync(anchor, request, preparation, lastFailureMessage).ConfigureAwait(false);
+        WriteLog(RollbackLogLevel.Error, BuildTraceMessage(request, "pointer-write-exhausted", "attempts=" + totalAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + lastFailureMessage));
+        return await RevertExecutorAfterPointerFailureAsync(request, preparation, lastFailureMessage).ConfigureAwait(false);
     }
 
     /// <summary>
     /// 反切补偿：把执行器切回守卫期旧版本（活跃指针仍指旧版本——反切成功即两处状态一致、
     /// 回滚未生效、命令可重试；反切失败为真正须对账的不一致终态并落 Error 轨迹）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="preparation">守卫链产物（Current.Version = 反切目标）。</param>
     /// <param name="pointerFailureMessage">指针写入重试耗尽时的最后错误消息。</param>
     /// <returns>反切成功或失败对应的 5000 错误结果（回滚未生效）。</returns>
-    private async Task<OnlineResult<string>> RevertExecutorAfterPointerFailureAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, string pointerFailureMessage)
+    private async Task<OnlineResult<string>> RevertExecutorAfterPointerFailureAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, string pointerFailureMessage)
     {
         var previousVersion = preparation.Current.Version;
         try
@@ -447,7 +432,7 @@ public sealed class OnlineHotfixRollbackService
             await _executor.RollbackAsync(previousVersion, CancellationToken.None).ConfigureAwait(false);
 
             // 状态轨迹：反切成功——终态 = 执行器与活跃指针一致停留在旧版本，回滚未生效，命令可重试。
-            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "executor-reverted", "previous=" + previousVersion + "|target=" + request.TargetVersion + "|detail=回滚未生效，执行器与活跃指针一致停留在旧版本，命令可重试"));
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "executor-reverted", "previous=" + previousVersion + "|target=" + request.TargetVersion + "|detail=回滚未生效，执行器与活跃指针一致停留在旧版本，命令可重试"));
             return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽，已反切执行器回旧版本（回滚未生效，状态一致，可重试）：" + previousVersion + "；指针写入最后错误：" + pointerFailureMessage);
         }
         catch (Exception revertFailure)
@@ -455,7 +440,7 @@ public sealed class OnlineHotfixRollbackService
             var revertFailureMessage = revertFailure == null ? string.Empty : revertFailure.Message;
 
             // 状态轨迹：反切失败——终态 = 执行器停目标版本、活跃指针停旧版本（不一致，须对账）。
-            WriteLog(RollbackLogLevel.Error, BuildTraceMessage(anchor, request, "executor-revert-failed", "executor=" + request.TargetVersion + "|activePointer=" + previousVersion + "|detail=状态不一致，须对账|error=" + revertFailureMessage));
+            WriteLog(RollbackLogLevel.Error, BuildTraceMessage(request, "executor-revert-failed", "executor=" + request.TargetVersion + "|activePointer=" + previousVersion + "|detail=状态不一致，须对账|error=" + revertFailureMessage));
             return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽且反切旧版本失败（执行器已切到 " + request.TargetVersion + " 但活跃指针仍为 " + previousVersion + "，状态不一致，须对账）；指针写入错误：" + pointerFailureMessage + "；反切错误：" + revertFailureMessage);
         }
     }
@@ -506,18 +491,15 @@ public sealed class OnlineHotfixRollbackService
     }
 
     /// <summary>
-    /// 组装回滚状态轨迹行（固定前缀 + 作用域 + 幂等键 + 变迁名 + 事实字段，单行可独立归因与还原）。
+    /// 组装回滚状态轨迹行（固定前缀 + 幂等键 + 变迁名 + 事实字段，单行可独立归因与还原）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="transition">变迁名（chain-started / executor-switched / pointer-write-failed 等）。</param>
     /// <param name="facts">事实字段（竖线分隔的 key=value）。</param>
     /// <returns>轨迹行文本。</returns>
-    private static string BuildTraceMessage(OnlineScope anchor, OnlineHotfixRollbackRequest request, string transition, string facts)
+    private static string BuildTraceMessage(OnlineHotfixRollbackRequest request, string transition, string facts)
     {
-        return "hotfix-rollback|tenant=" + anchor.TenantId.ToString(System.Globalization.CultureInfo.InvariantCulture)
-               + "|app=" + anchor.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture)
-               + "|key=" + request.IdempotencyKey
+        return "hotfix-rollback|key=" + request.IdempotencyKey
                + "|transition=" + transition
                + (string.IsNullOrEmpty(facts) ? string.Empty : "|" + facts);
     }
@@ -525,25 +507,23 @@ public sealed class OnlineHotfixRollbackService
     /// <summary>
     /// 读取并守卫目标 / 当前清单（目标未登记 4002、无活跃版本 5001；供预检与回滚守卫链共用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="targetVersion">目标版本号。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>守卫通过返回准备物；否则返回对应错误。</returns>
-    private async Task<OnlineResult<RollbackPreparation>> PrepareTargetAndCurrentAsync(long tenantId, long appId, string targetVersion, CancellationToken cancellationToken)
+    private async Task<OnlineResult<RollbackPreparation>> PrepareTargetAndCurrentAsync(string targetVersion, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(targetVersion))
         {
             return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.ParameterInvalid, "目标版本号必填");
         }
 
-        var target = await _store.FindAsync(tenantId, appId, targetVersion, cancellationToken).ConfigureAwait(false);
+        var target = await _store.FindAsync(targetVersion, cancellationToken).ConfigureAwait(false);
         if (target == null)
         {
             return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.ResourceNotFound, "目标版本未登记清单：" + targetVersion);
         }
 
-        var current = await _store.FindActiveAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        var current = await _store.FindActiveAsync(cancellationToken).ConfigureAwait(false);
         if (current == null)
         {
             return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.StateNotReady, "当前无活跃版本，无从回滚（先经 ActivateAsync 激活基线版本）");
@@ -604,12 +584,11 @@ public sealed class OnlineHotfixRollbackService
     /// <summary>
     /// 审计先行：把回滚命令落统一审计（Domain = Operation；审计失败即拒绝执行——「无审计不执行」）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <param name="preparation">守卫链产物。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>审计失败时返回 1001 错误结果；成功返回 <see langword="null"/>。</returns>
-    private async Task<OnlineResult<OnlineHotfixRollbackResult>> IngestRollbackAuditAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    private async Task<OnlineResult<OnlineHotfixRollbackResult>> IngestRollbackAuditAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
     {
         var entry = new OnlineAuditEntry
         {
@@ -617,8 +596,6 @@ public sealed class OnlineHotfixRollbackService
             EventId = "hotfix-rollback-" + request.IdempotencyKey,
             EventType = OnlineHotfixEvents.RolledBack,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            TenantId = anchor.TenantId,
-            AppId = anchor.AppId,
             ServerId = 0,
             PlayerId = 0,
             OperatorId = request.OperatorId,
@@ -655,7 +632,7 @@ public sealed class OnlineHotfixRollbackService
     /// <summary>
     /// 把幂等键落定失败（失败路径专用；落定失败不掩盖原始错误，静默吞并）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="anchor">全局锚定作用域（幂等落定锚点）。</param>
     /// <param name="idempotencyKey">命令幂等键。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     private async Task FailIdempotencyAsync(OnlineScope anchor, string idempotencyKey, CancellationToken cancellationToken)
@@ -682,16 +659,6 @@ public sealed class OnlineHotfixRollbackService
             throw new ArgumentNullException(nameof(request));
         }
 
-        if (request.Scope == null)
-        {
-            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "回滚命令必须携带作用域（TenantId / AppId 两键锚定）");
-        }
-
-        if (request.Scope.TenantId <= 0 || request.Scope.AppId <= 0)
-        {
-            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "回滚命令必须锚定租户与 App（TenantId / AppId 大于 0）");
-        }
-
         if (string.IsNullOrWhiteSpace(request.TargetVersion) || request.TargetVersion.IndexOf('|') >= 0)
         {
             return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "目标版本号必填且禁止包含竖线（回放令牌分隔符）");
@@ -716,7 +683,7 @@ public sealed class OnlineHotfixRollbackService
     }
 
     /// <summary>
-    /// 校验登记清单（版本号 / 作用域 / 契约行名与号的唯一性，4001 宁拒毋缺）。
+    /// 校验登记清单（版本号 / 契约行名与号的唯一性，4001 宁拒毋缺）。
     /// </summary>
     /// <param name="manifest">待登记清单。</param>
     /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
@@ -732,11 +699,6 @@ public sealed class OnlineHotfixRollbackService
         if (artifactFailure != null)
         {
             return artifactFailure;
-        }
-
-        if (manifest.TenantId <= 0 || manifest.AppId <= 0)
-        {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单必须锚定租户与 App（TenantId / AppId 大于 0）");
         }
 
         var messagesFailure = ValidateManifestMessages(manifest);
@@ -901,34 +863,13 @@ public sealed class OnlineHotfixRollbackService
     }
 
     /// <summary>
-    /// 校验两键作用域（预检 / 激活入口共用）。
-    /// </summary>
-    /// <param name="scope">生效作用域。</param>
-    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
-    private static OnlineResult<bool> ValidateTwoKeyScope(OnlineScope scope)
-    {
-        if (scope == null)
-        {
-            throw new ArgumentNullException(nameof(scope));
-        }
-
-        if (scope.TenantId <= 0 || scope.AppId <= 0)
-        {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "必须锚定租户与 App（TenantId / AppId 大于 0；清单与活跃指针是 App 级资产）");
-        }
-
-        return null;
-    }
-
-    /// <summary>
     /// 构造回滚命令的规范化请求文本（幂等意图摘要——同键不同意图判冲突；目标版本 + 操作者为意图主体）。
     /// </summary>
-    /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
     /// <returns>规范化请求文本。</returns>
-    private static string BuildCanonicalRequestText(OnlineScope anchor, OnlineHotfixRollbackRequest request)
+    private static string BuildCanonicalRequestText(OnlineHotfixRollbackRequest request)
     {
-        return "hotfix-rollback|v1|" + anchor.TenantId + ":" + anchor.AppId + "|" + request.TargetVersion + "|" + request.OperatorId;
+        return "hotfix-rollback|v1|" + request.TargetVersion + "|" + request.OperatorId;
     }
 
     /// <summary>

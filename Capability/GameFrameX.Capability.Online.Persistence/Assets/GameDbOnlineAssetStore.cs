@@ -33,6 +33,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.DataBase;
 
@@ -50,7 +51,7 @@ using GameFrameX.DataBase;
 /// <para>
 /// 不可变红线：账本行只经插入路径写入（<c>SaveOneAsync</c>），本适配零账本修改/删除调用；
 /// 纠正只能追加反转条目（契约面既有约定）。玩家维度账本序由 <c>NextSequenceAsync</c>
-/// 玩家键控序列分配（"tenant:app:player"；原子单调、重启不复用）。
+/// 玩家键控序列分配（<c>OnlineRowKey.LedgerSequence</c>；原子单调、重启不复用）。
 /// </para>
 /// <para>
 /// 列举保真：账本分页排序键为数值账本序（provider 原生排序，无 collation 分歧）；
@@ -76,57 +77,49 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     private readonly object _registryLock = new();
 
     /// <summary>
-    /// 玩家分片信号量注册表：键 = "tenant:app:player"（进程内并发正确性目标，同 InMemory 分片锁）。
+    /// 玩家分片信号量注册表：键 = 玩家标识（<c>OnlineRowKey.LedgerSequence</c>；进程内并发正确性目标，同 InMemory 分片锁）。
     /// </summary>
     private readonly Dictionary<string, SemaphoreSlim> _playerGates = new();
 
     /// <summary>查找货币账户快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="currencyId">货币代码。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照；从未发生过变更返回 null（视余额为 0）。</returns>
-    public async Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+    public async Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
     {
-        var state = await FindWalletStateAsync(BuildWalletKey(tenantId, appId, playerId, currencyId), cancellationToken).ConfigureAwait(false);
+        var state = await FindWalletStateAsync(OnlineRowKey.WalletAccount(playerId, currencyId), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
     /// <summary>查找道具库存堆栈快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="itemId">道具标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照；从未发生过变更返回 null（视数量为 0）。</returns>
-    public async Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+    public async Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
     {
-        var state = await FindInventoryStateAsync(BuildInventoryKey(tenantId, appId, playerId, itemId), cancellationToken).ConfigureAwait(false);
+        var state = await FindInventoryStateAsync(OnlineRowKey.InventoryStack(playerId, itemId), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
     /// <summary>列举玩家全部货币账户快照（按货币代码 ordinal 字典序）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照列表。</returns>
-    public async Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        var states = await GameDb.FindListAsync<OnlineWalletAccountState>(state => state.TenantId == tenantId && state.AppId == appId && state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlineWalletAccountState>(state => state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
         return states.OrderBy(state => state.CurrencyId, StringComparer.Ordinal).Select(ToEntity).ToList();
     }
 
     /// <summary>列举玩家全部道具库存快照（按道具标识 ordinal 字典序）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照列表。</returns>
-    public async Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        var states = await GameDb.FindListAsync<OnlineInventoryStackState>(state => state.TenantId == tenantId && state.AppId == appId && state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlineInventoryStackState>(state => state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
         return states.OrderBy(state => state.ItemId, StringComparer.Ordinal).Select(ToEntity).ToList();
     }
 
@@ -144,7 +137,7 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     {
         ArgumentNullException.ThrowIfNull(batch);
 
-        var gate = GetPlayerGate(batch.TenantId, batch.AppId, batch.PlayerId);
+        var gate = GetPlayerGate(batch.PlayerId);
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -199,7 +192,7 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
 
         var afterSequenceNumber = query.AfterSequenceNumber;
         var states = await GameDb.FindSortAscendingAsync<OnlineLedgerEntryState>(
-            state => state.TenantId == query.TenantId && state.AppId == query.AppId && state.PlayerId == query.PlayerId && state.SequenceNumber > afterSequenceNumber,
+            state => state.PlayerId == query.PlayerId && state.SequenceNumber > afterSequenceNumber,
             state => state.SequenceNumber, 0, query.MaxCount, cancellationToken).ConfigureAwait(false);
         return states.Select(ToEntity).ToList();
     }
@@ -215,14 +208,12 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>聚合玩家账本带符号数额（对账的账本侧事实源；键 = 类别前缀 + 资产标识）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>各资产账本累加。</returns>
-    public async Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        var states = await GameDb.FindListAsync<OnlineLedgerEntryState>(state => state.TenantId == tenantId && state.AppId == appId && state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlineLedgerEntryState>(state => state.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
         var sums = new Dictionary<string, long>();
         foreach (var state in states)
         {
@@ -234,14 +225,12 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         return sums;
     }
 
-    /// <summary>列举 (租户, App) 下发生过资产活动（账本非空）的玩家（对账遍历输入；升序去重）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
+    /// <summary>列举发生过资产活动（账本非空）的玩家（对账遍历输入；升序去重）。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家标识列表。</returns>
-    public async Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
     {
-        var states = await GameDb.FindListAsync<OnlineLedgerEntryState>(state => state.TenantId == tenantId && state.AppId == appId, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlineLedgerEntryState>(state => true, cancellationToken).ConfigureAwait(false);
         return states.Select(state => state.PlayerId).Distinct().OrderBy(playerId => playerId).ToList();
     }
 
@@ -255,7 +244,7 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         var seenAssets = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in batch.Lines)
         {
-            if (!seenAssets.Add(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId)))
+            if (!seenAssets.Add(OnlineRowKey.AssetDedup(batch.PlayerId, line.AssetKind == OnlineAssetKind.Currency, line.AssetId)))
             {
                 return new OnlineAssetApplyResult(false, OnlineErrorCode.ParameterInvalid, "同一批次内资产重复：" + line.AssetId, Array.Empty<OnlineLedgerEntry>());
             }
@@ -283,13 +272,13 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
             PlannedAssetSnapshot snapshot;
             if (line.AssetKind == OnlineAssetKind.Currency)
             {
-                var wallet = await FindWalletStateAsync(BuildWalletKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetId), cancellationToken).ConfigureAwait(false);
+                var wallet = await FindWalletStateAsync(OnlineRowKey.WalletAccount(batch.PlayerId, line.AssetId), cancellationToken).ConfigureAwait(false);
                 amountBefore = wallet?.Balance ?? 0;
                 snapshot = wallet == null ? PlannedAssetSnapshot.Absent() : PlannedAssetSnapshot.Existing(wallet.Id, wallet.RowVersion);
             }
             else
             {
-                var stack = await FindInventoryStateAsync(BuildInventoryKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetId), cancellationToken).ConfigureAwait(false);
+                var stack = await FindInventoryStateAsync(OnlineRowKey.InventoryStack(batch.PlayerId, line.AssetId), cancellationToken).ConfigureAwait(false);
                 amountBefore = stack?.Quantity ?? 0;
                 snapshot = stack == null ? PlannedAssetSnapshot.Absent() : PlannedAssetSnapshot.Existing(stack.Id, stack.RowVersion);
             }
@@ -320,14 +309,12 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     /// <returns>账本条目。</returns>
     private static async Task<OnlineLedgerEntry> BuildEntryAsync(OnlineAssetChangeBatch batch, OnlineAssetChangeLine line, long amountBefore, long amountAfter, long occurredTime, CancellationToken cancellationToken)
     {
-        var sequence = await GameDb.NextSequenceAsync<OnlineLedgerEntryState>(BuildLedgerSequenceKey(batch.TenantId, batch.AppId, batch.PlayerId), cancellationToken).ConfigureAwait(false);
+        var sequence = await GameDb.NextSequenceAsync<OnlineLedgerEntryState>(OnlineRowKey.LedgerSequence(batch.PlayerId), cancellationToken).ConfigureAwait(false);
         return new OnlineLedgerEntry(
             "led-" + Guid.NewGuid().ToString("N"),
             batch.TransactionId,
             new OnlineLedgerHeader
             {
-                TenantId = batch.TenantId,
-                AppId = batch.AppId,
                 PlayerId = batch.PlayerId,
                 HomeServerId = batch.HomeServerId,
                 InitiatingServerId = batch.InitiatingServerId,
@@ -381,15 +368,13 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     /// <param name="cancellationToken">取消令牌。</param>
     private static async Task UpsertWalletAsync(OnlineLedgerEntry entry, PlannedAssetSnapshot snapshot, long occurredTime, CancellationToken cancellationToken)
     {
-        var uniqueKey = BuildWalletKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetId);
+        var uniqueKey = OnlineRowKey.WalletAccount(entry.PlayerId, entry.AssetId);
         if (snapshot.RowExists)
         {
             var updated = new OnlineWalletAccountState
             {
                 Id = snapshot.RowId,
                 UniqueKey = uniqueKey,
-                TenantId = entry.TenantId,
-                AppId = entry.AppId,
                 PlayerId = entry.PlayerId,
                 CurrencyId = entry.AssetId,
                 Balance = entry.AmountAfter,
@@ -415,8 +400,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         {
             Id = rowId,
             UniqueKey = uniqueKey,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             PlayerId = entry.PlayerId,
             CurrencyId = entry.AssetId,
             Balance = entry.AmountAfter,
@@ -436,15 +419,13 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     /// <param name="cancellationToken">取消令牌。</param>
     private static async Task UpsertInventoryStackAsync(OnlineLedgerEntry entry, PlannedAssetSnapshot snapshot, long occurredTime, CancellationToken cancellationToken)
     {
-        var uniqueKey = BuildInventoryKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetId);
+        var uniqueKey = OnlineRowKey.InventoryStack(entry.PlayerId, entry.AssetId);
         if (snapshot.RowExists)
         {
             var updated = new OnlineInventoryStackState
             {
                 Id = snapshot.RowId,
                 UniqueKey = uniqueKey,
-                TenantId = entry.TenantId,
-                AppId = entry.AppId,
                 PlayerId = entry.PlayerId,
                 ItemId = entry.AssetId,
                 Quantity = entry.AmountAfter,
@@ -470,8 +451,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         {
             Id = rowId,
             UniqueKey = uniqueKey,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             PlayerId = entry.PlayerId,
             ItemId = entry.AssetId,
             Quantity = entry.AmountAfter,
@@ -520,13 +499,11 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>获取玩家分片信号量（不存在则注册）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>分片信号量。</returns>
-    private SemaphoreSlim GetPlayerGate(long tenantId, long appId, long playerId)
+    private SemaphoreSlim GetPlayerGate(long playerId)
     {
-        var playerKey = BuildLedgerSequenceKey(tenantId, appId, playerId);
+        var playerKey = OnlineRowKey.LedgerSequence(playerId);
         lock (_registryLock)
         {
             if (!_playerGates.TryGetValue(playerKey, out var gate))
@@ -551,30 +528,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         return GameDb.FindAsync<OnlineInventoryStackState>(state => state.UniqueKey == uniqueKey, isCreateIfNotExists: false, cancellationToken: cancellationToken);
     }
 
-    /// <summary>构造玩家键控账本序序列名（"tenant:app:player"）。</summary>
-    private static string BuildLedgerSequenceKey(long tenantId, long appId, long playerId)
-    {
-        return tenantId + ":" + appId + ":" + playerId;
-    }
-
-    /// <summary>构造钱包物化复合键（"tenant:app:player:货币代码"）。</summary>
-    private static string BuildWalletKey(long tenantId, long appId, long playerId, string currencyId)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + currencyId;
-    }
-
-    /// <summary>构造库存物化复合键（"tenant:app:player:道具标识"）。</summary>
-    private static string BuildInventoryKey(long tenantId, long appId, long playerId, string itemId)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + itemId;
-    }
-
-    /// <summary>构造批次内资产去重键（与 InMemory BuildAssetKey 同构）。</summary>
-    private static string BuildAssetKey(long tenantId, long appId, long playerId, OnlineAssetKind assetKind, string assetId)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + (assetKind == OnlineAssetKind.Currency ? "c" : "i") + ":" + assetId;
-    }
-
     /// <summary>账本条目 → 行（只追加路径；行 Id 由序列分配）。</summary>
     private static OnlineLedgerEntryState ToState(OnlineLedgerEntry entry)
     {
@@ -582,8 +535,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         {
             EntryId = entry.EntryId,
             TransactionId = entry.TransactionId,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             PlayerId = entry.PlayerId,
             HomeServerId = entry.HomeServerId,
             InitiatingServerId = entry.InitiatingServerId,
@@ -611,8 +562,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
             state.TransactionId,
             new OnlineLedgerHeader
             {
-                TenantId = state.TenantId,
-                AppId = state.AppId,
                 PlayerId = state.PlayerId,
                 HomeServerId = state.HomeServerId,
                 InitiatingServerId = state.InitiatingServerId,
@@ -637,8 +586,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     {
         return new OnlineWalletAccount
         {
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             PlayerId = state.PlayerId,
             CurrencyId = state.CurrencyId,
             Balance = state.Balance,
@@ -652,8 +599,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     {
         return new OnlineInventoryStack
         {
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             PlayerId = state.PlayerId,
             ItemId = state.ItemId,
             Quantity = state.Quantity,

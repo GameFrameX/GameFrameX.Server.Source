@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 /// <summary>
 /// 入队限流器（刷 Ticket 被限流，且正常玩家不受影响）。
 /// <para>
-/// 维护约束（天花板）：滑动窗口计数，按 (TenantId, AppId, PlayerId) 分桶——阈值与窗口可由
+/// 维护约束（天花板）：滑动窗口计数，按 PlayerId 分桶——阈值与窗口可由
 /// <see cref="OnlineMatchmakerOptions"/> 覆盖，压测需同时验证「高频被拦」与「正常节奏不受影响」。
 /// 桶在窗口过期后整桶重置（而非逐条出队），内存占用与玩家数同阶；进程重启即清零，
 /// 这是可接受的：限流是速率保护不是配额。生产多实例下需换成共享存储实现（归运行时装配）。
@@ -43,7 +43,7 @@ public sealed class OnlineMatchRateLimiter
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>窗口计数桶：键 = (TenantId, AppId, PlayerId)。</summary>
+    /// <summary>窗口计数桶：键 = PlayerId。</summary>
     private readonly Dictionary<string, Window> _windows = new();
 
     /// <summary>上一次全量清扫时刻（UTC 毫秒）。</summary>
@@ -75,15 +75,13 @@ public sealed class OnlineMatchRateLimiter
     /// <summary>
     /// 尝试获取一次操作配额。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <returns>允许返回 <c>true</c>；超限返回 <c>false</c>。</returns>
-    public bool TryAcquire(long tenantId, long appId, long playerId, long nowUnixMilliseconds = 0)
+    public bool TryAcquire(long playerId, long nowUnixMilliseconds = 0)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var key = tenantId + ":" + appId + ":" + playerId;
+        var key = playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         lock (_syncRoot)
         {

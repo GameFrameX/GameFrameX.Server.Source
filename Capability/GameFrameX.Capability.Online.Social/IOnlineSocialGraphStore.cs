@@ -58,45 +58,37 @@ public interface IOnlineSocialGraphStore
     /// <summary>
     /// 按方向键查找屏蔽记录。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">屏蔽发起人。</param>
     /// <param name="blockedPlayerId">被屏蔽玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>屏蔽记录副本；不存在返回 null。</returns>
-    Task<OnlineBlockEntry> FindBlockAsync(long tenantId, long appId, long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default);
+    Task<OnlineBlockEntry> FindBlockAsync(long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 解除屏蔽（仅归属玩家本人可解除；解除不存在的记录视为幂等成功）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">屏蔽发起人。</param>
     /// <param name="blockedPlayerId">被屏蔽玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>实际删除了记录返回 <c>true</c>；原本不存在返回 <c>false</c>。</returns>
-    Task<bool> RemoveBlockAsync(long tenantId, long appId, long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default);
+    Task<bool> RemoveBlockAsync(long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 判定两名玩家之间**任一方向**是否存在屏蔽（裁决的唯一原子判据）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leftPlayerId">一侧玩家标识。</param>
     /// <param name="rightPlayerId">另一侧玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>任一方向存在屏蔽返回 <c>true</c>。</returns>
-    Task<bool> IsBlockedEitherWayAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default);
+    Task<bool> IsBlockedEitherWayAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家发起的全部屏蔽（展示与解除界面输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">屏蔽发起人。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>屏蔽记录副本列表。</returns>
-    Task<IReadOnlyList<OnlineBlockEntry>> ListBlocksAsync(long tenantId, long appId, long ownerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineBlockEntry>> ListBlocksAsync(long ownerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以（归属玩家，被静音玩家）为唯一键「不存在则创建」静音记录：键已存在时返回既有记录且不写入。
@@ -109,34 +101,28 @@ public interface IOnlineSocialGraphStore
     /// <summary>
     /// 按方向键查找静音记录。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">静音发起人。</param>
     /// <param name="mutedPlayerId">被静音玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>静音记录副本；不存在返回 null。</returns>
-    Task<OnlineMuteEntry> FindMuteAsync(long tenantId, long appId, long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default);
+    Task<OnlineMuteEntry> FindMuteAsync(long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 解除静音。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">静音发起人。</param>
     /// <param name="mutedPlayerId">被静音玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>实际删除了记录返回 <c>true</c>；原本不存在返回 <c>false</c>。</returns>
-    Task<bool> RemoveMuteAsync(long tenantId, long appId, long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default);
+    Task<bool> RemoveMuteAsync(long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家发起的全部静音。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">静音发起人。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>静音记录副本列表。</returns>
-    Task<IReadOnlyList<OnlineMuteEntry>> ListMutesAsync(long tenantId, long appId, long ownerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMuteEntry>> ListMutesAsync(long ownerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以处罚标识为唯一键「不存在则创建」处罚记录。
@@ -161,12 +147,10 @@ public interface IOnlineSocialGraphStore
     /// <summary>
     /// 按处罚标识查找。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="punishmentId">处罚标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>处罚副本；不存在返回 null。</returns>
-    Task<OnlinePunishment> FindPunishmentAsync(long tenantId, long appId, string punishmentId, CancellationToken cancellationToken = default);
+    Task<OnlinePunishment> FindPunishmentAsync(string punishmentId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义整体替换处罚记录（施加后的补写与撤销都走此入口）。
@@ -180,20 +164,16 @@ public interface IOnlineSocialGraphStore
     /// <summary>
     /// 列出某玩家在给定时刻**确实生效**的全部处罚（裁决服务的唯一处罚输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="query">生效处罚查询载荷（玩家定位 + 判定时刻；预留过滤维度扩展位）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>生效中的处罚副本列表（已撤销、未到生效时刻、已失效的均不返回）。</returns>
-    Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, ActivePunishmentQuery query, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(ActivePunishmentQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家的全部处罚记录（含已撤销与已失效；Admin 复查与玩家申诉的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">被处罚玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>处罚副本列表。</returns>
-    Task<IReadOnlyList<OnlinePunishment>> ListPunishmentsByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePunishment>> ListPunishmentsByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 }

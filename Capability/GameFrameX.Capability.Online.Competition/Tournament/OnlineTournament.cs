@@ -35,8 +35,7 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 /// 赛事定义（开始/结束时间、关联榜单、资格条件、赛事奖励与结算状态）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) 作用域 = (TenantId, AppId)，与榜单 / 赛季同口径（App 内跨区服聚合）——跨 App / 跨租户读写
-/// 一律查不到（ResourceNotFound 反预言，对齐既有先例）；
+/// (1) 赛事为全局域数据（与榜单 / 赛季同口径）——键即 TournamentId，无区服隔离位，同键即同赛；
 /// (2) 赛事本身**不承载分数与名次**：成绩只存在于冻结的 <see cref="OnlineTournamentStandings"/> 中，
 /// 赛事只描述周期、门槛与奖励口径；
 /// (3) 赛事**只读关联榜单、从不写入或重置**——榜单的写入归可信链路、重置归赛季域；
@@ -49,19 +48,9 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 public sealed class OnlineTournament
 {
     /// <summary>
-    /// 获取或设置赛事标识（App 内唯一，创建方提供）。
+    /// 获取或设置赛事标识（全局唯一，创建方提供）。
     /// </summary>
     public string TournamentId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关联榜单标识（报名资格判定与结束成绩冻结的唯一数据来源；本赛事只读该榜）。
@@ -134,8 +123,6 @@ public sealed class OnlineTournament
         return new OnlineTournament
         {
             TournamentId = TournamentId,
-            TenantId = TenantId,
-            AppId = AppId,
             LeaderboardId = LeaderboardId,
             StartTime = StartTime,
             EndTime = EndTime,

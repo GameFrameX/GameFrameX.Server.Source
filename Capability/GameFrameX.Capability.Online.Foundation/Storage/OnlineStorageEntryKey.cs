@@ -31,21 +31,10 @@ namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
 /// 玩家云存储条目键（<see cref="IOnlinePlayerStorageStore.FindAsync"/> 的唯一提交形态；
-/// 键 = 租户 + App + 玩家 + 集合名 + 条目键）。
+/// 键 = 玩家 + 集合名 + 条目键）。
 /// </summary>
 public sealed class OnlineStorageEntryKey
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    /// <remarks>Gets or sets the tenant id.</remarks>
-    public long TenantId { get; init; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    /// <remarks>Gets or sets the app id.</remarks>
-    public long AppId { get; init; }
 
     /// <summary>
     /// 获取或设置玩家标识。

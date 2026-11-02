@@ -49,15 +49,7 @@ public sealed class OnlineNotification
     /// </summary>
     public string NotificationId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（数据隔离根边界）。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识（数据隔离根边界）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置通知产生时的来源区服标识（仅审计与投递路由参考，不参与唯一键）。
@@ -150,8 +142,6 @@ public sealed class OnlineNotification
         return new OnlineNotification
         {
             NotificationId = NotificationId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             PlayerId = PlayerId,
             Kind = Kind,

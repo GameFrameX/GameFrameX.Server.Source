@@ -72,7 +72,7 @@ public sealed class OnlineMatchReconnectService
             return OnlineResult<OnlineMatchReconnectToken>.Fail(OnlineErrorCode.ParameterInvalid, "断线操作必须带玩家主体位");
         }
 
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return OnlineResult<OnlineMatchReconnectToken>.Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");
@@ -115,7 +115,7 @@ public sealed class OnlineMatchReconnectService
             return OnlineResult<OnlineMatchReconnectResult>.Fail(OnlineErrorCode.ScopeDenied, "重连上下文的玩家与作用域不一致");
         }
 
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, context.MatchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(context.MatchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return OnlineResult<OnlineMatchReconnectResult>.Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");

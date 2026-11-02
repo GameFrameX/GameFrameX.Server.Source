@@ -85,8 +85,6 @@ public sealed class OnlinePunishmentService
             throw new ArgumentNullException(nameof(request));
         }
 
-        var tenantId = request.TenantId;
-        var appId = request.AppId;
         var playerId = request.PlayerId;
         var kind = request.Kind;
         var reason = request.Reason;
@@ -95,7 +93,7 @@ public sealed class OnlinePunishmentService
         var adminId = request.AdminId;
         var adminCaseId = request.AdminCaseId;
         var correlationId = request.CorrelationId;
-        if (tenantId <= 0 || appId <= 0 || playerId <= 0)
+        if (playerId <= 0)
         {
             return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ParameterInvalid, "处罚定位参数无效");
         }
@@ -121,8 +119,6 @@ public sealed class OnlinePunishmentService
         var prototype = new OnlinePunishment
         {
             PunishmentId = "pun-" + Guid.NewGuid().ToString("N"),
-            TenantId = tenantId,
-            AppId = appId,
             PlayerId = playerId,
             Kind = kind,
             Reason = reason.Trim(),
@@ -147,8 +143,6 @@ public sealed class OnlinePunishmentService
                 stored.Kind.ToString(),
                 stored.EffectiveAtTime,
                 stored.ExpiresAtTime,
-                stored.TenantId,
-                stored.AppId,
                 OnlineSocialEvents.PunishmentApplied,
                 correlationId), cancellationToken).ConfigureAwait(false);
         }
@@ -159,16 +153,14 @@ public sealed class OnlinePunishmentService
     /// <summary>
     /// 撤销处罚（重复撤销幂等成功）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="punishmentId">处罚标识。</param>
     /// <param name="adminId">执行撤销的 Admin 标识。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>撤销后的处罚记录。</returns>
-    public async Task<OnlineResult<OnlinePunishment>> RevokeAsync(long tenantId, long appId, string punishmentId, long adminId, string correlationId = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlinePunishment>> RevokeAsync(string punishmentId, long adminId, string correlationId = null, CancellationToken cancellationToken = default)
     {
-        if (tenantId <= 0 || appId <= 0 || string.IsNullOrEmpty(punishmentId))
+        if (string.IsNullOrEmpty(punishmentId))
         {
             return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ParameterInvalid, "处罚定位参数无效");
         }
@@ -178,7 +170,7 @@ public sealed class OnlinePunishmentService
             return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ParameterInvalid, "缺少执行撤销的管理员标识");
         }
 
-        var punishment = await _graphStore.FindPunishmentAsync(tenantId, appId, punishmentId, cancellationToken).ConfigureAwait(false);
+        var punishment = await _graphStore.FindPunishmentAsync(punishmentId, cancellationToken).ConfigureAwait(false);
         if (punishment == null)
         {
             return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ResourceNotFound, "处罚记录不存在");
@@ -201,7 +193,7 @@ public sealed class OnlinePunishmentService
         if (effective == null)
         {
             // CAS 失败 = 已被并发撤销 / 改写；重读后按当前事实返回，保证收敛。
-            var current = await _graphStore.FindPunishmentAsync(tenantId, appId, punishmentId, cancellationToken).ConfigureAwait(false);
+            var current = await _graphStore.FindPunishmentAsync(punishmentId, cancellationToken).ConfigureAwait(false);
             if (current == null)
             {
                 return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ResourceNotFound, "处罚记录不存在");
@@ -216,8 +208,6 @@ public sealed class OnlinePunishmentService
             effective.Kind.ToString(),
             effective.EffectiveAtTime,
             effective.ExpiresAtTime,
-            effective.TenantId,
-            effective.AppId,
             OnlineSocialEvents.PunishmentRevoked,
             correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlinePunishment>.Ok(effective);
@@ -226,42 +216,38 @@ public sealed class OnlinePunishmentService
     /// <summary>
     /// 查询某玩家在给定时刻**确实生效**的处罚（Admin 复查与申诉核对的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">被处罚玩家。</param>
     /// <param name="nowUnixMilliseconds">判定时刻（UTC 毫秒；<c>0</c> 取系统时钟）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>生效中的处罚列表。</returns>
-    public async Task<OnlineResult<IReadOnlyList<OnlinePunishment>>> ListActiveAsync(long tenantId, long appId, long playerId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<IReadOnlyList<OnlinePunishment>>> ListActiveAsync(long playerId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
-        if (tenantId <= 0 || appId <= 0 || playerId <= 0)
+        if (playerId <= 0)
         {
             // 与 ApplyAsync / RevokeAsync 同口径：定位参数先校验，读接口不留免检口子。
             return OnlineResult<IReadOnlyList<OnlinePunishment>>.Fail(OnlineErrorCode.ParameterInvalid, "处罚定位参数无效");
         }
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = now, }, cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = now, }, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlinePunishment>>.Ok(active);
     }
 
     /// <summary>
     /// 查询某玩家的全部处罚历史（含已撤销与已失效）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">被处罚玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>处罚记录列表。</returns>
-    public async Task<OnlineResult<IReadOnlyList<OnlinePunishment>>> ListHistoryAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<IReadOnlyList<OnlinePunishment>>> ListHistoryAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        if (tenantId <= 0 || appId <= 0 || playerId <= 0)
+        if (playerId <= 0)
         {
             // 与 ApplyAsync / RevokeAsync 同口径：定位参数先校验，读接口不留免检口子。
             return OnlineResult<IReadOnlyList<OnlinePunishment>>.Fail(OnlineErrorCode.ParameterInvalid, "处罚定位参数无效");
         }
 
-        var all = await _graphStore.ListPunishmentsByPlayerAsync(tenantId, appId, playerId, cancellationToken).ConfigureAwait(false);
+        var all = await _graphStore.ListPunishmentsByPlayerAsync(playerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlinePunishment>>.Ok(all);
     }
 

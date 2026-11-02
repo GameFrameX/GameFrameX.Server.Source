@@ -32,7 +32,8 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
-/// Online 作用域守卫（跨 Tenant/App/Server 请求被稳定拒绝且留审计）。
+/// Online 作用域守卫（跨服请求被稳定拒绝且留审计；单键化 D4 后租户位/App 位不复存在，
+/// <c>CrossTenantDenied/CrossAppDenied</c> 数值契约保留但不再产生）。
 /// <para>
 /// 维护约束：四端（Server / Client API / Hub API / Admin API）统一经本守卫判定，禁止各 Handler 自行判断；
 /// 判定拒绝必须 100% 留痕（审计钩子由调用方接线，拒绝码走 3xxx 段）。
@@ -45,7 +46,7 @@ public static class OnlineScopeGuard
     /// </summary>
     /// <param name="targetScope">目标作用域（被访问资源或目标操作的归属作用域）。</param>
     /// <param name="actualScope">实际生效作用域（鉴权上下文解析产物）。</param>
-    /// <returns>接纳返回 <see langword="null"/>；拒绝返回 3xxx 段错误码（跨租户/跨 App/跨服分别映射）。</returns>
+    /// <returns>接纳返回 <see langword="null"/>；拒绝返回 3xxx 段错误码（跨服映射 <see cref="OnlineErrorCode.ServerScopeDenied"/>、缺失映射 <see cref="OnlineErrorCode.ScopeMissing"/>）。</returns>
     public static OnlineErrorCode? Validate(OnlineScope targetScope, OnlineScope actualScope)
     {
         if (targetScope == null || actualScope == null)
@@ -53,20 +54,9 @@ public static class OnlineScopeGuard
             return OnlineErrorCode.ScopeMissing;
         }
 
-        if (targetScope.TenantId <= 0 || targetScope.AppId <= 0 || targetScope.ServerId <= 0 ||
-            actualScope.TenantId <= 0 || actualScope.AppId <= 0 || actualScope.ServerId <= 0)
+        if (targetScope.ServerId <= 0 || actualScope.ServerId <= 0)
         {
             return OnlineErrorCode.ScopeMissing;
-        }
-
-        if (actualScope.TenantId != targetScope.TenantId)
-        {
-            return OnlineErrorCode.CrossTenantDenied;
-        }
-
-        if (actualScope.AppId != targetScope.AppId)
-        {
-            return OnlineErrorCode.CrossAppDenied;
         }
 
         if (actualScope.ServerId != targetScope.ServerId)

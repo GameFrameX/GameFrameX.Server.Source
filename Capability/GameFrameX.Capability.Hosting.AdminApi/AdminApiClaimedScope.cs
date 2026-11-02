@@ -30,32 +30,18 @@
 namespace GameFrameX.Capability.Hosting.AdminApi;
 
 /// <summary>
-/// admin 请求的声称作用域三元组（机制层不解释语义，判定由组合根注入的作用域适配器完成）。
+/// admin 请求的声称作用域区服键（机制层不解释语义，判定由组合根注入的作用域适配器完成；单键化 D4 后仅区服位）。
 /// </summary>
 public sealed class AdminApiClaimedScope
 {
     /// <summary>
     /// 初始化 <see cref="AdminApiClaimedScope"/>。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
-    public AdminApiClaimedScope(long tenantId, long appId, long serverId)
+    public AdminApiClaimedScope(long serverId)
     {
-        TenantId = tenantId;
-        AppId = appId;
         ServerId = serverId;
     }
-
-    /// <summary>
-    /// 获取租户标识。
-    /// </summary>
-    public long TenantId { get; }
-
-    /// <summary>
-    /// 获取应用标识。
-    /// </summary>
-    public long AppId { get; }
 
     /// <summary>
     /// 获取区服标识。

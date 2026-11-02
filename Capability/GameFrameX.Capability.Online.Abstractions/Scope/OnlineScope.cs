@@ -30,9 +30,10 @@
 namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
-/// Online 作用域（TenantId/AppId/ServerId 以鉴权或服务端路由为准，不能由客户端字段直接覆盖）。
+/// Online 作用域（ServerId 以鉴权或服务端路由为准，不能由客户端字段直接覆盖；单键化裁决 D4——
+/// 租户位/App 位随 2.0 断代移除，区服键是唯一数据隔离根边界）。
 /// <para>
-/// 维护约束：作用域三元组是数据隔离的根边界——跨租户/跨 App/跨服请求必须被拒绝并留审计；
+/// 维护约束：跨服请求必须被拒绝并留审计；
 /// <c>PlayerId</c> 为可选主体位，面向玩家级操作（幂等键绑定、事件归属）时必填。客户端提交的同名字段
 /// 一律经 <c>OnlineScopeResolver.EnforceAuthorized</c> 以鉴权上下文覆盖，服务端不信任请求体作用域。
 /// </para>
@@ -40,17 +41,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Scope;
 public sealed class OnlineScope
 {
     /// <summary>
-    /// 获取租户标识（鉴权上下文强制注入，请求任何入口都不可覆盖）。
-    /// </summary>
-    public long TenantId { get; }
-
-    /// <summary>
-    /// 获取 App 标识（必须归属当前租户，经租户归属校验）。
-    /// </summary>
-    public long AppId { get; }
-
-    /// <summary>
-    /// 获取区服标识（必须归属当前 AppId，经区服归属校验）。
+    /// 获取区服标识（鉴权上下文强制注入，请求任何入口都不可覆盖；经区服归属校验）。
     /// </summary>
     public long ServerId { get; }
 
@@ -62,27 +53,23 @@ public sealed class OnlineScope
     /// <summary>
     /// 构造作用域。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识（无主体时传 0）。</param>
-    public OnlineScope(long tenantId, long appId, long serverId, long playerId = 0)
+    public OnlineScope(long serverId, long playerId = 0)
     {
-        TenantId = tenantId;
-        AppId = appId;
         ServerId = serverId;
         PlayerId = playerId;
     }
 
     /// <summary>
-    /// 计算作用域的稳定字符串形式（<c>tenant:app:server[:player]</c>；玩家级操作含玩家位），
+    /// 计算作用域的稳定字符串形式（<c>online:server[:player]</c>；玩家级操作含玩家位），
     /// 作为幂等记录的作用域绑定键与日志留痕标识。
     /// </summary>
     /// <param name="includePlayer">是否包含玩家位（玩家级幂等绑定时必须为 <c>true</c>，防止跨玩家复用幂等键）。</param>
     /// <returns>作用域键字符串。</returns>
     public string ToScopeKey(bool includePlayer)
     {
-        var key = "online:" + TenantId + ":" + AppId + ":" + ServerId;
+        var key = "online:" + ServerId;
         if (includePlayer)
         {
             key += ":" + PlayerId;

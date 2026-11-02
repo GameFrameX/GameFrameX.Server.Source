@@ -47,16 +47,6 @@ namespace GameFrameX.Capability.Online.Match;
 public sealed class OnlineMatch
 {
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
     public long ServerId { get; set; }
@@ -213,8 +203,6 @@ public sealed class OnlineMatch
 
         return new OnlineMatch
         {
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             MatchId = MatchId,
             AssignmentId = AssignmentId,

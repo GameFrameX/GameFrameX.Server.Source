@@ -51,51 +51,41 @@ public interface IOnlinePartyStore
     /// <summary>
     /// 按队伍标识查找队伍。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本；不存在返回 null。</returns>
-    Task<OnlineParty> FindPartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default);
+    Task<OnlineParty> FindPartyAsync(string partyId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按玩家反查其所在队伍（跨作用域返回 null，避免反预言）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本；不在任何队伍返回 null。</returns>
-    Task<OnlineParty> FindPartyByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<OnlineParty> FindPartyByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 移除队伍（解散/取消的清理动作）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
-    Task RemovePartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default);
+    Task RemovePartyAsync(string partyId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内全部队伍（空闲过期扫描用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本列表。</returns>
-    Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 统计作用域 (TenantId, AppId, ServerId) 内非终态队伍的按状态分组计数（聚合谓词下推：终态判定同 <see cref="OnlinePartyStateMachine.IsTerminal"/>，与在线总览口径一致；键按状态枚举值升序）。
+    /// 统计作用域 (ServerId) 内非终态队伍的按状态分组计数（聚合谓词下推：终态判定同 <see cref="OnlinePartyStateMachine.IsTerminal"/>，与在线总览口径一致；键按状态枚举值升序）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>状态 → 队伍数（只含非终态状态；无非终态队伍时为空表）。</returns>
-    Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 保存邀请。
@@ -108,30 +98,24 @@ public interface IOnlinePartyStore
     /// <summary>
     /// 按邀请标识查找邀请。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="inviteId">邀请标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>邀请副本；不存在返回 null。</returns>
-    Task<OnlinePartyInvite> FindInviteAsync(long tenantId, long appId, string inviteId, CancellationToken cancellationToken = default);
+    Task<OnlinePartyInvite> FindInviteAsync(string inviteId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查找被邀请人的待答复邀请。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="inviteeId">被邀请玩家标识。</param>
     /// <param name="partyId">队伍标识（null 表示不限队伍）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>待答复邀请副本；无则返回 null。</returns>
-    Task<OnlinePartyInvite> FindPendingInviteAsync(long tenantId, long appId, long inviteeId, string partyId, CancellationToken cancellationToken = default);
+    Task<OnlinePartyInvite> FindPendingInviteAsync(long inviteeId, string partyId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内全部邀请（邀请过期扫描用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>邀请副本列表。</returns>
-    Task<IReadOnlyList<OnlinePartyInvite>> ListInvitesAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePartyInvite>> ListInvitesAsync(CancellationToken cancellationToken = default);
 }

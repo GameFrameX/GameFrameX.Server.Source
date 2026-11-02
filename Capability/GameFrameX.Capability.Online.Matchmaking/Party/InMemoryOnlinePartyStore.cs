@@ -42,13 +42,13 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>队伍表：键 = (TenantId, AppId, PartyId)。</summary>
+    /// <summary>队伍表：键 = PartyId。</summary>
     private readonly Dictionary<string, OnlineParty> _parties = new();
 
-    /// <summary>玩家 → 队伍索引：键 = (TenantId, AppId, PlayerId)。</summary>
+    /// <summary>玩家 → 队伍索引：键 = PlayerId。</summary>
     private readonly Dictionary<string, string> _partyIdByPlayer = new();
 
-    /// <summary>邀请表：键 = (TenantId, AppId, InviteId)。</summary>
+    /// <summary>邀请表：键 = InviteId。</summary>
     private readonly Dictionary<string, OnlinePartyInvite> _invites = new();
 
     /// <summary>保存队伍（深拷贝入库并重建玩家索引）。</summary>
@@ -63,81 +63,69 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(party.TenantId, party.AppId, party.PartyId);
-            _parties[key] = party.Copy();
-            RebuildPlayerIndex(party.TenantId, party.AppId, party.PartyId);
+            _parties[party.PartyId] = party.Copy();
+            RebuildPlayerIndex(party.PartyId);
         }
 
         return Task.CompletedTask;
     }
 
     /// <summary>按队伍标识查找队伍。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本；不存在返回 null。</returns>
-    public Task<OnlineParty> FindPartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default)
+    public Task<OnlineParty> FindPartyAsync(string partyId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _parties.TryGetValue(BuildKey(tenantId, appId, partyId), out var party);
+            _parties.TryGetValue(partyId, out var party);
             return Task.FromResult(party == null ? null : party.Copy());
         }
     }
 
     /// <summary>按玩家反查其所在队伍。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本；不在任何队伍返回 null。</returns>
-    public Task<OnlineParty> FindPartyByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlineParty> FindPartyByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            if (!_partyIdByPlayer.TryGetValue(BuildKey(tenantId, appId, playerId), out var partyId))
+            if (!_partyIdByPlayer.TryGetValue(playerId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var partyId))
             {
                 return Task.FromResult<OnlineParty>(null);
             }
 
-            _parties.TryGetValue(BuildKey(tenantId, appId, partyId), out var party);
+            _parties.TryGetValue(partyId, out var party);
             return Task.FromResult(party == null ? null : party.Copy());
         }
     }
 
     /// <summary>移除队伍并清理其玩家索引。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    public Task RemovePartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default)
+    public Task RemovePartyAsync(string partyId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _parties.Remove(BuildKey(tenantId, appId, partyId));
-            RebuildPlayerIndex(tenantId, appId, partyId);
+            _parties.Remove(partyId);
+            RebuildPlayerIndex(partyId);
         }
 
         return Task.CompletedTask;
     }
 
     /// <summary>列出作用域内全部队伍。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队伍副本列表。</returns>
-    public Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlineParty>();
             foreach (var party in _parties.Values)
             {
-                if (party.TenantId == tenantId && party.AppId == appId)
-                {
-                    result.Add(party.Copy());
-                }
+                result.Add(party.Copy());
             }
 
             return Task.FromResult<IReadOnlyList<OnlineParty>>(result);
@@ -145,21 +133,19 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
     }
 
     /// <summary>
-    /// 统计作用域 (TenantId, AppId, ServerId) 内非终态队伍的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。
+    /// 统计作用域 (ServerId) 内非终态队伍的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>状态 → 队伍数（只含非终态状态；无非终态队伍时为空表）。</returns>
-    public Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var counts = new SortedDictionary<OnlinePartyState, int>();
             foreach (var party in _parties.Values)
             {
-                if (party.TenantId == tenantId && party.AppId == appId && party.ServerId == serverId && !OnlinePartyStateMachine.IsTerminal(party.State))
+                if (party.ServerId == serverId && !OnlinePartyStateMachine.IsTerminal(party.State))
                 {
                     counts.TryGetValue(party.State, out var current);
                     counts[party.State] = current + 1;
@@ -182,41 +168,37 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
 
         lock (_syncRoot)
         {
-            _invites[BuildKey(invite.TenantId, invite.AppId, invite.InviteId)] = invite.Copy();
+            _invites[invite.InviteId] = invite.Copy();
         }
 
         return Task.CompletedTask;
     }
 
     /// <summary>按邀请标识查找邀请。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="inviteId">邀请标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>邀请副本；不存在返回 null。</returns>
-    public Task<OnlinePartyInvite> FindInviteAsync(long tenantId, long appId, string inviteId, CancellationToken cancellationToken = default)
+    public Task<OnlinePartyInvite> FindInviteAsync(string inviteId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _invites.TryGetValue(BuildKey(tenantId, appId, inviteId), out var invite);
+            _invites.TryGetValue(inviteId, out var invite);
             return Task.FromResult(invite == null ? null : invite.Copy());
         }
     }
 
     /// <summary>查找被邀请人的待答复邀请。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="inviteeId">被邀请玩家标识。</param>
     /// <param name="partyId">队伍标识（null 表示不限队伍）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>待答复邀请副本；无则返回 null。</returns>
-    public Task<OnlinePartyInvite> FindPendingInviteAsync(long tenantId, long appId, long inviteeId, string partyId, CancellationToken cancellationToken = default)
+    public Task<OnlinePartyInvite> FindPendingInviteAsync(long inviteeId, string partyId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             foreach (var invite in _invites.Values)
             {
-                if (invite.TenantId != tenantId || invite.AppId != appId || invite.InviteeId != inviteeId)
+                if (invite.InviteeId != inviteeId)
                 {
                     continue;
                 }
@@ -239,21 +221,16 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
     }
 
     /// <summary>列出作用域内全部邀请。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>邀请副本列表。</returns>
-    public Task<IReadOnlyList<OnlinePartyInvite>> ListInvitesAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePartyInvite>> ListInvitesAsync(CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlinePartyInvite>();
             foreach (var invite in _invites.Values)
             {
-                if (invite.TenantId == tenantId && invite.AppId == appId)
-                {
-                    result.Add(invite.Copy());
-                }
+                result.Add(invite.Copy());
             }
 
             return Task.FromResult<IReadOnlyList<OnlinePartyInvite>>(result);
@@ -261,15 +238,13 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
     }
 
     /// <summary>按队伍当前成员集合整体重建玩家索引（先清该队伍的旧索引，再按成员重挂）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
-    private void RebuildPlayerIndex(long tenantId, long appId, string partyId)
+    private void RebuildPlayerIndex(string partyId)
     {
         var staleKeys = new List<string>();
         foreach (var pair in _partyIdByPlayer)
         {
-            if (pair.Value == partyId && pair.Key.StartsWith(tenantId + ":" + appId + ":", StringComparison.Ordinal))
+            if (pair.Value == partyId)
             {
                 staleKeys.Add(pair.Key);
             }
@@ -280,7 +255,7 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
             _partyIdByPlayer.Remove(staleKey);
         }
 
-        if (!_parties.TryGetValue(BuildKey(tenantId, appId, partyId), out var party))
+        if (!_parties.TryGetValue(partyId, out var party))
         {
             return;
         }
@@ -292,27 +267,7 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
 
         foreach (var member in party.Members)
         {
-            _partyIdByPlayer[BuildKey(tenantId, appId, member.PlayerId)] = partyId;
+            _partyIdByPlayer[member.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture)] = partyId;
         }
-    }
-
-    /// <summary>构造玩家维度的存储键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, long playerId)
-    {
-        return BuildKey(tenantId, appId, playerId.ToString(System.Globalization.CultureInfo.InvariantCulture));
-    }
-
-    /// <summary>构造存储键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="id">标识（队伍或邀请）。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, string id)
-    {
-        return tenantId + ":" + appId + ":" + id;
     }
 }

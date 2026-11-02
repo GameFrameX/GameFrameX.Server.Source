@@ -80,15 +80,6 @@ public sealed class OnlineMatchAssignment
     /// </summary>
     public List<string> TicketIds { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
@@ -123,8 +114,6 @@ public sealed class OnlineMatchAssignment
             RuleSnapshot = RuleSnapshot == null ? null : RuleSnapshot.Copy(),
             CreatedAtTime = CreatedAtTime,
             TicketIds = ticketIds,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
         };
     }

@@ -50,7 +50,7 @@ public sealed class OnlineAssetAlertRecord
     public string TransactionId { get; set; }
 
     /// <summary>
-    /// 获取或设置作用域键（可追溯到租户/App/区服/玩家）。
+    /// 获取或设置作用域键（可追溯到区服/玩家）。
     /// </summary>
     public string ScopeKey { get; set; }
 

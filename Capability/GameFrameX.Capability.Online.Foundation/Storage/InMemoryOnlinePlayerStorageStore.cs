@@ -27,6 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Abstractions.Keys;
+
 namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 using System.Threading;
@@ -45,7 +47,7 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>条目表：键 = (TenantId, AppId, PlayerId, Collection, Key) 复合字符串。</summary>
+    /// <summary>条目表：键 = OnlineRowKey.PlayerStorage(PlayerId, Collection, Key)。</summary>
     private readonly Dictionary<string, OnlinePlayerStorageEntry> _entries = new();
 
     /// <summary>
@@ -60,14 +62,12 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     /// <returns>条目；不存在返回 null。</returns>
     public Task<OnlinePlayerStorageEntry> FindAsync(OnlineStorageEntryKey key, CancellationToken cancellationToken = default)
     {
-        var tenantId = key.TenantId;
-        var appId = key.AppId;
         var playerId = key.PlayerId;
         var collection = key.Collection;
         var entryKey = key.Key;
         lock (_syncRoot)
         {
-            _entries.TryGetValue(BuildKey(tenantId, appId, playerId, collection, entryKey), out var entry);
+            _entries.TryGetValue(OnlineRowKey.PlayerStorage(playerId, collection, entryKey), out var entry);
             return Task.FromResult(entry);
         }
     }
@@ -83,7 +83,7 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
 
         lock (_syncRoot)
         {
-            var storageKey = BuildKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.Collection, entry.Key);
+            var storageKey = OnlineRowKey.PlayerStorage(entry.PlayerId, entry.Collection, entry.Key);
             var exists = _entries.ContainsKey(storageKey);
             if (expectedVersion == 0)
             {
@@ -113,15 +113,13 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     /// <returns>非软删条目列表（按键字典序）。</returns>
     public Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(OnlineStorageListQuery query, CancellationToken cancellationToken = default)
     {
-        var tenantId = query.TenantId;
-        var appId = query.AppId;
         var playerId = query.PlayerId;
         var collection = query.Collection;
         var afterKey = query.AfterKey;
         var maxCount = query.MaxCount;
         lock (_syncRoot)
         {
-            var prefix = BuildPrefix(tenantId, appId, playerId, collection);
+            var prefix = OnlineRowKey.PlayerStorage(playerId, collection, string.Empty);
             var matches = new List<OnlinePlayerStorageEntry>();
             foreach (var pair in _entries)
             {
@@ -149,19 +147,16 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
             return Task.FromResult<IReadOnlyList<OnlinePlayerStorageEntry>>(result);
         }
     }
-
     /// <summary>统计集合内活跃（非软删）键数。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="collection">集合名。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>活跃键数。</returns>
-    public Task<int> CountActiveKeysAsync(long tenantId, long appId, long playerId, string collection, CancellationToken cancellationToken = default)
+    public Task<int> CountActiveKeysAsync(long playerId, string collection, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            var prefix = BuildPrefix(tenantId, appId, playerId, collection);
+            var prefix = OnlineRowKey.PlayerStorage(playerId, collection, string.Empty);
             var count = 0;
             foreach (var pair in _entries)
             {
@@ -184,28 +179,5 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
         {
             return Task.FromResult<IReadOnlyList<OnlinePlayerStorageEntry>>(new List<OnlinePlayerStorageEntry>(_entries.Values));
         }
-    }
-
-    /// <summary>构造条目完整键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="key">条目键。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, long playerId, string collection, string key)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + collection + ":" + key;
-    }
-
-    /// <summary>构造集合前缀键（列举与计数用）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <returns>前缀字符串。</returns>
-    private static string BuildPrefix(long tenantId, long appId, long playerId, string collection)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + collection + ":";
     }
 }

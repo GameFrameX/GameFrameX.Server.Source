@@ -23,28 +23,19 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// <summary>
 /// 结算结果持久化行（Match 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"tenant:app:matchId"，与 InMemory 实现同构），
-/// 单列唯一索引承接 (TenantId, AppId, MatchId) 唯一性——「同一对局首次结果胜出」由
-/// <c>TryAddUniqueAsync</c> 原语在数据库层担保。
+/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"{matchId}"，与 InMemory 实现同构，
+/// 唯一构造点 <c>OnlineRowKey.MatchResult</c>——对局标识为 match-{Guid:N} 全局唯一，
+/// 区服维度由 <see cref="Result"/> 文档的 ServerId 快照承载），单列唯一索引承接 MatchId
+/// 唯一性——「同一对局首次结果胜出」由 <c>TryAddUniqueAsync</c> 原语在数据库层担保。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchResultRowState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"tenant:app:matchId"；唯一索引列）。
+    /// 获取或设置物化复合键（"{matchId}"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_match_result_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识。

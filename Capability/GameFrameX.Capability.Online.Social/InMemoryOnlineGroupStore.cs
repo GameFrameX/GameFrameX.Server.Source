@@ -67,7 +67,7 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
             throw new ArgumentNullException(nameof(group));
         }
 
-        var key = BuildKey(group.TenantId, group.AppId, group.GroupId);
+        var key = BuildKey(group.GroupId);
         lock (_syncRoot)
         {
             OnlineGroup existing;
@@ -88,14 +88,12 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// <remarks>
     /// Finds a group record in the in-memory table by scope and group id.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="groupId">群组标识 / Group id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>群记录副本；不存在返回 null / Copy of the group record, or null if absent</returns>
-    public Task<OnlineGroup> FindAsync(long tenantId, long appId, string groupId, CancellationToken cancellationToken = default)
+    public Task<OnlineGroup> FindAsync(string groupId, CancellationToken cancellationToken = default)
     {
-        var key = BuildKey(tenantId, appId, groupId);
+        var key = BuildKey(groupId);
         lock (_syncRoot)
         {
             OnlineGroup found;
@@ -116,7 +114,7 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// when the revision matches, bumping it by one; a mismatching revision or a missing
     /// record fails as a whole, leaving no trace.
     /// </remarks>
-    /// <param name="group">替换后的群记录（其 GroupId/TenantId/AppId 定位目标行）/ The replacement group record (its GroupId/TenantId/AppId locate the target row)</param>
+    /// <param name="group">替换后的群记录（其 GroupId 定位目标行）/ The replacement group record (its GroupId locates the target row)</param>
     /// <param name="expectedRevision">期望的当前版本号 / The expected current revision</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>落库后的群记录副本；CAS 失败或记录不存在返回 null / Copy of the stored group record, or null on CAS failure or missing record</returns>
@@ -128,7 +126,7 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
             throw new ArgumentNullException(nameof(group));
         }
 
-        var key = BuildKey(group.TenantId, group.AppId, group.GroupId);
+        var key = BuildKey(group.GroupId);
         lock (_syncRoot)
         {
             OnlineGroup current;
@@ -157,12 +155,10 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// <remarks>
     /// Linearly scans the whole table to list all groups the player belongs to, including dissolved ones.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">玩家标识 / Player id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>群记录副本列表 / List of group record copies</returns>
-    public Task<IReadOnlyList<OnlineGroup>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineGroup>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineGroup>();
         lock (_syncRoot)
@@ -170,11 +166,6 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
             foreach (var pair in _groupsById)
             {
                 var group = pair.Value;
-                if (group.TenantId != tenantId || group.AppId != appId)
-                {
-                    continue;
-                }
-
                 if (group.Contains(playerId))
                 {
                     result.Add(group.Copy());
@@ -191,12 +182,10 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// <remarks>
     /// Linearly scans the whole table to list all groups in the scope with the given state.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="state">群组状态 / Group state</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>群记录副本列表 / List of group record copies</returns>
-    public Task<IReadOnlyList<OnlineGroup>> ListByStateAsync(long tenantId, long appId, OnlineGroupState state, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineGroup>> ListByStateAsync(OnlineGroupState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineGroup>();
         lock (_syncRoot)
@@ -204,7 +193,7 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
             foreach (var pair in _groupsById)
             {
                 var group = pair.Value;
-                if (group.TenantId == tenantId && group.AppId == appId && group.State == state)
+                if (group.State == state)
                 {
                     result.Add(group.Copy());
                 }
@@ -217,13 +206,11 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// <summary>
     /// 构造群组索引键（作用域 + 群组标识）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="groupId">群组标识。</param>
     /// <returns>索引键。</returns>
-    private static string BuildKey(long tenantId, long appId, string groupId)
+    private static string BuildKey(string groupId)
     {
-        return "group:" + tenantId + ":" + appId + ":" + (groupId ?? string.Empty);
+        return "group:" + (groupId ?? string.Empty);
     }
 
     /// <summary>取当前 UTC 毫秒时刻（入参未携带变更时刻时的兜底）。</summary>

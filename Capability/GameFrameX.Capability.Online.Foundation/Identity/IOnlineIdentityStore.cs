@@ -32,22 +32,20 @@ namespace GameFrameX.Capability.Online.Foundation.Identity;
 /// <summary>
 /// 身份域存储接口（Identity/GameAccount/Player/Device 数据关系的持久化契约）。
 /// <para>
-/// 维护约束：唯一性索引——Identity(TenantId, AppId, Kind, Identifier)、Device(GameAccountId, DeviceIdentifier)；
-/// 查询键——Player 按 (GameAccountId, AppId, ServerId) 归属检索；
+/// 维护约束：唯一性索引——Identity(Kind, Identifier)、Device(GameAccountId, DeviceIdentifier)；
+/// 查询键——Player 按 (GameAccountId, ServerId) 归属检索；
 /// 生产装配以 Mongo 等持久化实现本接口（复用不 fork），本仓交付线程安全的内存默认实现；
 /// 实现方必须保证 AddOrUpdate 系列为幂等全量写（按主键覆盖）。
 /// </para>
 /// </summary>
 public interface IOnlineIdentityStore
 {
-    /// <summary>按唯一键 (TenantId, AppId, Kind, Identifier) 查找身份。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>按唯一键 (Kind, Identifier) 查找身份。</summary>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>身份实体；不存在返回 null。</returns>
-    Task<OnlineIdentity> FindIdentityAsync(long tenantId, long appId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default);
+    Task<OnlineIdentity> FindIdentityAsync(OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default);
 
     /// <summary>写入或覆盖身份（按 Id 全量写；盲写面：既有行保留存量行版本号，新键建档为 1）。
     /// <para>行版本推进仅经条件写面（<see cref="TryAddIdentityAsync"/> / <see cref="TryUpdateIdentityIfRowVersionAsync"/>）；
@@ -57,7 +55,7 @@ public interface IOnlineIdentityStore
     Task AddOrUpdateIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 唯一插入身份（按唯一键 (TenantId, AppId, Kind, Identifier)；键已存在返回 false 且零写入）。
+    /// 唯一插入身份（按唯一键 (Kind, Identifier)；键已存在返回 false 且零写入）。
     /// <para>
     /// 并发同键插入恰一胜者：败者返回 false，不产生覆盖写；成功建档行版本为 1。
     /// </para>
@@ -108,15 +106,14 @@ public interface IOnlineIdentityStore
     /// <param name="cancellationToken">取消令牌。</param>
     Task AddOrUpdatePlayerAsync(OnlinePlayerProfile player, CancellationToken cancellationToken = default);
 
-    /// <summary>列出账号在指定 App/Server 归属下的玩家档案。</summary>
+    /// <summary>列出账号在指定区服归属下的玩家档案。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表（按创建时间升序）。</returns>
-    Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long appId, long serverId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long serverId, CancellationToken cancellationToken = default);
 
-    /// <summary>列出账号下全部玩家档案（不限 App/Server 归属；合并迁移用）。</summary>
+    /// <summary>列出账号下全部玩家档案（不限区服归属；合并迁移用）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表（按创建时间升序）。</returns>

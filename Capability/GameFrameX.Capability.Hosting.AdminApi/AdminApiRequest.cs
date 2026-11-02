@@ -106,26 +106,20 @@ public sealed class AdminApiRequest
     }
 
     /// <summary>
-    /// 提取客户端声称的作用域三元组（POST 请求体顶层 <c>TenantId</c>/<c>AppId</c>/<c>ServerId</c>，大小写不敏感）。
+    /// 提取客户端声称的作用域区服键（POST 请求体顶层 <c>ServerId</c>，大小写不敏感；单键化 D4 后仅区服位，
+    /// 客户端携带的租户位/App 位遗留字段一律忽略）。
     /// </summary>
-    /// <param name="tenantId">输出：声称租户标识。</param>
-    /// <param name="appId">输出：声称应用标识。</param>
     /// <param name="serverId">输出：声称区服标识。</param>
-    /// <returns>三元组完整提取返回 true；任一字段缺失或格式非法返回 false（由调用方按作用域缺失拒绝）。</returns>
-    public bool TryReadClaimedScope(out long tenantId, out long appId, out long serverId)
+    /// <returns>区服键完整提取返回 true；字段缺失或格式非法返回 false（由调用方按作用域缺失拒绝）。</returns>
+    public bool TryReadClaimedScope(out long serverId)
     {
-        tenantId = 0;
-        appId = 0;
         serverId = 0;
         if (Root.ValueKind != JsonValueKind.Object)
         {
             return false;
         }
 
-        var hasTenant = TryReadInt64("TenantId", out tenantId);
-        var hasApp = TryReadInt64("AppId", out appId);
-        var hasServer = TryReadInt64("ServerId", out serverId);
-        return hasTenant && hasApp && hasServer;
+        return TryReadInt64("ServerId", out serverId);
     }
 
     /// <summary>

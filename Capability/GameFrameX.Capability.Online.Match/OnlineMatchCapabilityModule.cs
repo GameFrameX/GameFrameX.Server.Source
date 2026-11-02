@@ -407,7 +407,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
             return;
         }
 
-        var resolved = await _matchDomain.ResolveAssignmentAsync(onlineEvent.TenantId, onlineEvent.AppId, payload.AssignmentId, cancellationToken).ConfigureAwait(false);
+        var resolved = await _matchDomain.ResolveAssignmentAsync(payload.AssignmentId, cancellationToken).ConfigureAwait(false);
         if (!resolved.IsSuccess || resolved.Data == null || resolved.Data.MatchId == 0)
         {
             return;

@@ -162,7 +162,7 @@ public static class OnlineAdminConsoleHandlers
             Cursor = OnlineAdminApiContract.ReadCursor(request),
             PageSize = OnlineAdminApiContract.ReadPageSize(request),
         };
-        var page = OnlineAdminApiContract.Unwrap(await audit.QueryAsync(scope, query, cancellationToken).ConfigureAwait(false));
+        var page = OnlineAdminApiContract.Unwrap(await audit.QueryAsync(query, cancellationToken).ConfigureAwait(false));
         var items = new List<AuditEventResponse>();
         if (page.Records != null)
         {

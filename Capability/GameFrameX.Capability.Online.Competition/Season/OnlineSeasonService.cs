@@ -56,7 +56,7 @@ namespace GameFrameX.Capability.Online.Competition.Season;
 /// 需待保留期过期后重新占位方可补发（本服务不自行改写全局幂等策略）；
 /// (4) **逐玩家失败隔离**——单玩家发放失败只计入回执明细，不阻塞其余玩家；仅当无失败玩家才把赛季推进到
 /// 结算完成态（部分发奖不得标记完成）；
-/// (5) 跨 App / 跨租户读写与「赛季不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
+/// (5) 作用域校验失败与「赛季不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
 /// </para>
 /// <para>
 /// 运行时边界：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
@@ -71,7 +71,7 @@ public sealed class OnlineSeasonService
     private const int MaxResetAttempts = 3;
 
     /// <summary>
-    /// 赛季奖励发放使用的区服位（恒为 0）：赛季与榜单同为 (TenantId, AppId) 作用域，**没有归属服**。
+    /// 赛季奖励发放使用的区服位（恒为 0）：赛季与榜单同为全局域数据，**没有归属服**。
     /// 若改取调用方作用域的区服，同一赛季从不同区服触发结算会落到不同的幂等绑定键上，重试将不再回放首次结果
     /// 而重复发奖——故必须用与调用方无关的稳定值。
     /// </summary>
@@ -105,9 +105,9 @@ public sealed class OnlineSeasonService
     }
 
     /// <summary>
-    /// 创建赛季（同作用域同名赛季已存在时拒绝；关联榜单必须已存在；奖励规则区间必须互不重叠）。
+    /// 创建赛季（同名赛季已存在时拒绝；关联榜单必须已存在；奖励规则区间必须互不重叠）。
     /// </summary>
-    /// <param name="scope">生效作用域（赛季归属取其 TenantId / AppId）。</param>
+    /// <param name="scope">生效作用域。</param>
     /// <param name="request">创建请求。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -153,8 +153,6 @@ public sealed class OnlineSeasonService
         var season = new OnlineSeason
         {
             SeasonId = request.SeasonId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             LeaderboardId = request.LeaderboardId,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
@@ -169,14 +167,14 @@ public sealed class OnlineSeasonService
             return OnlineResult<OnlineSeason>.Fail(OnlineErrorCode.ParameterInvalid, "赛季标识已存在");
         }
 
-        await PublishAsync(OnlineSeasonEvents.CreateSeasonCreated(created.SeasonId, created.TenantId, created.AppId, created.LeaderboardId, created.StartTime, created.EndTime, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineSeasonEvents.CreateSeasonCreated(created.SeasonId, created.LeaderboardId, created.StartTime, created.EndTime, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineSeason>.Ok(created);
     }
 
     /// <summary>
     /// 开始赛季（<see cref="OnlineSeasonState.Scheduled"/> → <see cref="OnlineSeasonState.Active"/>）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -197,7 +195,7 @@ public sealed class OnlineSeasonService
 
         season.State = OnlineSeasonState.Active;
         await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineSeasonEvents.CreateSeasonStarted(season.SeasonId, season.TenantId, season.AppId, season.LeaderboardId, season.StartTime, season.EndTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineSeasonEvents.CreateSeasonStarted(season.SeasonId, season.LeaderboardId, season.StartTime, season.EndTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineSeason>.Ok(season);
     }
 
@@ -209,7 +207,7 @@ public sealed class OnlineSeasonService
     /// 未被改变（期间落档的中间快照不匹配任何已清空的榜单，会被下次成功重试整体覆盖），由调用方稍后重试。
     /// </para>
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -249,7 +247,7 @@ public sealed class OnlineSeasonService
             season.State = OnlineSeasonState.Ended;
             season.EndedTime = now;
             await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineSeasonEvents.CreateSeasonEnded(season.SeasonId, season.TenantId, season.AppId, season.LeaderboardId, season.EndedTime, snapshot.Entries == null ? 0 : snapshot.Entries.Count, snapshot.SnapshottedTime), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineSeasonEvents.CreateSeasonEnded(season.SeasonId, season.LeaderboardId, season.EndedTime, snapshot.Entries == null ? 0 : snapshot.Entries.Count, snapshot.SnapshottedTime), cancellationToken).ConfigureAwait(false);
             return OnlineResult<OnlineSeasonSnapshot>.Ok(snapshot);
         }
 
@@ -259,7 +257,7 @@ public sealed class OnlineSeasonService
     /// <summary>
     /// 查询赛季历史快照（重置后可回溯旧榜；快照是长期保留的冻结事实，不随新一届写入变化）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>历史快照；失败返回对应错误码。</returns>
@@ -271,7 +269,7 @@ public sealed class OnlineSeasonService
             return OnlineResult<OnlineSeasonSnapshot>.Fail(seasonResult.Code, seasonResult.Message);
         }
 
-        var snapshot = await _seasonStore.FindSnapshotAsync(scope.TenantId, scope.AppId, seasonResult.Data.SeasonId, cancellationToken).ConfigureAwait(false);
+        var snapshot = await _seasonStore.FindSnapshotAsync(seasonResult.Data.SeasonId, cancellationToken).ConfigureAwait(false);
         if (snapshot == null)
         {
             return OnlineResult<OnlineSeasonSnapshot>.Fail(OnlineErrorCode.ResourceNotFound, "赛季尚未结束，无历史快照");
@@ -288,7 +286,7 @@ public sealed class OnlineSeasonService
     /// 不会被重复发放，此前失败的玩家能否补发取决于宿主的幂等失败重放策略（见类型级维护约束 (3)）。
     /// </para>
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -308,7 +306,7 @@ public sealed class OnlineSeasonService
             return OnlineResult<OnlineSeasonSettlementOutcome>.Fail(OnlineErrorCode.StateNotReady, "赛季尚未结束，不能结算：" + season.State);
         }
 
-        var snapshot = await _seasonStore.FindSnapshotAsync(scope.TenantId, scope.AppId, season.SeasonId, cancellationToken).ConfigureAwait(false);
+        var snapshot = await _seasonStore.FindSnapshotAsync(season.SeasonId, cancellationToken).ConfigureAwait(false);
         if (snapshot == null)
         {
             return OnlineResult<OnlineSeasonSettlementOutcome>.Fail(OnlineErrorCode.StateNotReady, "赛季快照缺失，拒绝结算");
@@ -328,7 +326,7 @@ public sealed class OnlineSeasonService
             season.State = OnlineSeasonState.Settled;
             season.SettledTime = now;
             await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineSeasonEvents.CreateSeasonSettled(season.SeasonId, season.TenantId, season.AppId, season.SettledTime, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineSeasonEvents.CreateSeasonSettled(season.SeasonId, season.SettledTime, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineSeasonSettlementOutcome>.Ok(outcome);
@@ -337,7 +335,7 @@ public sealed class OnlineSeasonService
     /// <summary>
     /// 按冻结快照逐条目结算奖励（跳过无效视图与名次未命中规则的条目；发放经 <see cref="SettlePlayerAsync"/> 幂等执行）。
     /// </summary>
-    /// <param name="season">赛季定义（提供作用域与奖励规则）。</param>
+    /// <param name="season">赛季定义（提供奖励规则）。</param>
     /// <param name="snapshot">结算依据的冻结快照。</param>
     /// <param name="outcome">累计回执。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -369,7 +367,7 @@ public sealed class OnlineSeasonService
     /// <summary>
     /// 结算单玩家：经统一资产入口发放（幂等键确定性派生，重试回放首次结果）；失败逐玩家隔离。
     /// </summary>
-    /// <param name="season">赛季定义（提供作用域与结算标识）。</param>
+    /// <param name="season">赛季定义（提供结算标识）。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="rewards">奖励变更行。</param>
     /// <param name="outcome">累计回执。</param>
@@ -378,7 +376,7 @@ public sealed class OnlineSeasonService
     private async Task SettlePlayerAsync(OnlineSeason season, long playerId, IReadOnlyList<OnlineAssetChangeLine> rewards, OnlineSeasonSettlementOutcome outcome, CancellationToken cancellationToken)
     {
         var businessOrderId = BuildBusinessOrderId(season.SeasonId, playerId);
-        var playerScope = new OnlineScope(season.TenantId, season.AppId, SeasonScopeServerId, playerId);
+        var playerScope = new OnlineScope(SeasonScopeServerId, playerId);
         var request = new OnlineGrantRequest(
             playerScope,
             OnlineAssetChangeSource.MatchReward,
@@ -414,7 +412,7 @@ public sealed class OnlineSeasonService
     }
 
     /// <summary>
-    /// 按作用域解析赛季定义（跨作用域与不存在同构返回失败 ResourceNotFound）。
+    /// 按标识解析赛季定义（不存在同构返回失败 ResourceNotFound）。
     /// </summary>
     /// <param name="scope">生效作用域。</param>
     /// <param name="seasonId">赛季标识。</param>
@@ -432,7 +430,7 @@ public sealed class OnlineSeasonService
             return OnlineResult<OnlineSeason>.Fail(OnlineErrorCode.ParameterInvalid, "赛季标识不能为空");
         }
 
-        var season = await _seasonStore.FindAsync(scope.TenantId, scope.AppId, seasonId, cancellationToken).ConfigureAwait(false);
+        var season = await _seasonStore.FindAsync(seasonId, cancellationToken).ConfigureAwait(false);
         if (season == null)
         {
             return OnlineResult<OnlineSeason>.Fail(OnlineErrorCode.ResourceNotFound, "赛季不存在");
@@ -453,8 +451,6 @@ public sealed class OnlineSeasonService
         var snapshot = new OnlineSeasonSnapshot
         {
             SeasonId = season.SeasonId,
-            TenantId = season.TenantId,
-            AppId = season.AppId,
             LeaderboardId = season.LeaderboardId,
             SnapshottedTime = snapshottedTime,
             Entries = new List<OnlineLeaderboardEntryView>(),

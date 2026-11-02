@@ -48,7 +48,7 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// ① **只读**——本服务只依赖各域存储的读取方法（对齐 <see cref="OnlineMatchQueueObserver"/>「只依赖存储的读取方法」先例），
 /// 不持有任何写入型服务，调用本服务不会产生任何状态副作用或事件；
 /// ② 数据源唯一 = Online 玩家侧存储，**不含管理员连接**；
-/// ③ 所有计数按作用域三键 (TenantId, AppId, ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
+/// ③ 所有计数按作用域区服键 (ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
 /// </para>
 /// <para>
 /// 统计口径（集中定义，禁止在别处重复定义；**谓词经存储聚合方法下推执行**——各存储接口的聚合读方法以本口径为契约语义，
@@ -59,7 +59,7 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// <item><description>重连率：重连中会话数 ÷ 非终态会话数；分母为 0 时取 0（不做补 1 平滑，消费方按需自行处理）。</description></item>
 /// <item><description>队伍数：作用域内**非终态**队伍数（终态判定复用 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。</description></item>
 /// <item><description>对局数：作用域内**非 <see cref="OnlineMatchState.Closed"/>** 对局数（Closed = 已释放，按运行时口径随即删档；读取面仍显式排除，使该计数不依赖写入侧时序）。</description></item>
-/// <item><description>队列深度：作用域内排队态票据数。**匹配池为 App 级**，本快照报告该池在当前 Server 上的分区——各 Server 深度之和等于 App 级排队总数，不得把本值当作跨服共享的池大小。</description></item>
+/// <item><description>队列深度：作用域内排队态票据数。**匹配池为全局共享池**，本快照报告该池在当前 Server 上的分区——各 Server 深度之和等于全局排队总数，不得把本值当作跨服共享的池大小。</description></item>
 /// <item><description>平均等待：排队态票据等待时长的算术平均（等待时长复用 <see cref="OnlineMatchRule.WaitSeconds"/>，与匹配域同源；无排队票据时为 0）。</description></item>
 /// <item><description>吞吐：最近 60 秒内（<c>(观测时刻 - 60000, 观测时刻]</c>，左开右闭——恰好落在窗口起点的分配不计入，避免把「上一轮窗口的边界」重复计入相邻两次查询）落档的匹配分配所消费的票据数——口径是「每分钟达成匹配的票据数」，不是对局数（一张票据可携带多人）。</description></item>
 /// </list>
@@ -114,10 +114,10 @@ public sealed class OnlineOverviewService
     /// <summary>
     /// 观测指定作用域的在线总览快照（六路存储聚合读并发执行）。
     /// </summary>
-    /// <param name="scope">生效作用域（取 TenantId / AppId / ServerId 三键过滤；不含玩家主体位）。</param>
+    /// <param name="scope">生效作用域（取 ServerId 区服键过滤；不含玩家主体位）。</param>
     /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>在线总览快照；作用域三键非法时返回 <see cref="OnlineErrorCode.ParameterInvalid"/>。</returns>
+    /// <returns>在线总览快照；作用域区服键非法时返回 <see cref="OnlineErrorCode.ParameterInvalid"/>。</returns>
     public async Task<OnlineResult<OnlineOverviewSnapshot>> ReviewAsync(OnlineScope scope, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var failure = ValidateScope<OnlineOverviewSnapshot>(scope);
@@ -129,19 +129,17 @@ public sealed class OnlineOverviewService
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var windowStart = now - ThroughputWindowMilliseconds;
 
-        var presenceCountTask = _presenceStore.CountOnlineByServerAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
-        var sessionCountsTask = _sessionStore.CountNonTerminalByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
-        var partyCountsTask = _partyStore.CountNonTerminalByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
-        var matchCountsTask = _matchStore.CountActiveByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
-        var queueDepthTask = _ticketStore.AggregateQueuedBySlotAsync(scope.TenantId, scope.AppId, scope.ServerId, now, cancellationToken);
-        var throughputTask = _ticketStore.CountAssignmentTicketsBySlotAsync(scope.TenantId, scope.AppId, scope.ServerId, windowStart, now, cancellationToken);
+        var presenceCountTask = _presenceStore.CountOnlineByServerAsync(scope.ServerId, cancellationToken);
+        var sessionCountsTask = _sessionStore.CountNonTerminalByScopeAsync(scope.ServerId, cancellationToken);
+        var partyCountsTask = _partyStore.CountNonTerminalByScopeAsync(scope.ServerId, cancellationToken);
+        var matchCountsTask = _matchStore.CountActiveByScopeAsync(scope.ServerId, cancellationToken);
+        var queueDepthTask = _ticketStore.AggregateQueuedBySlotAsync(scope.ServerId, now, cancellationToken);
+        var throughputTask = _ticketStore.CountAssignmentTicketsBySlotAsync(scope.ServerId, windowStart, now, cancellationToken);
 
         await Task.WhenAll(presenceCountTask, sessionCountsTask, partyCountsTask, matchCountsTask, queueDepthTask, throughputTask).ConfigureAwait(false);
 
         var snapshot = new OnlineOverviewSnapshot
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             ObservedTime = now,
             OnlinePlayerCount = presenceCountTask.Result,
@@ -270,7 +268,7 @@ public sealed class OnlineOverviewService
     }
 
     /// <summary>
-    /// 校验作用域三键（总览不面向单个玩家，故不要求玩家主体位）。
+    /// 校验作用域区服键（总览不面向单个玩家，故不要求玩家主体位）。
     /// </summary>
     /// <typeparam name="TData">结果负载类型。</typeparam>
     /// <param name="scope">生效作用域。</param>
@@ -282,9 +280,9 @@ public sealed class OnlineOverviewService
             throw new ArgumentNullException(nameof(scope));
         }
 
-        if (scope.TenantId <= 0 || scope.AppId <= 0 || scope.ServerId <= 0)
+        if (scope.ServerId <= 0)
         {
-            return OnlineResult<TData>.Fail(OnlineErrorCode.ParameterInvalid, "在线总览查询必须携带完整作用域三键（TenantId / AppId / ServerId）");
+            return OnlineResult<TData>.Fail(OnlineErrorCode.ParameterInvalid, "在线总览查询必须携带作用域区服键（ServerId）");
         }
 
         return null;

@@ -36,8 +36,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// ① **唯一键是无向对**——<see cref="LowPlayerId"/>/<see cref="HighPlayerId"/> 由
 /// <see cref="Canonicalize"/> 规范化（低标识在前），A→B 与 B→A 命中同一条记录，
 /// 因此「重复请求」在存储层就无第二条可落；
-/// ② 本类型不承载作用域内的 ServerId 唯一性——好友关系是跨区服成立的，键为 Tenant + App + 无向对，
-/// 不含 ServerId（「键 = Tenant+App+Player，不含 Server」）；<see cref="ServerId"/> 仅记录
+/// ② 本类型不承载作用域内的 ServerId 唯一性——好友关系是跨区服成立的全局关系，键为无向对，
+/// 不含 ServerId（全局域键，键 = 玩家对）；<see cref="ServerId"/> 仅记录
 /// 关系建立时的来源区服，供审计与投递路由参考；
 /// ③ <see cref="State"/> 只能经 <see cref="OnlineFriendshipStateMachine"/> 迁移；
 /// ④ <see cref="RequesterId"/> 是方向事实，关系被接受后**不翻转**——「谁先发起」是审计语义，
@@ -51,15 +51,7 @@ public sealed class OnlineFriendship
     /// </summary>
     public string FriendshipId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（数据隔离根边界）。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识（数据隔离根边界）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关系建立时的来源区服标识（仅审计与投递路由参考，不参与唯一键）。
@@ -174,8 +166,6 @@ public sealed class OnlineFriendship
         return new OnlineFriendship
         {
             FriendshipId = FriendshipId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             LowPlayerId = LowPlayerId,
             HighPlayerId = HighPlayerId,

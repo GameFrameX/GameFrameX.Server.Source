@@ -96,7 +96,7 @@ public sealed class OnlinePresenceService
         }
 
         var now = Now();
-        var existing = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var existing = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (existing != null && existing.State == OnlinePresenceState.Online && existing.SessionId == sessionId)
         {
             existing.LastHeartbeatAtTime = now;
@@ -112,8 +112,6 @@ public sealed class OnlinePresenceService
 
         var record = new OnlinePresenceRecord
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             PlayerId = scope.PlayerId,
             SessionId = sessionId ?? string.Empty,
@@ -143,7 +141,7 @@ public sealed class OnlinePresenceService
             return failure;
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.StateNotReady, "玩家不在线，无心跳语义");
@@ -181,7 +179,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.ParameterInvalid, "重连窗口必须为正数（秒）");
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.StateNotReady, "玩家不在线，无断线语义");
@@ -219,7 +217,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.ParameterInvalid, "重连落点仅允许 Online / InMatch");
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.StateNotReady, "玩家不在线，无重连语义");
@@ -245,7 +243,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<bool>.Fail(failure.Code, failure.Message);
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<bool>.Ok(true);
@@ -256,7 +254,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<bool>.Fail(OnlineErrorCode.StateOperationForbidden, "风控限制中的玩家不受会话关闭影响，须先解除限制");
         }
 
-        await _store.RemoveAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        await _store.RemoveAsync(scope.PlayerId, cancellationToken);
         await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.Closed, correlationId, cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
@@ -277,7 +275,7 @@ public sealed class OnlinePresenceService
             return failure;
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<OnlinePresenceState>.Fail(OnlineErrorCode.StateNotReady, "玩家不在线，须先上线登记");
@@ -302,13 +300,11 @@ public sealed class OnlinePresenceService
         }
 
         var now = Now();
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             var blockedRecord = new OnlinePresenceRecord
             {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
                 ServerId = scope.ServerId,
                 PlayerId = scope.PlayerId,
                 SessionId = string.Empty,
@@ -342,7 +338,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<bool>.Fail(failure.Code, failure.Message);
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         if (record == null)
         {
             return OnlineResult<bool>.Ok(true);
@@ -353,7 +349,7 @@ public sealed class OnlinePresenceService
             return OnlineResult<bool>.Fail(OnlineErrorCode.StateOperationForbidden, "玩家未处于风控限制中");
         }
 
-        await _store.RemoveAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        await _store.RemoveAsync(scope.PlayerId, cancellationToken);
         await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.RiskReleased, correlationId, cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
@@ -365,12 +361,10 @@ public sealed class OnlinePresenceService
     /// 单轮处理不超过 maxRecordsPerSweep 条，剩余候选由下一次清扫继续。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒；0 = 当前时刻，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次清理的记录数。</returns>
-    public async Task<int> SweepTimeoutsAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<int> SweepTimeoutsAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
         var swept = 0;
@@ -378,7 +372,7 @@ public sealed class OnlinePresenceService
         {
             var remaining = _maxRecordsPerSweep - swept;
             var batchCount = remaining < _sweepBatchSize ? remaining : _sweepBatchSize;
-            var candidates = await _store.ListSweepCandidatesAsync(tenantId, appId, now, _idleTimeoutSeconds * 1000L, batchCount, cancellationToken);
+            var candidates = await _store.ListSweepCandidatesAsync(now, _idleTimeoutSeconds * 1000L, batchCount, cancellationToken);
             if (candidates.Count == 0)
             {
                 break;
@@ -421,20 +415,18 @@ public sealed class OnlinePresenceService
             return failure;
         }
 
-        var record = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var record = await _store.FindAsync(scope.PlayerId, cancellationToken);
         return OnlineResult<OnlinePresenceState>.Ok(record != null ? record.State : OnlinePresenceState.Offline);
     }
 
     /// <summary>
-    /// 统计 (TenantId, AppId) 在线人数（Blocked 不计入在线；Admin 查询口径）。
+    /// 统计全部在线人数（Blocked 不计入在线；Admin 查询口径）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线人数（不含 Blocked）。</returns>
-    public async Task<int> CountOnlineAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public async Task<int> CountOnlineAsync(CancellationToken cancellationToken = default)
     {
-        var records = await _store.ListByAppAsync(tenantId, appId, cancellationToken);
+        var records = await _store.ListAllAsync(cancellationToken);
         var count = 0;
         foreach (var record in records)
         {
@@ -448,15 +440,13 @@ public sealed class OnlinePresenceService
     }
 
     /// <summary>
-    /// 列出 (TenantId, AppId) 全部在线状态记录（Admin 查询输入）。
+    /// 列出全部在线状态记录（Admin 查询输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录列表。</returns>
-    public Task<IReadOnlyList<OnlinePresenceRecord>> ListByAppAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePresenceRecord>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        return _store.ListByAppAsync(tenantId, appId, cancellationToken);
+        return _store.ListAllAsync(cancellationToken);
     }
 
     /// <summary>
@@ -536,7 +526,7 @@ public sealed class OnlinePresenceService
     {
         if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
         {
-            await _store.RemoveAsync(record.TenantId, record.AppId, record.PlayerId, cancellationToken);
+            await _store.RemoveAsync(record.PlayerId, cancellationToken);
             await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.ReconnectWindowExpired, null, cancellationToken);
             return true;
         }
@@ -561,7 +551,7 @@ public sealed class OnlinePresenceService
     /// <param name="cancellationToken">取消令牌。</param>
     private Task PublishChangeAsync(OnlinePresenceRecord record, OnlinePresenceState fromState, OnlinePresenceState toState, OnlinePresenceChangeReason reason, string correlationId, CancellationToken cancellationToken)
     {
-        var changeEvent = OnlinePresenceEvents.Create(record.TenantId, record.AppId, record.ServerId, record.PlayerId, record.SessionId, fromState.ToString(), toState.ToString(), reason.ToString(), correlationId);
+        var changeEvent = OnlinePresenceEvents.Create(record.ServerId, record.PlayerId, record.SessionId, fromState.ToString(), toState.ToString(), reason.ToString(), correlationId);
         return _eventPublisher.PublishAsync(changeEvent, cancellationToken);
     }
 

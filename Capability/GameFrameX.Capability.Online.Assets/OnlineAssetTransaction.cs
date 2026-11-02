@@ -60,15 +60,6 @@ public sealed class OnlineAssetTransaction
     /// </summary>
     public string CompensatesTransactionId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

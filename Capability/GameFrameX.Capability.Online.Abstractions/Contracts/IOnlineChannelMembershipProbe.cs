@@ -52,13 +52,11 @@ public interface IOnlineChannelMembershipProbe
     /// <summary>
     /// 判定玩家当前是否为绑定主体的成员。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="kind">频道类型（只会是 <see cref="OnlineChatChannelKind.Party"/> 或
     /// <see cref="OnlineChatChannelKind.Group"/>；Direct 与 Global 不走本探针）。</param>
     /// <param name="boundId">绑定主体标识（PartyId 或 GroupId）。</param>
     /// <param name="playerId">待判定的玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>当前是成员返回 <c>true</c>。</returns>
-    Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default);
+    Task<bool> IsChannelMemberAsync(OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default);
 }

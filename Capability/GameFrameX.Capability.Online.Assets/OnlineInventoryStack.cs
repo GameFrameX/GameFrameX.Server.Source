@@ -33,21 +33,13 @@ namespace GameFrameX.Capability.Online.Assets;
 /// 玩家道具库存堆栈快照（Inventory = 玩家道具和数量；数量可由账本重算校验）。
 /// <para>
 /// 维护约束：数量快照只经统一入口在玩家分片事务内与账本条目原子同步；
-/// 键 = (TenantId, AppId, PlayerId, ItemId)，区服不参与隔离；
+/// 键 = (PlayerId, ItemId)，区服不参与隔离；
 /// 数量下限 0；堆叠上限等业务约束归调用方前置校验，本层只守护一致性红线。
 /// </para>
 /// </summary>
 public sealed class OnlineInventoryStack
 {
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

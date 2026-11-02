@@ -42,10 +42,8 @@ public interface IOnlineSocialPresenceProbe
     /// <summary>
     /// 查询玩家当前是否在线。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线返回 <c>true</c>。</returns>
-    Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<bool> IsOnlineAsync(long playerId, CancellationToken cancellationToken = default);
 }

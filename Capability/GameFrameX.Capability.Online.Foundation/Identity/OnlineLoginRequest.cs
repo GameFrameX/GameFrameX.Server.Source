@@ -39,17 +39,6 @@ namespace GameFrameX.Capability.Online.Foundation.Identity;
 /// </summary>
 public sealed class OnlineLoginRequest
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    /// <remarks>Gets or sets the tenant id.</remarks>
-    public long TenantId { get; init; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    /// <remarks>Gets or sets the app id.</remarks>
-    public long AppId { get; init; }
 
     /// <summary>
     /// 获取或设置区服标识。

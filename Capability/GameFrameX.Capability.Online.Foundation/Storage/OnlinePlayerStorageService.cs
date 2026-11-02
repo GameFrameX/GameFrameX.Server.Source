@@ -35,9 +35,9 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
-/// 玩家云存储服务（玩家 + App 作用域隔离的 KV 读写/分页/软删/过期清理）。
+/// 玩家云存储服务（玩家作用域隔离的 KV 读写/分页/软删/过期清理）。
 /// <para>
-/// 维护约束（红线）：作用域 = (TenantId, AppId, PlayerId)——区服不参与隔离（换服数据随身），
+/// 维护约束（红线）：作用域 = PlayerId——区服不参与隔离（换服数据随身），
 /// 跨作用域读写在存储键层结构性不可达，查无记录一律 <see cref="OnlineErrorCode.ResourceNotFound"/>
 /// （同构错误，防存在性探测）；写入走存储层 CAS 乐观锁——expectedVersion=0 为创建、
 /// &gt;0 为版本匹配更新，冲突映射 <see cref="OnlineErrorCode.VersionConflict"/>；
@@ -80,7 +80,7 @@ public sealed class OnlinePlayerStorageService
             return failure;
         }
 
-        var entry = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
+        var entry = await _store.FindAsync(new OnlineStorageEntryKey { PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
         if (entry == null || entry.DeletedAtTime > 0 || IsExpired(entry))
         {
             return OnlineResult<OnlinePlayerStorageEntry>.Fail(OnlineErrorCode.ResourceNotFound, "存储条目不存在");
@@ -124,7 +124,7 @@ public sealed class OnlinePlayerStorageService
         }
 
         var now = Now();
-        var existing = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
+        var existing = await _store.FindAsync(new OnlineStorageEntryKey { PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
         var casVersion = expectedVersion;
         var isResurrecting = false;
         if (existing != null && existing.DeletedAtTime > 0 && expectedVersion == 0)
@@ -136,7 +136,7 @@ public sealed class OnlinePlayerStorageService
 
         if (expectedVersion == 0)
         {
-            var activeKeys = await _store.CountActiveKeysAsync(scope.TenantId, scope.AppId, scope.PlayerId, collection, cancellationToken);
+            var activeKeys = await _store.CountActiveKeysAsync(scope.PlayerId, collection, cancellationToken);
             if (activeKeys >= _options.MaxKeysPerCollection)
             {
                 return OnlineResult<OnlinePlayerStorageEntry>.Fail(OnlineErrorCode.StateOperationForbidden, "单集合键数已达上限（" + _options.MaxKeysPerCollection + "）");
@@ -150,8 +150,6 @@ public sealed class OnlinePlayerStorageService
         var keepCreated = !isResurrecting && existing != null && existing.DeletedAtTime == 0;
         var entry = new OnlinePlayerStorageEntry
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             PlayerId = scope.PlayerId,
             Collection = collection,
             Key = key,
@@ -196,7 +194,7 @@ public sealed class OnlinePlayerStorageService
         }
 
         var effectivePageSize = pageSize == 0 ? _options.MaxPageSize : Math.Min(pageSize, _options.MaxPageSize);
-        var fetch = await _store.ListAsync(new OnlineStorageListQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, AfterKey = cursor ?? string.Empty, MaxCount = effectivePageSize + 1, }, cancellationToken);
+        var fetch = await _store.ListAsync(new OnlineStorageListQuery { PlayerId = scope.PlayerId, Collection = collection, AfterKey = cursor ?? string.Empty, MaxCount = effectivePageSize + 1, }, cancellationToken);
         var hasMore = fetch.Count > effectivePageSize;
         var pageEntries = hasMore ? fetch.Take(effectivePageSize).ToList() : fetch.ToList();
         var now = Now();
@@ -233,7 +231,7 @@ public sealed class OnlinePlayerStorageService
             return OnlineResult<bool>.Fail(failure.Code, failure.Message);
         }
 
-        var entry = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
+        var entry = await _store.FindAsync(new OnlineStorageEntryKey { PlayerId = scope.PlayerId, Collection = collection, Key = key, }, cancellationToken);
         if (entry == null || entry.DeletedAtTime > 0 || IsExpired(entry))
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "存储条目不存在");

@@ -49,15 +49,7 @@ public sealed class OnlineGroup
     /// </summary>
     public string GroupId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置群主标识（建群者，群内唯一）。
@@ -122,8 +114,6 @@ public sealed class OnlineGroup
         var copy = new OnlineGroup
         {
             GroupId = GroupId,
-            TenantId = TenantId,
-            AppId = AppId,
             OwnerId = OwnerId,
             Name = Name,
             MaxMembers = MaxMembers,

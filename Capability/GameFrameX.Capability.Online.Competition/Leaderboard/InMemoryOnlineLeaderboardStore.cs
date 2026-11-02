@@ -29,7 +29,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Localization.Core;
@@ -49,7 +48,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     /// <summary>全局读写锁（榜单与条目共用，保证快照一致性）。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>榜单定义表：键 = (TenantId, AppId, LeaderboardId)。</summary>
+    /// <summary>榜单定义表：键 = LeaderboardId（全局域投影，无区服隔离位）。</summary>
     private readonly Dictionary<string, OnlineLeaderboard> _boards = new();
 
     /// <summary>条目表：键 = 榜单键 → (PlayerId → 条目)。</summary>
@@ -63,12 +62,12 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     }
 
     /// <summary>
-    /// 在全局锁内创建榜单：同作用域同标识已存在时拒绝返回 null，否则落档定义副本并初始化空条目表。
+    /// 在全局锁内创建榜单：同标识已存在时拒绝返回 null，否则落档定义副本并初始化空条目表。
     /// </summary>
     /// <remarks>
-    /// Creates the leaderboard under the global lock: refuses with null when the same id already exists in the scope, otherwise stores a defensive copy of the definition and initializes an empty entry table.
+    /// Creates the leaderboard under the global lock: refuses with null when the same id already exists, otherwise stores a defensive copy of the definition and initializes an empty entry table.
     /// </remarks>
-    /// <param name="leaderboard">榜单定义（作用域取自其 TenantId 与 AppId）/ The leaderboard definition (scope taken from its TenantId and AppId)</param>
+    /// <param name="leaderboard">榜单定义 / The leaderboard definition</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>创建后的榜单副本；已存在返回 null / A copy of the created leaderboard; null when it already exists</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> is null</exception>
@@ -81,7 +80,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
+            var key = BuildKey(leaderboard.LeaderboardId);
             if (_boards.ContainsKey(key))
             {
                 return Task.FromResult<OnlineLeaderboard>(null);
@@ -94,21 +93,19 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     }
 
     /// <summary>
-    /// 在全局锁内按作用域与榜单标识查找榜单定义，返回防御性副本。
+    /// 在全局锁内按榜单标识查找榜单定义，返回防御性副本。
     /// </summary>
     /// <remarks>
-    /// Finds the leaderboard definition by scope and leaderboard id under the global lock, returning a defensive copy.
+    /// Finds the leaderboard definition by leaderboard id under the global lock, returning a defensive copy.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="leaderboardId">榜单标识 / The leaderboard id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>榜单副本；不存在或跨作用域返回 null / A copy of the leaderboard; null when not found or cross-scope</returns>
-    public Task<OnlineLeaderboard> FindAsync(long tenantId, long appId, string leaderboardId, CancellationToken cancellationToken = default)
+    /// <returns>榜单副本；不存在返回 null / A copy of the leaderboard; null when not found</returns>
+    public Task<OnlineLeaderboard> FindAsync(string leaderboardId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(TryFindBoard(tenantId, appId, leaderboardId, out var board) ? board.Copy() : null);
+            return Task.FromResult(TryFindBoard(leaderboardId, out var board) ? board.Copy() : null);
         }
     }
 
@@ -118,17 +115,15 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     /// <remarks>
     /// Finds a single player's entry on the board under the global lock, returning a defensive copy.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="leaderboardId">榜单标识 / The leaderboard id</param>
     /// <param name="playerId">玩家标识 / The player id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>条目副本；未上榜或榜单不存在返回 null / A copy of the entry; null when the player is unranked or the board does not exist</returns>
-    public Task<OnlineLeaderboardEntry> FindEntryAsync(long tenantId, long appId, string leaderboardId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlineLeaderboardEntry> FindEntryAsync(string leaderboardId, long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            if (!TryFindBoard(tenantId, appId, leaderboardId, out _) || !_entries.TryGetValue(BuildKey(tenantId, appId, leaderboardId), out var boardEntries) || !boardEntries.TryGetValue(playerId, out var entry))
+            if (!TryFindBoard(leaderboardId, out _) || !_entries.TryGetValue(BuildKey(leaderboardId), out var boardEntries) || !boardEntries.TryGetValue(playerId, out var entry))
             {
                 return Task.FromResult<OnlineLeaderboardEntry>(null);
             }
@@ -167,7 +162,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
+            var key = BuildKey(leaderboard.LeaderboardId);
             if (!_boards.ContainsKey(key) || !_entries.TryGetValue(key, out var boardEntries))
             {
                 // Localization: Online.Leaderboard.NotFoundOnWrite - 榜单不存在或已失效，写入前必须先经 FindAsync 解析
@@ -229,7 +224,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         List<OnlineLeaderboardEntry> copies;
         lock (_syncRoot)
         {
-            var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
+            var key = BuildKey(leaderboard.LeaderboardId);
             if (!_entries.TryGetValue(key, out var boardEntries))
             {
                 // Localization: Online.Leaderboard.NotFoundOnQuery - 榜单不存在或已失效，查询前必须先经 FindAsync 解析
@@ -273,7 +268,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
+            var key = BuildKey(leaderboard.LeaderboardId);
             if (!_entries.TryGetValue(key, out var boardEntries))
             {
                 // Localization: Online.Leaderboard.NotFoundOnReset - 榜单不存在或已失效，重置前必须先经 FindAsync 解析
@@ -335,12 +330,10 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     /// <summary>
     /// 在锁内解析榜单定义（调用方已持锁）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识。</param>
     /// <param name="board">解析到的榜单定义。</param>
     /// <returns>存在返回 <c>true</c>。</returns>
-    private bool TryFindBoard(long tenantId, long appId, string leaderboardId, out OnlineLeaderboard board)
+    private bool TryFindBoard(string leaderboardId, out OnlineLeaderboard board)
     {
         board = null;
         if (string.IsNullOrEmpty(leaderboardId))
@@ -348,7 +341,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
             return false;
         }
 
-        if (!_boards.TryGetValue(BuildKey(tenantId, appId, leaderboardId), out var stored))
+        if (!_boards.TryGetValue(BuildKey(leaderboardId), out var stored))
         {
             return false;
         }
@@ -397,14 +390,12 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     }
 
     /// <summary>
-    /// 构造存储键（作用域 + 榜单标识；跨作用域访问因键不同而自然隔离）。
+    /// 构造存储键（榜单标识即键——全局域投影目标，同键即同榜）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识。</param>
     /// <returns>存储键。</returns>
-    private static string BuildKey(long tenantId, long appId, string leaderboardId)
+    private static string BuildKey(string leaderboardId)
     {
-        return tenantId.ToString(CultureInfo.InvariantCulture) + ":" + appId.ToString(CultureInfo.InvariantCulture) + ":" + leaderboardId;
+        return leaderboardId ?? string.Empty;
     }
 }

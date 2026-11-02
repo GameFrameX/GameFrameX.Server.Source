@@ -71,8 +71,6 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事创建事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
@@ -82,7 +80,7 @@ public static class OnlineTournamentEvents
     /// <param name="state">创建后的状态名。</param>
     /// <param name="createdTime">创建时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentCreated(long tenantId, long appId, string tournamentId, string leaderboardId, long startTime, long endTime, int minLeaderboardRank, int rewardRuleCount, string state, long createdTime)
+    public static OnlineEvent CreateTournamentCreated(string tournamentId, string leaderboardId, long startTime, long endTime, int minLeaderboardRank, int rewardRuleCount, string state, long createdTime)
     {
         var payload = new TournamentCreatedPayload
         {
@@ -110,8 +108,6 @@ public static class OnlineTournamentEvents
             EventType = TournamentCreated,
             OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -124,15 +120,13 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事开始事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
     /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
     /// <param name="startedTime">开始时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentStarted(long tenantId, long appId, string tournamentId, string leaderboardId, long startTime, long endTime, long startedTime)
+    public static OnlineEvent CreateTournamentStarted(string tournamentId, string leaderboardId, long startTime, long endTime, long startedTime)
     {
         var payload = new TournamentStartedPayload
         {
@@ -154,8 +148,6 @@ public static class OnlineTournamentEvents
             EventType = TournamentStarted,
             OccurredTime = startedTime > 0 ? startedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -168,15 +160,13 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造玩家报名事件（玩家维度；仅在**首次**落档报名时发布，重放报名不重发）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="playerId">报名玩家标识。</param>
     /// <param name="registeredTime">报名时刻（UTC 毫秒）。</param>
     /// <param name="rankAtRegistration">报名时刻的名次（无资格门槛未查榜时为 0）。</param>
     /// <param name="scoreAtRegistration">报名时刻的分数（无资格门槛未查榜时为 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentRegistered(long tenantId, long appId, string tournamentId, long playerId, long registeredTime, int rankAtRegistration, long scoreAtRegistration)
+    public static OnlineEvent CreateTournamentRegistered(string tournamentId, long playerId, long registeredTime, int rankAtRegistration, long scoreAtRegistration)
     {
         var payload = new TournamentRegisteredPayload
         {
@@ -200,8 +190,6 @@ public static class OnlineTournamentEvents
             EventType = TournamentRegistered,
             OccurredTime = registeredTime > 0 ? registeredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,
@@ -214,15 +202,13 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事结束事件（成绩冻结先行已完成的落定点；关联榜单未被本流程修改）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="standingsEntryCount">冻结成绩的条目数（仅计已报名参赛者）。</param>
     /// <param name="frozenTime">成绩冻结时刻（UTC 毫秒）。</param>
     /// <param name="endedTime">结束时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentEnded(long tenantId, long appId, string tournamentId, string leaderboardId, int standingsEntryCount, long frozenTime, long endedTime)
+    public static OnlineEvent CreateTournamentEnded(string tournamentId, string leaderboardId, int standingsEntryCount, long frozenTime, long endedTime)
     {
         var payload = new TournamentEndedPayload
         {
@@ -244,8 +230,6 @@ public static class OnlineTournamentEvents
             EventType = TournamentEnded,
             OccurredTime = endedTime > 0 ? endedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -258,15 +242,13 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事结算事件（仅在全量发放成功、赛事推进到结算完成态时发布）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="grantedCount">本次首次发放成功玩家数。</param>
     /// <param name="replayCount">本次命中幂等回放玩家数。</param>
     /// <param name="failedCount">本次发放失败玩家数（正常路径恒为 0）。</param>
     /// <param name="settledTime">结算时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentSettled(long tenantId, long appId, string tournamentId, int grantedCount, int replayCount, int failedCount, long settledTime)
+    public static OnlineEvent CreateTournamentSettled(string tournamentId, int grantedCount, int replayCount, int failedCount, long settledTime)
     {
         var payload = new TournamentSettledPayload
         {
@@ -288,8 +270,6 @@ public static class OnlineTournamentEvents
             EventType = TournamentSettled,
             OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,

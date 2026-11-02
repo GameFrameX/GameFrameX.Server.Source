@@ -76,17 +76,7 @@ public sealed class OnlineAuditEntry
     public long OccurredTime { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（必填，必须大于 0）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（必填，必须大于 0）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
-    /// 获取或设置区服标识（0 表示 App 级操作——支付、远程配置等无区服维度的审计）。
+    /// 获取或设置区服标识（0 表示全局级操作——支付、远程配置等无区服维度的审计）。
     /// </summary>
     public long ServerId { get; set; }
 

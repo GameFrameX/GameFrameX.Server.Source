@@ -102,21 +102,6 @@ public sealed class CapabilityHost
     /// </summary>
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
 
-    /// <summary>
-    /// 获取授权租户标识。
-    /// </summary>
-    public long TenantId
-    {
-        get { return Options.TenantId; }
-    }
-
-    /// <summary>
-    /// 获取授权应用标识。
-    /// </summary>
-    public long AppId
-    {
-        get { return Options.AppId; }
-    }
 
     /// <summary>
     /// 获取授权区服标识。

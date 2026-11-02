@@ -65,8 +65,6 @@ public static class OnlineSeasonEvents
     /// 构造赛季创建事件。
     /// </summary>
     /// <param name="seasonId">赛季标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
     /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
@@ -74,7 +72,7 @@ public static class OnlineSeasonEvents
     /// <param name="state">创建后的状态名。</param>
     /// <param name="createdTime">创建时刻（UTC 毫秒；非正数取当前时钟）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonCreated(string seasonId, long tenantId, long appId, string leaderboardId, long startTime, long endTime, int rewardRuleCount, string state, long createdTime)
+    public static OnlineEvent CreateSeasonCreated(string seasonId, string leaderboardId, long startTime, long endTime, int rewardRuleCount, string state, long createdTime)
     {
         var payload = new SeasonCreatedPayload
         {
@@ -100,8 +98,6 @@ public static class OnlineSeasonEvents
             EventType = SeasonCreated,
             OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -115,13 +111,11 @@ public static class OnlineSeasonEvents
     /// 构造赛季开始事件。
     /// </summary>
     /// <param name="seasonId">赛季标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
     /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonStarted(string seasonId, long tenantId, long appId, string leaderboardId, long startTime, long endTime)
+    public static OnlineEvent CreateSeasonStarted(string seasonId, string leaderboardId, long startTime, long endTime)
     {
         var payload = new SeasonStartedPayload
         {
@@ -143,8 +137,6 @@ public static class OnlineSeasonEvents
             EventType = SeasonStarted,
             OccurredTime = startTime > 0 ? startTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -158,14 +150,12 @@ public static class OnlineSeasonEvents
     /// 构造赛季结束事件（快照先行已完成的落定点）。
     /// </summary>
     /// <param name="seasonId">赛季标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">关联榜单标识。</param>
     /// <param name="endedTime">结束时刻（UTC 毫秒；非正数取当前时钟）。</param>
     /// <param name="snapshotEntryCount">落档快照的条目数。</param>
     /// <param name="snapshottedTime">快照生成时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonEnded(string seasonId, long tenantId, long appId, string leaderboardId, long endedTime, int snapshotEntryCount, long snapshottedTime)
+    public static OnlineEvent CreateSeasonEnded(string seasonId, string leaderboardId, long endedTime, int snapshotEntryCount, long snapshottedTime)
     {
         var payload = new SeasonEndedPayload
         {
@@ -187,8 +177,6 @@ public static class OnlineSeasonEvents
             EventType = SeasonEnded,
             OccurredTime = endedTime > 0 ? endedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -202,14 +190,12 @@ public static class OnlineSeasonEvents
     /// 构造赛季结算事件（仅在全量发放成功、赛季推进到结算完成态时发布）。
     /// </summary>
     /// <param name="seasonId">赛季标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="settledTime">结算完成时刻（UTC 毫秒；非正数取当前时钟）。</param>
     /// <param name="grantedCount">本次首次发放成功玩家数。</param>
     /// <param name="replayCount">本次命中幂等回放玩家数。</param>
     /// <param name="failedCount">本次发放失败玩家数（正常路径恒为 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonSettled(string seasonId, long tenantId, long appId, long settledTime, int grantedCount, int replayCount, int failedCount)
+    public static OnlineEvent CreateSeasonSettled(string seasonId, long settledTime, int grantedCount, int replayCount, int failedCount)
     {
         var payload = new SeasonSettledPayload
         {
@@ -231,8 +217,6 @@ public static class OnlineSeasonEvents
             EventType = SeasonSettled,
             OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,

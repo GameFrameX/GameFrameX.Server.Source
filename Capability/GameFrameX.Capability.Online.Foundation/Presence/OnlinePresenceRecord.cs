@@ -33,21 +33,12 @@ namespace GameFrameX.Capability.Online.Foundation.Presence;
 /// 在线状态记录（玩家在线事实源；无记录即 Offline）。
 /// <para>
 /// 维护约束：记录仅玩家会话可建立（Admin 管理员连接结构性排除）；
-/// 键 = (TenantId, AppId, PlayerId)；状态写入前必须经 <see cref="OnlinePresenceStateMachine"/> 判定；
+/// 键 = PlayerId；状态写入前必须经 <see cref="OnlinePresenceStateMachine"/> 判定；
 /// 清理边界——Reconnecting 超窗或会话关闭即移除记录（Offline = 无记录），不得遗留永久 Reconnecting。
 /// </para>
 /// </summary>
 public sealed class OnlinePresenceRecord
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（事件归属透出用；Presence 键不含区服位）。

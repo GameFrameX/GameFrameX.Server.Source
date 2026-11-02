@@ -54,8 +54,6 @@ public static class OnlinePartyEvents
     /// <summary>
     /// 构造队伍状态变更事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="partyId">队伍标识（可空；载荷落空字符串）。</param>
     /// <param name="leaderId">队长标识。</param>
@@ -65,7 +63,7 @@ public static class OnlinePartyEvents
     /// <param name="memberCount">变更后成员数快照。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreatePartyChanged(long tenantId, long appId, long serverId, string partyId, long leaderId, string fromState, string toState, string reason, int memberCount, string correlationId = null)
+    public static OnlineEvent CreatePartyChanged(long serverId, string partyId, long leaderId, string fromState, string toState, string reason, int memberCount, string correlationId = null)
     {
         var payload = new PartyChangedPayload
         {
@@ -91,8 +89,6 @@ public static class OnlinePartyEvents
             EventType = PartyChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = leaderId,
             Source = Source,
@@ -105,8 +101,6 @@ public static class OnlinePartyEvents
     /// <summary>
     /// 构造邀请状态变更事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="inviteeId">被邀请玩家标识。</param>
     /// <param name="inviteId">邀请标识（可空；载荷落空字符串）。</param>
     /// <param name="partyId">队伍标识（可空；载荷落空字符串）。</param>
@@ -115,7 +109,7 @@ public static class OnlinePartyEvents
     /// <param name="serverId">区服标识。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateInviteChanged(long tenantId, long appId, long inviteeId, string inviteId, string partyId, long inviterId, string state, long serverId, string correlationId = null)
+    public static OnlineEvent CreateInviteChanged(long inviteeId, string inviteId, string partyId, long inviterId, string state, long serverId, string correlationId = null)
     {
         var payload = new PartyInviteChangedPayload
         {
@@ -139,8 +133,6 @@ public static class OnlinePartyEvents
             EventType = PartyInviteChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = inviteeId,
             Source = Source,

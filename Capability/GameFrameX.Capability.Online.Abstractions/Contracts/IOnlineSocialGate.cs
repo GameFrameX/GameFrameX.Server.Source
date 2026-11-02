@@ -56,12 +56,10 @@ public interface IOnlineSocialGate
     /// <summary>
     /// 裁决一次定向社交互动是否允许（屏蔽按双向生效、封禁拒绝全部、禁言只拒绝私聊）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="fromPlayerId">发起互动的玩家。</param>
     /// <param name="toPlayerId">互动的目标玩家。</param>
     /// <param name="purpose">互动目的（决定裁决力度）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>裁决结果；调用方在 <see cref="OnlineSocialDecision.Allowed"/> 为假时拒绝本次互动。</returns>
-    Task<OnlineSocialDecision> EvaluateAsync(long tenantId, long appId, long fromPlayerId, long toPlayerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken = default);
+    Task<OnlineSocialDecision> EvaluateAsync(long fromPlayerId, long toPlayerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken = default);
 }

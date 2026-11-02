@@ -43,7 +43,7 @@ namespace GameFrameX.Capability.Online.Operations.GameEvents;
 /// (2) **事件标识唯一**（EventId 为幂等键）：重复投递同一信封只落一条（返回 false），
 /// 否则重投会让指标翻倍、报表失真；
 /// (3) **追加即不可变**——只追加不修改不删除（留存与归档策略归运行时装配）；
-/// (4) 作用域隔离：查询以 (TenantId, AppId) 为前置条件，跨作用域查不到（反预言）。
+/// (4) 查询以时间窗为前置过滤条件（闭区间，边界确定供指标复算）。
 /// </para>
 /// </summary>
 public interface IOnlineGameEventStore
@@ -65,12 +65,10 @@ public interface IOnlineGameEventStore
     Task<OnlineEvent> FindAsync(string eventId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按作用域与时间窗列出事件（按事件发生时刻升序，**含窗口两端**——指标复算要求边界确定）。
+    /// 按时间窗列出事件（按事件发生时刻升序，**含窗口两端**——指标复算要求边界确定）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="query">时间窗查询载荷（闭区间）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>事件列表；无记录返回空列表。</returns>
-    Task<List<OnlineEvent>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default);
+    Task<List<OnlineEvent>> ListAsync(EventTimeRangeQuery query, CancellationToken cancellationToken = default);
 }

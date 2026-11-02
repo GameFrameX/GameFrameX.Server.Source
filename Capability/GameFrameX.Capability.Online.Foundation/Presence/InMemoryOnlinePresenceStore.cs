@@ -41,7 +41,7 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>在线状态表：键 = (TenantId, AppId, PlayerId)。</summary>
+    /// <summary>在线状态表：键 = PlayerId。</summary>
     private readonly Dictionary<string, OnlinePresenceRecord> _records = new();
 
     /// <summary>清扫索引：Reconnecting 记录按重连截止时刻有序（索引项含记录键保证唯一）。</summary>
@@ -65,7 +65,7 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
 
         lock (_syncRoot)
         {
-            var recordKey = BuildKey(record.TenantId, record.AppId, record.PlayerId);
+            var recordKey = BuildKey(record.PlayerId);
             _records[recordKey] = record;
             RebuildSweepIndexEntry(recordKey, record);
         }
@@ -73,73 +73,62 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
         return Task.CompletedTask;
     }
 
-    /// <summary>按 (TenantId, AppId, PlayerId) 查找在线状态记录。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>按 PlayerId 查找在线状态记录。</summary>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录；无记录返回 null。</returns>
-    public Task<OnlinePresenceRecord> FindAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlinePresenceRecord> FindAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _records.TryGetValue(BuildKey(tenantId, appId, playerId), out var record);
+            _records.TryGetValue(BuildKey(playerId), out var record);
             return Task.FromResult(record);
         }
     }
 
     /// <summary>移除在线状态记录（即 Offline）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    public Task RemoveAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            var recordKey = BuildKey(tenantId, appId, playerId);
+            var recordKey = BuildKey(playerId);
             _records.Remove(recordKey);
             RemoveSweepIndexEntry(recordKey);
         }
         return Task.CompletedTask;
     }
 
-    /// <summary>列出 (TenantId, AppId) 下全部在线状态记录。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>列出全部在线状态记录。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录列表。</returns>
-    public Task<IReadOnlyList<OnlinePresenceRecord>> ListByAppAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePresenceRecord>> ListAllAsync(CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlinePresenceRecord>();
             foreach (var record in _records.Values)
             {
-                if (record.TenantId == tenantId && record.AppId == appId)
-                {
-                    result.Add(record);
-                }
+                result.Add(record);
             }
 
             return Task.FromResult<IReadOnlyList<OnlinePresenceRecord>>(result);
         }
     }
 
-    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内的在线玩家数（Blocked 不计入；表内扫描不产出实体副本）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>统计区服内的在线玩家数（Blocked 不计入；表内扫描不产出实体副本）。</summary>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线玩家数。</returns>
-    public Task<int> CountOnlineByServerAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public Task<int> CountOnlineByServerAsync(long serverId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var count = 0;
             foreach (var record in _records.Values)
             {
-                if (record.TenantId == tenantId && record.AppId == appId && record.ServerId == serverId && record.State != OnlinePresenceState.Blocked)
+                if (record.ServerId == serverId && record.State != OnlinePresenceState.Blocked)
                 {
                     count++;
                 }
@@ -150,14 +139,12 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
     }
 
     /// <summary>列出已到期的清扫候选，按到期时间升序取头部（两类到期合并快照返回）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒）。</param>
     /// <param name="idleTimeoutMilliseconds">空闲判定阈值（毫秒）。</param>
     /// <param name="maxCount">最多返回条数。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>到期候选记录快照；无候选返回空列表。</returns>
-    public Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long tenantId, long appId, long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlinePresenceRecord>(maxCount);
         lock (_syncRoot)
@@ -174,7 +161,7 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
                     break;
                 }
 
-                AppendSweepCandidate(result, tenantId, appId, entry.RecordKey);
+                AppendSweepCandidate(result, entry.RecordKey);
             }
 
             var heartbeatDeadline = nowUnixMilliseconds - idleTimeoutMilliseconds;
@@ -185,22 +172,20 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
                     break;
                 }
 
-                AppendSweepCandidate(result, tenantId, appId, entry.RecordKey);
+                AppendSweepCandidate(result, entry.RecordKey);
             }
         }
 
         return Task.FromResult<IReadOnlyList<OnlinePresenceRecord>>(result);
     }
 
-    /// <summary>向候选列表追加索引项对应的记录（记录不存在或租户/应用不匹配则跳过）。</summary>
+    /// <summary>向候选列表追加索引项对应的记录。</summary>
     /// <param name="result">候选输出列表。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="recordKey">记录键。</param>
-    private void AppendSweepCandidate(List<OnlinePresenceRecord> result, long tenantId, long appId, string recordKey)
+    private void AppendSweepCandidate(List<OnlinePresenceRecord> result, string recordKey)
     {
         OnlinePresenceRecord record;
-        if (!_records.TryGetValue(recordKey, out record) || record.TenantId != tenantId || record.AppId != appId)
+        if (!_records.TryGetValue(recordKey, out record))
         {
             return;
         }
@@ -242,12 +227,10 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
     }
 
     /// <summary>构造在线状态记录键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, long playerId)
+    /// <returns>玩家标识字符串键。</returns>
+    private static string BuildKey(long playerId)
     {
-        return tenantId + ":" + appId + ":" + playerId;
+        return playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 }

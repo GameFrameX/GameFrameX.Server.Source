@@ -106,17 +106,15 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
     }
 
     /// <summary>
-    /// 在全局锁内按作用域与闭区间时间窗筛选内存中的死信。
+    /// 在全局锁内按闭区间时间窗筛选内存中的死信。
     /// </summary>
     /// <remarks>
-    /// Filters the in-memory dead letters by scope and inclusive time window under the global lock.
+    /// Filters the in-memory dead letters by the inclusive time window under the global lock.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="query">时间窗查询载荷（闭区间）/ The time-range query payload (inclusive window)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>匹配的死信列表（按写入即拒收顺序升序）；无记录返回空列表 / The matched dead letters in write (rejection) order; an empty list when none match</returns>
-    public Task<List<OnlineGameEventDeadLetter>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default)
+    public Task<List<OnlineGameEventDeadLetter>> ListAsync(EventTimeRangeQuery query, CancellationToken cancellationToken = default)
     {
         var fromTime = query.FromTime;
         var toTime = query.ToTime;
@@ -131,7 +129,7 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
                 }
 
                 var onlineEvent = deadLetter.Event;
-                if (onlineEvent == null || onlineEvent.TenantId != tenantId || onlineEvent.AppId != appId)
+                if (onlineEvent == null)
                 {
                     continue;
                 }

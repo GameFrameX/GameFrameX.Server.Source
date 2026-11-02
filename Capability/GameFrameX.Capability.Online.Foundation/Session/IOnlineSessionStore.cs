@@ -33,7 +33,7 @@ namespace GameFrameX.Capability.Online.Foundation.Session;
 /// 会话域存储接口（会话与 Token 指纹索引的持久化契约）。
 /// <para>
 /// 维护约束：索引——Token 指纹唯一（FindByTokenHashAsync 命中至多一条活跃会话）；
-/// 会话按 (TenantId, AppId, PlayerId) 检索活跃集合（多端策略裁决输入）；
+/// 会话按 PlayerId 检索活跃集合（多端策略裁决输入）；
 /// 生产装配以持久化实现（含 Token 指纹索引与 TTL 清理）替换内存默认实现。
 /// </para>
 /// </summary>
@@ -56,26 +56,22 @@ public interface IOnlineSessionStore
     /// <returns>会话实体；不存在返回 null。</returns>
     Task<OnlineSession> FindByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default);
 
-    /// <summary>列出玩家在 (TenantId, AppId) 下的非终态会话（多端策略裁决输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>列出玩家的非终态会话（多端策略裁决输入）。</summary>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>非终态会话列表。</returns>
-    Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>列出全部非终态会话（过期/重连超窗清理任务的扫描输入）。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>全部非终态会话列表。</returns>
     Task<IReadOnlyList<OnlineSession>> ListNonTerminalAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内非终态会话的按状态分组计数（聚合谓词下推：终态判定同 <see cref="OnlineSessionStateExtensions.IsTerminal"/>，与在线总览口径一致；键按状态枚举值升序）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>统计区服内非终态会话的按状态分组计数（聚合谓词下推：终态判定同 <see cref="OnlineSessionStateExtensions.IsTerminal"/>，与在线总览口径一致；键按状态枚举值升序）。</summary>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>状态 → 会话数（只含非终态状态；无非终态会话时为空表）。</returns>
-    Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default);
 
     /// <summary>移除会话（测试与物理清理用；正常流程走终态不删除）。</summary>
     /// <param name="sessionId">会话标识。</param>

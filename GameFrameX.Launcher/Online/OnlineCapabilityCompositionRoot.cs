@@ -165,8 +165,6 @@ public static class OnlineCapabilityCompositionRoot
                 EnableRuntime = online.EnableRuntime,
                 HostOptions = new CapabilityHostOptions
                 {
-                    TenantId = setting.OnlineTenantId,
-                    AppId = setting.OnlineAppId,
                     ServerId = setting.ServerId,
                 },
                 Filter = new CapabilityAssemblyFilter(online.Capabilities, online.Disable),
@@ -315,7 +313,7 @@ public static class OnlineCapabilityCompositionRoot
     }
 
     /// <summary>
-    /// 重建族配置段原始 JSON（族级键 + Settings 节点）：族脊柱包读取 TenantId / AppId / ServerId 落授权作用域，
+    /// 重建族配置段原始 JSON（族级键 + Settings 节点）：族脊柱包读取 ServerId 落授权作用域（单键化 D4），
     /// 机制 Options 绑定器读取 Settings.&lt;能力Id&gt; 做能力级参数覆盖；JsonElement 底层 = System.Text.Json
     ///（GameFrameX.Foundation.Json 5.0.0 实证引用 System.Text.Json，配置装载同为 System.Text.Json 反序列化）。
     /// </summary>
@@ -326,8 +324,6 @@ public static class OnlineCapabilityCompositionRoot
         var online = setting.Online;
         var section = new Dictionary<string, object>
         {
-            ["TenantId"] = setting.OnlineTenantId,
-            ["AppId"] = setting.OnlineAppId,
             ["ServerId"] = setting.ServerId,
             ["EnableRuntime"] = online.EnableRuntime,
             ["EnableAdminApi"] = online.EnableAdminApi,

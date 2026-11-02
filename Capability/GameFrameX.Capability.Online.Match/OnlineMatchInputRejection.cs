@@ -67,6 +67,6 @@ public enum OnlineMatchInputRejection
     /// <summary>玩法级非法输入（越权回合、非本回合玩家、动作不可识别等）。</summary>
     IllegalAction = 8,
 
-    /// <summary>作用域不匹配（跨租户/App/Server）。</summary>
+    /// <summary>作用域不匹配（跨区服）。</summary>
     ScopeDenied = 9,
 }

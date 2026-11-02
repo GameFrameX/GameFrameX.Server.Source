@@ -47,16 +47,6 @@ public sealed class OnlineMatchRewardOutboxRowState : BaseCacheState
     public string MatchId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置下一轮投递最早时刻（Unix 毫秒；0 = 立即可投）。
     /// </summary>
     public long NextAttemptTimeUnixMilliseconds { get; set; }

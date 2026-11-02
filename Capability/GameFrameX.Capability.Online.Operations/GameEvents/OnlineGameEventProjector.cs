@@ -104,18 +104,18 @@ public sealed class OnlineGameEventProjector
         switch (session.State)
         {
             case OnlineSessionState.Authenticated:
-                events.Add(Build(OnlineGameEventName.Login, session.TenantId, session.AppId, session.ServerId, session.PlayerId, Fallback(session.AuthenticatedAtTime, session.CreatedAtTime), session.Id, fields));
+                events.Add(Build(OnlineGameEventName.Login, session.ServerId, session.PlayerId, Fallback(session.AuthenticatedAtTime, session.CreatedAtTime), session.Id, fields));
                 break;
             case OnlineSessionState.Connected:
             case OnlineSessionState.Active:
             case OnlineSessionState.Reconnecting:
-                events.Add(Build(OnlineGameEventName.SessionStart, session.TenantId, session.AppId, session.ServerId, session.PlayerId, Fallback(session.ConnectedAtTime, session.AuthenticatedAtTime), session.Id, fields));
+                events.Add(Build(OnlineGameEventName.SessionStart, session.ServerId, session.PlayerId, Fallback(session.ConnectedAtTime, session.AuthenticatedAtTime), session.Id, fields));
                 break;
             case OnlineSessionState.Closed:
             case OnlineSessionState.Kicked:
             case OnlineSessionState.Expired:
                 fields[OnlineGameEventFieldName.EndReason] = session.State.ToString();
-                events.Add(Build(OnlineGameEventName.SessionEnd, session.TenantId, session.AppId, session.ServerId, session.PlayerId, Fallback(session.DisconnectAtTime, session.CreatedAtTime), session.Id, fields));
+                events.Add(Build(OnlineGameEventName.SessionEnd, session.ServerId, session.PlayerId, Fallback(session.DisconnectAtTime, session.CreatedAtTime), session.Id, fields));
                 break;
         }
 
@@ -145,7 +145,7 @@ public sealed class OnlineGameEventProjector
 
         var events = new List<OnlineEvent>
         {
-            Build(OnlineGameEventName.MatchQueue, ticket.TenantId, ticket.AppId, ticket.ServerId, 0, ticket.CreatedAtTime, ticket.TicketId, fields),
+            Build(OnlineGameEventName.MatchQueue, ticket.ServerId, 0, ticket.CreatedAtTime, ticket.TicketId, fields),
         };
         return events;
     }
@@ -177,7 +177,7 @@ public sealed class OnlineGameEventProjector
             { OnlineGameEventFieldName.State, match.State.ToString() },
         };
 
-        events.Add(Build(OnlineGameEventName.MatchStart, match.TenantId, match.AppId, match.ServerId, 0, Fallback(match.StateChangedTime, match.CreatedTime), match.MatchId, fields));
+        events.Add(Build(OnlineGameEventName.MatchStart, match.ServerId, 0, Fallback(match.StateChangedTime, match.CreatedTime), match.MatchId, fields));
         return events;
     }
 
@@ -208,7 +208,7 @@ public sealed class OnlineGameEventProjector
 
         var events = new List<OnlineEvent>
         {
-            Build(OnlineGameEventName.MatchEnd, result.TenantId, result.AppId, result.ServerId, 0, occurredTime, result.MatchResultId, matchFields),
+            Build(OnlineGameEventName.MatchEnd, result.ServerId, 0, occurredTime, result.MatchResultId, matchFields),
         };
 
         if (result.Entries == null)
@@ -234,7 +234,7 @@ public sealed class OnlineGameEventProjector
                 { OnlineGameEventFieldName.Score, FormatId(entry.Score) },
             };
 
-            events.Add(Build(name, result.TenantId, result.AppId, result.ServerId, entry.PlayerId, occurredTime, result.MatchResultId, playerFields));
+            events.Add(Build(name, result.ServerId, entry.PlayerId, occurredTime, result.MatchResultId, playerFields));
         }
 
         return events;
@@ -290,7 +290,7 @@ public sealed class OnlineGameEventProjector
             { OnlineGameEventFieldName.ChangeCount, FormatId(transaction.ExpectedChangeCount) },
         };
 
-        events.Add(Build(name, transaction.TenantId, transaction.AppId, transaction.HomeServerId, transaction.PlayerId, Fallback(transaction.SettledTime, transaction.CreatedTime), transaction.TransactionId, fields));
+        events.Add(Build(name, transaction.HomeServerId, transaction.PlayerId, Fallback(transaction.SettledTime, transaction.CreatedTime), transaction.TransactionId, fields));
         return events;
     }
 
@@ -325,7 +325,7 @@ public sealed class OnlineGameEventProjector
             { OnlineGameEventFieldName.ChatMessageId, reportCase.ChatMessageId ?? string.Empty },
         };
 
-        events.Add(Build(OnlineGameEventName.ChatReport, reportCase.TenantId, reportCase.AppId, 0, reportCase.ReporterId, Fallback(reportCase.CreatedAtTime, reportCase.UpdatedAtTime), reportCase.ReportId, fields));
+        events.Add(Build(OnlineGameEventName.ChatReport, 0, reportCase.ReporterId, Fallback(reportCase.CreatedAtTime, reportCase.UpdatedAtTime), reportCase.ReportId, fields));
         return events;
     }
 
@@ -357,7 +357,7 @@ public sealed class OnlineGameEventProjector
             { OnlineGameEventFieldName.ExpiresAtTime, FormatId(punishment.ExpiresAtTime) },
         };
 
-        events.Add(Build(OnlineGameEventName.Penalty, punishment.TenantId, punishment.AppId, 0, punishment.PlayerId, Fallback(punishment.EffectiveAtTime, punishment.CreatedAtTime), punishment.PunishmentId, fields));
+        events.Add(Build(OnlineGameEventName.Penalty, 0, punishment.PlayerId, Fallback(punishment.EffectiveAtTime, punishment.CreatedAtTime), punishment.PunishmentId, fields));
         return events;
     }
 
@@ -388,15 +388,13 @@ public sealed class OnlineGameEventProjector
     /// 构造标准游戏事件信封（载荷与载荷审计字段取同一份字段投影）。
     /// </summary>
     /// <param name="eventName">登记表内的事件名。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识（无归属服传 0）。</param>
     /// <param name="playerId">玩家标识（聚合事件传 0）。</param>
     /// <param name="occurredTime">事件发生时刻（UTC 毫秒；小于等于 0 时取当前时刻）。</param>
     /// <param name="correlationId">关联领域标识。</param>
     /// <param name="fields">载荷字段投影（同时充当 <c>PayloadAuditFields</c>）。</param>
     /// <returns>事件信封实例。</returns>
-    private static OnlineEvent Build(string eventName, long tenantId, long appId, long serverId, long playerId, long occurredTime, string correlationId, Dictionary<string, string> fields)
+    private static OnlineEvent Build(string eventName, long serverId, long playerId, long occurredTime, string correlationId, Dictionary<string, string> fields)
     {
         return new OnlineEvent
         {
@@ -404,8 +402,6 @@ public sealed class OnlineGameEventProjector
             EventType = eventName,
             OccurredTime = occurredTime > 0 ? occurredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = playerId,
             Source = OnlineGameEventSchema.Source,

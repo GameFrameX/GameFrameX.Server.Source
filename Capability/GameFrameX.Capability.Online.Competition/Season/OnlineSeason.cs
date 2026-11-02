@@ -35,8 +35,7 @@ namespace GameFrameX.Capability.Online.Competition.Season;
 /// 赛季定义（开始/结束时间、关联榜单、赛季奖励与结算状态）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) 作用域 = (TenantId, AppId)，与榜单同口径（App 内跨区服聚合）——跨 App / 跨租户读写一律查不到
-/// （ResourceNotFound 反预言，对齐既有先例）；
+/// (1) 赛季为全局域数据（与榜单同口径）——键即 SeasonId，无区服隔离位，同键即同季；
 /// (2) 赛季本身**不承载分数**：成绩只存在于榜单与快照中，赛季只描述周期与奖励口径；
 /// (3) 奖励规则创建后固化，运行期不可变更（配置变更与结算并发的冻结要求）；
 /// (4) <see cref="StartTime"/> / <see cref="EndTime"/> 是**排期元数据**，由运行时装配的调度器到点驱动
@@ -46,19 +45,9 @@ namespace GameFrameX.Capability.Online.Competition.Season;
 public sealed class OnlineSeason
 {
     /// <summary>
-    /// 获取或设置赛季标识（App 内唯一，创建方提供）。
+    /// 获取或设置赛季标识（全局唯一，创建方提供）。
     /// </summary>
     public string SeasonId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关联榜单标识（赛季成绩的累积榜单；结束时的快照即取自该榜）。
@@ -121,8 +110,6 @@ public sealed class OnlineSeason
         return new OnlineSeason
         {
             SeasonId = SeasonId,
-            TenantId = TenantId,
-            AppId = AppId,
             LeaderboardId = LeaderboardId,
             StartTime = StartTime,
             EndTime = EndTime,

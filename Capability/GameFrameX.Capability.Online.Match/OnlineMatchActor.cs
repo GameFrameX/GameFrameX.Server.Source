@@ -44,7 +44,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 三段式，CAS 失败即表示本 Actor 已失去所有权（另一 Actor 推进过同一对局），此时**不得**保留任何
 /// 本地改写（无串局）；② 客户端只能提交 <see cref="OnlineMatchInput"/> 意图，
 /// 胜负与奖励一律由玩法实现依服务端状态裁决；③ 每个入口都校验
-/// <see cref="OnlineScope"/>，跨租户/App/Server 一律 <see cref="OnlineErrorCode.ScopeDenied"/>。
+/// <see cref="OnlineScope"/>，跨区服一律 <see cref="OnlineErrorCode.ScopeDenied"/>。
 /// </para>
 /// <para>
 /// 输入校验顺序固定为：成员身份 → 成员在线状态 → 对局阶段 → 重复包 → 乱序包 → 玩法裁决。
@@ -103,19 +103,11 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 获取租户标识。
+    /// 获取区服标识。
     /// </summary>
-    public long TenantId
+    public long ServerId
     {
-        get { return _match.TenantId; }
-    }
-
-    /// <summary>
-    /// 获取 App 标识。
-    /// </summary>
-    public long AppId
-    {
-        get { return _match.AppId; }
+        get { return _match.ServerId; }
     }
 
     /// <summary>
@@ -536,8 +528,6 @@ public sealed class OnlineMatchActor
 
             result.MatchResultId = "mrs-" + Guid.NewGuid().ToString("N");
             result.MatchId = match.MatchId;
-            result.TenantId = match.TenantId;
-            result.AppId = match.AppId;
             result.ServerId = match.ServerId;
             result.Mode = match.Mode;
             result.Region = match.Region;
@@ -868,7 +858,7 @@ public sealed class OnlineMatchActor
     /// <returns>对局自身隔离键构成的作用域。</returns>
     private OnlineScope SystemScope()
     {
-        return new OnlineScope(_match.TenantId, _match.AppId, _match.ServerId);
+        return new OnlineScope(_match.ServerId);
     }
 
     /// <summary>
@@ -945,20 +935,17 @@ public sealed class OnlineMatchActor
         }
 
         var memberCount = _match.Members == null ? 0 : _match.Members.Count;
-        await _eventPublisher.PublishAsync(OnlineMatchRuntimeEvents.CreateMatchStateChanged(_match.TenantId, _match.AppId, _match.ServerId, _match.MatchId, _match.AssignmentId, fromState.ToString(), toState.ToString(), _match.ServerSequence, memberCount), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineMatchRuntimeEvents.CreateMatchStateChanged(_match.ServerId, _match.MatchId, _match.AssignmentId, fromState.ToString(), toState.ToString(), _match.ServerSequence, memberCount), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 校验作用域与对局的三元隔离键一致。
+    /// 校验作用域与对局的区服隔离键一致。
     /// </summary>
-    /// <param name="scope">请求作用域。</param>
     /// <param name="match">对局。</param>
     /// <returns>一致返回 <c>true</c>。</returns>
     private static bool ScopeMatches(OnlineScope scope, OnlineMatch match)
     {
-        return scope.TenantId == match.TenantId
-               && scope.AppId == match.AppId
-               && scope.ServerId == match.ServerId;
+        return scope.ServerId == match.ServerId;
     }
 
     /// <summary>

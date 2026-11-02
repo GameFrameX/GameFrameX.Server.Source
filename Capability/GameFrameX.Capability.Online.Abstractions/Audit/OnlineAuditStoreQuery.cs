@@ -34,7 +34,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计存储层查询载荷（<see cref="IOnlineAuditStore.QueryAsync"/> 的唯一入参；
-/// 由 <c>OnlineAuditService.QueryAsync</c> 在完成作用域 / 页大小 / 游标校验与游标解码后组装）。
+/// 由 <c>OnlineAuditService.QueryAsync</c> 在完成页大小 / 游标校验与游标解码后组装；单键化 D4 后无作用域锚定键）。
 /// <para>
 /// 维护约束（红线）：过滤语义与跨域检索口径**逐项同源**——全部可选过滤为合取（AND），
 /// <see cref="Domains"/> 为空或 <see langword="null"/> 表示不限域，非空时命中集合内任一域即保留
@@ -45,16 +45,6 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 /// </summary>
 public sealed class OnlineAuditStoreQuery
 {
-    /// <summary>
-    /// 获取或设置租户标识（作用域锚定第一键；须大于 0，由调用方校验）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域锚定第二键；须大于 0，由调用方校验）。
-    /// </summary>
-    public long AppId { get; set; }
-
     /// <summary>
     /// 获取或设置审计域过滤集合（跨域联查：命中任一域即保留；空集合或 <see langword="null"/> 表示不限域）。
     /// </summary>

@@ -91,31 +91,28 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>
     /// 执行一轮匹配：先扫描过期，再按 FIFO 逐张基准票据尝试成组并原子落档。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本轮执行结果。</returns>
-    public async Task<OnlineResult<OnlineMatchmakingRunResult>> RunOnceAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineMatchmakingRunResult>> RunOnceAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         // C374 补偿：本轮撮合前先重投上一轮发布失败的待投递事件（至少一次投递；无发件箱时跳过）。
         if (_eventOutbox != null)
         {
-            await DeliverPendingEventsAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+            await DeliverPendingEventsAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var sweep = await _ticketService.SweepExpiredAsync(tenantId, appId, now, cancellationToken).ConfigureAwait(false);
+        var sweep = await _ticketService.SweepExpiredAsync(now, cancellationToken).ConfigureAwait(false);
         var result = new OnlineMatchmakingRunResult
         {
-            TenantId = tenantId,
-            AppId = appId,
             ExpiredTicketCount = sweep.Data,
             AssignmentIds = new List<string>(),
         };
 
-        var queued = await _store.ListQueuedAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        var queued = await _store.ListQueuedAsync(cancellationToken).ConfigureAwait(false);
+
         result.ScannedTicketCount = queued.Count;
 
         var ordered = SortByArrival(queued);
@@ -128,7 +125,7 @@ public sealed class OnlineMatchmakerCoordinator
                 continue;
             }
 
-            var group = await SelectGroupAsync(anchor, ordered, consumed, now, tenantId, appId, cancellationToken).ConfigureAwait(false);
+            var group = await SelectGroupAsync(anchor, ordered, consumed, now, cancellationToken).ConfigureAwait(false);
             if (group == null)
             {
                 continue;
@@ -177,8 +174,6 @@ public sealed class OnlineMatchmakerCoordinator
             RuleSnapshot = BuildSnapshot(group, nowUnixMilliseconds),
             CreatedAtTime = nowUnixMilliseconds,
             TicketIds = ticketIds,
-            TenantId = anchor.TenantId,
-            AppId = anchor.AppId,
             ServerId = anchor.ServerId,
         };
 
@@ -224,15 +219,15 @@ public sealed class OnlineMatchmakerCoordinator
     {
         var events = new List<OnlineEvent>
         {
-            OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds),
+            OnlineMatchEvents.CreateAssignmentCreated(committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds),
         };
 
         foreach (var ticketId in ticketIds)
         {
-            var matched = await _store.FindAsync(committed.TenantId, committed.AppId, ticketId, cancellationToken).ConfigureAwait(false);
+            var matched = await _store.FindAsync(ticketId, cancellationToken).ConfigureAwait(false);
             if (matched != null)
             {
-                events.Add(OnlineMatchEvents.CreateTicketChanged(matched.TenantId, matched.AppId, matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()));
+                events.Add(OnlineMatchEvents.CreateTicketChanged(matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()));
             }
         }
 
@@ -263,20 +258,18 @@ public sealed class OnlineMatchmakerCoordinator
         }
 
         await _eventOutbox.AppendAsync(events, cancellationToken).ConfigureAwait(false);
-        await DeliverPendingEventsAsync(committed.TenantId, committed.AppId, cancellationToken).ConfigureAwait(false);
+        await DeliverPendingEventsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// 重投作用域内全部待投递事件：逐条发布、成功即标记已投递；单条失败吞没异常并保留条目，
     /// 交由后续轮次继续重投（异常不外溢——撮合与重投互不拖垮）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
-    private async Task DeliverPendingEventsAsync(long tenantId, long appId, CancellationToken cancellationToken)
+    private async Task DeliverPendingEventsAsync(CancellationToken cancellationToken)
     {
-        var pending = await _eventOutbox.ListPendingAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        var pending = await _eventOutbox.ListPendingAsync(cancellationToken).ConfigureAwait(false);
 
         foreach (var entry in pending)
         {
@@ -289,7 +282,7 @@ public sealed class OnlineMatchmakerCoordinator
                 continue;
             }
 
-            await _eventOutbox.MarkDeliveredAsync(tenantId, appId, entry.EventId, cancellationToken).ConfigureAwait(false);
+            await _eventOutbox.MarkDeliveredAsync(entry.EventId, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -311,11 +304,9 @@ public sealed class OnlineMatchmakerCoordinator
     /// <param name="ordered">按入队顺序排列的候选票据。</param>
     /// <param name="consumed">本轮已消费的票据标识（不得再次成组）。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>凑满目标规模的票据组；不足返回 null。</returns>
-    private async Task<List<OnlineMatchTicket>> SelectGroupAsync(OnlineMatchTicket anchor, List<OnlineMatchTicket> ordered, HashSet<string> consumed, long nowUnixMilliseconds, long tenantId, long appId, CancellationToken cancellationToken)
+    private async Task<List<OnlineMatchTicket>> SelectGroupAsync(OnlineMatchTicket anchor, List<OnlineMatchTicket> ordered, HashSet<string> consumed, long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
         if (anchor.TeamSize <= 0 || consumed.Contains(anchor.TicketId))
         {
@@ -336,7 +327,7 @@ public sealed class OnlineMatchmakerCoordinator
 
         foreach (var candidate in ordered)
         {
-            if (!await CanAddToGroupAsync(anchor, candidate, players, consumed, nowUnixMilliseconds, tenantId, appId, cancellationToken).ConfigureAwait(false))
+            if (!await CanAddToGroupAsync(anchor, candidate, players, consumed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
@@ -380,11 +371,9 @@ public sealed class OnlineMatchmakerCoordinator
     /// <param name="players">已累加玩家集合。</param>
     /// <param name="consumed">本轮已消费的票据标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可累加返回 <c>true</c>。</returns>
-    private async Task<bool> CanAddToGroupAsync(OnlineMatchTicket anchor, OnlineMatchTicket candidate, HashSet<long> players, HashSet<string> consumed, long nowUnixMilliseconds, long tenantId, long appId, CancellationToken cancellationToken)
+    private async Task<bool> CanAddToGroupAsync(OnlineMatchTicket anchor, OnlineMatchTicket candidate, HashSet<long> players, HashSet<string> consumed, long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
         if (candidate.TicketId == anchor.TicketId || consumed.Contains(candidate.TicketId))
         {
@@ -411,7 +400,7 @@ public sealed class OnlineMatchmakerCoordinator
             return false;
         }
 
-        return await IsSociallyCompatibleAsync(players, candidate, tenantId, appId, cancellationToken).ConfigureAwait(false);
+        return await IsSociallyCompatibleAsync(players, candidate, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -495,11 +484,9 @@ public sealed class OnlineMatchmakerCoordinator
     /// </summary>
     /// <param name="players">已累加玩家集合。</param>
     /// <param name="candidate">候选票据。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>可共处一局返回 <c>true</c>。</returns>
-    private async Task<bool> IsSociallyCompatibleAsync(HashSet<long> players, OnlineMatchTicket candidate, long tenantId, long appId, CancellationToken cancellationToken)
+    private async Task<bool> IsSociallyCompatibleAsync(HashSet<long> players, OnlineMatchTicket candidate, CancellationToken cancellationToken)
     {
         if (_socialGate == null || players.Count == 0)
         {
@@ -510,13 +497,13 @@ public sealed class OnlineMatchmakerCoordinator
         {
             foreach (var candidatePlayerId in candidate.PlayerIds)
             {
-                var forward = await _socialGate.EvaluateAsync(tenantId, appId, existingPlayerId, candidatePlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
+                var forward = await _socialGate.EvaluateAsync(existingPlayerId, candidatePlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
                 if (!forward.Allowed)
                 {
                     return false;
                 }
 
-                var backward = await _socialGate.EvaluateAsync(tenantId, appId, candidatePlayerId, existingPlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
+                var backward = await _socialGate.EvaluateAsync(candidatePlayerId, existingPlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
                 if (!backward.Allowed)
                 {
                     return false;
