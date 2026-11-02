@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <!-- 独立用户游戏工程（gfx-game 模板生成）：以 GameFrameX 2.0 NuGet 包消费框架能力，可在任意目录构建运行。 -->
+        <IsPackable>false</IsPackable>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- 引啥装配啥（编译期保证）：Compose 按部署前缀扫描能力包，本工程只引用所选能力包，引用集即装配集。
+             本模板缺省勾选黄金路径最小集（Foundation + Social + Match + Assets + Leaderboard + Competition）：
+             开局 → 对局裁决 → 结算 → 发奖 → 默认榜上榜开箱即通；增减能力 = 只增删 PackageReference。 -->
+        <PackageReference Include="GameFrameX.Capability.Hosting.AdminApi" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Foundation" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Social" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Assets" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Match" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Leaderboard" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Competition" Version="2.0.0" />
+    </ItemGroup>
+
+</Project>
