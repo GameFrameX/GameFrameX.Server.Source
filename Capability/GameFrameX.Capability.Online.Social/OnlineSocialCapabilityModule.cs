@@ -221,14 +221,13 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         context.AddService(_chat);
         context.AddService<IOnlineSocialGate>(_socialDecisions);
 
-        var scope = _scope;
         context.AddTickJob("notification-expiry-sweep", async ct =>
         {
-            await _notifications.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _notifications.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("friend-request-expiry-sweep", async ct =>
         {
-            await _friends.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _friends.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
     }
 

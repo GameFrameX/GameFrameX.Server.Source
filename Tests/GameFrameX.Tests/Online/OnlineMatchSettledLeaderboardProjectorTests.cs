@@ -239,7 +239,7 @@ namespace GameFrameX.Tests.Online
         {
             var options = new CapabilityCompositionOptions(OnlineCapabilityTestHarness.FamilySection(null), new CollectingCapabilityAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, },
+                HostOptions = new CapabilityHostOptions { ServerId = ServerId, },
             };
             ConfigureComposition(options, null, "online-match");
             var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
