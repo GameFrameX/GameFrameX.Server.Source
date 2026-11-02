@@ -55,8 +55,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// <para>
 /// <c>ActivateAsync</c>：发布 <see cref="IOnlineFriendDomain"/> 好友域桥契约面（<see cref="OnlineFriendDomainFace"/>
 /// 薄编排实现）；枚举 <see cref="IOnlineChannelMembershipProbe"/> 扩展点注入聊天服务（群组探针以 "group"
-/// 命名注册，兄弟域如 matchmaking 的 "party" 探针同面注入）；按 <see cref="OnlineFriendOptions.MigrateLegacyFriendData"/>
-/// 触发旧好友数据一次性迁移（<see cref="OnlineFriendLegacyMigration"/>）。
+/// 命名注册，兄弟域如 matchmaking 的 "party" 探针同面注入）。
 /// </para>
 /// <para>
 /// 钩子声明：<see cref="IOnlineChatModerationHook"/> 聊天内容审核扩展点以默认放行策略声明
@@ -71,8 +70,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// extension point via <c>RequireHostService</c>; the presence probe resolves through the required online-foundation
 /// dependency; outward products are registered back into the shared face; two expiry-sweep tick jobs anchor their
 /// tenant / app on the family <see cref="OnlineScope"/> infrastructure. <c>ActivateAsync</c> publishes the
-/// <see cref="IOnlineFriendDomain"/> bridge face, injects channel-membership probes into the chat service by
-/// enumerating the extension point, and triggers the one-shot legacy friend-data migration when the option is on.
+/// <see cref="IOnlineFriendDomain"/> bridge face and injects channel-membership probes into the chat service by
+/// enumerating the extension point.
 /// The chat moderation extension point is declared with the default allow-all strategy, replaced atomically by the
 /// hot-update side through <c>CapabilityHook&lt;T&gt;.Attach</c>.
 /// </remarks>
@@ -116,7 +115,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineChatAuditProjection _chatAudit;
 
     /// <summary>
-    /// 好友服务（好友关系生命周期的唯一写者；激活期执行旧数据迁移的真实写路径）。
+    /// 好友服务（好友关系生命周期的唯一写者）。
     /// </summary>
     private OnlineFriendService _friends;
 
@@ -136,12 +135,12 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineSessionTokenService _tokens;
 
     /// <summary>
-    /// 合并校验后的社交 Options（Register 期取用；激活期迁移开关读取面）。
+    /// 合并校验后的社交 Options（Register 期取用）。
     /// </summary>
     private OnlineSocialOptions _options;
 
     /// <summary>
-    /// 族基建作用域（Register 期解析；迁移玩家作用域区服键来源）。
+    /// 族基建作用域（Register 期解析）。
     /// </summary>
     private OnlineScope _scope;
 
@@ -225,26 +224,24 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         var scope = _scope;
         context.AddTickJob("notification-expiry-sweep", async ct =>
         {
-            await _notifications.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _notifications.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("friend-request-expiry-sweep", async ct =>
         {
-            await _friends.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _friends.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
     }
 
     /// <summary>
-    /// 激活社交能力：发布好友域桥，向聊天服务注入全部已注册的频道成员资格探针；
-    /// 仅当好友选项开启旧数据迁移时，执行一次旧好友数据迁移。
+    /// 激活社交能力：发布好友域桥，向聊天服务注入全部已注册的频道成员资格探针。
     /// </summary>
     /// <remarks>
-    /// Publishes the friend domain bridge, attaches all registered channel membership probes to the chat service,
-    /// and runs the legacy friend data migration only when it is enabled in the friend options.
+    /// Publishes the friend domain bridge and attaches all registered channel membership probes to the chat service.
     /// </remarks>
     /// <param name="context">能力激活上下文 / Capability activation context</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    public async Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+    public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         // 好友域桥契约面发布（发布者身份 = 本能力；撤销由宿主停止期自动完成）。
         context.Bridges.Publish<IOnlineFriendDomain>(new OnlineFriendDomainFace(_friends));
@@ -252,11 +249,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         // 频道成员资格探针注入（Activate 期才允许枚举扩展点；群组 "group" + 兄弟域 "party" 等一并注入）。
         _chat.AttachChannelMembershipProbes(context.Services.GetServices<IOnlineChannelMembershipProbe>());
 
-        // 旧好友数据一次性迁移（显式开关，默认关闭；只读单向 + 幂等 + 逐条 containment + 汇总）。
-        if (_options.Friend.MigrateLegacyFriendData)
-        {
-            await OnlineFriendLegacyMigration.MigrateAsync(_friends, _scope.ServerId, cancellationToken).ConfigureAwait(false);
-        }
+        return Task.CompletedTask;
     }
 
     /// <summary>
