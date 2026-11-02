@@ -60,8 +60,8 @@ public sealed class ServerLinkFacadeTests
     {
         // 生产消息注册（RemoteMessaging 测试既有口径）：仅当所需消息未注册时执行，
         // 避免清空式重建与并行测试类的注册表竞态
-        if (MessageProtoHelper.GetMessageIdByType(typeof(ReqHeartBeat)) == 0 ||
-            MessageProtoHelper.GetMessageIdByType(typeof(GameFrameX.Network.RemoteMessaging.Versioning.RespProtocolVersionNegotiation)) == 0)
+        if (MessageProtoHelper.GetMessageIdByType(typeof(ReqHeartBeat)) <= 0 ||
+            MessageProtoHelper.GetMessageIdByType(typeof(GameFrameX.Network.RemoteMessaging.Versioning.RespProtocolVersionNegotiation)) <= 0)
         {
             MessageProtoHelper.Init(typeof(ReqHeartBeat).Assembly, typeof(GameFrameX.Network.RemoteMessaging.Routing.RoleRouteEnvelopeMessage).Assembly);
         }
