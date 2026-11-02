@@ -1,4 +1,6 @@
 services:
+  # ── 默认档：MongoDB（双主线之一）── `docker compose up` 即用
+  # 示例配置按三档定档默认零依赖 Sqlite（quickstart 载体）；容器内挂载 Mongo 档样例选型：
   mongo:
     image: mongo:8.2
     container_name: gfx-mongo
@@ -13,7 +15,8 @@ services:
     networks:
       - gameframex
 
-  # 单一镜像；启动参数经 GAMEFRAMEX_SERVER_ARGS 原样透传（当前仅启动 Game，Social 后续补充）
+  # 单一镜像；启动参数经 GAMEFRAMEX_SERVER_ARGS 原样透传（当前仅启动 Game，Social 后续补充）。
+  # 数据库选型经挂载的 Configs/app_config.json 表达（启动期校验器要求 CLI 与文件一致，文件即选型载体）。
   game:
     build:
       context: .
@@ -22,18 +25,54 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    environment:
-      GAMEFRAMEX_SERVER_ARGS: "--ServerType=Game --ServerId=1001 --ServerInstanceId=1 --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110 --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999 --OnlineTenantId=1 --OnlineAppId=1 --DataBaseUrl=mongodb://mongo:27017/?authSource=admin --DataBaseName=gameframex"
+    volumes:
+      - "./Configs/app_config.mongo.json:/app/Configs/app_config.json:ro"
+      - "./running/game/logs:/app/data/logs"
     ports:
       - "39100:29100"
       - "38080:28080"
       - "28090:28090"
+    networks:
+      - gameframex
+
+  # ── PostgreSQL 档（双主线之二）：`docker compose --profile postgres up` 启用 ──
+  # 与 Mongo 档并列的完整 Provider 示例；两档不共享数据，切换 Provider 不迁移存量数据（无迁移工具，见 README）。
+  postgres:
+    image: postgres:17
+    container_name: gfx-postgres
+    restart: unless-stopped
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gameframex
+    ports:
+      - "127.0.0.1:35432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - gameframex
+
+  game-postgres:
+    build:
+      context: .
+    image: gameframex-server:local
+    container_name: gfx-game-postgres
+    profiles:
+      - postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      # SQLite 场景（--DatabaseProvider=Sqlite --DataBaseUrl="Data Source=data/gameframex.db"）：
-      # 缺省数据文件落 /app/data/gameframex.db（镜像 VOLUME 数据根），要持久化就给 /app/data 挂具名卷或 bind 卷，例如
-      # - "gameframex_data:/app/data"
-      # 注意 WAL 模式不建议放网络卷/SMB（有损坏风险），本地卷优先。
-      - "./running/game/logs:/app/data/logs"
+      - "./Configs/app_config.postgres.json:/app/Configs/app_config.json:ro"
+      - "./running/game-postgres/logs:/app/data/logs"
+    ports:
+      - "39200:29100"
+      - "38081:28080"
+      - "28091:28090"
     networks:
       - gameframex
 
