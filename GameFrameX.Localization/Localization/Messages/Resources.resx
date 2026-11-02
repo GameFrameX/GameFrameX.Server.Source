@@ -1095,6 +1095,9 @@
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>Admin API listening options are invalid (port / prefix).</value>
   </data>
+  <data name="Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning" xml:space="preserve">
+    <value>Admin API plane enabled: it currently has no authentication and listens on all network interfaces (port {0}); keep it on trusted networks only (restrict with a firewall / security group or disable it).</value>
+  </data>
   <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
     <value>Capability assembly started: {0} discovered, {1} enabled, {2} excluded.</value>
   </data>
@@ -1580,6 +1583,33 @@
   </data>
   <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
     <value>Bot-{0} RPS scenario poll loop error: {1}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinerWaiting" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario started polling for joinable ConnectFour rooms.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinedRoom" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario joined room {1}, waiting for the game to start.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinRoomFailed" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario failed to join room {1}, error code: {2}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourGameStarted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario game started, room {1}.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourMoveSubmitted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario round {1} dropped in column {2} (move #{3})</value>
+  </data>
+  <data name="Client.Bot.ConnectFourRoundFinished" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario round {1} finished, winner {2}, draw {3}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourScenarioCompleted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario completed ({1} rounds).</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollNoProgress" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario aborted after {1} consecutive polls without progress.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollLoopError" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario poll loop error: {1}</value>
   </data>
   <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
     <value>Bot-{0} match scenario started (1v1, rating 1000)</value>

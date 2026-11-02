@@ -145,6 +145,16 @@ public static partial class Keys
                 public const string AdminApiOptionsInvalid = "Capability.Hosting.AdminApi.OptionsInvalid";
 
                 /// <summary>
+                /// 管理面已启用：当前无鉴权且监听所有网卡（端口 {0}），仅限受信任网络使用。
+                /// </summary>
+                /// <remarks>
+                /// 键名: Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning
+                /// 用途: 组合根启用管理面时的启动告警（提醒用防火墙/安全组限制或关闭）
+                /// 参数: {0} - 管理面端口
+                /// </remarks>
+                public const string NoAuthAllInterfacesWarning = "Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning";
+
+                /// <summary>
                 /// Admin action 重复注册：{0}（能力或来源：{1}）
                 /// </summary>
                 /// <remarks>

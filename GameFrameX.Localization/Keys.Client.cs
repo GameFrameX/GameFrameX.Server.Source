@@ -472,6 +472,96 @@ public static partial class Keys
             public const string RpsPollLoopError = "Client.Bot.RpsPollLoopError";
 
             /// <summary>
+            /// 机器人-{0}四子棋场景-开始轮询可加入的四子棋房间。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinerWaiting
+            /// 用途: 四子棋加入者开始轮询房间列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string ConnectFourJoinerWaiting = "Client.Bot.ConnectFourJoinerWaiting";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-已加入房间:{1}，等待开局。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinedRoom
+            /// 用途: 四子棋加入者加入房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string ConnectFourJoinedRoom = "Client.Bot.ConnectFourJoinedRoom";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-加入房间失败，房间ID:{1}，错误码:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinRoomFailed
+            /// 用途: 四子棋加入者加入房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID, {2} - 错误码
+            /// </remarks>
+            public const string ConnectFourJoinRoomFailed = "Client.Bot.ConnectFourJoinRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-对局开始，房间ID:{1}。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourGameStarted
+            /// 用途: 四子棋对局开始时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string ConnectFourGameStarted = "Client.Bot.ConnectFourGameStarted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-第{1}局落子列:{2}（第{3}手）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourMoveSubmitted
+            /// 用途: 四子棋按确定性列偏好落子时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 列号, {3} - 总落子数
+            /// </remarks>
+            public const string ConnectFourMoveSubmitted = "Client.Bot.ConnectFourMoveSubmitted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-第{1}局终局，胜者:{2}，平局:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourRoundFinished
+            /// 用途: 四子棋单局终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 胜者玩家ID, {3} - 是否平局
+            /// </remarks>
+            public const string ConnectFourRoundFinished = "Client.Bot.ConnectFourRoundFinished";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景执行完成（共{1}局）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourScenarioCompleted
+            /// 用途: 四子棋场景达到退出局数正常完成时记录
+            /// 参数: {0} - 机器人名称, {1} - 完成局数
+            /// </remarks>
+            public const string ConnectFourScenarioCompleted = "Client.Bot.ConnectFourScenarioCompleted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-连续{1}次轮询无进展，终止。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourPollNoProgress
+            /// 用途: 四子棋轮询长期无进展时失败终止
+            /// 参数: {0} - 机器人名称, {1} - 无进展次数
+            /// </remarks>
+            public const string ConnectFourPollNoProgress = "Client.Bot.ConnectFourPollNoProgress";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-轮询循环异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourPollLoopError
+            /// 用途: 四子棋轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string ConnectFourPollLoopError = "Client.Bot.ConnectFourPollLoopError";
+
+            /// <summary>
             /// 机器人-{0}匹配场景启动（1v1，评分 1000）
             /// </summary>
             /// <remarks>

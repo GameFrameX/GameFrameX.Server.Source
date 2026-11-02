@@ -1096,6 +1096,9 @@
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>管理面监听选项非法（端口 / 前缀）。</value>
   </data>
+  <data name="Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning" xml:space="preserve">
+    <value>管理面已启用：当前无鉴权且监听所有网卡（端口 {0}），仅限受信任网络使用（请用防火墙/安全组限制或关闭管理面）。</value>
+  </data>
   <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
     <value>能力装配开始：发现 {0} 个，启用 {1} 个，排除 {2} 个</value>
   </data>
@@ -1574,6 +1577,33 @@
   </data>
   <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
     <value>机器人-{0}RPS场景-轮询循环异常:{1}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinerWaiting" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-开始轮询可加入的四子棋房间。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinedRoom" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-已加入房间:{1}，等待开局。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinRoomFailed" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-加入房间失败，房间ID:{1}，错误码:{2}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourGameStarted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-对局开始，房间ID:{1}。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourMoveSubmitted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-第{1}局落子列:{2}（第{3}手）</value>
+  </data>
+  <data name="Client.Bot.ConnectFourRoundFinished" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-第{1}局终局，胜者:{2}，平局:{3}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourScenarioCompleted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景执行完成（共{1}局）。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollNoProgress" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-连续{1}次轮询无进展，终止。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollLoopError" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-轮询循环异常:{1}</value>
   </data>
   <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
     <value>机器人-{0}匹配场景启动（1v1，评分 1000）</value>

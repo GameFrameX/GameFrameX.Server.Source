@@ -77,6 +77,16 @@ internal static class Program
                 return;
             }
 
+            if (options.HasScenario("connectfour"))
+            {
+                // 四子棋脚本流：等待所有机器人完成指定局数/失败，按结果设置进程退出码后退出，无需人工回车。
+                await Task.WhenAll(clients.Select(c => c.ConnectFourCompletion).ToArray());
+                Environment.ExitCode = clients.Any(c => c.ConnectFourExitCode != 0) ? 1 : 0;
+                cts.Cancel();
+                await Task.WhenAll(botTasks);
+                return;
+            }
+
             if (options.HasRpsRole)
             {
                 // RPS 脚本流：等待所有机器人终局/失败，按结果设置进程退出码后退出，无需人工回车。
@@ -86,7 +96,6 @@ internal static class Program
                 await Task.WhenAll(botTasks);
                 return;
             }
-
             Console.WriteLine("机器人运行中，按回车结束...");
             Console.ReadLine();
             cts.Cancel();

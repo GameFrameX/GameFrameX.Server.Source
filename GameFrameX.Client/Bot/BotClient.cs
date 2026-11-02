@@ -189,9 +189,11 @@ public sealed partial class BotClient
                 break;
             case RespRoomList msg:
                 OnRpsRoomListResponse(msg);
+                OnConnectFourRoomListResponse(msg);
                 break;
             case RespJoinRoom msg:
                 OnRpsJoinRoomResponse(msg);
+                OnConnectFourJoinRoomResponse(msg);
                 break;
             case RespStartRoomGame msg:
                 OnRpsStartRoomGameResponse(msg);
@@ -207,6 +209,16 @@ public sealed partial class BotClient
                 break;
             case NotifyRoomChanged msg:
                 OnRpsRoomChangedNotify(msg);
+                OnConnectFourRoomChangedNotify(msg);
+                break;
+            case RespConnectFourGameInfo msg:
+                OnConnectFourGameInfoResponse(msg);
+                break;
+            case RespSubmitConnectFourMove msg:
+                OnConnectFourMoveResponse(msg);
+                break;
+            case NotifyConnectFourGameChanged msg:
+                OnConnectFourGameInfoResponse(msg);
                 break;
         }
     }
@@ -432,6 +444,12 @@ public sealed partial class BotClient
         if (_options.HasScenario("friend"))
         {
             StartFriendScenario();
+            return;
+        }
+
+        if (_options.HasScenario("connectfour"))
+        {
+            StartConnectFourScenario();
             return;
         }
 

@@ -96,6 +96,16 @@ public sealed class BotRunOptions
     public int RpsPollIntervalMs { get; init; } = 500;
 
     /// <summary>
+    /// 四子棋对局信息轮询间隔（毫秒），缺省 500。
+    /// </summary>
+    public int ConnectFourPollIntervalMs { get; init; } = 500;
+
+    /// <summary>
+    /// 四子棋场景退出局数：完成该局数的终局后正常退出（缺省 2，与联调冒烟双局对齐）。
+    /// </summary>
+    public int ConnectFourExitRounds { get; init; } = 2;
+
+    /// <summary>
     /// 是否启用了 RPS 脚本流（<see cref="RpsRole"/> 为 owner 或 joiner）。
     /// </summary>
     public bool HasRpsRole
@@ -158,6 +168,8 @@ public sealed class BotRunOptions
             RpsRole = rpsRole,
             RpsGestures = ReadRpsGestures(values, rpsRole),
             RpsPollIntervalMs = ReadInt(values, "rps-poll-interval-ms", 500),
+            ConnectFourPollIntervalMs = ReadInt(values, "connectfour-poll-interval-ms", 500),
+            ConnectFourExitRounds = ReadInt(values, "connectfour-exit-rounds", 2),
         };
     }
 
