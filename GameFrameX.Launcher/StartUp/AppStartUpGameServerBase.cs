@@ -14,75 +14,116 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository:    https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:    https://cnb.cool/GameFrameX
+//   CNB Repository:      https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 
+using GameFrameX.Apps;
 using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Core.Events;
+using GameFrameX.Core.Hotfix;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Discovery;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.Launcher.Composition;
+using GameFrameX.Localization;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.HTTP;
 using GameFrameX.Network.Message;
+using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Launcher.StartUp;
 
 /// <summary>
-/// 游戏服务器启动模板：固化「控制库 → 发现层 → 业务库 → 组件注册 → Role 服务」共享启动序列
-/// 与退出兜底，并承载与启动序列无关的组合件——停机幂等护栏、缺省配置收口与三段数据库/发现层装配件；
-/// 差异点全部经 hook 下放（<see cref="PrepareAsync"/> / <see cref="StartRoleServicesAsync"/> /
-/// <see cref="OnStartupCompletedAsync"/> / <see cref="ShutdownAsync(string)"/>）。
+/// 游戏服务器启动模板：固化「启动日志 → Role 预备 → ActorLimit → 统一组合启动」共享启动序列与退出兜底；
+/// 旧栈固定装配步骤（DB 初始化 → 发现层激活 → 组件注册 → 热更装载 → 网络监听 → ServiceOnline → 就绪屏障 →
+/// 心跳 Active）与能力族激活统一经组合根（<see cref="RuntimeCompositionRoot"/> → CapabilityComposition）
+/// 装配为早晚宿主模块 + 能力模块的同一运行时，由机制拓扑序定序（等价旧序列「热更 → 能力 → 监听」）；
+/// 停机所有权统一到 <c>CapabilityRuntime.StopAsync</c>（晚段模块停用 = ServiceOffline + 网络停机与退出令牌置位，
+/// 随后能力族逆序停用）。差异点全部经 hook 下放（<see cref="PrepareAsync"/> / <see cref="OnStartupCompletedAsync"/> /
+/// <see cref="OnStoppingAsync(string)"/> / <see cref="ShutdownAsync(string)"/>）。
 /// </summary>
 /// <remarks>
-/// The single-layer game-server startup template: freezes the shared startup sequence
-/// (control database → discovery layer → business database → component registration → role services)
-/// together with the exit catch-all, and hosts the sequence-independent composable parts directly —
-/// the idempotent stop guard, the default-setting funnel and the three database / discovery wiring
-/// steps — pushing every role difference down to hooks. 序列方法 sealed 是刻意选择：
-/// 防止装配序列在派生类再分叉；自拟序列的异形 Role（无库网关、自拟装配顺序）直承
-/// <see cref="AppStartUpBase"/> 自行编排启动序列——护栏、缺省配置收口与装配件届时按需重新抽取
-///（机械操作，非单向门）。
-/// Sealing the sequence is deliberate — it prevents the assembly sequence from forking again in
-/// derived classes; free-form roles (library-less gateways, custom assembly orders) derive
-/// <see cref="AppStartUpBase"/> directly and orchestrate their own startup — the guard, the funnel
-/// and the wiring parts would be re-extracted on demand at that point (a mechanical move, not a
-/// one-way door).
-/// 单进程多 Role（--AllInOne / 复数 --ServerType）与多进程单 Role 两形态兼容：共享装配步骤幂等
-///（控制库/业务库 Contains 守卫、发现层 Activate 一次性守卫、默认库 set-once），
-/// <see cref="AppStartUpBase.MarkStartUpReady"/> 屏障保持在各 Role 的 DB/组件/Role 服务全就绪之后
-///（优先级链启动语义不变）；多进程形态下单 Role 进程的屏障置位无人等待、无副作用。
-/// Compatible with both the single-process multi-role shape (--AllInOne / multiple --ServerType)
-/// and the multi-process single-role shape: the shared wiring steps stay idempotent, the
-/// startup-ready barrier is still set only after each role's databases, components and role
-/// services are all up (the priority-chain startup semantics are unchanged), and in the
-/// multi-process shape nobody awaits the barrier, which is harmless.
+/// The game-server startup template: freezes the shared startup sequence (start logging → role
+/// preparation → ActorLimit → the unified composition start) together with the exit catch-all; the
+/// legacy fixed assembly steps (database initialization → discovery activation → component registration
+/// → hotfix loading → network listening → ServiceOnline → the ready barrier → the Active heartbeat) and
+/// the capability-family activation are composed — through the composition root
+/// (<see cref="RuntimeCompositionRoot"/> → CapabilityComposition) — into one runtime of early/late host
+/// modules plus capability modules, ordered by the mechanism's topological order (equivalent to the
+/// legacy "hotfix → capability → listen" sequence); the stop ownership unifies on
+/// <c>CapabilityRuntime.StopAsync</c> (the late module's deactivation = ServiceOffline plus the network
+/// shutdown and exit-token settlement, followed by the capability family's reverse-order teardown).
+/// Every role difference rides hooks. 序列方法 sealed 是刻意选择：防止装配序列在派生类再分叉；自拟序列的
+/// 异形 Role（无库网关、自拟装配顺序）直承 <see cref="AppStartUpBase"/> 自行编排启动序列——护栏、缺省配置
+/// 收口与装配件届时按需重新抽取（机械操作，非单向门）。
+/// Sealing the sequence is deliberate — it prevents the assembly sequence from forking again in derived
+/// classes; free-form roles derive <see cref="AppStartUpBase"/> directly and orchestrate their own
+/// startup, re-extracting the guard, the funnel and the wiring parts on demand. 单进程多 Role
+///（--AllInOne / 复数 --ServerType）与多进程单 Role 两形态兼容：共享装配步骤幂等（控制库/业务库 Contains
+/// 守卫、发现层 Activate 一次性守卫、默认库 set-once、热更装载同路径幂等守卫），
+/// <see cref="AppStartUpBase.MarkStartUpReady"/> 屏障保持在各 Role 的全就绪之后（优先级链启动语义不变）；
+/// 能力族同族进程内单例（首个命中 Role 携带族模块组合，其余命中 Role 只装配宿主模块——族停止随组合者
+/// Role 的运行时停机，逆序停机下组合者最后停）。
+/// Compatible with both the single-process multi-role shape and the multi-process single-role shape:
+/// the shared wiring steps stay idempotent, the startup-ready barrier is still set only after each
+/// role is fully up, and the capability family composes once per process (the first named role carries
+/// the family modules; the family stops with the composer role's runtime, which stops last under the
+/// reverse-order shutdown).
 /// </remarks>
-internal abstract class AppStartUpGameServerBase : AppStartUpBase
+internal abstract class AppStartUpGameServerBase : AppStartUpBase, ILegacyRuntimeHostOwner
 {
     /// <summary>
-    /// 启动游戏服务器（sealed 模板序列）：启动日志 → Role 预备 → ActorLimit → 控制库 → 发现层 →
-    /// 业务库 → 组件注册 → Role 服务 → 启动完成 → 主循环/就绪屏障 → 心跳 Active → 运行至退出令牌；
-    /// 任何一步失败落入统一兜底（异常日志 + Fatal），随后退出清理 hook 收尾。
+    /// 进程级组合根协调器锚点（族互斥闸与组合者登记的进程共享载体；实例状态全部在协调器实例内，
+    /// 锚点仅是进程作用域引用——组合根唯一红线由 GFX 分析器在静态类层面固化）。
+    /// </summary>
+    /// <remarks>
+    /// The process-level composition-root coordinator anchor (the process-shared carrier of the family
+    /// gate and the composer registration; all mutable state lives on the coordinator instance — the
+    /// anchor is merely a process-scoped reference, and the single-composition-root red line is pinned
+    /// by the GFX analyzer at the static-class level).
+    /// </remarks>
+    private static readonly RuntimeCompositionRoot ProcessCompositionRoot = new RuntimeCompositionRoot();
+
+    /// <summary>
+    /// 本 Role 的组合产物（宿主实例字段——迁移自退役静态根的 <c>_runtime</c>；停机所有权所在）。
+    /// </summary>
+    private Capability.Hosting.Core.CapabilityRuntime _composedRuntime;
+
+    /// <summary>
+    /// 本次停机原因（停机护栏内置位；晚段模块停用序列经 <see cref="CurrentStopMessage"/> 回读）。
+    /// </summary>
+    private string _stopMessage;
+
+    /// <summary>
+    /// 启动序列完成标志（就绪屏障放行时置位；未置位时的停机走启动失败补齐路径）。
+    /// </summary>
+    private volatile bool _startupSequenceCompleted;
+
+    /// <summary>
+    /// 启动游戏服务器（sealed 模板序列）：启动日志 → Role 预备 → ActorLimit → 统一组合启动
+    ///（早段宿主模块：控制库 → 发现层 → 业务库 → 组件注册 → 热更装载；能力模块：拓扑序激活；
+    /// 晚段宿主模块：网络监听 → KCP 发布 → ServiceOnline → 就绪屏障 → 心跳 Active）→
+    /// 运行至退出令牌；任何一步失败落入统一兜底（异常日志 + Fatal），随后退出清理 hook 收尾。
     /// </summary>
     /// <remarks>
     /// Starts the game server (the sealed template sequence): start logging → role preparation →
-    /// ActorLimit → control database → discovery layer → business database → component
-    /// registration → role services → startup completion → main-loop/ready-barrier → heartbeat
-    /// Active → run until the exit token; any failure falls into the unified catch-all
-    /// (exception log + Fatal) and the exit-cleanup hook closes the run.
+    /// ActorLimit → the unified composition start (the early host module: control database → discovery →
+    /// business database → component registration → hotfix load; the capability modules activate in
+    /// topological order; the late host module: network listening → kcp publish → ServiceOnline → the
+    /// ready barrier → the Active heartbeat) → run until the exit token; any failure falls into the
+    /// unified catch-all (exception log + Fatal) and the exit-cleanup hook closes the run.
     /// </remarks>
     /// <returns>表示异步启动操作的任务（运行至退出后完成）/ A task that completes after the run-until-exit cycle</returns>
     public sealed override async Task StartAsync()
@@ -106,40 +147,9 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
 
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartBegin));
-            await InitializeControlDatabaseAsync();
-            await ActivateDiscoveryLayerAsync();
-            await InitializeBusinessDatabaseAsync();
+            // 旧栈固定序列与能力族统一经组合根装配并启动（早段模块含 DB 三步与热更装载；晚段模块含监听与收尾）。
+            _composedRuntime = await ProcessCompositionRoot.ComposeAndStartAsync(this);
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
-
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterBegin));
-            await ComponentRegister.InitAsync(typeof(AppsHandler).Assembly);
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterEnd));
-
-            await StartRoleServicesAsync();
-
-            // KCP 附加端点发布：在 Role 服务（含 KCP 监听器装配）完成后、就绪屏障与心跳 Active 之前执行。
-            // 屏障前发布是刻意的——Role 按就绪屏障串行启动，屏障之后本 Role 的实例级闸门读数可能被同进程
-            // 后续 Role 的装配污染；Booting 实例不进任何路由视图，广播前置不会提前暴露端点。
-            // Publish the kcp additional endpoint after role services (including the KCP listener
-            // assembly) complete, before the startup-ready barrier and the Active heartbeat.
-            // Publishing before the barrier is deliberate — roles start sequentially behind the
-            // barrier, and after it this role's instance-level gate reading could be polluted by a
-            // later role's assembly in the same process; a Booting instance never enters any route
-            // view, so publishing early never exposes the endpoint prematurely.
-            if (Setting.IsEnableInnerKcp && IsInnerKcpListenerConfigured)
-            {
-                GameFrameX.Discovery.ActiveDiscoveryRuntime.PublishActiveAdvertiseEndpoints(Setting.ServerType, new[] { KeyValuePair.Create("kcp", Setting.InnerKcpPort) });
-            }
-
-            await OnStartupCompletedAsync();
-
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
-            // 启动阶段完成（DB/组件/Role 服务均已就绪），放行下一个 Role 的启动屏障
-            MarkStartUpReady();
-            // 启动阶段真正完成后才把心跳从 Booting 切到 Active，避免其他进程在服务就绪前发现本实例并投递流量；
-            // 未激活发现层或无广播身份时为无害 no-op。公共槽位持有实际激活的 Provider Runtime 写侧，宿主无需按 DatabaseProvider 分派
-            await ActiveDiscoveryRuntime.MarkActiveAsync();
 
             exitMessage = await AppExitToken;
         }
@@ -171,57 +181,6 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// Role 服务启动 hook（缺省 = 统一形态）：热更模块装载（激活热更业务生命周期）→
-    /// 能力族组合（<see cref="ComposeCapabilitiesAsync"/> 固定步骤）→ 网络监听启动。
-    /// </summary>
-    /// <remarks>
-    /// The role-services hook (default = the unified shape): hotfix module loading (which activates the
-    /// hotfix business lifecycle) followed by the host network listener startup. 装载走
-    /// <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>（异步入口）：装载成功经
-    /// 桥接 <c>IHotfixBridge.OnLoadSuccess</c> 激活热更生命周期（配置表/定时器/全局组件），
-    /// 监听所有权在宿主；同路径幂等守卫使 --AllInOne 多 Role 的重复装载短路返回。
-    /// Loading goes through <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>
-    /// (the async entry): a successful load activates the hotfix lifecycle (config tables, timers, global
-    /// components) through the <c>IHotfixBridge.OnLoadSuccess</c> callback while listener ownership stays
-    /// with the host; the same-path idempotency guard short-circuits repeated loads by extra roles in
-    /// --AllInOne. aop 装配自序列最前段挪入本 hook 首段：唯一消费方是 <c>StartServerAsync</c>，
-    /// 纯反射收集无 DB/状态依赖。
-    /// The aop assembly moved here from the very front of the sequence: its only consumer is
-    /// <c>StartServerAsync</c>, it is pure reflection with no database or state dependency.
-    /// </remarks>
-    /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
-    protected virtual async Task StartRoleServicesAsync()
-    {
-        await HotfixManager.LoadHotfixModuleAsync(Setting);
-        await ComposeCapabilitiesAsync();
-        await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler);
-    }
-
-    /// <summary>
-    /// 能力族组合固定步骤（C294 D6）：热更装载之后、网络监听之前执行——保证监听开放时桥已发布、
-    /// 热更侧钩子挂载先于能力侧声明读取。当前承载 <c>online</c> 族（经
-    /// <see cref="GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot"/>）："Online" 配置段的
-    /// <c>EnableRoles</c>（缺省 ["Game"]）命中本 Role 时组合并启动；同族进程内单例（--AllInOne 下
-    /// 首个命中 Role 组合，后续复用），停止归本类 <see cref="StopAsync(string)"/> 停机步（见
-    /// <c>OnStoppingAsync</c> 前的组合停机调用）。
-    /// </summary>
-    /// <remarks>
-    /// The fixed capability-family composition step (C294 D6): runs after the hotfix load and before
-    /// the network listeners start — bridges are published by the time listening opens and the
-    /// hotfix-side hook mounts precede the capability-side declaration reads. It currently carries the
-    /// <c>online</c> family (through
-    /// <see cref="GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot"/>): when the "Online"
-    /// section's <c>EnableRoles</c> (default ["Game"]) names this role the family is composed and
-    /// started; one composition per process for the family (under --AllInOne the first named role
-    /// composes and the rest reuse it), with the stop owned by this class's stop step.
-    /// </remarks>
-    /// <returns>表示组合操作的异步任务 / A task representing the composition operation</returns>
-    protected virtual Task ComposeCapabilitiesAsync()
-    {
-        return GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot.ComposeIfEnabledAsync(Setting);
-    }
-
-    /// <summary>
     /// 启动完成 hook（缺省 = 统一形态，全 Role 生效）：网络监听就绪后分发 <c>ServiceOnline</c> 事件
     ///（唯一分发点——热更侧不分发）。
     /// </summary>
@@ -233,7 +192,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual Task OnStartupCompletedAsync()
     {
-        EventDispatcher.Dispatch(0, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
+        GameFrameX.Core.Events.GameEventDispatcher.ProcessDefault.Dispatch(0, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
         return Task.CompletedTask;
     }
 
@@ -246,15 +205,19 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     private int _stopped;
 
     /// <summary>
-    /// 停止 Role：幂等护栏保证首个调用生效——宿主逆序停机与 Role 自停两条路径竞争时，
-    /// 只有第一次调用会执行 <see cref="OnStoppingAsync(string)"/> 与基类停机流程
-    ///（停机日志、网络停机、运行时状态与退出令牌置位），后续调用直接返回。
+    /// 停止 Role：幂等护栏保证首个调用生效——停机所有权统一到 <c>CapabilityRuntime.StopAsync</c>：
+    /// admin-only 族运行时（如为本 Role 组合）先停，随后本 Role 组合产物停机（机制逆序驱动：
+    /// 晚段模块停用 = ServiceOffline + 网络停机与退出令牌置位 → 能力族逆序停用 → 早段模块停用）；
+    /// 启动未达监听段的失败路径补齐旧停机尾部（ServiceOffline + 基类停机流程）保持退出令牌语义。
     /// </summary>
     /// <remarks>
-    /// Stops the role behind an idempotent guard: when the host's reverse-order shutdown races the
-    /// role's own run-until-exit self-stop, only the first caller runs <see cref="OnStoppingAsync(string)"/>
-    /// and the base stop flow (stop log, network shutdown, runtime state and exit-token completion);
-    /// later calls return immediately. 双停机路径竞争是单进程多 Role 形态的固有现象
+    /// Stops the role behind an idempotent guard: the stop ownership unifies on
+    /// <c>CapabilityRuntime.StopAsync</c> — the admin-only family runtime (when composed by this role)
+    /// stops first, then this role's composed runtime (mechanism-driven reverse order: the late module's
+    /// deactivation = ServiceOffline plus the network shutdown and exit-token settlement → the capability
+    /// family's reverse teardown → the early module); on the startup-failure path (never reaching the
+    /// listener phase) the legacy stop tail is appended (ServiceOffline plus the base stop flow) to keep
+    /// the exit-token semantics. 双停机路径竞争是单进程多 Role 形态的固有现象
     ///（<see cref="AppEnter"/> 逆序停机与 Role 自停并发进入），护栏把两条路径收敛为恰好一次。
     /// The dual-path stop race is inherent to the single-process multi-role shape; the guard
     /// collapses both paths into exactly one stop.
@@ -268,41 +231,60 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             return;
         }
 
-        // 能力族停机（逆序于启动：停 admin → 停调度 → 逆序 Deactivate → 自动撤桥；仅组合者 Role 执行，其余 Role 与未组合为空操作）——
-        // 先于本 Role 的停机流程与 ServiceOffline 分发，消费方自此收显式 8002，不残留旧桥。
-        await GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot.StopIfComposedAsync(Setting.ServerType);
-        await OnStoppingAsync(message);
-        await base.StopAsync(message);
+        _stopMessage = message;
+
+        // admin-only 族运行时（仅管理面）先停（等价旧序 admin-first）；族随组合运行时停机的形态不经过这里。
+        var adminOnlyFamilyRuntime = ProcessCompositionRoot.DetachAdminOnlyFamilyRuntime(Setting.ServerType);
+        if (adminOnlyFamilyRuntime != null)
+        {
+            await adminOnlyFamilyRuntime.StopAsync();
+        }
+
+        var runtime = _composedRuntime;
+        if (runtime != null)
+        {
+            _composedRuntime = null;
+            await runtime.StopAsync();
+        }
+
+        if (!_startupSequenceCompleted)
+        {
+            // 启动未达监听段（晚段模块从未激活，其停用序列不会执行）：补齐旧停机尾部——
+            // ServiceOffline 分发与基类停机流程（含退出令牌置位），与既有失败路径行为一致。
+            await OnStoppingAsync(message);
+            await base.StopAsync(message);
+        }
     }
 
     /// <summary>
-    /// 停机钩子：护栏放行后、基类停机流程前回调恰好一次，缺省 = <c>ServiceOffline</c> 事件分发
-    ///（唯一分发点——热更侧不分发）。
+    /// 停机钩子：护栏放行后回调恰好一次，缺省 = <c>ServiceOffline</c> 事件分发（唯一分发点——热更侧不分发）；
+    /// 统一形态下由晚段宿主模块的停用序列调用（先于网络停机）。
     /// </summary>
     /// <remarks>
-    /// The stopping hook invoked exactly once after the guard admits the first stop and before the
-    /// base stop flow; the default dispatches the <c>ServiceOffline</c> event — the single dispatch
-    /// point (the hotfix side does not dispatch it).
+    /// The stopping hook invoked exactly once after the guard admits the first stop; the default
+    /// dispatches the <c>ServiceOffline</c> event — the single dispatch point (the hotfix side does not
+    /// dispatch it); in the unified shape it is invoked by the late host module's deactivation sequence
+    /// (before the network shutdown).
     /// </remarks>
     /// <param name="message">终止原因（首个 <see cref="StopAsync(string)"/> 调用透传）/ The termination reason passed through by the first stop call</param>
     /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
     protected virtual Task OnStoppingAsync(string message)
     {
-        EventDispatcher.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
+        GameFrameX.Core.Events.GameEventDispatcher.ProcessDefault.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
         return Task.CompletedTask;
     }
 
     /// <summary>
     /// 退出清理 hook（缺省 = 统一形态）：自停——护栏内的 <see cref="StopAsync(string)"/>，
     /// 宿主逆序停机先到时本调用被护栏吸收，<c>ServiceOffline</c> 仍恰好一次。
-    /// Game 型覆写为「宿主停机（护栏内含能力族停止）→ 热更模块业务清理」两段编排。
+    /// Game 型覆写为「宿主停机（护栏内含统一运行时停机）→ 热更模块业务清理」两段编排。
     /// </summary>
     /// <remarks>
     /// The exit-cleanup hook (default = the unified shape): self-stop through the guarded
-    /// <see cref="StopAsync(string)"/> — when the host's reverse-order stop wins
-    /// the race, the guard absorbs this call and <c>ServiceOffline</c> still fires exactly once.
-    /// The Game shape overrides it with the two-phase orchestration: the host stop (with the
-    /// capability-family stop inside the guard) then the hotfix module's business cleanup.
+    /// <see cref="StopAsync(string)"/> — when the host's reverse-order stop wins the race, the guard
+    /// absorbs this call and <c>ServiceOffline</c> still fires exactly once. The Game shape overrides it
+    /// with the two-phase orchestration: the host stop (with the unified-runtime stop inside the guard)
+    /// then the hotfix module's business cleanup.
     /// </remarks>
     /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
@@ -339,28 +321,73 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     protected abstract AppSetting CreateDefaultSetting();
 
     /// <summary>
-    /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
-    /// 经 GameDb 统一入口判重/命名；实现类型按 DbOptions.Provider 由 GameDb 约定解析
-    ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
-    /// 控制库必须显式 IsDefault = false——门面默认库由业务库声明式提名（缺省 true），
-    /// 漏写会在业务库注册时抛 set-once 冲突（启动期 fail-fast）。
+    /// 获取当前 Role 的应用配置（宿主回调面）。
     /// </summary>
-    /// <remarks>
-    /// Initializes the control database ahead of the business database (the D-Single default
-    /// fallback shares the business database's connection string), registered and deduplicated
-    /// through the <see cref="GameDb"/> facade with the provider implementation resolved by
-    /// convention from <c>DbOptions.Provider</c>. The control database must pass
-    /// <c>IsDefault = false</c> explicitly — the facade's default database is nominated
-    /// declaratively by the business database (default <c>true</c>), and omitting it fails fast
-    /// with a set-once conflict when the business database registers.
-    /// </remarks>
-    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    AppSetting ILegacyRuntimeHostOwner.Setting
+    {
+        get { return Setting; }
+    }
+
+    /// <summary>
+    /// 获取本次停机原因（宿主回调面；停机护栏内置位）。
+    /// </summary>
+    string ILegacyRuntimeHostOwner.CurrentStopMessage
+    {
+        get { return _stopMessage; }
+    }
+
+    /// <summary>
+    /// 装载热更模块（宿主回调面：经 <see cref="HotfixRuntime"/> 注入面；同路径幂等守卫在实例核内，
+    /// --AllInOne 多 Role 的重复装载短路返回）。
+    /// </summary>
+    /// <returns>表示装载操作的异步任务。</returns>
+    Task ILegacyRuntimeHostOwner.LoadHotfixModuleAsync()
+    {
+        return HotfixRuntime.ProcessDefault.LoadHotfixModuleAsync(Setting);
+    }
+
+    /// <summary>
+    /// 初始化控制库（宿主回调面：桥接虚方法钩子，Role 覆写继续生效）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.InitializeControlDatabaseAsync()
+    {
+        return InitializeControlDatabaseAsync();
+    }
+
+    /// <summary>
+    /// 激活发现层（宿主回调面：桥接虚方法钩子，Role 覆写继续生效）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.ActivateDiscoveryLayerAsync()
+    {
+        return ActivateDiscoveryLayerAsync();
+    }
+
+    /// <summary>
+    /// 初始化业务库（宿主回调面：桥接虚方法钩子，Role 覆写继续生效）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.InitializeBusinessDatabaseAsync()
+    {
+        return InitializeBusinessDatabaseAsync();
+    }
+
+    /// <summary>
+    /// 初始化控制库（宿主回调面：<c>Contains</c> 判重护栏 + <c>IsDefault = false</c> 显式声明；
+    /// 经 <see cref="GameFrameX.DataBase.GameDatabase"/> 注入面）。
+    /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
+    /// 经统一入口判重/命名；实现类型按 DbOptions.Provider 约定解析
+    ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
     protected virtual async Task InitializeControlDatabaseAsync()
     {
+        var gameDatabase = GameFrameX.DataBase.GameDatabase.ProcessDefault;
         // Contains 判重护栏：多 Role 进程（--AllInOne）下首个 Role 注册控制库，后续 Role 直接复用
-        if (!GameDb.Contains(GameDb.ControlDatabaseName))
+        if (!gameDatabase.Contains(GameFrameX.DataBase.GameDatabase.ControlDatabaseName))
         {
-            var controlDatabaseInitResult = await GameDb.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var controlDatabaseInitResult = await gameDatabase.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameFrameX.DataBase.GameDatabase.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (controlDatabaseInitResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -386,13 +413,9 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// a multi-role process the first call wins. It then activates the player-routing layer
     /// (creates the player_route index and installs the sync target) and injects the Tier 1
     /// fast-path adapter into the session manager. The provider dispatch lives in the
-    /// <c>DiscoveryRuntimeResolver</c> convention (reflecting the target runtime from
-    /// <c>DiscoveryActivationOptions.Provider</c>) so this composition root holds no
-    /// provider branch; the activation entry point is asynchronous and this method awaits it
-    /// end to end, so hosts with a <c>SynchronizationContext</c> never block their calling
-    /// thread on the activation database I/O. The routing glue assembly lives in the
-    /// composition-side <c>DiscoveryRoutingWire</c>, its route table read back branch-free through the
-    /// <c>ActiveDiscoveryRuntime.RouteTableProvider</c> slot.
+    /// <c>DiscoveryRuntimeResolver</c> convention so this composition surface holds no provider
+    /// branch; the routing glue assembly lives in the composition-side <c>DiscoveryRoutingWire</c>,
+    /// its route table read back branch-free through the <c>ActiveDiscoveryRuntime.RouteTableProvider</c> slot.
     /// </remarks>
     protected virtual async Task ActivateDiscoveryLayerAsync()
     {
@@ -400,7 +423,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
         await DiscoveryRuntimeResolver.ActivateAsync(new DiscoveryActivationOptions
         {
             Provider = Setting.DatabaseProvider,
-            ConnectionName = GameDb.ControlDatabaseName,
+            ConnectionName = GameFrameX.DataBase.GameDatabase.ControlDatabaseName,
             HostedRoleNames = RoleSet.Current,
             PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
         });
@@ -410,10 +433,6 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
 
         // 本服发现层实例 Id 注入（与心跳自描述符同源）：PlayerSessionManager 的路由同步写真实实例 Id，
         // 跨服推送按 player_route.InstanceId 实例直达。仅观察形态（未配置广播端口）为 null——路由同步跳过。
-        // Inject the local discovery instance id (same source as the heartbeat self descriptor):
-        // the session manager's route sync then writes the real instance id and cross-server pushes
-        // dial the exact instance recorded in player_route. Null for observe-only processes (no
-        // advertise port) — the route sync is skipped there.
         GameFrameX.Core.Session.PlayerSessionManager.Instance.LocalDiscoveryInstanceId = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.LocalInstanceId;
         // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）；
         // 路由表经公共槽位无分派回读，未激活时 null 触发 Initialize 的 ArgumentNullException fail-fast（既有语义）。
@@ -421,27 +440,26 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 业务库 Init，实现类型按 DbOptions.Provider 由 GameDb 约定解析；缺省 IsDefault = true——
-    /// 注册成功即声明式提名门面默认库，全部经 GameDb 门面的业务读写必须落在业务库
-    ///（控制库已显式 IsDefault = false，先注册不会抢占门面）；失败抛 <see cref="InvalidOperationException"/>。
-    /// 同名判重护栏：多 Role 进程共享同名业务库时首个注册生效（GameDb.Init 拒绝同名重复注册），
+    /// 业务库 Init（宿主回调面；经 <see cref="GameFrameX.DataBase.GameDatabase"/> 注入面），实现类型按
+    /// DbOptions.Provider 约定解析；缺省 IsDefault = true——注册成功即声明式提名门面默认库，
+    /// 全部业务读写必须落在业务库（控制库已显式 IsDefault = false，先注册不会抢占门面）；失败抛
+    /// <see cref="InvalidOperationException"/>。同名判重护栏：多 Role 进程共享同名业务库时首个注册生效，
     /// 与控制库 <c>Contains</c> 护卫同一多 Role 语义。
     /// </summary>
     /// <remarks>
-    /// Initializes the business database through the <see cref="GameDb"/> facade with the provider
-    /// implementation resolved by convention; <c>IsDefault = true</c> by default means a successful
-    /// registration declaratively nominates the facade's default database (the control database
-    /// registered earlier with <c>IsDefault = false</c> never steals it), and a failure throws
+    /// Initializes the business database through the instance facade with the provider resolved by
+    /// convention; <c>IsDefault = true</c> by default means a successful registration declaratively
+    /// nominates the facade's default database, and a failure throws
     /// <see cref="InvalidOperationException"/>. The same-name guard makes the first registration win
-    /// when roles of a multi-role process share one business database — the same multi-role
-    /// semantics as the control-database <c>Contains</c> guard.
+    /// when roles of a multi-role process share one business database.
     /// </remarks>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual async Task InitializeBusinessDatabaseAsync()
     {
-        if (!GameDb.Contains(Setting.DataBaseName))
+        var gameDatabase = GameFrameX.DataBase.GameDatabase.ProcessDefault;
+        if (!gameDatabase.Contains(Setting.DataBaseName))
         {
-            var initResult = await GameDb.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var initResult = await gameDatabase.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -450,19 +468,91 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 消息处理器解析（统一形态，全 Role 生效）：接热更注册表按消息 ID 解析处理器。
+    /// 启动网络监听（宿主回调面：晚段宿主模块激活序列调用；消息解码/编码/压缩与热更 HTTP 处理器桥接在此装配）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.StartNetworkListenersAsync()
+    {
+        var hotfixRuntime = HotfixRuntime.ProcessDefault;
+        return StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), hotfixRuntime.GetListHttpHandler(), hotfixRuntime.GetHttpHandler);
+    }
+
+    /// <summary>
+    /// 启动完成钩子回调（宿主回调面：晚段宿主模块激活序列调用，虚 hook 语义保留）。
+    /// </summary>
+    /// <returns>表示钩子操作的异步任务。</returns>
+    Task ILegacyRuntimeHostOwner.OnStartupCompletedAsync()
+    {
+        return OnStartupCompletedAsync();
+    }
+
+    /// <summary>
+    /// 放行启动就绪屏障并标记启动序列完成（宿主回调面：晚段宿主模块激活序列尾部调用）。
+    /// </summary>
+    void ILegacyRuntimeHostOwner.MarkStartUpReadyBarrier()
+    {
+        _startupSequenceCompleted = true;
+        MarkStartUpReady();
+    }
+
+    /// <summary>
+    /// 心跳切 Active（宿主回调面：晚段宿主模块激活序列最后一步；未激活发现层或无广播身份时无害 no-op）。
+    /// </summary>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.MarkDiscoveryActiveAsync()
+    {
+        return ActiveDiscoveryRuntime.MarkActiveAsync();
+    }
+
+    /// <summary>
+    /// 获取是否应发布 KCP 附加端点（宿主回调面）。
+    /// </summary>
+    bool ILegacyRuntimeHostOwner.ShouldPublishInnerKcpEndpoint
+    {
+        get { return Setting.IsEnableInnerKcp && IsInnerKcpListenerConfigured; }
+    }
+
+    /// <summary>
+    /// 发布 KCP 附加端点（宿主回调面：屏障前发布，Booting 实例不进路由视图）。
+    /// </summary>
+    void ILegacyRuntimeHostOwner.PublishInnerKcpAdvertiseEndpoint()
+    {
+        GameFrameX.Discovery.ActiveDiscoveryRuntime.PublishActiveAdvertiseEndpoints(Setting.ServerType, new[] { KeyValuePair.Create("kcp", Setting.InnerKcpPort) });
+    }
+
+    /// <summary>
+    /// 停机钩子回调（宿主回调面：晚段宿主模块停用序列调用，虚 hook 语义保留）。
+    /// </summary>
+    /// <param name="message">终止原因。</param>
+    /// <returns>表示钩子操作的异步任务。</returns>
+    Task ILegacyRuntimeHostOwner.OnStoppingAsync(string message)
+    {
+        return OnStoppingAsync(message);
+    }
+
+    /// <summary>
+    /// 基类停机流程（宿主回调面：晚段宿主模块停用序列收尾——停机日志 + 网络停机 + 运行时状态与退出令牌置位）。
+    /// </summary>
+    /// <param name="message">终止原因。</param>
+    /// <returns>表示异步操作的任务。</returns>
+    Task ILegacyRuntimeHostOwner.StopNetworkAndMarkStoppedAsync(string message)
+    {
+        return base.StopAsync(message);
+    }
+
+    /// <summary>
+    /// 消息处理器解析（统一形态，全 Role 生效）：接热更注册表按消息 ID 解析处理器（经 HotfixRuntime 注入面）。
     /// </summary>
     /// <remarks>
     /// The resolution hook of the base package funnel (the unified shape, effective for every role):
-    /// bridges the hotfix message-handler registry (<c>HotfixManager.GetMessageHandler</c>).
-    /// Messages without a registered handler return <c>null</c> and hit the funnel's
-    /// "handler not found" error log.
+    /// bridges the hotfix message-handler registry. Messages without a registered handler return
+    /// <c>null</c> and hit the funnel's "handler not found" error log.
     /// </remarks>
     /// <param name="messageId">消息ID / The message identifier</param>
     /// <returns>处理器实例；未注册时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered</returns>
     protected override IMessageHandler ResolveMessageHandler(int messageId)
     {
-        return HotfixManager.GetMessageHandler(messageId);
+        return HotfixRuntime.ProcessDefault.GetMessageHandler(messageId);
     }
 
     /// <summary>

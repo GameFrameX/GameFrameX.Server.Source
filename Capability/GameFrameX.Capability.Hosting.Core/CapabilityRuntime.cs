@@ -31,7 +31,7 @@ using GameFrameX.Capability.Hosting.Abstractions;
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 能力组合产物（一次 <see cref="CapabilityComposition.Compose"/> 的双面承载：业务宿主 + 管理面 + 报告；
+/// 能力组合产物（一次 <see cref="CapabilityComposition.Compose(ICapabilityFamily, CapabilityCompositionOptions)"/> 的双面承载：业务宿主 + 管理面 + 报告；
 /// 未启用的面为 null）。
 /// <para>
 /// 维护约束（启停序）：启动 = 业务宿主先启（拓扑序 Activate + 调度）再启管理面（监听开放时桥已发布）；

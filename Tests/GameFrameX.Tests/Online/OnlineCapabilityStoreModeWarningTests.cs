@@ -32,8 +32,8 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// Online 存储模式未声明告警判定测试（C302 无声降级防护）：组合根纯谓词
-/// <c>OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared</c> 的三态口径——
+/// Online 存储模式未声明告警判定测试（C302 无声降级防护）：策略纯谓词
+/// <c>OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared</c> 的三态口径——
 /// 族启用（双闸任一开）且 <c>UseGameDbStores</c> 未声明（null）才告警；
 /// 显式 true / 显式 false / 双闸全关 / 配置段缺失均不告警。
 /// </summary>
@@ -51,7 +51,7 @@ public class OnlineCapabilityStoreModeWarningTests
             EnableAdminApi = true,
         };
 
-        Assert.True(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(online));
+        Assert.True(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(online));
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public class OnlineCapabilityStoreModeWarningTests
             EnableAdminApi = true,
         };
 
-        Assert.True(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(online));
+        Assert.True(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(online));
     }
 
     /// <summary>
@@ -89,8 +89,8 @@ public class OnlineCapabilityStoreModeWarningTests
             UseGameDbStores = false,
         };
 
-        Assert.False(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(persisted));
-        Assert.False(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(volatileExplicit));
+        Assert.False(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(persisted));
+        Assert.False(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(volatileExplicit));
     }
 
     /// <summary>
@@ -105,7 +105,7 @@ public class OnlineCapabilityStoreModeWarningTests
             EnableAdminApi = false,
         };
 
-        Assert.False(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(disabled));
-        Assert.False(OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared(null));
+        Assert.False(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(disabled));
+        Assert.False(OnlineCapabilityStoreModePolicy.ShouldWarnStoreModeUndeclared(null));
     }
 }

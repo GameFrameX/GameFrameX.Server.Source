@@ -77,9 +77,10 @@ public sealed class GameDbCloseIsolationTests
 
     private static void SetDefaultImplementation(IDatabaseService service)
     {
-        var field = typeof(GameDb).GetField("_dbServiceImplementation", BindingFlags.NonPublic | BindingFlags.Static);
+        // 实例核抽取后门面服务落在 GameDatabase.ProcessDefault 的实例字段上（静态壳仅转发）
+        var field = typeof(GameDatabase).GetField("_dbServiceImplementation", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(field);
-        field.SetValue(null, service);
+        field.SetValue(GameDatabase.ProcessDefault, service);
     }
 
     [Fact]

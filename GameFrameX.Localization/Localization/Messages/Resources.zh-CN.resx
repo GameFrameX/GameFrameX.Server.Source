@@ -1087,6 +1087,12 @@
   <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
     <value>未启用任何 Online 能力面：EnableRuntime 与 EnableAdminApi 均为 false,请至少启用其一。</value>
   </data>
+  <data name="Capability.Hosting.Composition.HostModulesRequired" xml:space="preserve">
+    <value>无族组合至少需要一个宿主基础设施模块：请经 AddHostModule 声明。</value>
+  </data>
+  <data name="Capability.Hosting.Composition.AdminApiPlaneRequiresFamily" xml:space="preserve">
+    <value>管理面工厂需与能力族同用；无族宿主组合不得设置管理面工厂。</value>
+  </data>
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>管理面监听选项非法（端口 / 前缀）。</value>
   </data>

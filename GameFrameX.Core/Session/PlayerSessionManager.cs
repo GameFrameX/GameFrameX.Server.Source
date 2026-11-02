@@ -50,6 +50,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// 全局单例入口。获取路径为 <c>PlayerSessionManager.Instance</c>，引用面一律按 <see cref="IPlayerSessionManager"/> 接口
     /// （<see cref="PlayerSessionFastPathAdapter"/> 单例先例同款：私有构造 + <c>static readonly</c> 实例）。
     /// </summary>
+    [Obsolete("静态单例入口过渡保留：请改用注入的 IPlayerSessionManager（组合根经 Override 提供；进程缺省即本实例）。Static singleton entry kept for transition; use the injected IPlayerSessionManager (provided by the composition root; the process default is this very instance).", false)]
     public static readonly IPlayerSessionManager Instance = new PlayerSessionManager();
 
     private PlayerSessionManager()

@@ -208,6 +208,24 @@ public static partial class Keys
                 /// 用途: CapabilityComposition.Compose 时 EnableRuntime 为 false 且未设置管理面工厂
                 /// </remarks>
                 public const string NoPlaneEnabled = "Capability.Hosting.Composition.NoPlaneEnabled";
+
+                /// <summary>
+                /// 无族组合缺少宿主模块。
+                /// </summary>
+                /// <remarks>
+                /// 键名: Capability.Hosting.Composition.HostModulesRequired
+                /// 用途: 无族 Compose(options) 时 HostModules 为空
+                /// </remarks>
+                public const string HostModulesRequired = "Capability.Hosting.Composition.HostModulesRequired";
+
+                /// <summary>
+                /// 管理面工厂需与能力族同用。
+                /// </summary>
+                /// <remarks>
+                /// 键名: Capability.Hosting.Composition.AdminApiPlaneRequiresFamily
+                /// 用途: 无族 Compose(options) 时设置了管理面工厂（管理面属族组合产物）
+                /// </remarks>
+                public const string AdminApiPlaneRequiresFamily = "Capability.Hosting.Composition.AdminApiPlaneRequiresFamily";
             }
 
             /// <summary>

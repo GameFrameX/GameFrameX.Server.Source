@@ -46,10 +46,11 @@ internal static class CapabilityDependencyChecker
     /// 执行依赖检查与拓扑定序。
     /// </summary>
     /// <param name="allModules">全部已发现模块（含被过滤的）。</param>
-    /// <param name="enabledModules">过滤器判定启用的模块。</param>
+    /// <param name="enabledModules">过滤器判定启用的模块（宿主模块恒在）。</param>
     /// <param name="filter">装配过滤器（缺席原因判定用）。</param>
+    /// <param name="hostModules">宿主基础设施模块表（相位合成定序边来源）。</param>
     /// <returns>检查结果（问题条目 / 依赖状态 / 缺失功能 / 解析来源策略 / 拓扑序）。</returns>
-    public static Result Check(IReadOnlyList<ICapabilityModule> allModules, IReadOnlyList<ICapabilityModule> enabledModules, CapabilityAssemblyFilter filter)
+    public static Result Check(IReadOnlyList<ICapabilityModule> allModules, IReadOnlyList<ICapabilityModule> enabledModules, CapabilityAssemblyFilter filter, IReadOnlyList<CapabilityCompositionOptions.HostModuleEntry> hostModules)
     {
         var manifestsById = new Dictionary<string, CapabilityManifest>(StringComparer.Ordinal);
         for (var i = 0; i < allModules.Count; i++)
@@ -75,6 +76,8 @@ internal static class CapabilityDependencyChecker
             CheckModule(enabledModules[i].Manifest, manifestsById, enabledIds, filter, result, edges);
         }
 
+        ApplyHostModulePhaseEdges(enabledModules, hostModules, edges);
+
         CollectCycles(enabledModules, edges, result);
         if (result.Problems.Count == 0)
         {
@@ -83,6 +86,86 @@ internal static class CapabilityDependencyChecker
 
         return result;
     }
+
+    /// <summary>
+    /// 注入宿主模块相位的合成定序边：能力模块依赖全部 BeforeCapabilities 宿主模块；
+    /// AfterCapabilities 宿主模块依赖全部能力模块与全部 BeforeCapabilities 宿主模块。
+    /// <para>
+    /// 维护约束：合成边只参与定序（与显式 <c>Requires</c>/<c>Optional</c> 边同图参与环检测），
+    /// 不写入 <c>AllowedOwnersByConsumer</c>——宿主模块与能力模块之间的服务可见性仍由显式依赖声明决定。
+    /// 能力模块显式 <c>Requires</c> 一个 AfterCapabilities 宿主模块会与合成边成环，按环路 fail-fast 报出。
+    /// </para>
+    /// </summary>
+    /// <param name="enabledModules">启用模块。</param>
+    /// <param name="hostModules">宿主模块表（含相位）。</param>
+    /// <param name="edges">定序边累积器（依赖方 → 依赖集合）。</param>
+    private static void ApplyHostModulePhaseEdges(IReadOnlyList<ICapabilityModule> enabledModules, IReadOnlyList<CapabilityCompositionOptions.HostModuleEntry> hostModules, Dictionary<string, List<string>> edges)
+    {
+        if (hostModules == null || hostModules.Count == 0)
+        {
+            return;
+        }
+
+        var beforePhaseIds = new List<string>();
+        var afterPhaseIds = new List<string>();
+        var hostModuleIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < hostModules.Count; i++)
+        {
+            var hostModuleId = hostModules[i].Module.Manifest.Id;
+            if (!edges.ContainsKey(hostModuleId))
+            {
+                // 未进入启用集的宿主模块（不在本次装配模块表内）不参与合成边。
+                continue;
+            }
+
+            hostModuleIds.Add(hostModuleId);
+            if (hostModules[i].Phase == CapabilityHostModulePhase.BeforeCapabilities)
+            {
+                beforePhaseIds.Add(hostModuleId);
+            }
+            else
+            {
+                afterPhaseIds.Add(hostModuleId);
+            }
+        }
+
+        if (beforePhaseIds.Count == 0 && afterPhaseIds.Count == 0)
+        {
+            return;
+        }
+
+        for (var i = 0; i < enabledModules.Count; i++)
+        {
+            var moduleId = enabledModules[i].Manifest.Id;
+            if (hostModuleIds.Contains(moduleId))
+            {
+                // After 相位宿主模块依赖能力模块与 Before 相位宿主模块；Before 相位宿主模块之间不注入合成边（由自身声明与 Id 序决定）。
+                if (afterPhaseIds.Contains(moduleId))
+                {
+                    var dependentIds = edges[moduleId];
+                    for (var j = 0; j < enabledModules.Count; j++)
+                    {
+                        var otherId = enabledModules[j].Manifest.Id;
+                        if (!string.Equals(otherId, moduleId, StringComparison.Ordinal)
+                            && !afterPhaseIds.Contains(otherId))
+                        {
+                            dependentIds.Add(otherId);
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            // 能力模块依赖全部 Before 相位宿主模块。
+            var moduleEdges = edges[moduleId];
+            for (var j = 0; j < beforePhaseIds.Count; j++)
+            {
+                moduleEdges.Add(beforePhaseIds[j]);
+            }
+        }
+    }
+
 
     /// <summary>
     /// 检查单个模块的必选 / 可选依赖（必选缺失记问题；可选缺失记数据；在场依赖记定序边与来源策略）。

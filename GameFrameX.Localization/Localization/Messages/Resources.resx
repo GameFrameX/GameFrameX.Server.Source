@@ -1086,6 +1086,12 @@
   <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
     <value>No capability plane is enabled: both EnableRuntime and EnableAdminApi are false; enable at least one of them.</value>
   </data>
+  <data name="Capability.Hosting.Composition.HostModulesRequired" xml:space="preserve">
+    <value>The family-less composition requires at least one host infrastructure module; declare one via AddHostModule.</value>
+  </data>
+  <data name="Capability.Hosting.Composition.AdminApiPlaneRequiresFamily" xml:space="preserve">
+    <value>The admin API plane factory must be used with a capability family; clear it for the family-less host composition.</value>
+  </data>
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>Admin API listening options are invalid (port / prefix).</value>
   </data>

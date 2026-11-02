@@ -44,20 +44,18 @@ namespace GameFrameX.Launcher.StartUp;
 /// <remarks>
 /// 组合根边界：本类所在启动模板序列（<see cref="AppStartUpGameServerBase"/>
 /// 模板钩子 + 各 Role 差异覆写）负责基础设施装配——网络监听、GameDb 数据库、发现层、热更模块装载与退出编排；
-/// 平台业务域服务（好友 / 资产 / 对局等）的组合自 C294 起由模板固定步骤
-/// <see cref="AppStartUpGameServerBase.ComposeCapabilitiesAsync"/> 经
-/// <c>CapabilityComposition.Compose</c> 单入口承载（"Online" 配置段声明启用 Role）。两层边界经
-/// 好友查询桥实证：Hotfix 协议面薄适配器经 Online 契约面进程内消费平台服务，不经本地注册表绕行。
-/// Composition-root boundary: the startup template sequence (the
-/// <see cref="AppStartUpGameServerBase"/> template hooks plus per-role overrides) assembles the
-/// infrastructure — network listeners, the GameDb database, the discovery layer, hotfix module loading
-/// and exit orchestration — while since C294 the composition of platform domain services (friends,
-/// assets, matches, ...) is carried by the fixed template step
-/// <see cref="AppStartUpGameServerBase.ComposeCapabilitiesAsync"/> through the single
-/// <c>CapabilityComposition.Compose</c> entry (enabled roles declared in the "Online" configuration
-/// section). The two-layer boundary is proven by the friend-query bridge: the Hotfix protocol thin
-/// adapter consumes the platform services in-process through the Online contract face, never through
-/// the local registry.
+/// 平台业务域服务（好友 / 资产 / 对局等）的组合经统一组合根（<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/>
+/// → <c>CapabilityComposition.Compose</c> 单入口）承载：旧栈固定序列包装为早晚宿主模块与能力模块进入同一运行时
+///（"Online" 配置段声明启用 Role）。两层边界经好友查询桥实证：Hotfix 协议面薄适配器经 Online 契约面
+/// 进程内消费平台服务，不经本地注册表绕行。
+/// Composition-root boundary: the startup template assembles the role differences through hooks while
+/// since the dual-assembly convergence the composition of the legacy fixed sequence (wrapped as the
+/// early/late host modules) and the platform domain services (friends, assets, matches, ...) both ride
+/// the single composition root (<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/> →
+/// <c>CapabilityComposition.Compose</c>, enabled roles declared in the "Online" configuration section)
+/// into one runtime. The two-layer boundary is proven by the friend-query bridge: the Hotfix protocol
+/// thin adapter consumes the platform services in-process through the Online contract face, never
+/// through the local registry.
 /// </remarks>
 // 显式优先级修复与 Social 同为缺省 1000 的冲突——Game 为主服务先起（值越小优先级越高）
 [StartUpTag(GameServerConst.Game.Name, 100)]
@@ -80,7 +78,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     protected override async Task ShutdownAsync(string exitMessage)
     {
         await StopAsync(exitMessage ?? "");
-        await HotfixManager.StopAsync(exitMessage);
+        await GameFrameX.Core.Hotfix.HotfixRuntime.ProcessDefault.StopAsync(exitMessage);
     }
 
 
