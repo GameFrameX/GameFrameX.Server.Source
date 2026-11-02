@@ -88,40 +88,13 @@ internal sealed class CapabilityHostBuilder
     public CapabilityHost Build(IReadOnlyList<ICapabilityModule> modules)
     {
         var filter = _options.Filter ?? new CapabilityAssemblyFilter();
-        var manifestsById = new Dictionary<string, ICapabilityModule>(StringComparer.Ordinal);
-        for (var i = 0; i < modules.Count; i++)
-        {
-            var module = modules[i];
-            if (manifestsById.TryGetValue(module.Manifest.Id, out var existing))
-            {
-                // Localization: Capability.Hosting.DuplicateCapability - 能力 Id 重复注册。
-                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DuplicateCapability), module.Manifest.Id + " (" + existing.GetType().Assembly.GetName().Name + " / " + module.GetType().Assembly.GetName().Name + ")"));
-            }
-
-            manifestsById.Add(module.Manifest.Id, module);
-        }
+        var manifestsById = CollectModulesById(modules);
 
         ValidateFilterTargets(filter, manifestsById);
 
-        // 宿主基础设施模块不受过滤器影响（恒启用）；能力模块照常走过滤。
-        var hostModuleIds = new HashSet<string>(StringComparer.Ordinal);
-        var hostModules = _options.HostModules;
-        for (var i = 0; i < hostModules.Count; i++)
-        {
-            hostModuleIds.Add(hostModules[i].Module.Manifest.Id);
-        }
-
-        var enabledModules = new List<ICapabilityModule>();
-        for (var i = 0; i < modules.Count; i++)
-        {
-            if (hostModuleIds.Contains(modules[i].Manifest.Id) || filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
-            {
-                enabledModules.Add(modules[i]);
-            }
-        }
-
         // 依赖检查在任何模块 Register 之前：检查不通过就不执行任何模块代码，不会留下装了一半的状态。
-        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter, hostModules);
+        var enabledModules = CollectEnabledModules(modules, filter);
+        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter, _options.HostModules);
         if (dependencyResult.Problems.Count > 0)
         {
             throw new CapabilityAssemblyException(dependencyResult.Problems);
@@ -150,6 +123,7 @@ internal sealed class CapabilityHostBuilder
                 settingsFieldsByCapability[module.Manifest.Id] = binding.Fields;
             }
         }
+
 
         // 钩子声明写入进程级静态槽位：装配任一步失败必须释放已声明项，否则同进程再次组合会误判重复声明。
         var hookDeclarationReleases = new List<IDisposable>();
@@ -212,6 +186,56 @@ internal sealed class CapabilityHostBuilder
                 throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.FilterTargetMissing), id));
             }
         }
+    }
+
+    /// <summary>
+    /// 建立能力 Id → 模块表（同 Id 查重：重复注册 = fail-fast）。
+    /// </summary>
+    /// <param name="modules">全部模块（发现序 + 宿主模块尾部追加）。</param>
+    /// <returns>能力 Id → 模块表。</returns>
+    private static Dictionary<string, ICapabilityModule> CollectModulesById(IReadOnlyList<ICapabilityModule> modules)
+    {
+        var manifestsById = new Dictionary<string, ICapabilityModule>(StringComparer.Ordinal);
+        for (var i = 0; i < modules.Count; i++)
+        {
+            var module = modules[i];
+            if (manifestsById.TryGetValue(module.Manifest.Id, out var existing))
+            {
+                // Localization: Capability.Hosting.DuplicateCapability - 能力 Id 重复注册。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DuplicateCapability), module.Manifest.Id + " (" + existing.GetType().Assembly.GetName().Name + " / " + module.GetType().Assembly.GetName().Name + ")"));
+            }
+
+            manifestsById.Add(module.Manifest.Id, module);
+        }
+
+        return manifestsById;
+    }
+
+    /// <summary>
+    /// 收集启用模块（宿主基础设施模块不受过滤器影响，恒启用；能力模块照常走过滤）。
+    /// </summary>
+    /// <param name="modules">全部模块（发现序）。</param>
+    /// <param name="filter">过滤器。</param>
+    /// <returns>启用模块列表（发现序）。</returns>
+    private List<ICapabilityModule> CollectEnabledModules(IReadOnlyList<ICapabilityModule> modules, CapabilityAssemblyFilter filter)
+    {
+        var hostModuleIds = new HashSet<string>(StringComparer.Ordinal);
+        var hostModules = _options.HostModules;
+        for (var i = 0; i < hostModules.Count; i++)
+        {
+            hostModuleIds.Add(hostModules[i].Module.Manifest.Id);
+        }
+
+        var enabledModules = new List<ICapabilityModule>();
+        for (var i = 0; i < modules.Count; i++)
+        {
+            if (hostModuleIds.Contains(modules[i].Manifest.Id) || filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
+            {
+                enabledModules.Add(modules[i]);
+            }
+        }
+
+        return enabledModules;
     }
 
     /// <summary>
