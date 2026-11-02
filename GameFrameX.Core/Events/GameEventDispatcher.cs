@@ -199,7 +199,7 @@ public sealed class GameEventDispatcher : IEventDispatcher
         var listeners = HotfixManager.Resolver.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, ActorIdGenerator.GetActorType(actorId), eventArgs.GetType().Name));
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, DescribeActorType(actorId), eventArgs.GetType().Name));
             return;
         }
 
@@ -238,6 +238,31 @@ public sealed class GameEventDispatcher : IEventDispatcher
             Interlocked.Increment(ref _inFlightDispatchCount);
             var listenerDispatchTask = ownerActor.WorkerActor.EnqueueAsync(() => DispatchListenerInActorAsync(ownerActor, listener, actorId, eventArgs), callChainId: WorkerActor.NextChainId(), discard: true, timeOut: GlobalSettings.CurrentSetting.ActorTimeOut);
             _ = listenerDispatchTask.ContinueWith(_ => Interlocked.Decrement(ref _inFlightDispatchCount), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+    }
+
+    /// <summary>
+    /// 描述目标 Actor 类型（无监听告警格式化用）。全局事件分发以 0 作为目标 ActorId
+    ///（低于最小服务器 Id，不参与 Actor 类型编码），类型反查失败时返回固定描述而不是抛出——
+    /// 告警路径不得因合法的全局分发 Id 中断启动/分发链路。
+    /// </summary>
+    /// <remarks>
+    /// Describes the target actor type (formatting for the no-listener warning). Global event
+    /// dispatch uses 0 as the target actor id (below the minimum server id, outside the actor-type
+    /// encoding); when the type lookup fails a fixed description is returned instead of throwing —
+    /// the warning path must not break the startup/dispatch chain for a legal global dispatch id.
+    /// </remarks>
+    /// <param name="actorId">目标 ActorId / The target actor id</param>
+    /// <returns>Actor 类型数值；无法编码时为 "global" / The actor type value, or "global" when not encodable</returns>
+    private static object DescribeActorType(long actorId)
+    {
+        try
+        {
+            return ActorIdGenerator.GetActorType(actorId);
+        }
+        catch (Exception)
+        {
+            return "global";
         }
     }
 
