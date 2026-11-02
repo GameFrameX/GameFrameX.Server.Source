@@ -96,7 +96,8 @@ namespace GameFrameX.Tests.Online
             {
                 var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
 
-                // 业务 action 30 = assets 7（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail
+                // 业务 action 35 = server-lifecycle 5（register_server_open / query_server_calendar / plan_server_merge / dry_run_server_merge / execute_server_merge）
+                //     + assets 7（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail
                 //     / query_compensation_queue / resolve_compensation_manual_review）
                 //   + foundation 1（suspend_resume_player）
                 //   + social 8（kick_player / revoke_token / mute_player / query_report_cases / update_report_case /
@@ -107,9 +108,9 @@ namespace GameFrameX.Tests.Online
                 //   + operations 7（query_online_overview / query_player_timeline / query_online_audit_events + hotfix 受控操作族 4）；
                 // 机制元端点 3：list_capabilities + list_capability_settings（调度器持有报告）+ list_capability_services（调度器持有服务面）。
                 var declaredActions = runtime.Report.Entries.SelectMany(entry => entry.Manifest.Actions).ToList();
-                Assert.Equal(30, declaredActions.Count);
+                Assert.Equal(35, declaredActions.Count);
                 Assert.Equal(declaredActions.Count + 3, dispatcher.ActionNames.Count);
-                Assert.Equal(33, dispatcher.ActionNames.Count);
+                Assert.Equal(38, dispatcher.ActionNames.Count);
                 foreach (var action in declaredActions)
                 {
                     Assert.Contains(action, dispatcher.ActionNames);

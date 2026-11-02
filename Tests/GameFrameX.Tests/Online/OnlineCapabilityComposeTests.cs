@@ -82,13 +82,13 @@ public class OnlineCapabilityComposeTests
     private static readonly HttpClient SharedHttpClient = new HttpClient();
 
     /// <summary>
-    /// 八能力全装配的拓扑序（依赖边：social→foundation、matchmaking→social、match 可选 assets/matchmaking、
-    /// leaderboard 可选 match、competition 必选 leaderboard 可选 assets、operations→foundation 可选 assets/social/match/matchmaking；
-    /// 同层按能力 Id Ordinal）。
+    /// 九能力全装配的拓扑序（依赖边：social→foundation、matchmaking→social、match 可选 assets/matchmaking、
+    /// leaderboard 可选 match、competition 必选 leaderboard 可选 assets、operations→foundation 可选 assets/social/match/matchmaking、
+    /// server-lifecycle 无能力依赖；同层按能力 Id Ordinal）。
     /// </summary>
     private static readonly string[] ExpectedTopologicalOrder =
     {
-        "online-assets", "online-foundation", "online-social", "online-matchmaking",
+        "online-assets", "online-foundation", "online-server-lifecycle", "online-social", "online-matchmaking",
         "online-match", "online-leaderboard", "online-competition", "online-operations",
     };
 
@@ -200,7 +200,7 @@ public class OnlineCapabilityComposeTests
             Assert.NotNull(runtime.Host);
             Assert.Null(runtime.AdminApi);
             Assert.Equal(ExpectedTopologicalOrder, runtime.Report.EnabledIdsInOrder);
-            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(9, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             Assert.Equal(ExpectedTopologicalOrder, runtime.Host.Modules.Select(module => module.Manifest.Id).ToArray());
 
             var order = runtime.Report.EnabledIdsInOrder.ToList();
@@ -272,7 +272,7 @@ public class OnlineCapabilityComposeTests
     {
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
-            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(9, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             Assert.Equal(ExpectedTopologicalOrder, runtime.Report.EnabledIdsInOrder);
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(Array.Empty<string>(), Array.Empty<string>()));
@@ -286,7 +286,7 @@ public class OnlineCapabilityComposeTests
     {
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
-            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(9, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(new[] { string.Empty, "  " }, new[] { string.Empty, "  " }));
     }
@@ -315,7 +315,7 @@ public class OnlineCapabilityComposeTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
             Assert.Equal(CapabilityFilterState.ExcludedByDisableList, FindEntry(runtime.Report, "online-operations").State);
-            Assert.Equal(7, runtime.Report.EnabledIdsInOrder.Count);
+            Assert.Equal(8, runtime.Report.EnabledIdsInOrder.Count);
             Assert.DoesNotContain("online-operations", runtime.Report.EnabledIdsInOrder);
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(null, new[] { "online-operations" }));
@@ -337,7 +337,7 @@ public class OnlineCapabilityComposeTests
             var payload = inner.RootElement.GetProperty("Data");
             Assert.Equal("online-operations", payload.GetProperty("NotInstalledCapability").GetString());
             var installed = ReadStrings(payload.GetProperty("InstalledCapabilities"));
-            Assert.Equal(7, installed.Length);
+            Assert.Equal(8, installed.Length);
             Assert.DoesNotContain("online-operations", installed);
             }
         }, null, options => options.Filter = new CapabilityAssemblyFilter(null, new[] { "online-operations" }));
@@ -369,10 +369,10 @@ public class OnlineCapabilityComposeTests
                 Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
                 var data = inner.RootElement.GetProperty("Data");
                 var entries = IndexBy(data.GetProperty("Capabilities"), "Id");
-                Assert.Equal(8, entries.Count);
+                Assert.Equal(9, entries.Count);
                 Assert.Equal("ExcludedByDisableList", entries["online-assets"].GetProperty("State").GetString());
                 Assert.Equal("Enabled", entries["online-foundation"].GetProperty("State").GetString());
-                Assert.Equal(7, data.GetProperty("EnabledIdsInOrder").GetArrayLength());
+                Assert.Equal(8, data.GetProperty("EnabledIdsInOrder").GetArrayLength());
             }
 
             using (var inner = ParseInner(await PostAsync("grant_asset", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"RequestId\":\"r2\"}")))
@@ -602,7 +602,7 @@ public class OnlineCapabilityComposeTests
             Assert.Equal(ExpectedTopologicalOrder, ReadStrings(data.GetProperty("EnabledIdsInOrder")));
 
             var entries = IndexBy(data.GetProperty("Capabilities"), "Id");
-            Assert.Equal(8, entries.Count);
+            Assert.Equal(9, entries.Count);
 
             var match = entries["online-match"];
             Assert.Equal(new[] { "online-assets", "online-matchmaking" }, ReadStrings(match.GetProperty("OptionalCapabilityIds")));
@@ -734,7 +734,7 @@ public class OnlineCapabilityComposeTests
             var match = FindEntry(runtime.Report, "online-match");
             Assert.Equal(CapabilityFilterState.Enabled, match.State);
             Assert.Contains("online-match", runtime.Report.EnabledIdsInOrder);
-            Assert.Equal(6, runtime.Report.EnabledIdsInOrder.Count);
+            Assert.Equal(7, runtime.Report.EnabledIdsInOrder.Count);
 
             foreach (var absentId in new[] { "online-assets", "online-matchmaking" })
             {

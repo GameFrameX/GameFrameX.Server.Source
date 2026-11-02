@@ -137,6 +137,11 @@ run_cmd \
   "回滚开关验证 EnableUnifiedClient=false" \
   "RemoteMessaging__EnableUnifiedClient=false dotnet test $TEST_PROJECT --filter \"$REMOTE_FILTER\""
 
+run_cmd \
+  "合服演练 N3（ServerLifecycle dry-run 先行 + 幂等回放 + 全局域零操作断言）" \
+  "dotnet test $TEST_PROJECT --filter \"FullyQualifiedName~OnlineServerMerge|FullyQualifiedName~OnlineServerLifecycle|FullyQualifiedName~MergeRowRewriter\""
+
+
 if [[ "$MODE" == "full" ]]; then
   run_cmd \
     "重试开关验证 EnableRetry=false" \
