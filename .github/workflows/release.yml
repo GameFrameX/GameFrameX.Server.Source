@@ -17,15 +17,6 @@ jobs:
     permissions:
       contents: read
     services:
-      mongo:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping')\""
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
       postgres:
         image: postgres:17
         env:
@@ -42,6 +33,23 @@ jobs:
       GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING: mongodb://localhost:27017
       GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: 'Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres'
     steps:
+      # Mongo 以单节点副本集运行（独立 service 容器无法传 mongod 参数）：
+      # 发布门禁必须实际执行事务回滚/嵌套断言（hello.setName 探测），不能停在独立服务跳过路径。
+      # 独立服务的跳过路径由 topology-equivalence 工作流的常开 mongo service 覆盖。
+      - name: Start MongoDB Single-Node Replica Set
+        run: |
+          docker run -d --name mongo-replica-set -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for attempt in $(seq 1 30); do
+            if docker exec mongo-replica-set mongosh --quiet --eval "db.adminCommand('ping').ok" | grep -q 1; then break; fi
+            sleep 2
+          done
+          docker exec mongo-replica-set mongosh --quiet --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ] }) } catch (error) { }"
+          for attempt in $(seq 1 30); do
+            if docker exec mongo-replica-set mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true; then exit 0; fi
+            sleep 2
+          done
+          echo "mongodb replica set did not become primary in time" >&2
+          exit 1
       - name: Checkout Repository
         uses: actions/checkout@v7
 
