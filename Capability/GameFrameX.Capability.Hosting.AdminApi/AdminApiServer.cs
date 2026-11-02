@@ -148,6 +148,9 @@ public sealed class AdminApiServer : ICapabilityAdminApiPlane
 
         _application = application;
         await application.StartAsync(cancellationToken).ConfigureAwait(false);
+        // 安全告警（SR-1 最小修复）：管理面固定监听所有网卡且无鉴权（准入仅 body 作用域键 + IP 限流）；
+        // 生产部署必须置于内网/可信网络或前置准入网关，根治（回环绑定 + 准入控制）另行裁决。
+        Console.WriteLine("[AdminApi] 警告: 管理面正监听所有网卡（0.0.0.0:" + _options.AdminPort + "）且未启用鉴权，请勿暴露到不可信网络。");
     }
 
     /// <summary>

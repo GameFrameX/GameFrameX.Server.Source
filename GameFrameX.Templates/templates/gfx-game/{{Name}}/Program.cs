@@ -56,7 +56,7 @@ var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), option
 await runtime.StartAsync();
 
 Console.WriteLine("[{{Name}}] 游戏宿主已启动。已装配能力（拓扑序）: {0}", string.Join(", ", runtime.Report.EnabledIdsInOrder));
-Console.WriteLine("[{{Name}}] 管理面: http://127.0.0.1:28092/online/admin/{{action}}");
+Console.WriteLine("[{{Name}}] 管理面: POST http://<主机>:28092/online/admin/{{action}}（监听本机所有网卡，无鉴权，仅限内网/可信环境使用）");
 Console.WriteLine("[{{Name}}] 按 Ctrl+C 退出。");
 
 var shutdown = new ManualResetEventSlim(false);
