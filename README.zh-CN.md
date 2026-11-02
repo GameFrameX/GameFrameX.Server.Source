@@ -843,6 +843,8 @@ All-in-One 进程运行，而无需修改 Role 代码。
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API 的 Swagger 文档 |
 | `xunit` | 单元测试框架 |
 
+**版本治理（2.0.0 版本线）：** 本仓源码版本线已归一为 **2.0.0**（断代升级，不保留 1.x 兼容层）。Server 运行仓（`GameFrameX.Server`）的 `GameFrameX.*` 包引用钉住 **1.13.0** 不动，待框架 2.0 发布后再统一升级（收敛计划 P5 阶段）；`GameFrameX.Capability.*` 能力包随 2.0.0 版本线首发。
+
 ---
 
 ## 文档与资源

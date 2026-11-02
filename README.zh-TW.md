@@ -836,6 +836,8 @@ compose 檔案與各實例配置是否與產生器輸出一致）。未啟用驗
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API 的 Swagger 文件 |
 | `xunit` | 單元測試框架 |
 
+**版本治理（2.0.0 版本線）：** 本倉源碼版本線已歸一為 **2.0.0**（斷代升級，不保留 1.x 相容層）。Server 執行倉（`GameFrameX.Server`）的 `GameFrameX.*` 套件引用釘住 **1.13.0** 不動，待框架 2.0 發布後再統一升級（收斂計畫 P5 階段）；`GameFrameX.Capability.*` 能力套件隨 2.0.0 版本線首發。
+
 ---
 
 ## 文檔與資源
