@@ -149,6 +149,40 @@ public sealed class OnlineMatchRuntime
     }
 
     /// <summary>
+    /// 按票据模式解析承载玩法：精确命中注册玩法时返回该玩法；未命中且全局仅注册单一玩法时回落该玩法
+    /// （单玩法形态承载全部票据模式——票据模式为客户端撮合语义（如 1v1 / 2v2），与玩法注册键属两套取值空间）；
+    /// 多玩法注册且未命中时返回 <c>null</c>（由调用方按未注册该模式处理）。
+    /// </summary>
+    /// <param name="ticketMode">票据匹配模式（客户端撮合语义）。</param>
+    /// <returns>承载玩法；无法唯一定位时为 <c>null</c>。</returns>
+    public IOnlineMatchGame ResolveGameForTicketMode(int ticketMode)
+    {
+        lock (_syncRoot)
+        {
+            if (_games.TryGetValue(ticketMode, out var game))
+            {
+                return game;
+            }
+
+            return _games.Count == 1 ? FirstRegisteredGame() : null;
+        }
+    }
+
+    /// <summary>
+    /// 取唯一注册玩法（仅在 <see cref="_games"/> 恰有一项时于锁内调用）。
+    /// </summary>
+    /// <returns>唯一注册玩法。</returns>
+    private IOnlineMatchGame FirstRegisteredGame()
+    {
+        foreach (var game in _games.Values)
+        {
+            return game;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 由匹配分配创建对局（上游匹配域的 assignment）。
     /// <para>成员表按 assignment 的玩家集合预置（分配即成员已定），对局进入等待阶段。</para>
     /// </summary>
