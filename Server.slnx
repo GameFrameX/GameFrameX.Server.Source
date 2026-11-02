@@ -24,6 +24,8 @@
     <Project Path="Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Leaderboard/GameFrameX.Capability.Online.Leaderboard.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.ServerLifecycle/GameFrameX.Capability.Online.ServerLifecycle.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.ServerLifecycle.Cli/GameFrameX.Capability.Online.ServerLifecycle.Cli.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj" />
   </Folder>
   <Folder Name="/Capability/Frozen/">
