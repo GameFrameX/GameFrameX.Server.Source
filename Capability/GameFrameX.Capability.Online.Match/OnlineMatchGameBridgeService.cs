@@ -37,7 +37,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 维护约束（红线）：① 对局标识确定性派生（<c>rps-s{serverId}-r{roomId}-g{round}</c>）——同房间同局号
 /// 重复开局幂等复用既有对局，重启 / 重开 = 新局号新对局，旧局终态不复活；② 请求者身份一律取
 /// 作用域玩家位（会话主体），请求体字段不可影响；③ 出拳保密——视图只经
-/// <see cref="OnlineRockPaperScissorsGame.BuildBridgeView"/> 保密投影产出，本服务不拼装玩法字段；
+/// 玩法 <see cref="IOnlineMatchGame.BuildBridgeView"/> 保密投影产出，本服务不拼装玩法字段；
 /// ④ Ack 拒绝一律映射为段化错误码返回，不抛未分类异常。
 /// </para>
 /// <para>
@@ -60,14 +60,14 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
     private readonly OnlineMatchRuntime _runtime;
 
     /// <summary>样例玩法（视图保密投影属主）。</summary>
-    private readonly OnlineRockPaperScissorsGame _game;
+    private readonly IOnlineMatchGame _game;
 
     /// <summary>
     /// 初始化对局桥服务。
     /// </summary>
     /// <param name="runtime">对局运行时。</param>
     /// <param name="game">样例玩法。</param>
-    public OnlineMatchGameBridgeService(OnlineMatchRuntime runtime, OnlineRockPaperScissorsGame game)
+    public OnlineMatchGameBridgeService(OnlineMatchRuntime runtime, IOnlineMatchGame game)
     {
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -129,7 +129,7 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
     }
 
     /// <summary>
-    /// 提交石头剪刀布出拳：作用域缺失或无玩家标识返回 <c>ScopeMissing</c>，出拳越界返回 <c>ParameterInvalid</c>，对局不存在返回 <c>ResourceNotFound</c>；
+    /// 提交出拳意图：作用域缺失或无玩家标识返回 <c>ScopeMissing</c>，非法出拳由玩法裁决拒绝（越界值经 <c>ApplyInput</c> 映射为段化拒绝码），对局不存在返回 <c>ResourceNotFound</c>；
     /// 客户端序号由服务端按快照中该成员的最后序号加一派生；提交失败透传失败码，未返回确认返回 <c>InternalError</c>，被拒绝时映射拒绝原因，成功返回对局视图。
     /// </summary>
     /// <remarks>
@@ -147,11 +147,6 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         if (scope == null || scope.PlayerId <= 0)
         {
             return Fail(OnlineErrorCode.ScopeMissing, "作用域缺失或缺少玩家标识");
-        }
-
-        if (gesture < (int)OnlineRockPaperScissorsMove.Rock || gesture > (int)OnlineRockPaperScissorsMove.Paper)
-        {
-            return Fail(OnlineErrorCode.ParameterInvalid, "非法出拳");
         }
 
         var matchId = DeriveMatchId(scope.ServerId, roomId, round);
@@ -295,7 +290,7 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
                 ServerId = scope.ServerId,
                 MatchId = matchId,
                 AssignmentId = BuildAssignmentId(scope.ServerId, roomId),
-                Mode = OnlineRockPaperScissorsGame.MatchMode,
+                Mode = _game.Mode,
                 Region = 1,
                 CreatedAtTime = now,
                 TicketIds = new List<string>(),

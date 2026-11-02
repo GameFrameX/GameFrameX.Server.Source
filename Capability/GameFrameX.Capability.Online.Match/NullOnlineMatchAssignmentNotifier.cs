@@ -27,64 +27,38 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
+
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 石头剪刀布玩法状态（序列化后存于 <see cref="OnlineMatch.GameState"/>）。
-/// <para>
-/// 维护约束（红线）：<see cref="OnlineRockPaperScissorsPlayerState.Gesture"/> 持有**未结算**的出拳，
-/// 因此本状态的序列化结果属于服务端内部数据——不得原样下发给客户端（否则对手可在结算前窥屏）。
-/// 客户端可见的出拳只出现在已结算的 <c>RoundResolved</c> 事件载荷中（未结算前对外为 None）。
-/// </para>
+/// 撮合成立通知的空实现（包内缺省：不投递任何消息——等待方经状态轮询兜底；
+/// 宿主经运行时装配覆盖注入真实投递实现，覆盖恒胜出本缺省）。
 /// </summary>
-public sealed class OnlineRockPaperScissorsState
+public sealed class NullOnlineMatchAssignmentNotifier : IOnlineMatchAssignmentNotifier
 {
     /// <summary>
-    /// 获取或设置当前局数（从 1 开始）。
+    /// 静态缺省实例（无状态）。
     /// </summary>
-    public int Round { get; set; }
+    public static readonly NullOnlineMatchAssignmentNotifier Instance = new NullOnlineMatchAssignmentNotifier();
 
     /// <summary>
-    /// 获取或设置上一局胜者（平局为 0）。
+    /// 私有构造（单例）。
     /// </summary>
-    public long WinnerPlayerId { get; set; }
-
-    /// <summary>
-    /// 获取或设置本局截止时刻（UTC 毫秒；0 = 未布防，由 <see cref="IOnlineMatchGame.Advance"/> 布防）。
-    /// </summary>
-    public long RoundDeadlineTime { get; set; }
-
-    /// <summary>
-    /// 获取或设置玩家状态集合。
-    /// </summary>
-    public List<OnlineRockPaperScissorsPlayerState> Players { get; set; }
-
-    /// <summary>
-    /// 单玩家玩法状态。
-    /// </summary>
-    public sealed class OnlineRockPaperScissorsPlayerState
+    private NullOnlineMatchAssignmentNotifier()
     {
-        /// <summary>
-        /// 获取或设置玩家标识。
-        /// </summary>
-        public long PlayerId { get; set; }
+    }
 
-        /// <summary>
-        /// 获取或设置已胜局数。
-        /// </summary>
-        public int Wins { get; set; }
-
-        /// <summary>
-        /// 获取或设置本局出拳（<see cref="OnlineRockPaperScissorsMove.None"/> = 未出拳）。
-        /// </summary>
-        public OnlineRockPaperScissorsMove Gesture { get; set; }
-
-        /// <summary>
-        /// 获取或设置累计有效出拳次数（跨局累计；参与奖资格判定依据——任意玩家为 0 时结算抑制全部参与奖）。
-        /// <para>唯一写入点是 <see cref="OnlineRockPaperScissorsGame.ApplyInput"/> 接受合法出拳；每局结算不清零。</para>
-        /// </summary>
-        public int ValidGestureCount { get; set; }
+    /// <summary>
+    /// 静默丢弃撮合成立通知（不投递）。
+    /// </summary>
+    /// <param name="notification">通知载荷（忽略）。</param>
+    /// <param name="cancellationToken">取消令牌（忽略）。</param>
+    /// <returns>已完成的任务。</returns>
+    public Task NotifyAssignmentCreatedAsync(OnlineMatchAssignmentNotification notification, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 }

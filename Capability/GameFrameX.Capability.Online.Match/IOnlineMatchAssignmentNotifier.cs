@@ -27,26 +27,28 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 石头剪刀布出拳（取值与现网客户端契约 <c>RockPaperScissors_410.RockPaperScissorsGesture</c> 一致）。
+/// 撮合成立通知的出站端口：把「撮合已成立、对局已就位」的事实交给宿主侧投递实现
+/// （会话通道与协议消息形态由宿主决定），能力包自身不依赖任何旧链会话设施与协议产物。
 /// <para>
-/// 维护约束（红线）：客户端只提交**意图**（本枚举值），服务端负责判定胜负并产生结果——
-/// 客户端不得提交任何比分、胜负或奖励字段。
+/// 维护约束：包内缺省为 <see cref="NullOnlineMatchAssignmentNotifier"/>（静默丢弃），
+/// 宿主经运行时装配覆盖注入真实投递，覆盖恒胜出缺省；实现方对离线 / 无通道成员静默跳过
+/// （best-effort，等待方经状态轮询兜底），投递异常按调用方既有批次隔离路径外抛。
 /// </para>
 /// </summary>
-public enum OnlineRockPaperScissorsMove
+public interface IOnlineMatchAssignmentNotifier
 {
-    /// <summary>未出拳（未结算前对外一律呈现为该值）。</summary>
-    None = 0,
-
-    /// <summary>石头。</summary>
-    Rock = 1,
-
-    /// <summary>剪刀。</summary>
-    Scissors = 2,
-
-    /// <summary>布。</summary>
-    Paper = 3,
+    /// <summary>
+    /// 向通知载荷内的全部成员投递撮合成立通知（best-effort；离线成员静默跳过）。
+    /// </summary>
+    /// <param name="notification">撮合成立通知载荷（协议无关）。</param>
+    /// <param name="cancellationToken">停止取消令牌。</param>
+    /// <returns>投递任务。</returns>
+    Task NotifyAssignmentCreatedAsync(OnlineMatchAssignmentNotification notification, CancellationToken cancellationToken);
 }

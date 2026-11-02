@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- 验收夹具（test-fixture）：RPS 垂直切片的玩法侧承载——能力族黄金路径验收用样例游戏，
+             不是产品示例工程；不发布、不作为用户起点（用户玩法层在游戏仓 / Hotfix）。 -->
+        <IsPackable>false</IsPackable>
+        <Description>GameFrameX.Apps.Sample,RPS（石头剪刀布）验收夹具玩法：对局能力的样例游戏实现（协议裁决/回合推进/保密投影），供宿主组合根与测试装配（test-fixture，非产品示例）。 The rock-paper-scissors acceptance-fixture game for the online match capability: server-side adjudication, round advancement and secrecy projection wired by host composition roots and tests. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Sample,Fixture,Match,Game,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj"/>
+    </ItemGroup>
+
+</Project>

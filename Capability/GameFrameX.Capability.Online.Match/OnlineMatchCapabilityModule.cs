@@ -34,14 +34,12 @@ using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Match.AdminApi;
-using GameFrameX.Core.Session;
 using GameFrameX.Localization;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局能力（权威对局 Actor / 重连 / 幂等结算 / 样例玩法）的自装配模块（C232 P4 迁入，C294 改写三段生命周期）。
+/// 对局能力（权威对局 Actor / 重连 / 幂等结算 / 玩法注册面）的自装配模块（C232 P4 迁入，C294 改写三段生命周期）。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——对局 Actor / 结果
 /// 两个 store 走「懒默认注册 + 解析」替换缝（族 / 宿主 Override 恒胜出）；Options 经
@@ -51,6 +49,8 @@ namespace GameFrameX.Capability.Online.Match;
 /// 撮合成功通知订阅迁 Register 期机制事件总线（域服务在场才订阅并持有退订句柄）：
 /// 订阅体只入队不做异步 I/O，通知由 match-assignment-notification-tick 任务异步推送（C407）；
 /// 停用收口 = 关闭入队 + 退订 + 清空待处理 + 等待在途，返回后旧模块零通知。
+/// 玩法经 <see cref="OnlineMatchOptions.Games"/> 由宿主 Configure 回调注入（能力包零具体玩法；
+/// 零玩法形态 = 运行时与结算管线照常、桥与域服务不装配——最小宿主语义）。
 /// </para>
 /// </summary>
 /// <remarks>
@@ -86,7 +86,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         typeof(OnlineMatchOptions));
 
     /// <summary>
-    /// 对局运行时（Register 期构造；样例玩法随迁移注册，与壳时代装配语句逐语句等价）。
+    /// 对局运行时（Register 期构造；Options 注册的玩法逐个注册进运行时玩法表）。
     /// </summary>
     private OnlineMatchRuntime _matchRuntime;
 
@@ -105,6 +105,11 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     /// online-matchmaking 缺席时为 null——不装配不报错，420 协议面经桥得显式失败）。
     /// </summary>
     private IOnlineMatchDomain _matchDomain;
+
+    /// <summary>
+    /// 撮合成立通知出站端口（Register 期解析；包内缺省空实现，宿主 Override 注入真实投递恒胜出）。
+    /// </summary>
+    private IOnlineMatchAssignmentNotifier _assignmentNotifier;
 
     /// <summary>
     /// 撮合通知收口闸（保护 <see cref="_pendingNotifications"/> / <see cref="_notifyClosed"/> / <see cref="_inFlightNotifyTask"/>）。
@@ -174,30 +179,46 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         context.AddService<IOnlineMatchSettlementStore>(_ => settlementStoreInstance);
         var matchSettlementStore = context.GetService<IOnlineMatchSettlementStore>();
 
-        var rpsGame = new OnlineRockPaperScissorsGame();
+        // 玩法来自宿主 Configure 回调（能力包零具体玩法；样例游戏在验收夹具层）：
+        // 逐个注册进运行时；首个注册游戏承载样例桥 / 匹配域入场（单玩法样例期口径，
+        // 泛化随匹配域收敛另行裁决）；零玩法 = 运行时与结算管线照常装配、桥与域服务不装配。
+        IOnlineMatchGame primaryGame = null;
         _matchRuntime = new OnlineMatchRuntime(matchActorStore, eventPublisher, options.Runtime);
-        _matchRuntime.RegisterGame(rpsGame);
+        foreach (var game in options.GetGames())
+        {
+            _matchRuntime.RegisterGame(game);
+            primaryGame ??= game;
+        }
+
         context.AddService(_matchRuntime);
         context.AddTickJob("match-tick", ct => _matchRuntime.TickAllAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
-        // 结算编排：settlement + 可空 dispatcher（assets 缺席仅结算、不建待发奖记录）+ outbox tick 投递；桥服务注册回共享面。
+        // 结算编排：settlement + 可空 dispatcher（assets 缺席仅结算、不建待发奖记录）+ outbox tick 投递。
         var grantService = context.GetOptionalService<OnlineGrantService>();
         var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchSettlementStore, eventPublisher, grantService != null);
         var dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
         _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, matchSettlementStore, dispatcher, options.Settlement);
         context.AddTickJob("match-settlement-tick", ct => _settlementPipeline.TickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
-        _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);
-        context.AddService<IOnlineMatchGameBridge>(_bridgeService);
+        if (primaryGame != null)
+        {
+            _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, primaryGame);
+            context.AddService<IOnlineMatchGameBridge>(_bridgeService);
+        }
+
+        // 撮合成立通知出站端口：懒默认空实现（宿主 Override 恒胜出）——能力包不依赖旧链会话 / 协议产物。
+        // 与玩法 / 撮合装配解耦注册：通知链只在匹配域装配后消费本端口，注册恒置不引入条件分叉。
+        context.AddService<IOnlineMatchAssignmentNotifier>(static _ => NullOnlineMatchAssignmentNotifier.Instance);
+        _assignmentNotifier = context.GetService<IOnlineMatchAssignmentNotifier>();
 
         // 匹配域桥接票据入队 / 取消 / 状态与对局入场；撮合由匹配能力的定时任务统一驱动。
         // 票据服务与票据存储按可选依赖语义解析（manifest 已声明 online-matchmaking 可选）；
         // 在场才装配域服务并订阅撮合分配通知；缺席 = 不装配不报错——420 协议面经桥得显式失败。
         var domainTickets = context.GetOptionalService<OnlineMatchTicketService>();
         var domainTicketStore = context.GetOptionalService<IOnlineMatchTicketStore>();
-        if (domainTickets != null && domainTicketStore != null)
+        if (domainTickets != null && domainTicketStore != null && primaryGame != null)
         {
-            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, _matchRuntime, rpsGame, options.Registry);
+            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, _matchRuntime, primaryGame, options.Registry);
             context.AddService<IOnlineMatchDomain>(_matchDomain);
             _assignmentSubscription = context.Subscribe<OnlineEvent>(OnlineMatchEvents.AssignmentCreated, OnAssignmentCreated);
             context.AddTickJob("match-assignment-notification-tick", cancellationToken => ProcessAssignmentNotificationsAsync(cancellationToken));
@@ -205,18 +226,24 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     }
 
     /// <summary>
-    /// 激活对局能力：始终发布对局桥；仅当匹配域服务已在注册期装配时才发布匹配域桥。
+    /// 激活对局能力：玩法在场时发布对局桥（零玩法形态不发布，缺席态由桥显式失败承载）；
+    /// 仅当匹配域服务已在注册期装配时才发布匹配域桥。
     /// </summary>
     /// <remarks>
-    /// Always publishes the match game bridge; publishes the match domain bridge only when the domain service was assembled during registration.
+    /// Publishes the match game bridge when a game is registered (the zero-game shape publishes nothing and the
+    /// bridge face fails explicitly); publishes the match domain bridge only when the domain service was assembled.
     /// </remarks>
     /// <param name="context">能力激活上下文 / Capability activation context</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>已完成的任务，激活过程为同步操作 / A completed task, as activation is synchronous</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
-        // 桥发布迁 Activate 期（C294）：对局桥恒发布；匹配域桥仅在场发布（缺席态由桥显式失败承载）。
-        context.Bridges.Publish<IOnlineMatchGameBridge>(_bridgeService);
+        // 桥发布迁 Activate 期（C294）：对局桥仅玩法在场发布（零玩法最小宿主语义）；匹配域桥仅在场发布。
+        if (_bridgeService != null)
+        {
+            context.Bridges.Publish<IOnlineMatchGameBridge>(_bridgeService);
+        }
+
         if (_matchDomain != null)
         {
             context.Bridges.Publish<IOnlineMatchDomain>(_matchDomain);
@@ -314,7 +341,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
 
     /// <summary>
     /// 撮合通知处理 tick 任务（C407）：单轮最多取 <see cref="MaxNotificationsPerTickRound"/> 条待处理事件，
-    /// 逐条经域服务解析数值对局标识并向双方在线会话 best-effort 推送 <see cref="NotifyMatchMade"/>；
+    /// 逐条经域服务解析数值对局标识并经出站端口交付宿主投递实现（best-effort，等待方经状态轮询兜底）；
     /// 停用后队列已清空且入队已关闭，本轮直接返回。
     /// <para>
     /// 维护约束：本方法在调度器 tick 上下文执行——条目级异常记录后继续当轮剩余条目，
@@ -394,8 +421,9 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
 
     /// <summary>
     /// 单条撮合通知的分发（原 <c>HandleMatchAssignmentEvent</c> 主体，C294 迁入；C407 移除同步阻塞）：
-    /// 域服务解析数值对局标识 → 向双方在线会话 best-effort 推送 <see cref="NotifyMatchMade"/>；
-    /// 过滤 / 校验失败即静默返回；离线方无会话跳过（等待方经状态轮询兜底）。
+    /// 域服务解析数值对局标识 → 经出站端口 <see cref="IOnlineMatchAssignmentNotifier"/> 交付宿主投递实现
+    /// （协议消息与会话通道由宿主决定，能力包不依赖旧链会话 / 协议产物）；
+    /// 过滤 / 校验失败即静默返回；离线方由宿主实现 best-effort 跳过（等待方经状态轮询兜底）。
     /// </summary>
     /// <param name="onlineEvent">机制事件载荷。</param>
     /// <param name="cancellationToken">停止取消令牌。</param>
@@ -413,22 +441,12 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
             return;
         }
 
-        if (resolved.Data.PlayerIds == null)
+        if (resolved.Data.PlayerIds == null || resolved.Data.PlayerIds.Count == 0)
         {
             return;
         }
 
-        var notify = new NotifyMatchMade { MatchId = resolved.Data.MatchId, Mode = resolved.Data.Mode };
-        foreach (var playerId in resolved.Data.PlayerIds)
-        {
-            var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
-            if (session == null)
-            {
-                // 离线方静默跳过：best-effort 推送，等待方经状态轮询兜底。
-                continue;
-            }
-
-            await session.WriteAsync(notify).ConfigureAwait(false);
-        }
+        var notification = new OnlineMatchAssignmentNotification(resolved.Data.MatchId, resolved.Data.Mode, resolved.Data.PlayerIds);
+        await _assignmentNotifier.NotifyAssignmentCreatedAsync(notification, cancellationToken).ConfigureAwait(false);
     }
 }
