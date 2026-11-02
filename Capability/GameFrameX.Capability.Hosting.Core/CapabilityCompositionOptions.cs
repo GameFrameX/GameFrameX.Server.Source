@@ -32,7 +32,7 @@ using GameFrameX.Capability.Hosting.Abstractions;
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 能力组合选项（<see cref="CapabilityComposition.Compose"/> 的唯一配置面：族配置段 + 装配日志出口 +
+/// 能力组合选项（<see cref="CapabilityComposition.Compose(ICapabilityFamily, CapabilityCompositionOptions)"/> 的唯一配置面：族配置段 + 装配日志出口 +
 /// 双面开关 + 宿主选项 + 代码层 Options 覆盖与服务覆盖 + 管理面工厂）。
 /// <para>
 /// 维护约束（GFX0018 符号检查面）：<see cref="Configure{TOptions}"/> / <see cref="Override{TService}(TService)"/> /
@@ -51,6 +51,11 @@ public sealed class CapabilityCompositionOptions
     /// 宿主服务覆盖（Override 注册序落表；同键第二个覆盖 = 装配失败）。
     /// </summary>
     private readonly List<OverrideEntry> _overrideEntries = new();
+
+    /// <summary>
+    /// 宿主基础设施模块（相位声明；注册序落表）。
+    /// </summary>
+    private readonly List<HostModuleEntry> _hostModules = new();
 
     /// <summary>
     /// 管理面工厂（由 Hosting.AdminApi 包的 UseAdminApi 扩展设置）。
@@ -103,6 +108,34 @@ public sealed class CapabilityCompositionOptions
     /// 获取或设置调度观测出口（null = 缺省日志观察器；宿主接入真实指标管道时替换）。
     /// </summary>
     public ICapabilitySchedulerObserver SchedulerObserver { get; set; }
+
+    /// <summary>
+    /// 获取宿主基础设施模块表（机制装配期读取）。
+    /// </summary>
+    internal IReadOnlyList<HostModuleEntry> HostModules
+    {
+        get { return _hostModules; }
+    }
+
+    /// <summary>
+    /// 声明一个宿主基础设施模块：与能力模块进入同一宿主参与统一拓扑定序与生命周期——
+    /// <see cref="CapabilityHostModulePhase.BeforeCapabilities"/> 先于全部能力模块激活，
+    /// <see cref="CapabilityHostModulePhase.AfterCapabilities"/> 晚于全部能力模块激活；停用按激活逆序。
+    /// <para>维护约束：宿主模块不受 <see cref="Filter"/> 影响（恒启用）；其 <c>Requires</c> 只允许引用
+    /// 其它已在模块表中的能力 Id；同一 Id 重复声明 = 装配失败。</para>
+    /// </summary>
+    /// <param name="module">宿主模块实例（不可为 null）。</param>
+    /// <param name="phase">激活相位。</param>
+    public void AddHostModule(ICapabilityModule module, CapabilityHostModulePhase phase)
+    {
+        if (module == null)
+        {
+            throw new ArgumentNullException(nameof(module));
+        }
+
+        _hostModules.Add(new HostModuleEntry(module, phase));
+    }
+
 
     /// <summary>
     /// 声明代码层 Options 覆盖（只改需要改的字段；合并优先级：包内默认 &lt; 配置段 &lt; 代码 Configure）。
@@ -236,4 +269,32 @@ public sealed class CapabilityCompositionOptions
         /// </summary>
         public Func<CapabilityServiceResolver, object> Factory { get; }
     }
+
+    /// <summary>
+    /// 宿主基础设施模块条目（模块 + 激活相位）。
+    /// </summary>
+    internal sealed class HostModuleEntry
+    {
+        /// <summary>
+        /// 初始化 <see cref="HostModuleEntry"/>。
+        /// </summary>
+        /// <param name="module">宿主模块。</param>
+        /// <param name="phase">激活相位。</param>
+        public HostModuleEntry(ICapabilityModule module, CapabilityHostModulePhase phase)
+        {
+            Module = module;
+            Phase = phase;
+        }
+
+        /// <summary>
+        /// 获取宿主模块。
+        /// </summary>
+        public ICapabilityModule Module { get; }
+
+        /// <summary>
+        /// 获取激活相位。
+        /// </summary>
+        public CapabilityHostModulePhase Phase { get; }
+    }
 }
+

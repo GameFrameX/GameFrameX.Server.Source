@@ -80,9 +80,10 @@ internal sealed class CapabilityHostBuilder
     }
 
     /// <summary>
-    /// 装配（过滤器校验 → 过滤 → 依赖检查 → 定序 → 来源策略 → Options 合并 → Register → 产出宿主）。
+    /// 装配（同 Id 查重 → 过滤器校验 → 过滤（宿主模块豁免）→ 依赖检查（含相位合成定序边）→ 定序 →
+    /// 来源策略 → Options 合并 → Register → 产出宿主）。
     /// </summary>
-    /// <param name="modules">全部已发现模块（发现序）。</param>
+    /// <param name="modules">全部模块（发现序 + 宿主模块尾部追加）。</param>
     /// <returns>能力宿主（含报告与调度壳）。</returns>
     public CapabilityHost Build(IReadOnlyList<ICapabilityModule> modules)
     {
@@ -90,22 +91,37 @@ internal sealed class CapabilityHostBuilder
         var manifestsById = new Dictionary<string, ICapabilityModule>(StringComparer.Ordinal);
         for (var i = 0; i < modules.Count; i++)
         {
-            manifestsById[modules[i].Manifest.Id] = modules[i];
+            var module = modules[i];
+            if (manifestsById.TryGetValue(module.Manifest.Id, out var existing))
+            {
+                // Localization: Capability.Hosting.DuplicateCapability - 能力 Id 重复注册。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DuplicateCapability), module.Manifest.Id + " (" + existing.GetType().Assembly.GetName().Name + " / " + module.GetType().Assembly.GetName().Name + ")"));
+            }
+
+            manifestsById.Add(module.Manifest.Id, module);
         }
 
         ValidateFilterTargets(filter, manifestsById);
 
+        // 宿主基础设施模块不受过滤器影响（恒启用）；能力模块照常走过滤。
+        var hostModuleIds = new HashSet<string>(StringComparer.Ordinal);
+        var hostModules = _options.HostModules;
+        for (var i = 0; i < hostModules.Count; i++)
+        {
+            hostModuleIds.Add(hostModules[i].Module.Manifest.Id);
+        }
+
         var enabledModules = new List<ICapabilityModule>();
         for (var i = 0; i < modules.Count; i++)
         {
-            if (filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
+            if (hostModuleIds.Contains(modules[i].Manifest.Id) || filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
             {
                 enabledModules.Add(modules[i]);
             }
         }
 
         // 依赖检查在任何模块 Register 之前：检查不通过就不执行任何模块代码，不会留下装了一半的状态。
-        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter);
+        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter, hostModules);
         if (dependencyResult.Problems.Count > 0)
         {
             throw new CapabilityAssemblyException(dependencyResult.Problems);
