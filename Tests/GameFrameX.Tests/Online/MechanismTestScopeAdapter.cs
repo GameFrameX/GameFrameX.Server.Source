@@ -37,24 +37,24 @@ namespace GameFrameX.Tests.Online;
 
 
 /// <summary>
-/// 机制测试作用域适配器（从请求体读三元组 + 恒放行——作用域守卫语义另有 Online 侧用例锚定）。
+/// 机制测试作用域适配器（从请求体读区服键 + 恒放行——作用域守卫语义另有 Online 侧用例锚定）。
 /// </summary>
 public sealed class MechanismTestScopeAdapter : IAdminApiScopeAdapter
 {
     /// <summary>
-    /// 从管理面请求中读取声明的租户、应用、服务器三元组；读取成功时据此构造声明作用域并返回 <c>true</c>，否则输出 <c>null</c> 并返回 <c>false</c>。
+    /// 从管理面请求中读取声明的区服键；读取成功时据此构造声明作用域并返回 <c>true</c>，否则输出 <c>null</c> 并返回 <c>false</c>。
     /// </summary>
     /// <remarks>
-    /// Reads the claimed tenant, app and server triple from the admin API request; on success builds the claimed scope and returns <c>true</c>, otherwise outputs <c>null</c> and returns <c>false</c>.
+    /// Reads the claimed server key from the admin API request; on success builds the claimed scope and returns <c>true</c>, otherwise outputs <c>null</c> and returns <c>false</c>.
     /// </remarks>
     /// <param name="request">管理面请求 / Admin API request</param>
     /// <param name="claimedScope">读取成功时为声明作用域，失败时为 <c>null</c> / Claimed scope on success, <c>null</c> on failure</param>
-    /// <returns>请求中带有完整三元组时为 <c>true</c>，否则为 <c>false</c> / <c>true</c> when the request carries the full triple, otherwise <c>false</c></returns>
+    /// <returns>请求中带有区服键时为 <c>true</c>，否则为 <c>false</c> / <c>true</c> when the request carries the server key, otherwise <c>false</c></returns>
     public bool TryReadClaimedScope(AdminApiRequest request, out AdminApiClaimedScope claimedScope)
     {
-        if (request.TryReadClaimedScope(out var tenantId, out var appId, out var serverId))
+        if (request.TryReadClaimedScope(out var serverId))
         {
-            claimedScope = new AdminApiClaimedScope(tenantId, appId, serverId);
+            claimedScope = new AdminApiClaimedScope(serverId);
             return true;
         }
 

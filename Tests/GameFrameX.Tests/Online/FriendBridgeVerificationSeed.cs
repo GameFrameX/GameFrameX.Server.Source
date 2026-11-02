@@ -82,13 +82,13 @@ public static class FriendBridgeVerificationSeed
                 continue;
             }
 
-            var requested = await friends.RequestAsync(new OnlineScope(host.TenantId, host.AppId, host.ServerId, requesterId), friendPlayerId);
+            var requested = await friends.RequestAsync(new OnlineScope(host.ServerId, requesterId), friendPlayerId);
             if (!requested.IsSuccess)
             {
                 continue;
             }
 
-            var accepted = await friends.AcceptAsync(new OnlineScope(host.TenantId, host.AppId, host.ServerId, friendPlayerId), requested.Data.FriendshipId);
+            var accepted = await friends.AcceptAsync(new OnlineScope(host.ServerId, friendPlayerId), requested.Data.FriendshipId);
             if (!accepted.IsSuccess && accepted.Code != OnlineErrorCode.StateOperationForbidden)
             {
                 continue;

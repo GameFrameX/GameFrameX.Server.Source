@@ -83,7 +83,7 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private sealed class NullAuditReader : IOnlineAuditReader
         {
-            public Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineScope scope, OnlineAuditQuery query = null, CancellationToken cancellationToken = default)
+            public Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineAuditQuery query = null, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(OnlineResult<OnlineAuditPage>.Ok(new OnlineAuditPage(new OnlineAuditRecord[0], null)));
             }
@@ -135,7 +135,7 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private static OnlineGrantRequest BuildRemoteRequest(string key)
         {
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             return new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "跨服赛果", "bo-" + key, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, key) { HomeServerId = 200 };
         }
 
@@ -147,7 +147,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var handlers = CreateHandlers(null);
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var snapshot = (OnlineAdminAssetHandlers.CompensationQueueResponse)await handlers.QueryCompensationQueueAsync(new AdminApiRequest("query_compensation_queue", "{}"), scope, CancellationToken.None);
@@ -177,7 +177,7 @@ namespace GameFrameX.Tests.Online
             await queue.DrainAsync();
 
             // Act
-            var snapshot = (OnlineAdminAssetHandlers.CompensationQueueResponse)await handlers.QueryCompensationQueueAsync(new AdminApiRequest("query_compensation_queue", "{}"), new OnlineScope(1, 10, 100, 10001), CancellationToken.None);
+            var snapshot = (OnlineAdminAssetHandlers.CompensationQueueResponse)await handlers.QueryCompensationQueueAsync(new AdminApiRequest("query_compensation_queue", "{}"), new OnlineScope(100, 10001), CancellationToken.None);
 
             // Assert
             Assert.True(snapshot.QueueConfigured);
@@ -204,7 +204,7 @@ namespace GameFrameX.Tests.Online
             var handlers = CreateHandlers(queue);
             queue.Enqueue(BuildRemoteRequest("key-admin-retry"));
             await queue.DrainAsync();
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var ack = (OnlineAdminAssetHandlers.CompensationResolveResponse)await handlers.ResolveCompensationManualReviewAsync(
@@ -242,7 +242,7 @@ namespace GameFrameX.Tests.Online
             // Act
             var ack = (OnlineAdminAssetHandlers.CompensationResolveResponse)await handlers.ResolveCompensationManualReviewAsync(
                 new AdminApiRequest("resolve_compensation_manual_review", "{\"IdempotencyKey\":\"key-admin-discard\",\"Action\":\"Discard\",\"Reason\":\"线下已补偿\"}"),
-                new OnlineScope(1, 10, 100, 10001), CancellationToken.None);
+                new OnlineScope(100, 10001), CancellationToken.None);
 
             // Assert
             Assert.Equal("Discarded", ack.State);

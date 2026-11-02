@@ -36,11 +36,6 @@ namespace GameFrameX.Hotfix.Tests;
 /// </summary>
 public sealed class HotfixBridgeStubScopeProvider : IOnlineAuthorizedScopeProvider
 {
-    /// <summary>桩授权租户标识。</summary>
-    public const long TenantId = 1;
-
-    /// <summary>桩授权应用标识。</summary>
-    public const long AppId = 1;
 
     /// <summary>桩授权区服标识。</summary>
     public const long ServerId = 1001;
@@ -48,13 +43,13 @@ public sealed class HotfixBridgeStubScopeProvider : IOnlineAuthorizedScopeProvid
     /// <summary>
     /// 授权作用域实例（全宿主单例语义）。
     /// </summary>
-    private readonly OnlineScope _authorizedScope = new OnlineScope(TenantId, AppId, ServerId);
+    private readonly OnlineScope _authorizedScope = new OnlineScope(ServerId);
 
     /// <summary>
-    /// 获取桩授权作用域，固定返回租户 1、应用 1、区服 1001 构成的单例作用域。
+    /// 获取桩授权作用域，固定返回区服 1001 构成的单例作用域。
     /// </summary>
     /// <remarks>
-    /// Gets the stub authorized scope; always returns the singleton scope built from tenant 1, application 1 and server 1001.
+    /// Gets the stub authorized scope; always returns the singleton scope built from server 1001.
     /// </remarks>
     /// <value>固定的桩授权作用域 / Fixed stub authorized scope</value>
     public OnlineScope AuthorizedScope

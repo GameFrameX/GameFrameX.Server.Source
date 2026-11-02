@@ -45,11 +45,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineNotificationServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -201,7 +196,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal("接收者不存在", outcome.Data.LastError);
             Assert.Equal(1, outcome.Data.AttemptCount);
 
-            var retried = await service.RetryPendingAsync(TenantId, AppId, 100);
+            var retried = await service.RetryPendingAsync(100);
             Assert.True(retried.IsSuccess);
             Assert.Equal(1, retried.Data);
 
@@ -304,7 +299,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, enqueued.Data.AttemptCount);
 
             // Act：本轮配额给 1，只重投 Retrying 批次，一次重投即耗尽 maxAttempts
-            var retried = await service.RetryPendingAsync(TenantId, AppId, 1);
+            var retried = await service.RetryPendingAsync(1);
 
             // Assert
             Assert.True(retried.IsSuccess);
@@ -343,7 +338,7 @@ namespace GameFrameX.Tests.Online
             await Task.Delay(120);
 
             // Act
-            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+            var sweep = await service.SweepExpiredAsync();
 
             // Assert
             Assert.True(sweep.IsSuccess);
@@ -402,7 +397,7 @@ namespace GameFrameX.Tests.Online
             var scope = CreateReceiverScope(ReceiverId);
             var expiredAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 1_000;
             var enqueued = await service.EnqueueAsync(scope, OnlineNotificationKind.Mail, DedupeKey, PayloadBody, expiredAt);
-            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+            var sweep = await service.SweepExpiredAsync();
             Assert.Equal(OnlineNotificationState.Expired, enqueued.Data.State);
             Assert.Equal(0, sweep.Data);
 
@@ -442,7 +437,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(listed.IsSuccess);
             var notificationId = Assert.Single(listed.Data).NotificationId;
 
-            var repeated = await service.TryDispatchAsync(TenantId, AppId, ReceiverId, notificationId);
+            var repeated = await service.TryDispatchAsync(ReceiverId, notificationId);
 
             // Assert：第二次被「已在途」拦下，没有再次调用推送出口。
             Assert.False(repeated.IsSuccess);
@@ -487,7 +482,7 @@ namespace GameFrameX.Tests.Online
             await dispatcher.Entered;
             await Task.Delay(450);
 
-            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+            var sweep = await service.SweepExpiredAsync();
 
             // Assert：租约保护生效，本轮零终结，记录仍在途。
             Assert.True(sweep.IsSuccess);
@@ -529,7 +524,7 @@ namespace GameFrameX.Tests.Online
             await dispatcher.Entered;
             await Task.Delay(1_400);
 
-            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+            var sweep = await service.SweepExpiredAsync();
 
             // Assert：死在途被终结。
             Assert.True(sweep.IsSuccess);
@@ -573,7 +568,7 @@ namespace GameFrameX.Tests.Online
             var listed = await service.ListAsync(scope, true);
             Assert.True(listed.IsSuccess);
             var notificationId = Assert.Single(listed.Data).NotificationId;
-            var repeated = await service.TryDispatchAsync(TenantId, AppId, ReceiverId, notificationId);
+            var repeated = await service.TryDispatchAsync(ReceiverId, notificationId);
 
             // Assert：第二次被「已在途」拦下（而非就地终结成 Expired），记录原样在途。
             Assert.False(repeated.IsSuccess);
@@ -749,7 +744,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreateReceiverScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>推送出口桩的行为模式。</summary>

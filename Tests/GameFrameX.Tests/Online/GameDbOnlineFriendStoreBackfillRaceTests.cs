@@ -50,8 +50,6 @@ namespace GameFrameX.Tests.Online;
 [Collection(nameof(GameDbStaticStateCollection))]
 public sealed class GameDbOnlineFriendStoreBackfillRaceTests : IDisposable
 {
-    private const long TenantId = 1;
-    private const long AppId = 10;
 
     /// <summary>
     /// 构造函数：重置门面静态状态，避免与其它用例互相影响。
@@ -87,7 +85,7 @@ public sealed class GameDbOnlineFriendStoreBackfillRaceTests : IDisposable
         GameDb.SetDefault("friend_race_db");
 
         var store = new GameDbOnlineFriendStore();
-        var updated = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+        var updated = await store.UpdateStateAsync(new FriendshipStateTransition
         {
             FriendshipId = "fs-legacy-race",
             ExpectedState = OnlineFriendshipState.Requested,

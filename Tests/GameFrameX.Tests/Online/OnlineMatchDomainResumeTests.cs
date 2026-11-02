@@ -16,12 +16,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchDomainResumeTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
 
@@ -176,7 +170,7 @@ namespace GameFrameX.Tests.Online
 
             public OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
 
             public OnlineMatchMember FindMember(long playerId)
@@ -209,13 +203,13 @@ namespace GameFrameX.Tests.Online
                     Assert.True(queuedStatus.Data.Queuing);
                     Assert.False(queuedStatus.Data.Matched);
                     Assert.Equal(0, queuedStatus.Data.MatchId);
-                    var ticket = await harness.TicketStore.FindLatestByPlayerAsync(TenantId, AppId, playerId);
+                    var ticket = await harness.TicketStore.FindLatestByPlayerAsync(playerId);
                     Assert.NotNull(ticket);
                     Assert.Equal(OnlineMatchTicketState.Queued, ticket.State);
                     Assert.True(string.IsNullOrEmpty(ticket.AssignmentId));
                 }
 
-                var matched = await harness.Coordinator.RunOnceAsync(TenantId, AppId);
+                var matched = await harness.Coordinator.RunOnceAsync();
                 Assert.True(matched.IsSuccess, matched.Message);
                 Assert.Single(matched.Data.AssignmentIds);
 
@@ -238,7 +232,7 @@ namespace GameFrameX.Tests.Online
                     Assert.True(entered.IsSuccess, entered.Message);
                 }
 
-                harness.Actor = await harness.Runtime.ResolveActorAsync(TenantId, AppId, DeriveRuntimeMatchId(harness.NumericMatchId));
+                harness.Actor = await harness.Runtime.ResolveActorAsync(DeriveRuntimeMatchId(harness.NumericMatchId));
                 Assert.NotNull(harness.Actor);
                 return harness;
             }

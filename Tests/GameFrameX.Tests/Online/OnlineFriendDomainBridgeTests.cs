@@ -64,13 +64,13 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造玩家作用域（三元组与族配置段一致）。
+        /// 构造玩家作用域（区服键与族配置段一致）。
         /// </summary>
         /// <param name="playerId">玩家标识。</param>
         /// <returns>玩家作用域。</returns>
         private static OnlineScope PlayerScope(long playerId)
         {
-            return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
+            return new OnlineScope(OnlineCapabilityTestHarness.ServerId, playerId);
         }
 
         /// <summary>

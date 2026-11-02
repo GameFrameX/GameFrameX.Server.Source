@@ -44,11 +44,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineFriendServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -91,7 +86,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(repeated.IsSuccess);
             Assert.Equal(outcome.Data.FriendshipId, repeated.Data.FriendshipId);
-            Assert.Single(await store.ListByPlayerAsync(TenantId, AppId, PlayerOne));
+            Assert.Single(await store.ListByPlayerAsync(PlayerOne));
             Assert.Equal(1, recorder.Count);
 
             // 待答复列表只在被请求方（AddresseeId）一侧可见。
@@ -287,7 +282,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineFriendshipState.Requested, reopened.Data.State);
             Assert.Equal(PlayerTwo, reopened.Data.RequesterId);
             Assert.Equal(PlayerOne, reopened.Data.AddresseeId);
-            Assert.Single(await store.ListByPlayerAsync(TenantId, AppId, PlayerOne));
+            Assert.Single(await store.ListByPlayerAsync(PlayerOne));
 
             var pendingForNewAddressee = await service.ListPendingRequestsAsync(CreatePlayerScope(PlayerOne));
             Assert.True(pendingForNewAddressee.IsSuccess);
@@ -365,7 +360,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineFriendshipState.Requested, reopened.Data.State);
             Assert.Equal(PlayerTwo, reopened.Data.RequesterId);
             Assert.Equal(PlayerOne, reopened.Data.AddresseeId);
-            Assert.Single(await store.ListByPlayerAsync(TenantId, AppId, PlayerOne));
+            Assert.Single(await store.ListByPlayerAsync(PlayerOne));
         }
 
         /// <summary>
@@ -380,9 +375,9 @@ namespace GameFrameX.Tests.Online
             var request = await RequestAsync(service, PlayerOne, PlayerTwo);
 
             // Act
-            var notDue = await service.SweepExpiredAsync(TenantId, AppId, request.ExpiresAtTime - 1);
-            var outcome = await service.SweepExpiredAsync(TenantId, AppId, request.ExpiresAtTime + 1);
-            var repeated = await service.SweepExpiredAsync(TenantId, AppId, request.ExpiresAtTime + 1);
+            var notDue = await service.SweepExpiredAsync(request.ExpiresAtTime - 1);
+            var outcome = await service.SweepExpiredAsync(request.ExpiresAtTime + 1);
+            var repeated = await service.SweepExpiredAsync(request.ExpiresAtTime + 1);
 
             // Assert
             Assert.True(notDue.IsSuccess);
@@ -392,7 +387,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, outcome.Data);
             Assert.Equal(0, repeated.Data);
 
-            var stored = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+            var stored = await store.FindAsync(PlayerOne, PlayerTwo);
             Assert.NotNull(stored);
             Assert.Equal(OnlineFriendshipState.Expired, stored.State);
 
@@ -438,7 +433,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
 
             // 请求仍然停在待答复态，没有变成好友（拒绝必须是干净的）。
-            var rows = await store.ListByPlayerAsync(TenantId, AppId, PlayerFour);
+            var rows = await store.ListByPlayerAsync(PlayerFour);
             var stillPending = Assert.Single(rows);
             Assert.Equal(third.FriendshipId, stillPending.FriendshipId);
             Assert.Equal(OnlineFriendshipState.Requested, stillPending.State);
@@ -498,7 +493,7 @@ namespace GameFrameX.Tests.Online
             var rejected = Assert.Single(accepts, outcome => !outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, rejected.Code);
 
-            var rows = await store.ListByPlayerAsync(TenantId, AppId, PlayerOne);
+            var rows = await store.ListByPlayerAsync(PlayerOne);
             Assert.Equal(2, rows.Count(row => row.State == OnlineFriendshipState.Accepted));
             var stillPending = Assert.Single(rows, row => row.State == OnlineFriendshipState.Requested);
             Assert.Contains(stillPending.FriendshipId, new[] { first.FriendshipId, second.FriendshipId, third.FriendshipId });
@@ -521,7 +516,7 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.False(outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
-            Assert.Empty(await store.ListByPlayerAsync(TenantId, AppId, PlayerFour));
+            Assert.Empty(await store.ListByPlayerAsync(PlayerFour));
         }
 
         /// <summary>
@@ -541,7 +536,7 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.False(outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
-            Assert.Empty(await store.ListByPlayerAsync(TenantId, AppId, PlayerTwo));
+            Assert.Empty(await store.ListByPlayerAsync(PlayerTwo));
         }
 
         /// <summary>
@@ -567,7 +562,7 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.False(outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
-            var rows = await store.ListByPlayerAsync(TenantId, AppId, PlayerOne);
+            var rows = await store.ListByPlayerAsync(PlayerOne);
             var pair = Assert.Single(rows, row => row.OtherOf(PlayerOne) == PlayerTwo);
             Assert.Equal(OnlineFriendshipState.Removed, pair.State);
         }
@@ -629,7 +624,7 @@ namespace GameFrameX.Tests.Online
             var probe = new StubPresenceProbe();
             var service = CreateService(out _, out var store, presenceProbe: probe);
             await EstablishFriendshipAsync(service, PlayerOne, PlayerTwo);
-            var storedBefore = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+            var storedBefore = await store.FindAsync(PlayerOne, PlayerTwo);
 
             // Act
             var offline = await service.ListFriendsAsync(CreatePlayerScope(PlayerOne));
@@ -643,7 +638,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(Assert.Single(online.Data).Online);
 
             // 在线事实不落库：OnlineFriendship 无在线字段，落库记录亦未被读取行为改写。
-            var storedAfter = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+            var storedAfter = await store.FindAsync(PlayerOne, PlayerTwo);
             Assert.NotNull(storedAfter);
             Assert.Equal(storedBefore.State, storedAfter.State);
             Assert.Equal(storedBefore.RespondedAtTime, storedAfter.RespondedAtTime);
@@ -703,8 +698,6 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(PlayerOne, events[1].PlayerId);
             Assert.Equal(PlayerOne, events[2].PlayerId);
             Assert.Equal(request.Data.FriendshipId, events[0].PayloadAuditFields["FriendshipId"]);
-            Assert.Equal(TenantId, events[2].TenantId);
-            Assert.Equal(AppId, events[2].AppId);
             Assert.Equal(ServerId, events[2].ServerId);
         }
 
@@ -761,7 +754,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>
@@ -841,13 +834,11 @@ namespace GameFrameX.Tests.Online
             /// Records the keyword and limit, then returns the registered entries whose
             /// display name contains the keyword, truncated to the limit.
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="keyword">名称关键字 / The name keyword</param>
             /// <param name="limit">返回条数上限 / The maximum number of entries</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>名称含关键字的目录条目（至多 limit 条）/ Directory entries whose name contains the keyword (at most limit)</returns>
-            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(string keyword, int limit, CancellationToken cancellationToken = default)
             {
                 LastKeyword = keyword;
                 LastSearchLimit = limit;
@@ -875,12 +866,10 @@ namespace GameFrameX.Tests.Online
             /// Returns the registered entries whose player id appears in the given set;
             /// unknown ids are simply absent from the result.
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="playerIds">玩家标识集合 / The player ids to resolve</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>命中标识的目录条目 / The matched directory entries</returns>
-            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlinePlayerDirectoryEntry>();
                 foreach (var entry in _entries)
@@ -923,12 +912,10 @@ namespace GameFrameX.Tests.Online
             /// Only checks whether the player is in the online whitelist set
             /// (mutable mid-test via <see cref="SetOnline"/>).
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="playerId">玩家标识 / Player id</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
-            public Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<bool> IsOnlineAsync(long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_online.Contains(playerId));
             }

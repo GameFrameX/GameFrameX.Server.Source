@@ -36,7 +36,7 @@ using GameFrameX.Capability.Online.Social;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.Sqlite;
-using Xunit;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 
 /// <summary>
 /// 好友关系 GameDb 适配层测试。
@@ -46,7 +46,7 @@ using Xunit;
 /// the static GameDb facade over embedded SQLite (in-memory mode) and anchor the store contract:
 /// create-if-absent returning the existing record without overwriting, undirected-pair lookup in
 /// both directions, CAS state transitions, renewal rewriting state/direction/expiry together,
-/// per-player and per-state listings with tenant isolation, and soft-deleted records leaving the
+/// per-player and per-state listings, and soft-deleted records leaving the
 /// Requested listing. The restart-acceptance fact runs SQLite in file mode and simulates a process
 /// restart by closing the facade, re-initializing a fresh database service over the same file and
 /// constructing a brand-new adapter instance — the adapter holds no in-process data cache, so
@@ -55,16 +55,6 @@ using Xunit;
 [Collection("GameDbStaticStateCollection")]
 public sealed class GameDbOnlineFriendStorePersistenceTests
 {
-    /// <summary>
-    /// 测试作用域租户标识。
-    /// </summary>
-    private const long TenantId = 7L;
-
-    /// <summary>
-    /// 测试作用域 App 标识。
-    /// </summary>
-    private const long AppId = 3L;
-
     /// <summary>
     /// 门面初始化后必须归还（关闭 + 复位静态注册表；串行集合保证静态门面独占）。
     /// </summary>
@@ -117,8 +107,6 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
         return new OnlineFriendship
         {
             FriendshipId = friendshipId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = 5,
             LowPlayerId = low,
             HighPlayerId = high,
@@ -158,7 +146,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             Assert.Equal(1001, duplicate.UpdatedAtTime);
 
             // 库内仅一行（ListByState 全状态面合计 1）。
-            Assert.Single(await store.ListByPlayerAsync(TenantId, AppId, 11));
+            Assert.Single(await store.ListByPlayerAsync(11));
         });
     }
 
@@ -173,14 +161,13 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var store = new GameDbOnlineFriendStore();
             await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-1"));
 
-            var forward = await store.FindAsync(TenantId, AppId, 11, 22);
-            var backward = await store.FindAsync(TenantId, AppId, 22, 11);
+            var forward = await store.FindAsync(11, 22);
+            var backward = await store.FindAsync(22, 11);
             Assert.NotNull(forward);
             Assert.NotNull(backward);
             Assert.Equal("fs-1", forward.FriendshipId);
             Assert.Equal("fs-1", backward.FriendshipId);
-            Assert.Null(await store.FindAsync(TenantId, AppId, 11, 33));
-            Assert.Null(await store.FindAsync(999, AppId, 11, 22));
+            Assert.Null(await store.FindAsync(11, 33));
         });
     }
 
@@ -196,7 +183,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var created = await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-1"));
 
             // CAS 成功：Requested → Accepted，答复时刻回填。
-            var accepted = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+            var accepted = await store.UpdateStateAsync(new FriendshipStateTransition
             {
                 FriendshipId = created.FriendshipId,
                 ExpectedState = OnlineFriendshipState.Requested,
@@ -210,7 +197,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             Assert.Equal(5000, accepted.RespondedAtTime);
 
             // 期望态不符（仍以 Requested 为期望）：返回 null，读回状态不变。
-            var stale = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+            var stale = await store.UpdateStateAsync(new FriendshipStateTransition
             {
                 FriendshipId = created.FriendshipId,
                 ExpectedState = OnlineFriendshipState.Requested,
@@ -219,22 +206,13 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
                 Responded = true,
             });
             Assert.Null(stale);
-            var reloaded = await store.FindAsync(TenantId, AppId, 22, 11);
+            var reloaded = await store.FindAsync(22, 11);
             Assert.Equal(OnlineFriendshipState.Accepted, reloaded.State);
             Assert.Equal(5000, reloaded.UpdatedAtTime);
 
-            // 作用域不符：返回 null。
-            Assert.Null(await store.UpdateStateAsync(999, AppId, new FriendshipStateTransition
-            {
-                FriendshipId = created.FriendshipId,
-                ExpectedState = OnlineFriendshipState.Accepted,
-                NewState = OnlineFriendshipState.Rejected,
-                NowUnixMilliseconds = 6000,
-                Responded = true,
-            }));
 
             // 记录不存在：返回 null。
-            Assert.Null(await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+            Assert.Null(await store.UpdateStateAsync(new FriendshipStateTransition
             {
                 FriendshipId = "fs-missing",
                 ExpectedState = OnlineFriendshipState.Requested,
@@ -257,8 +235,8 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var store = new GameDbOnlineFriendStore();
             var created = await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-race"));
 
-            var first = store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
-            var second = store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 6000, Responded = true, });
+            var first = store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
+            var second = store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 6000, Responded = true, });
             var results = await Task.WhenAll(first, second);
 
             var winners = 0;
@@ -273,7 +251,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
 
             Assert.Equal(1, winners);
 
-            var final = await store.FindAsync(TenantId, AppId, 11, 22);
+            var final = await store.FindAsync(11, 22);
             Assert.NotNull(final);
             Assert.Equal(OnlineFriendshipState.Accepted, final.State);
 
@@ -299,7 +277,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var legacy = CreateFriendshipRow(9001, "fs-legacy", (int)OnlineFriendshipState.Requested, null, 1001);
             await GameDb.AddOrUpdateAsync(legacy);
 
-            var updated = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = "fs-legacy", ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
+            var updated = await store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = "fs-legacy", ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
             Assert.NotNull(updated);
             Assert.Equal(OnlineFriendshipState.Accepted, updated.State);
 
@@ -321,7 +299,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var created = await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-1"));
 
             // 先经 CAS 置为删除后的静止态（Removed）。
-            await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+            await store.UpdateStateAsync(new FriendshipStateTransition
             {
                 FriendshipId = created.FriendshipId,
                 ExpectedState = OnlineFriendshipState.Requested,
@@ -331,7 +309,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             });
 
             // 重新发起：高标识侧为发起人，方向翻转 + 状态回 Requested + 有效期重置。
-            var renewed = await store.RenewRequestAsync(TenantId, AppId, new FriendshipRenewal
+            var renewed = await store.RenewRequestAsync(new FriendshipRenewal
             {
                 FriendshipId = created.FriendshipId,
                 ExpectedState = OnlineFriendshipState.Removed,
@@ -348,7 +326,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             Assert.Equal(12000, renewed.ExpiresAtTime);
 
             // 期望态不符：返回 null 且零写入。
-            Assert.Null(await store.RenewRequestAsync(TenantId, AppId, new FriendshipRenewal
+            Assert.Null(await store.RenewRequestAsync(new FriendshipRenewal
             {
                 FriendshipId = created.FriendshipId,
                 ExpectedState = OnlineFriendshipState.Removed,
@@ -357,7 +335,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
                 NowUnixMilliseconds = 8000,
                 ExpiresAtTime = 13000,
             }));
-            var reloaded = await store.FindAsync(TenantId, AppId, 11, 22);
+            var reloaded = await store.FindAsync(11, 22);
             Assert.Equal(OnlineFriendshipState.Requested, reloaded.State);
             Assert.Equal(22, reloaded.RequesterId);
             Assert.Equal(12000, reloaded.ExpiresAtTime);
@@ -365,10 +343,10 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
     }
 
     /// <summary>
-    /// 玩家列举事实：低 / 高两侧均命中 + 跨租户隔离（他租户同对不串读）。
+    /// 玩家列举事实：低 / 高两侧均命中 + 无关玩家不串读。
     /// </summary>
     [Fact]
-    public async Task ListByPlayer_BothSidesAndTenantIsolation_ShouldFilter()
+    public async Task ListByPlayer_BothSides_ShouldFilterByPlayer()
     {
         await WithSqliteFacadeAsync(async () =>
         {
@@ -377,20 +355,13 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             await store.SaveIfAbsentAsync(BuildFriendship(22, 33, OnlineFriendshipState.Requested, "fs-2"));
 
             // 双侧命中：22 同时在两条关系里，11 只在一条。
-            Assert.Equal(2, (await store.ListByPlayerAsync(TenantId, AppId, 22)).Count);
-            var byLow = await store.ListByPlayerAsync(TenantId, AppId, 11);
+            Assert.Equal(2, (await store.ListByPlayerAsync(22)).Count);
+            var byLow = await store.ListByPlayerAsync(11);
             var single = Assert.Single(byLow);
             Assert.Equal("fs-1", single.FriendshipId);
 
-            // 跨租户隔离：他租户同对关系不可见。
-            var otherTenant = BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-other-tenant");
-            otherTenant.TenantId = 999;
-            await store.SaveIfAbsentAsync(otherTenant);
-            Assert.Single(await store.ListByPlayerAsync(TenantId, AppId, 11));
-            Assert.Single(await store.ListByPlayerAsync(999, AppId, 11));
-
             // 无关玩家：空列表。
-            Assert.Empty(await store.ListByPlayerAsync(TenantId, AppId, 44));
+            Assert.Empty(await store.ListByPlayerAsync(44));
         });
     }
 
@@ -407,11 +378,11 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             await store.SaveIfAbsentAsync(BuildFriendship(33, 44, OnlineFriendshipState.Requested, "fs-2"));
             await store.SaveIfAbsentAsync(BuildFriendship(55, 66, OnlineFriendshipState.Accepted, "fs-3"));
 
-            Assert.Equal(2, (await store.ListByStateAsync(TenantId, AppId, OnlineFriendshipState.Requested)).Count);
-            Assert.Single(await store.ListByStateAsync(TenantId, AppId, OnlineFriendshipState.Accepted));
+            Assert.Equal(2, (await store.ListByStateAsync(OnlineFriendshipState.Requested)).Count);
+            Assert.Single(await store.ListByStateAsync(OnlineFriendshipState.Accepted));
 
             // 软删 fs-1：Requested 面只剩 fs-2，Removed 面出现 fs-1（行物理长存）。
-            await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+            await store.UpdateStateAsync(new FriendshipStateTransition
             {
                 FriendshipId = "fs-1",
                 ExpectedState = OnlineFriendshipState.Requested,
@@ -419,11 +390,11 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
                 NowUnixMilliseconds = 8000,
                 Responded = false,
             });
-            var requested = await store.ListByStateAsync(TenantId, AppId, OnlineFriendshipState.Requested);
+            var requested = await store.ListByStateAsync(OnlineFriendshipState.Requested);
             var remaining = Assert.Single(requested);
             Assert.Equal("fs-2", remaining.FriendshipId);
-            Assert.Single(await store.ListByStateAsync(TenantId, AppId, OnlineFriendshipState.Removed));
-            Assert.NotNull(await store.FindAsync(TenantId, AppId, 11, 22));
+            Assert.Single(await store.ListByStateAsync(OnlineFriendshipState.Removed));
+            Assert.NotNull(await store.FindAsync(11, 22));
         });
     }
 
@@ -446,18 +417,18 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             await WithSqliteFileFacadeAsync(dataFile, "c244-friend-restart-b", async () =>
             {
                 var store = new GameDbOnlineFriendStore();
-                var reloaded = await store.FindAsync(TenantId, AppId, 22, 11);
+                var reloaded = await store.FindAsync(22, 11);
                 Assert.NotNull(reloaded);
                 Assert.Equal("fs-1", reloaded.FriendshipId);
                 Assert.Equal(OnlineFriendshipState.Requested, reloaded.State);
                 Assert.Equal(11, reloaded.RequesterId);
                 Assert.Equal(9000, reloaded.ExpiresAtTime);
-                Assert.Single(await store.ListByStateAsync(TenantId, AppId, OnlineFriendshipState.Requested));
+                Assert.Single(await store.ListByStateAsync(OnlineFriendshipState.Requested));
 
                 // 重启后语义不变：重复保存仍返回既有（不覆盖），CAS 仍可推进状态。
                 var duplicate = await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Accepted, "fs-other"));
                 Assert.Equal("fs-1", duplicate.FriendshipId);
-                var accepted = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition
+                var accepted = await store.UpdateStateAsync(new FriendshipStateTransition
                 {
                     FriendshipId = "fs-1",
                     ExpectedState = OnlineFriendshipState.Requested,
@@ -476,7 +447,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
     }
 
     /// <summary>
-    /// 构造好友关系行（玩家对 11/22、租户 / App / 区服固定；行标识、状态、版本与更新时刻可变）。
+    /// 构造好友关系行（玩家对 11/22、区服固定；行标识、状态、版本与更新时刻可变）。
     /// </summary>
     /// <param name="id">行 Id。</param>
     /// <param name="friendshipId">关系标识。</param>
@@ -489,10 +460,8 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
         return new OnlineFriendshipRowState
         {
             Id = id,
-            UniqueKey = "friend:" + TenantId + ":" + AppId + ":11:22",
+            UniqueKey = OnlineRowKey.Friendship(11, 22),
             FriendshipId = friendshipId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = 5,
             LowPlayerId = 11,
             HighPlayerId = 22,

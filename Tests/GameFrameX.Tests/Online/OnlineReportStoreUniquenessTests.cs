@@ -8,12 +8,10 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 举报存储组合唯一性回归：五维组合去重、Reviewing 占位、终态释放、CAS 冲突、身份不可改与并发新建。
+    /// 举报存储组合唯一性回归：三维组合去重、Reviewing 占位、终态释放、CAS 冲突、身份不可改与并发新建。
     /// </summary>
     public sealed class OnlineReportStoreUniquenessTests
     {
-        private const long TenantId = 1;
-        private const long AppId = 2;
         private const long ReporterId = 100;
         private const long ReportedPlayerId = 200;
 
@@ -36,15 +34,11 @@ namespace GameFrameX.Tests.Online
             var otherTarget = await store.SaveIfAbsentAsync(CreateCase("rpt-2", reportedPlayerId: ReportedPlayerId + 1));
             var otherScene = await store.SaveIfAbsentAsync(CreateCase("rpt-3", scene: OnlineReportScene.Chat, channelId: "chan-1"));
             var otherReporter = await store.SaveIfAbsentAsync(CreateCase("rpt-4", reporterId: ReporterId + 1));
-            var otherScope = await store.SaveIfAbsentAsync(CreateCase("rpt-5", tenantId: TenantId + 1));
-            var otherApp = await store.SaveIfAbsentAsync(CreateCase("rpt-6", appId: AppId + 1));
 
-            Assert.Equal(4, (await store.ListByReporterAsync(TenantId, AppId, ReporterId)).Count + (await store.ListByReporterAsync(TenantId + 1, AppId, ReporterId)).Count);
+            Assert.Equal(4, (await store.ListByReporterAsync(ReporterId)).Count + (await store.ListByReporterAsync(ReporterId + 1)).Count);
             Assert.NotEqual("rpt-1", otherTarget.ReportId);
             Assert.NotEqual("rpt-1", otherScene.ReportId);
             Assert.NotEqual("rpt-1", otherReporter.ReportId);
-            Assert.NotEqual("rpt-1", otherScope.ReportId);
-            Assert.NotEqual("rpt-1", otherApp.ReportId);
         }
 
         [Fact]
@@ -114,7 +108,7 @@ namespace GameFrameX.Tests.Online
             tampered.State = OnlineReportState.Reviewing;
             Assert.Null(await store.ReplaceAsync(tampered, OnlineReportState.Submitted));
 
-            var unchanged = await store.FindAsync(TenantId, AppId, "rpt-1");
+            var unchanged = await store.FindAsync("rpt-1");
             Assert.Equal(OnlineReportState.Submitted, unchanged.State);
         }
 
@@ -143,13 +137,11 @@ namespace GameFrameX.Tests.Online
         /// <summary>
         /// 构造测试案件。
         /// </summary>
-        private static OnlineReportCase CreateCase(string reportId, long tenantId = TenantId, long appId = AppId, long reporterId = ReporterId, long reportedPlayerId = ReportedPlayerId, OnlineReportScene scene = OnlineReportScene.Profile, string channelId = "", string evidence = "")
+        private static OnlineReportCase CreateCase(string reportId, long reporterId = ReporterId, long reportedPlayerId = ReportedPlayerId, OnlineReportScene scene = OnlineReportScene.Profile, string channelId = "", string evidence = "")
         {
             return new OnlineReportCase
             {
                 ReportId = reportId,
-                TenantId = tenantId,
-                AppId = appId,
                 ReporterId = reporterId,
                 ReportedPlayerId = reportedPlayerId,
                 Scene = scene,

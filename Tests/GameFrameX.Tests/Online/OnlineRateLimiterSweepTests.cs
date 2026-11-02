@@ -47,20 +47,20 @@ namespace GameFrameX.Tests.Online
             var limiter = new OnlineChatRateLimiter(3, 10);
 
             // 玩家 1 在旧窗口发过消息（已过期），玩家 2 在当前窗口活跃。
-            Assert.True(limiter.TryAcquire(1, 1, 1, "global", BaseTime));
-            Assert.True(limiter.TryAcquire(1, 1, 2, "global", BaseTime + 5_000));
+            Assert.True(limiter.TryAcquire(1, "global", BaseTime));
+            Assert.True(limiter.TryAcquire(2, "global", BaseTime + 5_000));
 
             var removed = limiter.SweepExpired(BaseTime + 10_000);
 
             Assert.Equal(1, removed);
 
             // 玩家 2 的桶被保留：同窗口继续计数（1→3）并在超限时拒绝。
-            Assert.True(limiter.TryAcquire(1, 1, 2, "global", BaseTime + 5_000 + 1));
-            Assert.True(limiter.TryAcquire(1, 1, 2, "global", BaseTime + 5_000 + 2));
-            Assert.False(limiter.TryAcquire(1, 1, 2, "global", BaseTime + 5_000 + 3));
+            Assert.True(limiter.TryAcquire(2, "global", BaseTime + 5_000 + 1));
+            Assert.True(limiter.TryAcquire(2, "global", BaseTime + 5_000 + 2));
+            Assert.False(limiter.TryAcquire(2, "global", BaseTime + 5_000 + 3));
 
             // 玩家 1 的桶已被删除：过期窗口后重新从 1 计数。
-            Assert.True(limiter.TryAcquire(1, 1, 1, "global", BaseTime + 10_001));
+            Assert.True(limiter.TryAcquire(1, "global", BaseTime + 10_001));
 
             // 全部过期后清扫清零。
             Assert.Equal(2, limiter.SweepExpired(BaseTime + 30_000));
@@ -72,14 +72,14 @@ namespace GameFrameX.Tests.Online
         {
             var limiter = new OnlineMatchRateLimiter(2, 10);
 
-            Assert.True(limiter.TryAcquire(1, 1, 1, BaseTime));
-            Assert.True(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000));
+            Assert.True(limiter.TryAcquire(1, BaseTime));
+            Assert.True(limiter.TryAcquire(2, BaseTime + 5_000));
 
             var removed = limiter.SweepExpired(BaseTime + 10_000);
 
             Assert.Equal(1, removed);
-            Assert.True(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000 + 1));
-            Assert.False(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000 + 2));
+            Assert.True(limiter.TryAcquire(2, BaseTime + 5_000 + 1));
+            Assert.False(limiter.TryAcquire(2, BaseTime + 5_000 + 2));
         }
 
         [Fact]
@@ -87,14 +87,14 @@ namespace GameFrameX.Tests.Online
         {
             var limiter = new OnlineLeaderboardRateLimiter(2, 10);
 
-            Assert.True(limiter.TryAcquire(1, 1, 1, BaseTime));
-            Assert.True(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000));
+            Assert.True(limiter.TryAcquire(1, BaseTime));
+            Assert.True(limiter.TryAcquire(2, BaseTime + 5_000));
 
             var removed = limiter.SweepExpired(BaseTime + 10_000);
 
             Assert.Equal(1, removed);
-            Assert.True(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000 + 1));
-            Assert.False(limiter.TryAcquire(1, 1, 2, BaseTime + 5_000 + 2));
+            Assert.True(limiter.TryAcquire(2, BaseTime + 5_000 + 1));
+            Assert.False(limiter.TryAcquire(2, BaseTime + 5_000 + 2));
         }
 
         [Fact]
@@ -103,19 +103,19 @@ namespace GameFrameX.Tests.Online
             var limiter = new OnlineMatchRateLimiter(2, 1);
 
             // 稀疏的一次性玩家：只来一次，之后不再出现——这类键正是内存泄漏源。
-            Assert.True(limiter.TryAcquire(1, 1, 100 + 0, BaseTime));
+            Assert.True(limiter.TryAcquire(100 + 0, BaseTime));
 
             // 清扫间隔为 max(window, 60s) = 60s；窗口 1s 早已过期。
             // 距上次清扫不足间隔时不触发全量清扫，但单键访问路径仍按窗口重建，行为不受影响。
-            Assert.True(limiter.TryAcquire(1, 1, 200, BaseTime + 10_000));
+            Assert.True(limiter.TryAcquire(200, BaseTime + 10_000));
 
             // 跨过清扫间隔后，任何流量都会推进全量回收。
-            Assert.True(limiter.TryAcquire(1, 1, 300, BaseTime + 60_000));
+            Assert.True(limiter.TryAcquire(300, BaseTime + 60_000));
 
             // 清扫后历史一次性玩家重新从 1 计数（桶已被物理删除）。
-            Assert.True(limiter.TryAcquire(1, 1, 100, BaseTime + 60_001));
-            Assert.True(limiter.TryAcquire(1, 1, 100, BaseTime + 60_002));
-            Assert.False(limiter.TryAcquire(1, 1, 100, BaseTime + 60_003));
+            Assert.True(limiter.TryAcquire(100, BaseTime + 60_001));
+            Assert.True(limiter.TryAcquire(100, BaseTime + 60_002));
+            Assert.False(limiter.TryAcquire(100, BaseTime + 60_003));
         }
 
         [Fact]
@@ -123,11 +123,11 @@ namespace GameFrameX.Tests.Online
         {
             var limiter = new OnlineChatRateLimiter(2, 10);
 
-            Assert.True(limiter.TryAcquire(1, 1, 1, "private", BaseTime));
+            Assert.True(limiter.TryAcquire(1, "private", BaseTime));
             // 窗口内的清扫必须保留活跃桶（不会把在窗计数误删）。
             Assert.Equal(0, limiter.SweepExpired(BaseTime + 1));
-            Assert.True(limiter.TryAcquire(1, 1, 1, "private", BaseTime + 2));
-            Assert.False(limiter.TryAcquire(1, 1, 1, "private", BaseTime + 3));
+            Assert.True(limiter.TryAcquire(1, "private", BaseTime + 2));
+            Assert.False(limiter.TryAcquire(1, "private", BaseTime + 3));
         }
     }
 }

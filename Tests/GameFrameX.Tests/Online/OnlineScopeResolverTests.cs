@@ -46,11 +46,9 @@ namespace GameFrameX.Tests.Online
         public void TryResolve_WithCamelCaseParameters_ShouldReturnAuthorizedScope()
         {
             // Arrange
-            var authorized = new OnlineScope(1, 10, 100, 10001);
+            var authorized = new OnlineScope(100, 10001);
             var parameters = new Dictionary<string, object>
             {
-                { "tenantId", 1L },
-                { "appId", 10L },
                 { "serverId", 100L },
             };
 
@@ -60,8 +58,6 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal(OnlineErrorCode.None, error);
             Assert.NotNull(resolved);
-            Assert.Equal(1, resolved.TenantId);
-            Assert.Equal(10, resolved.AppId);
             Assert.Equal(100, resolved.ServerId);
             Assert.Equal(10001, resolved.PlayerId);
         }
@@ -73,11 +69,9 @@ namespace GameFrameX.Tests.Online
         public void TryResolve_WithPascalCaseParameters_ShouldMatchCaseInsensitively()
         {
             // Arrange
-            var authorized = new OnlineScope(2, 20, 200);
+            var authorized = new OnlineScope(200);
             var parameters = new Dictionary<string, object>
             {
-                { "TenantId", "2" },
-                { "AppId", "20" },
                 { "ServerId", "200" },
             };
 
@@ -87,8 +81,6 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal(OnlineErrorCode.None, error);
             Assert.NotNull(resolved);
-            Assert.Equal(2, resolved.TenantId);
-            Assert.Equal(20, resolved.AppId);
             Assert.Equal(200, resolved.ServerId);
         }
 
@@ -99,11 +91,9 @@ namespace GameFrameX.Tests.Online
         public void TryResolve_WithForgedClientFields_ShouldEnforceAuthorizedValues()
         {
             // Arrange
-            var authorized = new OnlineScope(1, 10, 100, 10001);
+            var authorized = new OnlineScope(100, 10001);
             var parameters = new Dictionary<string, object>
             {
-                { "tenantId", 999L },
-                { "appId", 999L },
                 { "serverId", 999L },
             };
 
@@ -113,8 +103,6 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal(OnlineErrorCode.None, error);
             Assert.NotNull(resolved);
-            Assert.Equal(1, resolved.TenantId);
-            Assert.Equal(10, resolved.AppId);
             Assert.Equal(100, resolved.ServerId);
             Assert.Equal(10001, resolved.PlayerId);
         }
@@ -133,17 +121,14 @@ namespace GameFrameX.Tests.Online
             Assert.Null(resolved);
         }
 
-        /// <summary>
-        /// 验证鉴权上下文三元组不完整（非正值）时返回作用域缺失错误。
+        /// 验证鉴权上下文区服位不完整（非正值）时返回作用域缺失错误。
         /// </summary>
         [Theory]
-        [InlineData(0, 10, 100)]
-        [InlineData(1, 0, 100)]
-        [InlineData(1, 10, 0)]
-        public void TryResolve_WithIncompleteAuthorizedScope_ShouldReturnScopeMissing(long tenantId, long appId, long serverId)
+        [InlineData(0)]
+        public void TryResolve_WithIncompleteAuthorizedScope_ShouldReturnScopeMissing(long serverId)
         {
             // Arrange
-            var authorized = new OnlineScope(tenantId, appId, serverId);
+            var authorized = new OnlineScope(serverId);
 
             // Act
             var resolved = OnlineScopeResolver.TryResolve(null, authorized, out var error);
@@ -160,8 +145,8 @@ namespace GameFrameX.Tests.Online
         public void EnforceAuthorized_ShouldAlwaysReturnAuthorizedScope()
         {
             // Arrange
-            var authorized = new OnlineScope(1, 10, 100, 10001);
-            var claimed = new OnlineScope(999, 999, 999, 999);
+            var authorized = new OnlineScope(100, 10001);
+            var claimed = new OnlineScope(999, 999);
 
             // Act
             var enforced = OnlineScopeResolver.EnforceAuthorized(authorized, claimed);
@@ -177,15 +162,15 @@ namespace GameFrameX.Tests.Online
         public void ToScopeKey_ShouldIncludePlayerSegmentOnlyWhenRequested()
         {
             // Arrange
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var withoutPlayer = scope.ToScopeKey(false);
             var withPlayer = scope.ToScopeKey(true);
 
             // Assert
-            Assert.Equal("online:1:10:100", withoutPlayer);
-            Assert.Equal("online:1:10:100:10001", withPlayer);
+            Assert.Equal("online:100", withoutPlayer);
+            Assert.Equal("online:100:10001", withPlayer);
         }
     }
 }

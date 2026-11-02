@@ -241,7 +241,7 @@ public sealed class OnlineMatchCapabilityLifecycleTests
             PublishAssignmentCreated(runtime, firstAssignment);
             runtime.Host.EventBus.Publish<OnlineEvent>(
                 OnlineMatchEvents.AssignmentCreated,
-                OnlineMatchEvents.CreateAssignmentCreated(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, "asg-does-not-exist", "match-does-not-exist", 1, 1, 2, PlayerOne, new List<string>()));
+                OnlineMatchEvents.CreateAssignmentCreated(OnlineCapabilityTestHarness.ServerId, "asg-does-not-exist", "match-does-not-exist", 1, 1, 2, PlayerOne, new List<string>()));
             PublishAssignmentCreated(runtime, secondAssignment);
             Assert.Equal(0, domain.RegistrationCount);
 
@@ -284,7 +284,7 @@ public sealed class OnlineMatchCapabilityLifecycleTests
     /// <returns>玩家作用域。</returns>
     private static OnlineScope PlayerScope(long playerId)
     {
-        return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
+        return new OnlineScope(OnlineCapabilityTestHarness.ServerId, playerId);
     }
 
     /// <summary>
@@ -334,7 +334,7 @@ public sealed class OnlineMatchCapabilityLifecycleTests
         {
             var enqueue = await domain.EnqueueAsync(PlayerScope(playerId), 1, 1000);
             Assert.True(enqueue.IsSuccess, enqueue.Message);
-            var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, playerId);
+            var ticket = await store.FindLatestByPlayerAsync(playerId);
             Assert.NotNull(ticket);
             ticketIds.Add(ticket.TicketId);
         }
@@ -348,8 +348,6 @@ public sealed class OnlineMatchCapabilityLifecycleTests
             Region = 1,
             CreatedAtTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             TicketIds = ticketIds,
-            TenantId = OnlineCapabilityTestHarness.TenantId,
-            AppId = OnlineCapabilityTestHarness.AppId,
             ServerId = OnlineCapabilityTestHarness.ServerId,
         };
         var committed = await store.CommitMatchAsync(assignment, ticketIds, OnlineMatchTicketState.Queued);
@@ -366,6 +364,6 @@ public sealed class OnlineMatchCapabilityLifecycleTests
     {
         runtime.Host.EventBus.Publish<OnlineEvent>(
             OnlineMatchEvents.AssignmentCreated,
-            OnlineMatchEvents.CreateAssignmentCreated(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, assignment.AssignmentId, assignment.MatchId, assignment.Mode, assignment.Region, assignment.PlayerIds.Count, assignment.PlayerIds[0], assignment.TicketIds));
+            OnlineMatchEvents.CreateAssignmentCreated(OnlineCapabilityTestHarness.ServerId, assignment.AssignmentId, assignment.MatchId, assignment.Mode, assignment.Region, assignment.PlayerIds.Count, assignment.PlayerIds[0], assignment.TicketIds));
     }
 }

@@ -131,8 +131,6 @@ namespace GameFrameX.Tests.Online
                 (Event: OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win), 0), Reason: OnlineGameEventRejectionReason.UnsupportedVersion),
                 (Event: OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win), 2), Reason: OnlineGameEventRejectionReason.UnsupportedVersion),
                 (Event: OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win, "PlayerId")), Reason: OnlineGameEventRejectionReason.MissingRequiredField),
-                (Event: OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win), 1, 0, OnlineGameEventTestHarness.AppId), Reason: OnlineGameEventRejectionReason.InvalidScope),
-                (Event: OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win), 1, OnlineGameEventTestHarness.TenantId, 0), Reason: OnlineGameEventRejectionReason.InvalidScope),
             };
 
             foreach (var item in cases)
@@ -147,7 +145,7 @@ namespace GameFrameX.Tests.Online
             // 脏事件不污染下游：存储里一条都没有。
             Assert.Empty(await harness.StoredEventsAsync());
 
-            // 死信按事件自身作用域归档：四条作用域合法者落在本作用域下。
+            // 死信按事件归档：四条脏事件全部可检索、不丢失。
             var deadLetters = await harness.DeadLettersAsync();
             Assert.Equal(4, deadLetters.Count);
             Assert.Equal(
@@ -159,14 +157,6 @@ namespace GameFrameX.Tests.Online
                     OnlineGameEventRejectionReason.MissingRequiredField,
                 },
                 deadLetters.Select(item => item.Reason).ToArray());
-
-            // 作用域非法的两条按「退化作用域」原样归档（可检索、不丢失）。
-            var zeroTenant = await harness.DeadLetterSink.ListAsync(0, OnlineGameEventTestHarness.AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
-            var zeroApp = await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, 0, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
-            Assert.Single(zeroTenant);
-            Assert.Single(zeroApp);
-            Assert.Equal(OnlineGameEventRejectionReason.InvalidScope, zeroTenant[0].Reason);
-            Assert.Equal(OnlineGameEventRejectionReason.InvalidScope, zeroApp[0].Reason);
 
             // 空信封是编程错误（拒绝意味着「有事件但脏」，空信封没有可归档的实体）。
             await Assert.ThrowsAsync<ArgumentNullException>(() => harness.Ingestor.IngestAsync(null));
@@ -247,9 +237,6 @@ namespace GameFrameX.Tests.Online
 
             Assert.Single(await harness.StoredEventsAsync());
             Assert.Single(await harness.DeadLettersAsync());
-            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.OtherAppId, OnlineGameEventTestHarness.AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
-            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
-            Assert.Empty(await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
         }
     }
 }

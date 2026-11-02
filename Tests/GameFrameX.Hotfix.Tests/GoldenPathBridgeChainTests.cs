@@ -55,12 +55,6 @@ namespace GameFrameX.Hotfix.Tests;
 [Collection(HotfixBridgeTestCollection.Name)]
 public sealed class GoldenPathBridgeChainTests
 {
-    /// <summary>测试租户标识（族配置段一致）。</summary>
-    private const long TenantId = 1;
-
-    /// <summary>测试 App 标识（族配置段一致）。</summary>
-    private const long AppId = 1;
-
     /// <summary>测试区服标识（族配置段一致）。</summary>
     private const long ServerId = 1001;
 
@@ -88,10 +82,10 @@ public sealed class GoldenPathBridgeChainTests
         CapabilityRuntime runtime = null;
         try
         {
-            var section = JsonDocument.Parse("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}").RootElement.Clone();
+            var section = JsonDocument.Parse("{\"ServerId\":1001}").RootElement.Clone();
             var options = new CapabilityCompositionOptions(section, new HotfixBridgeAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, SchedulerIntervalMilliseconds = 3600000, },
+                HostOptions = new CapabilityHostOptions { ServerId = ServerId, SchedulerIntervalMilliseconds = 3600000, },
                 Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social", "online-matchmaking", "online-match", "online-assets", "online-competition" }),
             };
             options.Override<IOnlinePlayerDirectory>(new EmptyPlayerDirectoryStub());
@@ -151,7 +145,7 @@ public sealed class GoldenPathBridgeChainTests
             for (var tickRound = 0; tickRound < MaxTickRounds; tickRound++)
             {
                 await runtime.Host.Scheduler.TickAsync();
-                winnerEntry = await leaderboardStore.FindEntryAsync(TenantId, AppId, OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerOne);
+                winnerEntry = await leaderboardStore.FindEntryAsync(OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerOne);
                 if (winnerEntry != null)
                 {
                     break;
@@ -159,7 +153,7 @@ public sealed class GoldenPathBridgeChainTests
             }
 
             Assert.NotNull(winnerEntry);
-            var loserEntry = await leaderboardStore.FindEntryAsync(TenantId, AppId, OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerTwo);
+            var loserEntry = await leaderboardStore.FindEntryAsync(OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerTwo);
             Assert.NotNull(loserEntry);
             Assert.True(winnerEntry.Score >= loserEntry.Score, "winner score (" + winnerEntry.Score + ") should rank above loser score (" + loserEntry.Score + ")");
         }
@@ -178,13 +172,13 @@ public sealed class GoldenPathBridgeChainTests
     private sealed class EmptyPlayerDirectoryStub : IOnlinePlayerDirectory
     {
         /// <summary>按名检索恒返回空（黄金路径不消费）。</summary>
-        public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(string keyword, int limit, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(Array.Empty<OnlinePlayerDirectoryEntry>());
         }
 
         /// <summary>按标识批量解析恒返回空（好友列表展示名回退标识字面量）。</summary>
-        public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(Array.Empty<OnlinePlayerDirectoryEntry>());
         }

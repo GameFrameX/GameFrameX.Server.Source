@@ -65,7 +65,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(second.Data.IsReplay);
             Assert.Equal(first.Data.Registration.RegisteredTime, second.Data.Registration.RegisteredTime);
 
-            var registrations = await harness.TournamentStore.ListRegistrationsAsync(OnlineTournamentTestHarness.TenantId, OnlineTournamentTestHarness.AppId, "t1");
+            var registrations = await harness.TournamentStore.ListRegistrationsAsync("t1");
             Assert.Single(registrations);
             Assert.Single(harness.Recorder.Filter(OnlineTournamentEvents.TournamentRegistered));
         }
@@ -99,7 +99,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(notRanked.Data.Accepted);
             Assert.Equal(OnlineTournamentRegistrationRejection.NotRanked, notRanked.Data.Rejection);
 
-            var registrations = await harness.TournamentStore.ListRegistrationsAsync(OnlineTournamentTestHarness.TenantId, OnlineTournamentTestHarness.AppId, "t1");
+            var registrations = await harness.TournamentStore.ListRegistrationsAsync("t1");
             Assert.Equal(2, registrations.Count);
             Assert.Equal(2, harness.Recorder.Filter(OnlineTournamentEvents.TournamentRegistered).Count);
         }
@@ -186,11 +186,11 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证创建校验（奖励规则区间重叠会重复发奖，必须拒绝）与跨 App 反预言
-        /// （跨 App 读写与「赛事不存在」同构返回 ResourceNotFound）。
+        /// 验证创建校验（奖励规则区间重叠会重复发奖，必须拒绝）与赛事全局域语义
+        /// （单键化 D4：同键即同赛——跨区服作用域可操作同一赛事；未知赛事仍与「不存在」同构拒绝）。
         /// </summary>
         [Fact]
-        public async Task CreateAsync_ShouldRejectOverlappingRulesAndHideCrossAppTournaments()
+        public async Task CreateAsync_ShouldRejectOverlappingRules_AndCrossServerSharesGlobalTournament()
         {
             var harness = new OnlineTournamentTestHarness();
             await harness.CreateBoardAsync("board-validate");
@@ -211,16 +211,20 @@ namespace GameFrameX.Tests.Online
             Assert.True((await harness.CreateTournamentAsync("t1", "board-validate", null, OnlineTournamentTestHarness.Rule(1, 1, 100))).IsSuccess);
             Assert.Equal(OnlineTournamentState.Scheduled, await harness.TournamentStateAsync("t1"));
 
-            // 跨 App：与不存在同构。
-            var crossApp = await harness.TournamentService.StartAsync(harness.Scope(OnlineTournamentTestHarness.OtherAppId), "t1");
-            Assert.False(crossApp.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossApp.Code);
+            // 跨区服：同键即同赛——可开赛、可结束、可读冻结成绩。
+            var crossServer = await harness.TournamentService.StartAsync(harness.Scope(OnlineTournamentTestHarness.OtherServerId), "t1");
+            Assert.True(crossServer.IsSuccess, crossServer.Message);
+            Assert.Equal(OnlineTournamentState.Active, await harness.TournamentStateAsync("t1"));
 
-            var crossAppStandings = await harness.TournamentService.GetStandingsAsync(harness.Scope(OnlineTournamentTestHarness.OtherAppId), "t1");
-            Assert.False(crossAppStandings.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossAppStandings.Code);
+            var crossServerEnd = await harness.TournamentService.EndAsync(harness.Scope(OnlineTournamentTestHarness.OtherServerId), "t1", OnlineTournamentTestHarness.Now + 500);
+            Assert.True(crossServerEnd.IsSuccess, crossServerEnd.Message);
 
-            Assert.Equal(OnlineTournamentState.Scheduled, await harness.TournamentStateAsync("t1"));
+            var crossServerStandings = await harness.TournamentService.GetStandingsAsync(harness.Scope(OnlineTournamentTestHarness.OtherServerId), "t1");
+            Assert.True(crossServerStandings.IsSuccess, crossServerStandings.Message);
+
+            var unknownTournament = await harness.TournamentService.GetStandingsAsync(harness.Scope(), "t-absent");
+            Assert.False(unknownTournament.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, unknownTournament.Code);
         }
 
         /// <summary>
@@ -265,7 +269,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineTournamentEvents.Source, registered.Source);
 
             // 报名时刻冻结的判定输入随登记留存（事后榜单变化不影响已通过的报名）。
-            var stored = await harness.TournamentStore.FindRegistrationAsync(OnlineTournamentTestHarness.TenantId, OnlineTournamentTestHarness.AppId, "t1", OnlineTournamentTestHarness.PlayerOne);
+            var stored = await harness.TournamentStore.FindRegistrationAsync("t1", OnlineTournamentTestHarness.PlayerOne);
             Assert.NotNull(stored);
             Assert.Equal(1, stored.RankAtRegistration);
             Assert.Equal(300, stored.ScoreAtRegistration);
@@ -360,7 +364,7 @@ namespace GameFrameX.Tests.Online
             }
 
             Assert.Equal(1, results.Count(result => !result.Data.IsReplay));
-            var registrations = await harness.TournamentStore.ListRegistrationsAsync(OnlineTournamentTestHarness.TenantId, OnlineTournamentTestHarness.AppId, "t1");
+            var registrations = await harness.TournamentStore.ListRegistrationsAsync("t1");
             Assert.Single(registrations);
         }
     }

@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var auditSink = new CollectingAuditSink();
             var service = CreateService(auditSink);
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var outcome = await service.BeginAsync(scope, idempotencyKey, "{\"amount\":1}", true);
@@ -114,7 +114,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(outcome.CanExecute);
             Assert.Single(auditSink.Records);
             Assert.Equal(OnlineIdempotencyOutcomeKind.InvalidKey, auditSink.Records[0].OutcomeKind);
-            Assert.Equal("online:1:10:100:10001", auditSink.Records[0].ScopeKey);
+            Assert.Equal("online:100:10001", auditSink.Records[0].ScopeKey);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(new CollectingAuditSink());
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var outcome = await service.BeginAsync(scope, "order-create-001", "{\"amount\":1}", true);
@@ -134,7 +134,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineIdempotencyOutcomeKind.Execute, outcome.Kind);
             Assert.Equal(OnlineErrorCode.None, outcome.ErrorCode);
             Assert.True(outcome.CanExecute);
-            Assert.Equal("online:1:10:100:10001", outcome.ScopeKey);
+            Assert.Equal("online:100:10001", outcome.ScopeKey);
             Assert.Equal("order-create-001", outcome.IdempotencyKey);
         }
 
@@ -146,7 +146,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(new CollectingAuditSink());
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             var firstResponse = new byte[] { 1, 2, 3, 4 };
 
             // Act
@@ -170,7 +170,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(new CollectingAuditSink());
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var first = await service.BeginAsync(scope, "order-create-003", "{\"amount\":3}", true);
@@ -192,7 +192,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(new CollectingAuditSink());
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var first = await service.BeginAsync(scope, "order-create-004", "{\"amount\":4}", true);
@@ -213,8 +213,8 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(new CollectingAuditSink());
-            var playerA = new OnlineScope(1, 10, 100, 10001);
-            var playerB = new OnlineScope(1, 10, 100, 10002);
+            var playerA = new OnlineScope(100, 10001);
+            var playerB = new OnlineScope(100, 10002);
 
             // Act
             var outcomeA = await service.BeginAsync(playerA, "order-create-005", "{\"amount\":5}", true);
@@ -223,8 +223,8 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal(OnlineIdempotencyOutcomeKind.Execute, outcomeA.Kind);
             Assert.Equal(OnlineIdempotencyOutcomeKind.Execute, outcomeB.Kind);
-            Assert.Equal("online:1:10:100:10001", outcomeA.ScopeKey);
-            Assert.Equal("online:1:10:100:10002", outcomeB.ScopeKey);
+            Assert.Equal("online:100:10001", outcomeA.ScopeKey);
+            Assert.Equal("online:100:10002", outcomeB.ScopeKey);
         }
 
         /// <summary>
@@ -236,7 +236,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var auditSink = new CollectingAuditSink();
             var service = CreateService(auditSink);
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             await service.BeginAsync(scope, "order-create-006", "{\"amount\":6}", true);

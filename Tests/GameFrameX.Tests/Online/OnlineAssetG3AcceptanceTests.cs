@@ -126,7 +126,7 @@ namespace GameFrameX.Tests.Online
                 OnlineAssetChangeSource.MailAttachment,
                 OnlineAssetChangeSource.MatchReward,
             };
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             var transactionIds = new List<string>();
 
             // Act：每类来源发放 100（不同幂等键）+ 同键重试一次（应回放）。
@@ -168,7 +168,7 @@ namespace GameFrameX.Tests.Online
             });
 
             // 对账：账本累加 == 快照（差异 = 0 红线）。
-            var report = await reconciliationService.ReconcileAllAsync(1, 10);
+            var report = await reconciliationService.ReconcileAllAsync();
             Assert.Equal(1, report.PlayerCount);
             Assert.True(report.IsConsistent);
 

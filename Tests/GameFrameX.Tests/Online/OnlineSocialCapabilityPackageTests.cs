@@ -67,7 +67,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>玩家作用域。</returns>
         private static OnlineScope PlayerScope(long playerId)
         {
-            return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
+            return new OnlineScope(OnlineCapabilityTestHarness.ServerId, playerId);
         }
 
         /// <summary>

@@ -299,8 +299,6 @@ namespace GameFrameX.Tests.Online
         {
             var match = new OnlineMatch
             {
-                TenantId = 1,
-                AppId = 10,
                 ServerId = 100,
                 MatchId = "match-1",
                 Mode = OnlineRockPaperScissorsGame.MatchMode,

@@ -53,8 +53,8 @@ namespace GameFrameX.Tests.Online
             var harness = new OnlineGameEventTestHarness();
             await ProjectSampleTrafficAsync(harness);
 
-            var first = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
-            var second = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var first = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
+            var second = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
 
             var stored = await harness.StoredEventsAsync();
 
@@ -69,10 +69,10 @@ namespace GameFrameX.Tests.Online
             // 活跃玩家数是去重口径：样例流量含 1 条会话开始（玩家一）→ 1；
             // 再补玩家一的第二条会话开始（重连）与玩家二的一条 → 仍去重为 2 人。
             Assert.Equal(1, first.ActivePlayerCount);
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.SessionStart, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.SessionStart), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, OnlineGameEventTestHarness.Now + 10, OnlineGameEventTestHarness.PlayerOne), OnlineGameEventTestHarness.Now + 10);
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.SessionStart, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.SessionStart), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, OnlineGameEventTestHarness.Now + 11, OnlineGameEventTestHarness.PlayerTwo), OnlineGameEventTestHarness.Now + 11);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.SessionStart, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.SessionStart), 1, OnlineGameEventTestHarness.Now + 10, OnlineGameEventTestHarness.PlayerOne), OnlineGameEventTestHarness.Now + 10);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.SessionStart, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.SessionStart), 1, OnlineGameEventTestHarness.Now + 11, OnlineGameEventTestHarness.PlayerTwo), OnlineGameEventTestHarness.Now + 11);
 
-            var withReconnect = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var withReconnect = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
 
             Assert.Equal(2, withReconnect.ActivePlayerCount);
             Assert.Equal(3, withReconnect.GetNameCount(OnlineGameEventName.SessionStart));
@@ -87,7 +87,7 @@ namespace GameFrameX.Tests.Online
             var harness = new OnlineGameEventTestHarness();
             await ProjectSampleTrafficAsync(harness);
 
-            var metrics = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var metrics = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
 
             Assert.Equal(2, metrics.GetCategoryCount(OnlineGameEventCategory.Login));
             Assert.Equal(1, metrics.GetCategoryCount(OnlineGameEventCategory.Matchmaking));
@@ -119,17 +119,17 @@ namespace GameFrameX.Tests.Online
         public async Task ComputeAsync_Window_ShouldIncludeBothBoundaries()
         {
             var harness = new OnlineGameEventTestHarness();
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1000), 1000);
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 2000), 2000);
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 3000), 3000);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, 1000), 1000);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, 2000), 2000);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, 3000), 3000);
 
-            var window = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1000, 2000);
+            var window = await harness.MetricsService.ComputeAsync(1000, 2000);
 
             Assert.Equal(2, window.TotalCount);
             Assert.Equal(1000, window.FromTime);
             Assert.Equal(2000, window.ToTime);
 
-            var everything = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var everything = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
             Assert.Equal(3, everything.TotalCount);
         }
 
@@ -145,15 +145,11 @@ namespace GameFrameX.Tests.Online
             await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope("NotARegisteredEvent", new Dictionary<string, string>()), OnlineGameEventTestHarness.Now);
             await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Win, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Win, "PlayerId")), OnlineGameEventTestHarness.Now);
 
-            var metrics = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var metrics = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
 
             Assert.Equal(1, metrics.TotalCount);
             Assert.Equal(2, metrics.RejectedCount);
             Assert.Equal(1, metrics.GetCategoryCount(OnlineGameEventCategory.Match));
-
-            var otherApp = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.OtherAppId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
-            Assert.Equal(0, otherApp.TotalCount);
-            Assert.Equal(0, otherApp.RejectedCount);
         }
 
         /// <summary>
@@ -164,12 +160,12 @@ namespace GameFrameX.Tests.Online
         public async Task ComputeAsync_ShouldCarryNoCrossWindowState()
         {
             var harness = new OnlineGameEventTestHarness();
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1000), 1000);
-            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 2000), 2000);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, 1000), 1000);
+            await harness.Ingestor.IngestAsync(OnlineGameEventTestHarness.BuildEnvelope(OnlineGameEventName.Login, OnlineGameEventTestHarness.CompleteFields(OnlineGameEventName.Login), 1, 2000), 2000);
 
-            var firstHalf = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1000, 1000);
-            var secondHalf = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1001, 2000);
-            var whole = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 1000, 2000);
+            var firstHalf = await harness.MetricsService.ComputeAsync(1000, 1000);
+            var secondHalf = await harness.MetricsService.ComputeAsync(1001, 2000);
+            var whole = await harness.MetricsService.ComputeAsync(1000, 2000);
 
             Assert.Equal(1, firstHalf.TotalCount);
             Assert.Equal(1, secondHalf.TotalCount);

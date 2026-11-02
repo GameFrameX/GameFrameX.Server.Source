@@ -43,14 +43,9 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineGroupServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
+
 
         /// <summary>测试用群主玩家标识。</summary>
         private const long OwnerId = 1001;
@@ -479,9 +474,9 @@ namespace GameFrameX.Tests.Online
             var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 3_600_000;
 
             // Act
-            var sweep = await service.SweepExpiredInvitesAsync(TenantId, AppId, futureNow);
+            var sweep = await service.SweepExpiredInvitesAsync(futureNow);
             var accepted = await service.AcceptInviteAsync(CreatePlayerScope(MemberOneId), group.GroupId, invite.Data.InviteId);
-            var repeated = await service.SweepExpiredInvitesAsync(TenantId, AppId, futureNow);
+            var repeated = await service.SweepExpiredInvitesAsync(futureNow);
 
             // Assert
             Assert.True(sweep.IsSuccess);
@@ -506,12 +501,12 @@ namespace GameFrameX.Tests.Online
             await InviteAndAcceptAsync(service, group.GroupId, OwnerId, MemberOneId);
 
             // Act
-            var ownerMember = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, group.GroupId, OwnerId);
-            var joinedMember = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, group.GroupId, MemberOneId);
-            var outsider = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, group.GroupId, OutsiderId);
-            var missingGroup = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, "grp-不存在", OwnerId);
-            var emptyBoundId = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, string.Empty, OwnerId);
-            var nullBoundId = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, null, OwnerId);
+            var ownerMember = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, group.GroupId, OwnerId);
+            var joinedMember = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, group.GroupId, MemberOneId);
+            var outsider = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, group.GroupId, OutsiderId);
+            var missingGroup = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, "grp-不存在", OwnerId);
+            var emptyBoundId = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, string.Empty, OwnerId);
+            var nullBoundId = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, null, OwnerId);
 
             // Assert
             Assert.True(ownerMember);
@@ -522,7 +517,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(nullBoundId);
 
             await service.KickAsync(CreatePlayerScope(OwnerId), group.GroupId, MemberOneId);
-            var kickedMember = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, group.GroupId, MemberOneId);
+            var kickedMember = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, group.GroupId, MemberOneId);
             Assert.False(kickedMember);
         }
 
@@ -539,12 +534,12 @@ namespace GameFrameX.Tests.Online
             await InviteAndAcceptAsync(service, group.GroupId, OwnerId, MemberOneId);
 
             // Act
-            var direct = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Direct, group.GroupId, OwnerId);
-            var party = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Party, group.GroupId, OwnerId);
-            var global = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Global, group.GroupId, OwnerId);
+            var direct = await service.IsChannelMemberAsync(OnlineChatChannelKind.Direct, group.GroupId, OwnerId);
+            var party = await service.IsChannelMemberAsync(OnlineChatChannelKind.Party, group.GroupId, OwnerId);
+            var global = await service.IsChannelMemberAsync(OnlineChatChannelKind.Global, group.GroupId, OwnerId);
 
             await service.DisbandAsync(CreatePlayerScope(OwnerId), group.GroupId);
-            var disbanded = await service.IsChannelMemberAsync(TenantId, AppId, OnlineChatChannelKind.Group, group.GroupId, OwnerId);
+            var disbanded = await service.IsChannelMemberAsync(OnlineChatChannelKind.Group, group.GroupId, OwnerId);
 
             // Assert
             Assert.False(direct);
@@ -618,7 +613,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>

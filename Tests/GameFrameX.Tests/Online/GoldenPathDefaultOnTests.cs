@@ -74,7 +74,7 @@ namespace GameFrameX.Tests.Online
             {
                 await runtime.Host.StartAsync();
                 var services = runtime.Host.Services;
-                var scope = new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId);
+                var scope = new OnlineScope(OnlineCapabilityTestHarness.ServerId);
 
                 // 默认榜已随装配预建（ActivateAsync 查询-创建）：Top 探针即成功。
                 var probe = await services.GetService<OnlineLeaderboardService>().GetTopAsync(scope, new OnlineLeaderboardTopQuery { LeaderboardId = OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, Count = 1, });
@@ -82,7 +82,7 @@ namespace GameFrameX.Tests.Online
 
                 // 对局：开局幂等 + 双方各两轮出拳（石头胜剪刀两轮 = 达到 WinTarget 决胜）。
                 var bridge = services.GetService<IOnlineMatchGameBridge>();
-                var started = await bridge.StartRoomGameAsync(new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, PlayerOne), RoomId, Round, new List<long> { PlayerOne, PlayerTwo });
+                var started = await bridge.StartRoomGameAsync(new OnlineScope(scope.ServerId, PlayerOne), RoomId, Round, new List<long> { PlayerOne, PlayerTwo });
                 Assert.True(started.IsSuccess, started.Message);
 
                 for (var roundIndex = 0; roundIndex < 2; roundIndex++)
@@ -90,7 +90,7 @@ namespace GameFrameX.Tests.Online
                     foreach (var player in new[] { PlayerOne, PlayerTwo })
                     {
                         var gesture = player == PlayerOne ? (int)OnlineRockPaperScissorsMove.Rock : (int)OnlineRockPaperScissorsMove.Scissors;
-                        var submitted = await bridge.SubmitGestureAsync(new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, player), RoomId, Round, gesture);
+                        var submitted = await bridge.SubmitGestureAsync(new OnlineScope(scope.ServerId, player), RoomId, Round, gesture);
                         Assert.True(submitted.IsSuccess, submitted.Message);
                     }
 
@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
                 for (var tickRound = 0; tickRound < MaxTickRounds; tickRound++)
                 {
                     await runtime.Host.Scheduler.TickAsync();
-                    winnerEntry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(scope.TenantId, scope.AppId, OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerOne);
+                    winnerEntry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerOne);
                     if (winnerEntry != null)
                     {
                         break;
@@ -112,8 +112,8 @@ namespace GameFrameX.Tests.Online
 
                 // 发奖断言：胜方 +WinnerRewardAmount、负方 +ParticipantRewardAmount（样例币资产）。
                 var assetStore = services.GetService<IOnlineAssetStore>();
-                var winnerWallet = await assetStore.FindWalletAsync(scope.TenantId, scope.AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId);
-                var loserWallet = await assetStore.FindWalletAsync(scope.TenantId, scope.AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId);
+                var winnerWallet = await assetStore.FindWalletAsync(PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId);
+                var loserWallet = await assetStore.FindWalletAsync(PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId);
                 Assert.NotNull(winnerWallet);
                 Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, winnerWallet.Balance);
                 Assert.NotNull(loserWallet);
@@ -121,7 +121,7 @@ namespace GameFrameX.Tests.Online
 
                 // 上榜断言：默认榜出现双方条目（胜方分高在前）。
                 Assert.NotNull(winnerEntry);
-                var loserEntry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(scope.TenantId, scope.AppId, OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerTwo);
+                var loserEntry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId, PlayerTwo);
                 Assert.NotNull(loserEntry);
                 Assert.True(winnerEntry.Score >= loserEntry.Score, "winner score (" + winnerEntry.Score + ") should rank above loser score (" + loserEntry.Score + ")");
             }, null, options =>

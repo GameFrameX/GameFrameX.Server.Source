@@ -43,20 +43,11 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineLeaderboardServiceTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>另一租户标识（跨租户用例）。</summary>
-        private const long OtherTenantId = 2;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
-        /// <summary>另一 App 标识（跨 App 用例）。</summary>
-        private const long OtherAppId = 11;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
+
+        /// <summary>另一区服标识（跨区服用例）。</summary>
+        private const long OtherServerId = 200;
 
         /// <summary>基准时刻（UTC 毫秒）。</summary>
         private const long Now = 1000000L;
@@ -74,8 +65,6 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(created.IsSuccess, created.Message);
             Assert.Equal("board-1", created.Data.LeaderboardId);
-            Assert.Equal(TenantId, created.Data.TenantId);
-            Assert.Equal(AppId, created.Data.AppId);
             Assert.Single(harness.Recorder.Filter(OnlineLeaderboardEvents.LeaderboardCreated));
 
             var duplicated = await harness.Service.CreateAsync(harness.Scope(), request, Now + 1);
@@ -109,7 +98,7 @@ namespace GameFrameX.Tests.Online
             var board = await harness.CreateBoardAsync("board-best-desc", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
 
             await harness.SeedAsync(board, (1001, 100, Now), (1001, 50, Now + 1), (1001, 150, Now + 2));
-            var bestDesc = await harness.Store.FindEntryAsync(TenantId, AppId, "board-best-desc", 1001);
+            var bestDesc = await harness.Store.FindEntryAsync("board-best-desc", 1001);
 
             Assert.Equal(150, bestDesc.Score);
             Assert.Equal(3, bestDesc.SubmissionCount);
@@ -118,19 +107,19 @@ namespace GameFrameX.Tests.Online
 
             var ascBoard = await harness.CreateBoardAsync("board-best-asc", OnlineLeaderboardSortOrder.Ascending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await harness.SeedAsync(ascBoard, (1001, 100, Now), (1001, 50, Now + 1));
-            var bestAsc = await harness.Store.FindEntryAsync(TenantId, AppId, "board-best-asc", 1001);
+            var bestAsc = await harness.Store.FindEntryAsync("board-best-asc", 1001);
 
             Assert.Equal(50, bestAsc.Score);
 
             var sumBoard = await harness.CreateBoardAsync("board-sum", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Sum);
             await harness.SeedAsync(sumBoard, (1001, 10, Now), (1001, 20, Now + 1));
-            var sum = await harness.Store.FindEntryAsync(TenantId, AppId, "board-sum", 1001);
+            var sum = await harness.Store.FindEntryAsync("board-sum", 1001);
 
             Assert.Equal(30, sum.Score);
 
             var latestBoard = await harness.CreateBoardAsync("board-latest", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Latest);
             await harness.SeedAsync(latestBoard, (1001, 5, Now), (1001, 9, Now + 1));
-            var latest = await harness.Store.FindEntryAsync(TenantId, AppId, "board-latest", 1001);
+            var latest = await harness.Store.FindEntryAsync("board-latest", 1001);
 
             Assert.Equal(9, latest.Score);
         }
@@ -291,23 +280,22 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证跨 App / 跨租户读榜与榜单不存在同构拒绝（反预言，不泄露存在性）。
+        /// 验证榜单是全局域数据（单键化 D4：同键即同榜）——跨区服作用域读到同一份榜单；
+        /// 未知榜单仍与「不存在」同构拒绝（反预言，不泄露存在性）。
         /// </summary>
         [Fact]
-        public async Task CrossScopeRead_ShouldBeResourceNotFound()
+        public async Task CrossServerRead_ShouldShareGlobalBoard_AndUnknownBoardStaysResourceNotFound()
         {
             var harness = new Harness();
             var board = await harness.CreateBoardAsync("board-scope", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await harness.SeedAsync(board, (1001, 100, Now));
 
-            var crossApp = await harness.Service.GetTopAsync(harness.Scope(OtherAppId), new OnlineLeaderboardTopQuery { LeaderboardId = "board-scope", Count = 10, NowUnixMilliseconds = Now + 100 });
-            var crossTenant = await harness.Service.GetTopAsync(harness.Scope(AppId, OtherTenantId), new OnlineLeaderboardTopQuery { LeaderboardId = "board-scope", Count = 10, NowUnixMilliseconds = Now + 100 });
+            var crossServer = await harness.Service.GetTopAsync(harness.Scope(OtherServerId), new OnlineLeaderboardTopQuery { LeaderboardId = "board-scope", Count = 10, NowUnixMilliseconds = Now + 100 });
             var unknownBoard = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-none", Count = 10, NowUnixMilliseconds = Now + 100 });
 
-            Assert.False(crossApp.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossApp.Code);
-            Assert.False(crossTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossTenant.Code);
+            Assert.True(crossServer.IsSuccess, crossServer.Message);
+            Assert.Single(crossServer.Data.Entries);
+            Assert.Equal(1001, crossServer.Data.Entries[0].Entry.PlayerId);
             Assert.False(unknownBoard.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, unknownBoard.Code);
         }
@@ -391,12 +379,11 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 构造查询作用域。
             /// </summary>
-            /// <param name="appId">App 标识（默认本 App）。</param>
-            /// <param name="tenantId">租户标识（默认本租户）。</param>
+            /// <param name="serverId">区服标识（默认本区服）。</param>
             /// <returns>作用域。</returns>
-            public OnlineScope Scope(long appId = AppId, long tenantId = TenantId)
+            public OnlineScope Scope(long serverId = ServerId)
             {
-                return new OnlineScope(tenantId, appId, ServerId);
+                return new OnlineScope(serverId);
             }
 
             /// <summary>

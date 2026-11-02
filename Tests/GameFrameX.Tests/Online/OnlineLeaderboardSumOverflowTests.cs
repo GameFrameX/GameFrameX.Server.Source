@@ -47,12 +47,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineLeaderboardSumOverflowTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
 
@@ -85,7 +79,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(PlayerOne, projected.Data.FailedPlayers[0].PlayerId);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, projected.Data.FailedPlayers[0].Code);
 
-            var entry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-ovf-pos", PlayerOne);
+            var entry = await harness.LeaderboardStore.FindEntryAsync("board-ovf-pos", PlayerOne);
             Assert.Equal(long.MaxValue - 1, entry.Score);
             Assert.Equal(1, entry.SubmissionCount);
             Assert.Equal("mrs-p1", entry.SourceMatchResultId);
@@ -111,7 +105,7 @@ namespace GameFrameX.Tests.Online
             Assert.Single(projected.Data.FailedPlayers);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, projected.Data.FailedPlayers[0].Code);
 
-            var entry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-ovf-neg", PlayerOne);
+            var entry = await harness.LeaderboardStore.FindEntryAsync("board-ovf-neg", PlayerOne);
             Assert.Equal(long.MinValue + 1, entry.Score);
             Assert.Equal(1, entry.SubmissionCount);
         }
@@ -134,7 +128,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, projected.Data.AppliedCount);
             Assert.Single(projected.Data.FailedPlayers);
 
-            Assert.Equal(30, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-ovf-mix", PlayerTwo)).Score);
+            Assert.Equal(30, (await harness.LeaderboardStore.FindEntryAsync("board-ovf-mix", PlayerTwo)).Score);
         }
 
         /// <summary>
@@ -153,7 +147,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(first.IsSuccess, first.Message);
             Assert.True(second.IsSuccess, second.Message);
-            Assert.Equal(long.MaxValue / 2 + 100, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-ovf-ok", PlayerOne)).Score);
+            Assert.Equal(long.MaxValue / 2 + 100, (await harness.LeaderboardStore.FindEntryAsync("board-ovf-ok", PlayerOne)).Score);
         }
 
         /// <summary>
@@ -221,11 +215,10 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 构造作用域。
             /// </summary>
-            /// <param name="appId">App 标识。</param>
             /// <returns>作用域。</returns>
-            public OnlineScope Scope(long appId = AppId)
+            public OnlineScope Scope()
             {
-                return new OnlineScope(TenantId, appId, ServerId, 0);
+                return new OnlineScope(ServerId, 0);
             }
 
             /// <summary>
@@ -259,8 +252,6 @@ namespace GameFrameX.Tests.Online
                 {
                     MatchResultId = matchResultId,
                     MatchId = matchId,
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ServerId = ServerId,
                     Mode = 410,
                     Region = 1,

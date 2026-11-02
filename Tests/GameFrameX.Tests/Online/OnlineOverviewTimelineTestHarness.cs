@@ -59,11 +59,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     internal sealed class OnlineOverviewTimelineTestHarness
     {
-        /// <summary>测试用租户标识。</summary>
-        internal const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        internal const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         internal const long ServerId = 100;
@@ -161,7 +156,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域实例。</returns>
         internal static OnlineScope CreateScope(long serverId = ServerId, long playerId = 0)
         {
-            return new OnlineScope(TenantId, AppId, serverId, playerId);
+            return new OnlineScope(serverId, playerId);
         }
 
         /// <summary>
@@ -172,7 +167,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>登录解析结果（身份 / 账号 / 玩家档案三件套）。</returns>
         internal async Task<OnlineLoginResolution> RegisterPlayerAsync(long serverId, string userName)
         {
-            var outcome = await new OnlineIdentityService(IdentityStore, new OnlineAuditService(new InMemoryOnlineAuditStore())).ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = serverId, Kind = OnlineIdentityKind.UserName, Identifier = userName });
+            var outcome = await new OnlineIdentityService(IdentityStore, new OnlineAuditService(new InMemoryOnlineAuditStore())).ResolveLoginAsync(new OnlineLoginRequest { ServerId = serverId, Kind = OnlineIdentityKind.UserName, Identifier = userName });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }
@@ -290,7 +285,7 @@ namespace GameFrameX.Tests.Online
             var matchmakerOptions = new OnlineMatchmakerOptions();
             var tickets = new OnlineMatchTicketService(TicketStore, Recorder, matchmakerOptions);
             var coordinator = new OnlineMatchmakerCoordinator(TicketStore, tickets, Recorder, matchmakerOptions);
-            var outcome = await coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await coordinator.RunOnceAsync();
             Assert.True(outcome.IsSuccess);
         }
 
@@ -308,8 +303,6 @@ namespace GameFrameX.Tests.Online
         {
             var match = new OnlineMatch
             {
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = serverId,
                 MatchId = matchId,
                 AssignmentId = "assign-" + matchId,
@@ -367,7 +360,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>处罚记录。</returns>
         internal async Task<OnlinePunishment> PunishAsync(long playerId, string reason)
         {
-            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = playerId, Kind = OnlinePunishmentKind.Mute, Reason = reason, AdminId = AdminId });
+            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).ApplyAsync(new OnlinePunishmentRequest { PlayerId = playerId, Kind = OnlinePunishmentKind.Mute, Reason = reason, AdminId = AdminId });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }
@@ -379,7 +372,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>异步任务。</returns>
         internal async Task RevokePunishmentAsync(string punishmentId)
         {
-            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).RevokeAsync(TenantId, AppId, punishmentId, AdminId);
+            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).RevokeAsync(punishmentId, AdminId);
             Assert.True(outcome.IsSuccess);
         }
 
@@ -432,42 +425,37 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 登记一条命中记录。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="serverId">区服标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="record">命中记录。</param>
-            internal void Add(long tenantId, long appId, long serverId, long playerId, OnlineConfigHitRecord record)
+            internal void Add(long serverId, long playerId, OnlineConfigHitRecord record)
             {
                 _entries.Add(new Entry
                 {
-                    TenantId = tenantId,
-                    AppId = appId,
                     ServerId = serverId,
                     PlayerId = playerId,
                     Record = record,
                 });
             }
 
+
             /// <summary>
-            /// 回放按 (租户, App, 区服, 玩家) 四键登记的命中记录，未登记的作用域返回空集合。
+            /// 回放按 (区服, 玩家) 双键登记的命中记录，未登记的作用域返回空集合。
             /// </summary>
             /// <remarks>
-            /// Replays the records registered under the (tenant, app, server, player) four-part key;
+            /// Replays the records registered under the (server, player) two-part key;
             /// unregistered scopes yield an empty list.
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="serverId">区服标识 / Server id</param>
             /// <param name="playerId">玩家标识 / Player id</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>该作用域登记的命中记录 / The hit records registered for the scope</returns>
-            public Task<IReadOnlyList<OnlineConfigHitRecord>> ListHitsAsync(long tenantId, long appId, long serverId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineConfigHitRecord>> ListHitsAsync(long serverId, long playerId, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlineConfigHitRecord>();
                 foreach (var entry in _entries)
                 {
-                    if (entry.TenantId == tenantId && entry.AppId == appId && entry.ServerId == serverId && entry.PlayerId == playerId)
+                    if (entry.ServerId == serverId && entry.PlayerId == playerId)
                     {
                         matched.Add(entry.Record);
                     }
@@ -479,20 +467,6 @@ namespace GameFrameX.Tests.Online
             /// <summary>登记项（记录 + 归属作用域键）。</summary>
             private sealed class Entry
             {
-                /// <summary>获取或设置租户标识。</summary>
-                public long TenantId
-                {
-                    get;
-                    set;
-                }
-
-                /// <summary>获取或设置 App 标识。</summary>
-                public long AppId
-                {
-                    get;
-                    set;
-                }
-
                 /// <summary>获取或设置区服标识。</summary>
                 public long ServerId
                 {

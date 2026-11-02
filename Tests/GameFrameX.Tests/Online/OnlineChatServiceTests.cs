@@ -46,14 +46,9 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineChatServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
+
 
         /// <summary>测试用玩家一标识。</summary>
         private const long PlayerOne = 1001;
@@ -78,9 +73,9 @@ namespace GameFrameX.Tests.Online
         public void BuildChannelId_ShouldBeIndependentOfDirection()
         {
             // Arrange & Act
-            var forward = OnlineChatService.BuildChannelId(TenantId, AppId, OnlineChatChannelKind.Direct, PlayerOne, PlayerTwo, string.Empty);
-            var backward = OnlineChatService.BuildChannelId(TenantId, AppId, OnlineChatChannelKind.Direct, PlayerTwo, PlayerOne, string.Empty);
-            var otherPair = OnlineChatService.BuildChannelId(TenantId, AppId, OnlineChatChannelKind.Direct, PlayerOne, PlayerThree, string.Empty);
+            var forward = OnlineChatService.BuildChannelId(OnlineChatChannelKind.Direct, PlayerOne, PlayerTwo, string.Empty);
+            var backward = OnlineChatService.BuildChannelId(OnlineChatChannelKind.Direct, PlayerTwo, PlayerOne, string.Empty);
+            var otherPair = OnlineChatService.BuildChannelId(OnlineChatChannelKind.Direct, PlayerOne, PlayerThree, string.Empty);
 
             // Assert
             Assert.Equal(forward, backward);
@@ -552,8 +547,6 @@ namespace GameFrameX.Tests.Online
                 var draft = new OnlineChatMessage
                 {
                     MessageId = "msg-fixed-" + index,
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ChannelId = channel.ChannelId,
                     ChannelKind = OnlineChatChannelKind.Direct,
                     SenderId = PlayerOne,
@@ -701,8 +694,6 @@ namespace GameFrameX.Tests.Online
             var draft = new OnlineChatMessage
             {
                 MessageId = "msg-old",
-                TenantId = TenantId,
-                AppId = AppId,
                 ChannelId = channel.ChannelId,
                 ChannelKind = OnlineChatChannelKind.Direct,
                 SenderId = PlayerOne,
@@ -820,7 +811,7 @@ namespace GameFrameX.Tests.Online
             var channel = await OpenDirectAsync(service, PlayerOne, PlayerTwo);
 
             // Act
-            var outcome = await service.SendAsync(new OnlineScope(TenantId, AppId, ServerId, 0), channel.ChannelId, "内容");
+            var outcome = await service.SendAsync(new OnlineScope(ServerId), channel.ChannelId, "内容");
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -877,7 +868,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>
@@ -1052,14 +1043,12 @@ namespace GameFrameX.Tests.Online
             /// Only checks whether the player is in the member whitelist supplied at
             /// construction, ignoring the channel kind and bound id.
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="kind">频道类型 / The channel kind</param>
             /// <param name="boundId">绑定主体标识 / The bound id</param>
             /// <param name="playerId">待判定的玩家 / The player to check</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
-            public Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
+            public Task<bool> IsChannelMemberAsync(OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_members.Contains(playerId));
             }

@@ -41,11 +41,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchmakerCoordinatorTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -71,7 +66,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -79,7 +74,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(2, outcome.Data.MatchedTicketCount);
             Assert.Equal(2, outcome.Data.MatchedPlayerCount);
 
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, outcome.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(outcome.Data.AssignmentIds[0]);
             Assert.Equal(new List<long> { PlayerOne, PlayerTwo }, assignment.PlayerIds);
             Assert.Equal(2, assignment.TicketIds.Count);
             Assert.Single(fixture.Recorder.Filter(OnlineMatchEvents.AssignmentCreated));
@@ -96,16 +91,16 @@ namespace GameFrameX.Tests.Online
             var fixture = CreateFixture();
             await EnqueueAsync(fixture, PlayerOne);
             await EnqueueAsync(fixture, PlayerTwo);
-            await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            await fixture.Coordinator.RunOnceAsync();
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Empty(outcome.Data.AssignmentIds);
             Assert.Equal(0, outcome.Data.MatchedTicketCount);
-            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            var assignments = await fixture.Store.ListAssignmentsAsync();
             Assert.Single(assignments);
         }
 
@@ -120,12 +115,12 @@ namespace GameFrameX.Tests.Online
             var ticket = await EnqueueAsync(fixture, PlayerOne);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Empty(outcome.Data.AssignmentIds);
-            var queued = await fixture.Store.FindAsync(TenantId, AppId, ticket.TicketId);
+            var queued = await fixture.Store.FindAsync(ticket.TicketId);
             Assert.Equal(OnlineMatchTicketState.Queued, queued.State);
         }
 
@@ -141,13 +136,13 @@ namespace GameFrameX.Tests.Online
             var lone = await EnqueueAsync(fixture, PlayerThree);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, outcome.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(outcome.Data.AssignmentIds[0]);
             Assert.Equal(new List<long> { PlayerOne, PlayerTwo }, assignment.PlayerIds);
-            var queued = await fixture.Store.FindAsync(TenantId, AppId, lone.TicketId);
+            var queued = await fixture.Store.FindAsync(lone.TicketId);
             Assert.Equal(OnlineMatchTicketState.Queued, queued.State);
         }
 
@@ -163,7 +158,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo, skillMin: 900, skillMax: 1000);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -188,17 +183,17 @@ namespace GameFrameX.Tests.Online
             var waiting = await EnqueueAsync(fixture, PlayerOne, skillMin: 100, skillMax: 200);
             await EnqueueAsync(fixture, PlayerTwo, skillMin: 250, skillMax: 300);
 
-            var stale = await fixture.Store.FindAsync(TenantId, AppId, waiting.TicketId);
+            var stale = await fixture.Store.FindAsync(waiting.TicketId);
             stale.CreatedAtTime = waiting.CreatedAtTime - 60000;
             await fixture.Store.SaveAsync(stale);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId, waiting.CreatedAtTime);
+            var outcome = await fixture.Coordinator.RunOnceAsync(waiting.CreatedAtTime);
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Single(outcome.Data.AssignmentIds);
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, outcome.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(outcome.Data.AssignmentIds[0]);
             Assert.True(assignment.RuleSnapshot.SkillRangeExpanded);
             Assert.Equal(0, assignment.RuleSnapshot.SkillMin);
             Assert.True(assignment.RuleSnapshot.WaitSeconds >= 60);
@@ -217,14 +212,14 @@ namespace GameFrameX.Tests.Online
             await fixture.Tickets.CancelAsync(CreatePlayerScope(PlayerOne), cancelled.TicketId);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Empty(outcome.Data.AssignmentIds);
-            var queued = await fixture.Store.FindAsync(TenantId, AppId, remaining.TicketId);
+            var queued = await fixture.Store.FindAsync(remaining.TicketId);
             Assert.Equal(OnlineMatchTicketState.Queued, queued.State);
-            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            var assignments = await fixture.Store.ListAssignmentsAsync();
             Assert.Empty(assignments);
         }
 
@@ -239,13 +234,13 @@ namespace GameFrameX.Tests.Online
             var ticket = await EnqueueAsync(fixture, PlayerOne);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId, ticket.ExpiresAtTime + 1);
+            var outcome = await fixture.Coordinator.RunOnceAsync(ticket.ExpiresAtTime + 1);
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Equal(1, outcome.Data.ExpiredTicketCount);
             Assert.Equal(0, outcome.Data.ScannedTicketCount);
-            var expired = await fixture.Store.FindAsync(TenantId, AppId, ticket.TicketId);
+            var expired = await fixture.Store.FindAsync(ticket.TicketId);
             Assert.Equal(OnlineMatchTicketState.Expired, expired.State);
         }
 
@@ -262,28 +257,28 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo);
 
             // Act：第一轮——assignment-created 发布抛异常，落档与逐票据事件不受影响。
-            var firstOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var firstOutcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert：撮合结果完整，失败事件保留在发件箱待投递。
             Assert.True(firstOutcome.IsSuccess);
             Assert.Single(firstOutcome.Data.AssignmentIds);
             Assert.Empty(fixture.Recorder.Filter(OnlineMatchEvents.AssignmentCreated));
             Assert.Equal(2, fixture.Recorder.Filter(OnlineMatchEvents.TicketChanged).Count);
-            var pendingAfterFirstRun = await fixture.Outbox.ListPendingAsync(TenantId, AppId);
+            var pendingAfterFirstRun = await fixture.Outbox.ListPendingAsync();
             Assert.Single(pendingAfterFirstRun);
             Assert.Equal(OnlineMatchEvents.AssignmentCreated, pendingAfterFirstRun[0].Event.EventType);
 
             // Act：第二轮——无新票据，故障桩已恢复，仅重投待投递事件。
-            var secondOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var secondOutcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert：事件补投送达且不重复，assignment 仍唯一，发件箱清空。
             Assert.True(secondOutcome.IsSuccess);
             Assert.Empty(secondOutcome.Data.AssignmentIds);
             Assert.Single(fixture.Recorder.Filter(OnlineMatchEvents.AssignmentCreated));
             Assert.Equal(2, fixture.Recorder.Filter(OnlineMatchEvents.TicketChanged).Count);
-            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            var assignments = await fixture.Store.ListAssignmentsAsync();
             Assert.Single(assignments);
-            Assert.Empty(await fixture.Outbox.ListPendingAsync(TenantId, AppId));
+            Assert.Empty(await fixture.Outbox.ListPendingAsync());
         }
 
         /// <summary>
@@ -300,17 +295,17 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo);
 
             // Act
-            var firstOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
-            var secondOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var firstOutcome = await fixture.Coordinator.RunOnceAsync();
+            var secondOutcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert：两轮撮合结果正确，assignment 唯一；失败事件保留且不重复。
             Assert.True(firstOutcome.IsSuccess);
             Assert.Single(firstOutcome.Data.AssignmentIds);
             Assert.True(secondOutcome.IsSuccess);
             Assert.Empty(secondOutcome.Data.AssignmentIds);
-            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            var assignments = await fixture.Store.ListAssignmentsAsync();
             Assert.Single(assignments);
-            var pending = await fixture.Outbox.ListPendingAsync(TenantId, AppId);
+            var pending = await fixture.Outbox.ListPendingAsync();
             Assert.Single(pending);
             Assert.Equal(OnlineMatchEvents.AssignmentCreated, pending[0].Event.EventType);
         }
@@ -327,7 +322,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -360,12 +355,12 @@ namespace GameFrameX.Tests.Online
             Assert.True(outcome.IsSuccess);
 
             // Act
-            var run = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var run = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(run.IsSuccess);
             Assert.Single(run.Data.AssignmentIds);
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, run.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(run.Data.AssignmentIds[0]);
             Assert.NotNull(assignment);
             Assert.Equal(0, assignment.RuleSnapshot.SkillMin);
             Assert.Equal(0, assignment.RuleSnapshot.SkillMax);
@@ -450,7 +445,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>

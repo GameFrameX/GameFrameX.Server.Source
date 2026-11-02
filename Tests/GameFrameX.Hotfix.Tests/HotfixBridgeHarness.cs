@@ -85,8 +85,6 @@ public static class HotfixBridgeHarness
             {
                 HostOptions = new CapabilityHostOptions
                 {
-                    TenantId = HotfixBridgeStubScopeProvider.TenantId,
-                    AppId = HotfixBridgeStubScopeProvider.AppId,
                     ServerId = HotfixBridgeStubScopeProvider.ServerId,
                 },
             };

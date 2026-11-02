@@ -197,7 +197,7 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private static OnlineGrantRequest BuildRemoteRequest(long playerId, string key)
         {
-            var scope = new OnlineScope(1, 10, 100, playerId);
+            var scope = new OnlineScope(100, playerId);
             return new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "跨服赛果", "bo-" + key, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, key) { HomeServerId = 200 };
         }
 
@@ -212,7 +212,7 @@ namespace GameFrameX.Tests.Online
             var localService = harness.CreateGrantService(harness.LocalAssetStore);
             var transport = new ScriptedTransport(true);
             var router = harness.CreateRouter(localService, transport);
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             var request = new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "本地赛果", "bo-local", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-local");
 
             // Act
@@ -221,7 +221,7 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.True(result.IsSuccess);
             Assert.Empty(transport.Calls);
-            var wallet = await harness.LocalAssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.LocalAssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
         }
 
@@ -246,7 +246,7 @@ namespace GameFrameX.Tests.Online
             var call = Assert.Single(transport.Calls);
             Assert.Equal(200, call.ServerId);
             Assert.Equal("key-remote", call.IdempotencyKey);
-            var localWallet = await harness.LocalAssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var localWallet = await harness.LocalAssetStore.FindWalletAsync(10001, "gold");
             Assert.Null(localWallet);
         }
 
@@ -285,9 +285,9 @@ namespace GameFrameX.Tests.Online
             Assert.Empty(queue.ListPending());
             // 续投一次即成功出队（重试不重复生效由远端幂等键保证）。
             Assert.Single(forwarding.Calls);
-            var remoteWallet = await harness.RemoteAssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var remoteWallet = await harness.RemoteAssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, remoteWallet.Balance);
-            var remoteLedger = await harness.RemoteAssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var remoteLedger = await harness.RemoteAssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Single(remoteLedger);
             Assert.Equal(0, drainAgain.RemainingCount);
         }

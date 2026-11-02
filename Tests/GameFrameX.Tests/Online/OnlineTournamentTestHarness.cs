@@ -52,14 +52,9 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     internal sealed class OnlineTournamentTestHarness
     {
-        /// <summary>租户标识。</summary>
-        public const long TenantId = 1;
+        /// <summary>另一区服标识（跨区服反预言用例）。</summary>
+        public const long OtherServerId = 200;
 
-        /// <summary>App 标识。</summary>
-        public const long AppId = 10;
-
-        /// <summary>另一 App 标识（跨 App 反预言用例）。</summary>
-        public const long OtherAppId = 11;
 
         /// <summary>区服标识。</summary>
         public const long ServerId = 100;
@@ -196,13 +191,13 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造作用域（默认本 App、无玩家主体位——赛事与榜单均为 (TenantId, AppId) 作用域）。
+        /// 构造作用域（默认本区服、无玩家主体位——赛事与榜单均为区服键作用域）。
         /// </summary>
-        /// <param name="appId">App 标识。</param>
+        /// <param name="serverId">区服标识。</param>
         /// <returns>作用域。</returns>
-        public OnlineScope Scope(long appId = AppId)
+        public OnlineScope Scope(long serverId = ServerId)
         {
-            return new OnlineScope(TenantId, appId, ServerId, 0);
+            return new OnlineScope(serverId, 0);
         }
 
         /// <summary>
@@ -238,8 +233,6 @@ namespace GameFrameX.Tests.Online
             {
                 MatchResultId = matchResultId,
                 MatchId = matchId,
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 Mode = OnlineRockPaperScissorsGame.MatchMode,
                 Region = 1,
@@ -324,7 +317,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>赛事状态。</returns>
         public async Task<OnlineTournamentState> TournamentStateAsync(string tournamentId)
         {
-            var tournament = await TournamentStore.FindAsync(TenantId, AppId, tournamentId);
+            var tournament = await TournamentStore.FindAsync(tournamentId);
             Assert.NotNull(tournament);
             return tournament.State;
         }
@@ -336,7 +329,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>币余额。</returns>
         public async Task<long> BalanceAsync(long playerId)
         {
-            var wallet = await RawAssetStore.FindWalletAsync(TenantId, AppId, playerId, CoinAssetId);
+            var wallet = await RawAssetStore.FindWalletAsync(playerId, CoinAssetId);
             return wallet == null ? 0 : wallet.Balance;
         }
 
@@ -347,7 +340,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>账本条目数。</returns>
         public async Task<int> LedgerCountAsync(long playerId)
         {
-            var entries = await RawAssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = playerId, AfterSequenceNumber = 0, MaxCount = 1000 });
+            var entries = await RawAssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = playerId, AfterSequenceNumber = 0, MaxCount = 1000 });
             return entries.Count;
         }
 
@@ -358,7 +351,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>全序条目。</returns>
         public async Task<List<OnlineLeaderboardEntry>> BoardEntriesAsync(string leaderboardId)
         {
-            var board = await RawLeaderboardStore.FindAsync(TenantId, AppId, leaderboardId);
+            var board = await RawLeaderboardStore.FindAsync(leaderboardId);
             Assert.NotNull(board);
             return await RawLeaderboardStore.ListOrderedEntriesAsync(board);
         }

@@ -54,14 +54,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineHotfixRollbackServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 9201;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 9202;
-
-        /// <summary>测试用其它 App 标识（隔离用例）。</summary>
-        private const long OtherAppId = 9902;
 
         /// <summary>
         /// 步进时钟（Foundation 协调器依赖 IClock；每次读取前进 10ms，
@@ -207,17 +199,17 @@ namespace GameFrameX.Tests.Online
                 return _inner.RegisterAsync(manifest, cancellationToken);
             }
 
-            public Task<OnlineHotfixProtocolManifest> FindAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+            public Task<OnlineHotfixProtocolManifest> FindAsync(string version, CancellationToken cancellationToken = default)
             {
-                return _inner.FindAsync(tenantId, appId, version, cancellationToken);
+                return _inner.FindAsync(version, cancellationToken);
             }
 
-            public Task<OnlineHotfixProtocolManifest> FindActiveAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<OnlineHotfixProtocolManifest> FindActiveAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.FindActiveAsync(tenantId, appId, cancellationToken);
+                return _inner.FindActiveAsync(cancellationToken);
             }
 
-            public async Task<string> SetActiveAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+            public async Task<string> SetActiveAsync(string version, CancellationToken cancellationToken = default)
             {
                 SetActiveCallCount++;
                 if (RemainingSetActiveFailures > 0)
@@ -226,7 +218,7 @@ namespace GameFrameX.Tests.Online
                     throw new InvalidOperationException(FailMessage);
                 }
 
-                return await _inner.SetActiveAsync(tenantId, appId, version, cancellationToken);
+                return await _inner.SetActiveAsync(version, cancellationToken);
             }
         }
 
@@ -328,8 +320,6 @@ namespace GameFrameX.Tests.Online
             return new OnlineHotfixProtocolManifest
             {
                 Version = version,
-                TenantId = TenantId,
-                AppId = AppId,
                 Messages = messages.ToList(),
                 RegisteredTime = 1_760_000_000_000L,
             };
@@ -356,7 +346,6 @@ namespace GameFrameX.Tests.Online
         {
             return new OnlineHotfixRollbackRequest
             {
-                Scope = new OnlineScope(TenantId, AppId, 0),
                 TargetVersion = targetVersion,
                 OperatorId = "admin-001",
                 OperatorName = "运维一号",
@@ -372,9 +361,9 @@ namespace GameFrameX.Tests.Online
         private static async Task SetupActiveV2Async(Harness harness)
         {
             await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1), Msg("LoginRes", 2)));
-            await harness.Service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), "1.0.0");
+            await harness.Service.ActivateAsync("1.0.0");
             await harness.Service.RegisterAsync(CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("LoginRes", 2)));
-            await harness.Service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), "1.1.0");
+            await harness.Service.ActivateAsync("1.1.0");
         }
 
         /// <summary>
@@ -384,7 +373,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>审计记录数。</returns>
         private static async Task<int> CountAuditRecordsAsync(Harness harness)
         {
-            var page = await harness.AuditService.QueryAsync(new OnlineScope(TenantId, AppId, 0));
+            var page = await harness.AuditService.QueryAsync();
             return page.Data.Records.Count;
         }
 
@@ -495,10 +484,10 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, harness.Executor.CallCount);
             Assert.Equal("1.0.0", harness.Executor.TargetVersions[0]);
 
-            var active = await harness.Store.FindActiveAsync(TenantId, AppId);
+            var active = await harness.Store.FindActiveAsync();
             Assert.Equal("1.0.0", active.Version);
 
-            var page = await harness.AuditService.QueryAsync(new OnlineScope(TenantId, AppId, 0));
+            var page = await harness.AuditService.QueryAsync();
             var record = Assert.Single(page.Data.Records);
             Assert.Equal(OnlineAuditDomain.Operation, record.Domain);
             Assert.Equal("hotfix-rollback-rb-key-001", record.EventId);
@@ -568,7 +557,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
             Assert.Equal(0, harness.Executor.CallCount);
             Assert.Equal(0, await CountAuditRecordsAsync(harness));
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -612,9 +601,9 @@ namespace GameFrameX.Tests.Online
         {
             var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
             await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1)));
-            await harness.Service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), "1.0.0");
+            await harness.Service.ActivateAsync("1.0.0");
             await harness.Service.RegisterAsync(CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("MatchReq", 5)));
-            await harness.Service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), "1.1.0");
+            await harness.Service.ActivateAsync("1.1.0");
 
             var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-007"));
 
@@ -622,7 +611,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.VersionConflict, result.Code);
             Assert.Contains("Removed=1", result.Message);
             Assert.Equal(0, harness.Executor.CallCount);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -639,13 +628,13 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(failed.IsSuccess);
             Assert.Equal(OnlineErrorCode.DependencyUnavailable, failed.Code);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
 
             harness.Executor.FailMessage = null;
             var retried = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-008"));
             Assert.True(retried.IsSuccess);
             Assert.False(retried.Data.IsReplay);
-            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -661,7 +650,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -679,7 +668,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.InternalError, result.Code);
             Assert.Contains("无审计不执行", result.Message);
             Assert.Equal(0, harness.Executor.CallCount);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         // ==================== 参数校验（4001 宁拒毋缺） ====================
@@ -744,7 +733,7 @@ namespace GameFrameX.Tests.Online
             // 预检目标取超集版本（Added 兼容差异）：当前 1.1.0={LoginReq,LoginRes}，目标 2.0.0 多一条 ChatReq。
             await harness.Service.RegisterAsync(CreateManifest("2.0.0", Msg("LoginReq", 1), Msg("LoginRes", 2), Msg("ChatReq", 7)));
 
-            var report = await harness.Service.CheckProtocolCompatibilityAsync(new OnlineScope(TenantId, AppId, 0), "2.0.0");
+            var report = await harness.Service.CheckProtocolCompatibilityAsync("2.0.0");
 
             Assert.True(report.IsSuccess);
             Assert.True(report.Data.IsCompatible);
@@ -752,7 +741,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(0, harness.Executor.CallCount);
             Assert.Equal(0, await CountAuditRecordsAsync(harness));
             Assert.Empty(harness.EventRecorder.Filter(OnlineHotfixEvents.RolledBack));
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -770,7 +759,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(second.IsSuccess);
             Assert.False(second.Data);
-            var stored = await harness.Store.FindAsync(TenantId, AppId, "1.0.0");
+            var stored = await harness.Store.FindAsync("1.0.0");
             Assert.Single(stored.Messages);
             Assert.Single(harness.EventRecorder.Filter(OnlineHotfixEvents.VersionRegistered));
         }
@@ -797,29 +786,12 @@ namespace GameFrameX.Tests.Online
         {
             var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
 
-            var result = await harness.Service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), "404.0.0");
+            var result = await harness.Service.ActivateAsync("404.0.0");
 
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
         }
 
-        /// <summary>
-        /// 作用域隔离：清单是 App 级资产，其它 App 查不到本 App 登记的版本（4002 反预言）。
-        /// </summary>
-        [Fact]
-        public async Task RollbackAsync_CrossAppVersionInvisible_RejectedWith404()
-        {
-            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
-            await SetupActiveV2Async(harness);
-            var request = CreateRollbackRequest("1.0.0", "rb-key-012");
-            request.Scope = new OnlineScope(TenantId, OtherAppId, 0);
-
-            var result = await harness.Service.RollbackAsync(request);
-
-            Assert.False(result.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
-            Assert.Equal(0, harness.Executor.CallCount);
-        }
 
         /// <summary>
         /// 登记携带制品字段（SourceUrl + Sha256 成对）：获取器先行（登记先于清单落簿），登记成功。
@@ -839,7 +811,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(result.Data);
             Assert.Equal(1, fetcher.CallCount);
             Assert.Equal(("3.0.0", "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll", new string('a', 64)), fetcher.Calls[0]);
-            Assert.NotNull(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+            Assert.NotNull(await harness.Store.FindAsync("3.0.0"));
         }
 
         /// <summary>
@@ -858,7 +830,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(failure.IsSuccess);
             Assert.Equal(OnlineErrorCode.DependencyUnavailable, failure.Code);
-            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
 
             fetcher.FailMessage = null;
             var retry = await harness.Service.RegisterAsync(manifest);
@@ -883,7 +855,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
             Assert.Equal(0, fetcher.CallCount);
-            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
         }
 
         /// <summary>
@@ -954,7 +926,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
-            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
         }
 
         // ==================== 活跃指针写入失败：重试与反切补偿 ====================
@@ -978,7 +950,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(4, store.SetActiveCallCount); // setup 激活 2 次 + 命令第 1 次失败 + 第 2 次成功
             Assert.Equal(1, harness.Executor.CallCount);
             Assert.Equal(new[] { "1.0.0", }, harness.Executor.TargetVersions);
-            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
             Assert.Equal(1, await CountAuditRecordsAsync(harness));
             var warnLine = Assert.Single(rollbackLog.WarnLines);
             Assert.Contains("transition=pointer-write-failed", warnLine);
@@ -1007,7 +979,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.InternalError, failed.Code);
             Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
             Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
             Assert.Contains(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
             Assert.Contains(rollbackLog.WarnLines, line => line.Contains("transition=executor-reverted"));
             Assert.Equal(3, rollbackLog.WarnLines.Count(line => line.Contains("transition=pointer-write-failed")));
@@ -1015,7 +987,7 @@ namespace GameFrameX.Tests.Online
             store.RemainingSetActiveFailures = 0;
             var retried = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-102"));
             Assert.True(retried.IsSuccess);
-            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
         }
 
         /// <summary>
@@ -1040,7 +1012,7 @@ namespace GameFrameX.Tests.Online
             Assert.Contains("须对账", failed.Message);
             Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
             Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
-            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
             var exhaustedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
             Assert.Contains("attempts=4", exhaustedLine);
             var revertFailedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=executor-revert-failed"));
