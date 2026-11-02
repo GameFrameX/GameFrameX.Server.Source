@@ -33,6 +33,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
+      <!-- 桥契约 harness 直用 CapabilityRuntime（此前经 Online.Abstractions→AdminApi 传递获得；管理契约上移 Hosting.Abstractions 后显式直引机制包） -->
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.Core\GameFrameX.Capability.Hosting.Core.csproj" />
       <ProjectReference Include="..\GameFrameX.Hotfix.Tests.Probes\GameFrameX.Hotfix.Tests.Probes.csproj" />
     </ItemGroup>
 
