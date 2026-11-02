@@ -51,7 +51,7 @@ public sealed class CapabilityPackageLayeringAnalyzer : DiagnosticAnalyzer
     private static readonly DiagnosticDescriptor LayerMonotonicRule = new(
         "GFX0023",
         "包分层必须单调（同层禁互引）",
-        "程序集 '{0}'（{1}）引用了 '{2}'（{3}）：只准高层引低层（Ln→Lm, m&lt;n）、同层禁互引；请把公共面下沉到更低层或调整包边界",
+        "程序集 '{0}'（{1}）引用了 '{2}'（{3}）：只准高层引低层（Ln→Lm, m<n）、同层禁互引；请把公共面下沉到更低层或调整包边界",
         ArchitectureAnalyzerConstants.Category,
         DiagnosticSeverity.Error,
         true,
