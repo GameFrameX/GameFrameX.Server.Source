@@ -328,7 +328,21 @@ namespace GameFrameX.StartUp.ServiceDefaults
                 return;
             }
 
-            var mongoHealthCheck = CreateMongoDbHealthCheck(connectionString);
+            IHealthCheck mongoHealthCheck;
+            try
+            {
+                mongoHealthCheck = CreateMongoDbHealthCheck(connectionString);
+            }
+            catch (Exception exception)
+            {
+                // 探针构造失败（如连接串非法被驱动拒绝）按 Degraded 暴露，不打断宿主启动：
+                // 与「Provider 程序集未加载 → Degraded」同一降级口径。
+                healthChecksBuilder.AddCheck("mongodb", () => HealthCheckResult.Degraded(
+                    "MongoDB health check could not be created from the configured connection string", exception),
+                    tags: new[] { "db", "ready", });
+                return;
+            }
+
             if (mongoHealthCheck == null)
             {
                 healthChecksBuilder.AddCheck("mongodb", () => HealthCheckResult.Degraded(
