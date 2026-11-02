@@ -21,6 +21,15 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj" />
+    </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
