@@ -188,6 +188,14 @@ public abstract partial class AppStartUpBase
 
         // 确定是否为开发环境
         var development = Setting.HttpIsDevelopment || EnvironmentHelper.IsDevelopment();
+        if (development && !builder.Environment.IsDevelopment())
+        {
+            // 显式开发开关（HttpIsDevelopment / 本机开发环境判定）驱动 Web 宿主环境：
+            // /health、/alive 等默认端点仅在 Development 环境映射（ServiceDefaults 的安全默认——
+            // 非开发环境暴露健康端点有安全影响），开关开启而环境未标注时健康端点将 404，
+            // 与开关语义及 README 健康检查指引相悖，这里在构建期对齐环境名。
+            builder.Environment.EnvironmentName = Environments.Development;
+        }
 
         var openApiInfo = GetOpenApiInfo();
 
