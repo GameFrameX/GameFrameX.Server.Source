@@ -58,7 +58,7 @@ public interface IOnlineMatchTicketStore
     /// 原子入队：在同一临界区内检查队伍和每个成员是否已有排队中票据；
     /// 没有冲突就写入票据和反查索引并返回入参副本，有冲突就不写入，返回已存在的活跃票据。
     /// <para>
-    /// 未来接持久化存储时，以（租户、应用、玩家、活跃）唯一索引承接同一约束；
+    /// 未来接持久化存储时，以（玩家、活跃）唯一索引承接同一约束；
     /// 冲突路径不得留下任何写入痕迹（包括玩家反查索引）。
     /// </para>
     /// </summary>
@@ -70,32 +70,26 @@ public interface IOnlineMatchTicketStore
     /// <summary>
     /// 按标识查找票据（含终态历史）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ticketId">票据标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>票据副本；不存在返回 null。</returns>
-    Task<OnlineMatchTicket> FindAsync(long tenantId, long appId, string ticketId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> FindAsync(string ticketId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查找队伍/玩家当前处于排队中的票据（唯一性：同一队伍至多一张活跃票据）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>排队中的票据副本；无则返回 null。</returns>
-    Task<OnlineMatchTicket> FindActiveByPartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> FindActiveByPartyAsync(string partyId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查找玩家当前处于排队中的票据（用于重复排队拦截与「我的匹配状态」查询）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>排队中的票据副本；无则返回 null。</returns>
-    Task<OnlineMatchTicket> FindActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> FindActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查找玩家最近一张票据（任意状态；匹配域桥状态面读）。
@@ -104,40 +98,32 @@ public interface IOnlineMatchTicketStore
     /// 排队中为 Queued 票据，已撮合为 Matched 终态票据（承载 AssignmentId），取消 / 过期为对应终态。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>最近票据副本；从未入队返回 null。</returns>
-    Task<OnlineMatchTicket> FindLatestByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> FindLatestByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内排队中的全部票据（成组与过期扫描的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>排队中的票据副本列表。</returns>
-    Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内全部票据（含终态历史；可观测性要求各状态计数可核对）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>票据副本列表。</returns>
-    Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义更新单张票据状态（取消 / 过期 / 失败走此入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="transition">状态迁移载荷（票据定位 + 期望/目标状态 + 失败原因与分配标识）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null。</returns>
-    Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, MatchTicketStateTransition transition, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> UpdateStateAsync(MatchTicketStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 原子提交一次成组：校验全部票据仍处于期望状态，是则一次性全部置为
@@ -154,44 +140,36 @@ public interface IOnlineMatchTicketStore
     /// <summary>
     /// 按标识查找对局分配。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="assignmentId">分配标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>分配副本；不存在返回 null。</returns>
-    Task<OnlineMatchAssignment> FindAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchAssignment> FindAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内全部对局分配（可观测性与对账用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>分配副本列表。</returns>
-    Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 聚合作用域 (TenantId, AppId, ServerId) 内排队态票据，按 (Mode, Region) 槽位产出队列深度与等待时长合计
+    /// 聚合作用域 (ServerId) 内排队态票据，按 (Mode, Region) 槽位产出队列深度与等待时长合计
     /// （聚合谓词下推：排队态判定与等待秒来源 <see cref="OnlineMatchRule.WaitSeconds"/> 均与在线总览口径一致）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒；等待时长按该时刻计算）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>槽位聚合列表（无排队票据时为空表）。</returns>
-    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long tenantId, long appId, long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 统计时间窗 <c>(windowStartExclusiveUnixMilliseconds, windowEndInclusiveUnixMilliseconds]</c> 内落档的匹配分配所消费的票据数，
     /// 按 (Mode, Region) 槽位聚合（聚合谓词下推：窗口左开右闭边界与在线总览吞吐口径一致）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="windowStartExclusiveUnixMilliseconds">窗口起点（UTC 毫秒；不含）。</param>
     /// <param name="windowEndInclusiveUnixMilliseconds">窗口终点（UTC 毫秒；含）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>槽位聚合列表（TotalWaitSeconds 恒为 0；窗口内无分配时为空表）。</returns>
-    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long tenantId, long appId, long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default);
 }

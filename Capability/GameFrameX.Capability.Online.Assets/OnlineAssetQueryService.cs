@@ -82,10 +82,10 @@ public sealed class OnlineAssetQueryService
             return OnlineResult<OnlineWalletAccount>.Fail(OnlineErrorCode.ParameterInvalid, "货币代码不得为空");
         }
 
-        var account = await _assetStore.FindWalletAsync(scope.TenantId, scope.AppId, scope.PlayerId, currencyId, cancellationToken);
+        var account = await _assetStore.FindWalletAsync(scope.PlayerId, currencyId, cancellationToken);
         if (account == null)
         {
-            account = new OnlineWalletAccount { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, CurrencyId = currencyId, Balance = 0, Version = 0, UpdatedTime = 0, };
+            account = new OnlineWalletAccount { PlayerId = scope.PlayerId, CurrencyId = currencyId, Balance = 0, Version = 0, UpdatedTime = 0, };
         }
 
         return OnlineResult<OnlineWalletAccount>.Ok(account);
@@ -105,7 +105,7 @@ public sealed class OnlineAssetQueryService
             return failure;
         }
 
-        var accounts = await _assetStore.ListWalletAccountsAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var accounts = await _assetStore.ListWalletAccountsAsync(scope.PlayerId, cancellationToken);
         return OnlineResult<IReadOnlyList<OnlineWalletAccount>>.Ok(accounts);
     }
 
@@ -123,7 +123,7 @@ public sealed class OnlineAssetQueryService
             return failure;
         }
 
-        var stacks = await _assetStore.ListInventoryStacksAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var stacks = await _assetStore.ListInventoryStacksAsync(scope.PlayerId, cancellationToken);
         return OnlineResult<IReadOnlyList<OnlineInventoryStack>>.Ok(stacks);
     }
 
@@ -154,13 +154,13 @@ public sealed class OnlineAssetQueryService
             return OnlineResult<OnlineLedgerPage>.Fail(OnlineErrorCode.ParameterInvalid, "游标格式非法（不透明令牌只回传不构造）");
         }
 
-        var entries = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = afterSequenceNumber, MaxCount = maxCount, }, cancellationToken);
+        var entries = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = scope.PlayerId, AfterSequenceNumber = afterSequenceNumber, MaxCount = maxCount, }, cancellationToken);
         if (entries.Count < maxCount)
         {
             return OnlineResult<OnlineLedgerPage>.Ok(new OnlineLedgerPage(entries, new OnlinePageCursor(string.Empty, false)));
         }
 
-        var nextPage = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = entries[entries.Count - 1].SequenceNumber, MaxCount = 1, }, cancellationToken);
+        var nextPage = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = scope.PlayerId, AfterSequenceNumber = entries[entries.Count - 1].SequenceNumber, MaxCount = 1, }, cancellationToken);
         var hasMore = nextPage.Count > 0;
         return OnlineResult<OnlineLedgerPage>.Ok(new OnlineLedgerPage(entries, new OnlinePageCursor(hasMore ? entries[entries.Count - 1].SequenceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty, hasMore)));
     }
@@ -186,7 +186,7 @@ public sealed class OnlineAssetQueryService
         }
 
         var transaction = await _transactionStore.FindAsync(transactionId, cancellationToken);
-        if (transaction == null || transaction.TenantId != scope.TenantId || transaction.AppId != scope.AppId || transaction.PlayerId != scope.PlayerId)
+        if (transaction == null || transaction.PlayerId != scope.PlayerId)
         {
             return OnlineResult<OnlineAssetTransactionDetail>.Fail(OnlineErrorCode.ResourceNotFound, "交易不存在");
         }

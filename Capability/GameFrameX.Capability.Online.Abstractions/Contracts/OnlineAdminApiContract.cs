@@ -92,7 +92,7 @@ public static class OnlineAdminApiContract
     /// <returns>含玩家位的作用域。</returns>
     public static OnlineScope ReadPlayerScope(AdminApiRequest request, OnlineScope scope)
     {
-        return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ReadPlayerId(request));
+        return new OnlineScope(scope.ServerId, ReadPlayerId(request));
     }
 
     /// <summary>

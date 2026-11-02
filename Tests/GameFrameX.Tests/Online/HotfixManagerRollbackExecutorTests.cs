@@ -59,11 +59,6 @@ namespace GameFrameX.Tests.Online;
 [Collection(HotfixManagerStaticStateCollection.Name)]
 public sealed class HotfixManagerRollbackExecutorTests : IDisposable
 {
-    /// <summary>测试用租户标识。</summary>
-    private const long TenantId = 9211;
-
-    /// <summary>测试用应用标识。</summary>
-    private const long AppId = 9212;
 
     /// <summary>本实例创建的版本目录（Dispose 统一最佳努力清理）。</summary>
     private readonly List<string> _createdVersions = new List<string>();
@@ -118,7 +113,6 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
     {
         return new OnlineHotfixRollbackRequest
         {
-            Scope = new OnlineScope(TenantId, AppId, 0),
             TargetVersion = targetVersion,
             OperatorId = "admin-001",
             OperatorName = "运维一号",
@@ -137,13 +131,10 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
         return new OnlineHotfixProtocolManifest
         {
             Version = version,
-            TenantId = TenantId,
-            AppId = AppId,
             Messages = new List<OnlineHotfixProtocolMessage>(),
             RegisteredTime = 1_760_000_000_000L,
         };
     }
-
     /// <summary>
     /// 创建一个真实可装载的版本目录（拷贝 Operations 程序集为 GameFrameX.Hotfix.dll）。
     /// </summary>
@@ -343,19 +334,19 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
         var v2 = NewLoadableVersion();
         Assert.True((await service.RegisterAsync(CreateManifest(v1))).Data);
         Assert.True((await service.RegisterAsync(CreateManifest(v2))).Data);
-        Assert.True((await service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), v1)).Data);
+        Assert.True((await service.ActivateAsync(v1)).Data);
         await LoadVersion(v1);
 
         // 向前：切到更新登记的 v2。
         var forward = await service.RollbackAsync(CreateRollbackRequest(v2, "c248-full-forward"));
         Assert.True(forward.IsSuccess, forward.Message);
-        Assert.Equal(v2, (await store.FindActiveAsync(TenantId, AppId)).Version);
+        Assert.Equal(v2, (await store.FindActiveAsync()).Version);
         Assert.Equal(ArtifactPath(v2), HotfixManager.HotfixAssembly.Location);
 
         // 向后：回滚到 v1。
         var backward = await service.RollbackAsync(CreateRollbackRequest(v1, "c248-full-backward"));
         Assert.True(backward.IsSuccess, backward.Message);
-        Assert.Equal(v1, (await store.FindActiveAsync(TenantId, AppId)).Version);
+        Assert.Equal(v1, (await store.FindActiveAsync()).Version);
         Assert.Equal(ArtifactPath(v1), HotfixManager.HotfixAssembly.Location);
 
         Assert.Equal(2, recorder.Filter(OnlineHotfixEvents.RolledBack).Count);
@@ -373,14 +364,14 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
         var ghost = NewMissingVersion();
         Assert.True((await service.RegisterAsync(CreateManifest(v1))).Data);
         Assert.True((await service.RegisterAsync(CreateManifest(ghost))).Data);
-        Assert.True((await service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), v1)).Data);
+        Assert.True((await service.ActivateAsync(v1)).Data);
         await LoadVersion(v1);
 
         var failure = await service.RollbackAsync(CreateRollbackRequest(ghost, "c248-ghost-target"));
 
         Assert.False(failure.IsSuccess);
         Assert.Equal(OnlineErrorCode.DependencyUnavailable, failure.Code);
-        Assert.Equal(v1, (await store.FindActiveAsync(TenantId, AppId)).Version);
+        Assert.Equal(v1, (await store.FindActiveAsync()).Version);
         Assert.Equal(ArtifactPath(v1), HotfixManager.HotfixAssembly.Location);
     }
 
@@ -412,13 +403,13 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
         Assert.True((await service.RegisterAsync(manifestV2)).Data);
         Assert.True(File.Exists(ArtifactPath(v2)));
         Assert.True(handler.CallCount >= 1);
-        Assert.True((await service.ActivateAsync(new OnlineScope(TenantId, AppId, 0), v1)).Data);
+        Assert.True((await service.ActivateAsync(v1)).Data);
         await LoadVersion(v1);
 
         var rollback = await service.RollbackAsync(CreateRollbackRequest(v2, "c248-e2e-switch"));
 
         Assert.True(rollback.IsSuccess, rollback.Message);
-        Assert.Equal(v2, (await store.FindActiveAsync(TenantId, AppId)).Version);
+        Assert.Equal(v2, (await store.FindActiveAsync()).Version);
         Assert.Equal(ArtifactPath(v2), HotfixManager.HotfixAssembly.Location);
     }
 

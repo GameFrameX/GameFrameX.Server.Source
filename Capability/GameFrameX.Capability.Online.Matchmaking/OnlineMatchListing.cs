@@ -46,16 +46,6 @@ public sealed class OnlineMatchListing
     public string ListingId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
     public long ServerId { get; set; }
@@ -153,8 +143,6 @@ public sealed class OnlineMatchListing
         return new OnlineMatchListing
         {
             ListingId = ListingId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             PartyId = PartyId,
             OwnerPlayerId = OwnerPlayerId,

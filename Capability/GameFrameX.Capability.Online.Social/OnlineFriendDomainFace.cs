@@ -375,14 +375,14 @@ public sealed class OnlineFriendDomainFace : IOnlineFriendDomain
     }
 
     /// <summary>
-    /// 以同三元组 + 指定玩家位构造作用域（直接添加语义以被请求方身份补接受时使用）。
+    /// 以同区服键 + 指定玩家位构造作用域（直接添加语义以被请求方身份补接受时使用）。
     /// </summary>
     /// <param name="scope">源作用域。</param>
     /// <param name="playerId">玩家位。</param>
     /// <returns>新作用域。</returns>
     private static OnlineScope WithPlayer(OnlineScope scope, long playerId)
     {
-        return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, playerId);
+        return new OnlineScope(scope.ServerId, playerId);
     }
 
     /// <summary>

@@ -26,27 +26,19 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Abstractions.Scope;
-
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>
 /// Hotfix 回滚命令请求（回滚是唯一受控操作——操作者显式命令 + 审计；
 /// 登记（Register）与激活（Activate）为簿记 / 装配面初始化入口，不落审计）。
 /// <para>
-/// 维护约束（红线）：<see cref="Scope"/> 只锚定 TenantId/AppId 两键（App 级资产，ServerId 固定 0
-/// ——服务内统一归一，调用方传入的 ServerId 不参与定位）；<see cref="OperatorId"/>、<see cref="Reason"/>、
+/// 维护约束（红线）：<see cref="OperatorId"/>、<see cref="Reason"/>、
 /// <see cref="TargetVersion"/>、<see cref="IdempotencyKey"/> 必填（宁拒毋缺，缺失拒绝 4001）；
 /// 幂等键承载「回滚到版本 X」这一业务意图——相同键不同意图判 6002 冲突。
 /// </para>
 /// </summary>
 public sealed class OnlineHotfixRollbackRequest
 {
-    /// <summary>
-    /// 获取或设置生效作用域（服务内只用 TenantId/AppId 两键定位，ServerId 归一为 0）。
-    /// </summary>
-    public OnlineScope Scope { get; set; }
-
     /// <summary>
     /// 获取或设置目标回滚版本号（须已登记清单；禁止包含 <c>|</c>）。
     /// </summary>

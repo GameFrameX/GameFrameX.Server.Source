@@ -27,6 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Abstractions.Keys;
+
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>
@@ -68,7 +70,7 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
             throw new ArgumentNullException(nameof(friendship));
         }
 
-        var pairKey = BuildPairKey(friendship.TenantId, friendship.AppId, friendship.LowPlayerId, friendship.HighPlayerId);
+        var pairKey = OnlineRowKey.Friendship(friendship.LowPlayerId, friendship.HighPlayerId);
         lock (_syncRoot)
         {
             OnlineFriendship existing;
@@ -91,18 +93,16 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Canonicalizes the two players into the undirected pair first, then looks up the in-memory friendship table by index key and returns a copy (either direction of the arguments hits the same record).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="leftPlayerId">一侧玩家标识（无需预先规范化） / One-side player id (no pre-canonicalization needed)</param>
     /// <param name="rightPlayerId">另一侧玩家标识（无需预先规范化） / Other-side player id (no pre-canonicalization needed)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>关系副本；不存在返回 null / Copy of the friendship; null if absent</returns>
-    public Task<OnlineFriendship> FindAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendship> FindAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
     {
         long low;
         long high;
         OnlineFriendship.Canonicalize(leftPlayerId, rightPlayerId, out low, out high);
-        var pairKey = BuildPairKey(tenantId, appId, low, high);
+        var pairKey = OnlineRowKey.Friendship(low, high);
         lock (_syncRoot)
         {
             OnlineFriendship found;
@@ -121,12 +121,10 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Rewrites the in-memory friendship state with CAS semantics inside the critical section: leaves no write trace and returns null on scope mismatch, expected-state mismatch or missing record.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
-    public Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendship> UpdateStateAsync(FriendshipStateTransition transition, CancellationToken cancellationToken = default)
     {
         var friendshipId = transition.FriendshipId;
         var expectedState = transition.ExpectedState;
@@ -144,11 +142,6 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
 
             OnlineFriendship current;
             if (!_friendshipsByPair.TryGetValue(pairKey, out current))
-            {
-                return Task.FromResult<OnlineFriendship>(null);
-            }
-
-            if (current.TenantId != tenantId || current.AppId != appId)
             {
                 return Task.FromResult<OnlineFriendship>(null);
             }
@@ -177,14 +170,12 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Performs "read both sides' established counts → judge the limit → write" within one critical section: rejects with zero writes when either side has reached the limit, eliminating the TOCTOU window where concurrent accepts each read limit-1 and both land over the limit.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
     /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定） / Established friend limit (&lt;= 0 disables the limit check)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空 / Transition outcome: updated copy on success; FriendLimitReached on limit rejection; both empty on CAS failure</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="transition"/> 为 null 时抛出 / Thrown when <paramref name="transition"/> is null</exception>
-    public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
     {
         if (transition == null)
         {
@@ -208,7 +199,7 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
                 return Task.FromResult(OnlineFriendStateTransitionOutcome.FromCasConflict());
             }
 
-            if (current.TenantId != tenantId || current.AppId != appId || current.State != expectedState)
+            if (current.State != expectedState)
             {
                 return Task.FromResult(OnlineFriendStateTransitionOutcome.FromCasConflict());
             }
@@ -216,8 +207,8 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
             if (newState == OnlineFriendshipState.Accepted && establishedFriendLimit > 0)
             {
                 // 计数与写入同一临界区：本条此刻尚处 Requested（未计入），两侧任一满员即整体拒绝、零写入。
-                if (CountEstablishedInLock(tenantId, appId, current.RequesterId) >= establishedFriendLimit
-                    || CountEstablishedInLock(tenantId, appId, current.AddresseeId) >= establishedFriendLimit)
+                if (CountEstablishedInLock(current.RequesterId) >= establishedFriendLimit
+                    || CountEstablishedInLock(current.AddresseeId) >= establishedFriendLimit)
                 {
                     return Task.FromResult(OnlineFriendStateTransitionOutcome.FromFriendLimitReached());
                 }
@@ -240,12 +231,10 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Re-initiates a quiescent friendship as a pending request with CAS semantics, writing state, direction and expiry together onto the same record within one critical section.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="renewal">重新发起载荷（关系标识、期望状态、发起人、被请求方、变更时刻、失效时刻） / Renewal payload (friendship id, expected state, requester, addressee, change time, expiry)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
-    public Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendship> RenewRequestAsync(FriendshipRenewal renewal, CancellationToken cancellationToken = default)
     {
         var friendshipId = renewal.FriendshipId;
         var expectedState = renewal.ExpectedState;
@@ -268,7 +257,7 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
                 return Task.FromResult<OnlineFriendship>(null);
             }
 
-            if (current.TenantId != tenantId || current.AppId != appId || current.State != expectedState)
+            if (current.State != expectedState)
             {
                 return Task.FromResult<OnlineFriendship>(null);
             }
@@ -285,18 +274,15 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <summary>
     /// 在已持有 <see cref="_syncRoot"/> 临界区的前提下，全表扫描统计某玩家已建立（Accepted）的关系数。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>已建立的关系数。</returns>
-    private int CountEstablishedInLock(long tenantId, long appId, long playerId)
+    private int CountEstablishedInLock(long playerId)
     {
         var count = 0;
         foreach (var pair in _friendshipsByPair)
         {
             var friendship = pair.Value;
-            if (friendship.TenantId == tenantId && friendship.AppId == appId
-                && friendship.State == OnlineFriendshipState.Accepted
+            if (friendship.State == OnlineFriendshipState.Accepted
                 && friendship.Contains(playerId))
             {
                 count++;
@@ -312,12 +298,10 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Lists all friendship records in the scope containing the given player (any state) via a full-table linear scan inside the critical section.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">玩家标识 / Player id</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>关系副本列表 / List of friendship copies</returns>
-    public Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineFriendship>();
         lock (_syncRoot)
@@ -325,11 +309,6 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
             foreach (var pair in _friendshipsByPair)
             {
                 var friendship = pair.Value;
-                if (friendship.TenantId != tenantId || friendship.AppId != appId)
-                {
-                    continue;
-                }
-
                 if (friendship.Contains(playerId))
                 {
                     result.Add(friendship.Copy());
@@ -346,12 +325,10 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <remarks>
     /// Lists all friendship records in the scope with the given state via a full-table linear scan inside the critical section.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="state">关系状态 / Friendship state</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>关系副本列表 / List of friendship copies</returns>
-    public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(OnlineFriendshipState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineFriendship>();
         lock (_syncRoot)
@@ -359,7 +336,7 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
             foreach (var pair in _friendshipsByPair)
             {
                 var friendship = pair.Value;
-                if (friendship.TenantId == tenantId && friendship.AppId == appId && friendship.State == state)
+                if (friendship.State == state)
                 {
                     result.Add(friendship.Copy());
                 }
@@ -369,16 +346,5 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         return Task.FromResult<IReadOnlyList<OnlineFriendship>>(result);
     }
 
-    /// <summary>
-    /// 构造无向对索引键（作用域 + 规范化玩家对）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="lowPlayerId">低标识侧玩家。</param>
-    /// <param name="highPlayerId">高标识侧玩家。</param>
-    /// <returns>索引键。</returns>
-    private static string BuildPairKey(long tenantId, long appId, long lowPlayerId, long highPlayerId)
-    {
-        return "friend:" + tenantId + ":" + appId + ":" + lowPlayerId + ":" + highPlayerId;
-    }
+
 }

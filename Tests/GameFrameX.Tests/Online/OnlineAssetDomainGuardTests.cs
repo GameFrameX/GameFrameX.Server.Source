@@ -94,7 +94,7 @@ namespace GameFrameX.Tests.Online
             var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), options);
             var assetStore = new InMemoryOnlineAssetStore();
             var grantService = new OnlineGrantService(assetStore, new InMemoryOnlineAssetTransactionStore(), new OnlineIdempotencyService(coordinator, null), new NullPublisher(), null);
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             var request = new OnlineGrantRequest(scope, OnlineAssetChangeSource.PaymentConfirm, OnlineGrantOperation.Grant, "支付发货", "bo-guard", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 60) }, "key-guard");
 
             // Act

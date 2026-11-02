@@ -36,8 +36,7 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// 协议兼容检查以「当前活跃清单 vs 目标回滚清单」比对）。
 /// <para>
 /// 维护约束（红线）：
-/// ① 清单是 <b>App 级资产</b>——作用域锚定 <see cref="TenantId"/>/<see cref="AppId"/> 两键，
-/// ServerId 固定 0（对齐统一审计「远程配置等 App 级操作」口径）；
+/// ① 清单是**全局资产**（单键化后无作用域锚定位，登记与活跃指针按版本号全局定位）；
 /// ② 清单一经登记<b>不可变更</b>（存储按版本号判重，重复登记幂等回执、不覆盖既有行——
 /// 回滚兼容判定的前提是历史清单稳定）；版本号须与 Hotfix 程序集版本（<c>HotfixManager.dllVersion</c> 契约）一致；
 /// ③ 版本号禁止包含竖线 <c>|</c>（幂等回放令牌与规范化请求文本的分隔符，防止回放令牌损坏），
@@ -48,19 +47,9 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 public sealed class OnlineHotfixProtocolManifest
 {
     /// <summary>
-    /// 获取或设置版本号（与 Hotfix 程序集版本一致；同作用域内唯一，禁止包含 <c>|</c> 与路径分隔符 /「..」段）。
+    /// 获取或设置版本号（与 Hotfix 程序集版本一致；全局唯一，禁止包含 <c>|</c> 与路径分隔符 /「..」段）。
     /// </summary>
     public string Version { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（必填，必须大于 0）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（必填，必须大于 0）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置协议消息契约行集合（同清单内消息名与消息号均唯一；可为空集合，表示该版本无对外协议面）。

@@ -39,17 +39,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// </summary>
 public sealed class OnlineReportTransition
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    /// <remarks>Gets or sets the tenant id.</remarks>
-    public long TenantId { get; init; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    /// <remarks>Gets or sets the app id.</remarks>
-    public long AppId { get; init; }
 
     /// <summary>
     /// 获取或设置案件标识。

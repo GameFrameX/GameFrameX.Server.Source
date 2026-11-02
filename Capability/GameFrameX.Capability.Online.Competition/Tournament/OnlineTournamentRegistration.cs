@@ -47,16 +47,6 @@ public sealed class OnlineTournamentRegistration
     public string TournamentId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置报名玩家标识。
     /// </summary>
     public long PlayerId { get; set; }
@@ -85,8 +75,6 @@ public sealed class OnlineTournamentRegistration
         return new OnlineTournamentRegistration
         {
             TournamentId = TournamentId,
-            TenantId = TenantId,
-            AppId = AppId,
             PlayerId = PlayerId,
             RegisteredTime = RegisteredTime,
             RankAtRegistration = RankAtRegistration,

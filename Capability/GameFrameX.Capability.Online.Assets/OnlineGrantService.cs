@@ -120,8 +120,6 @@ public sealed class OnlineGrantService
             TransactionId = "tx-" + Guid.NewGuid().ToString("N"),
             IdempotencyKey = request.IdempotencyKey,
             RequestDigest = string.Empty,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             PlayerId = scope.PlayerId,
             HomeServerId = homeServerId,
             InitiatingServerId = scope.ServerId,
@@ -215,10 +213,10 @@ public sealed class OnlineGrantService
         transaction.AppliedLedgerEntryIds = entries.Select(entry => entry.EntryId).ToList();
         await _transactionStore.SaveAsync(transaction, cancellationToken);
 
-        var scope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
+        var scope = new OnlineScope(transaction.InitiatingServerId, transaction.PlayerId);
         await _idempotencyService.CompleteAsync(scope, transaction.IdempotencyKey, EncodeReplayToken(transaction.TransactionId, OnlineAssetTransactionState.Succeeded), true, cancellationToken);
 
-        var changeEvent = OnlineAssetEvents.Create(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId, transaction.TransactionId, transaction.Operation.ToString(), transaction.Source.ToString(), transaction.BusinessOrderId, entries.Select(entry => (AssetKind: entry.AssetKind.ToString(), AssetId: entry.AssetId, Delta: entry.Delta, AmountBefore: entry.AmountBefore, AmountAfter: entry.AmountAfter)).ToList());
+        var changeEvent = OnlineAssetEvents.Create(transaction.InitiatingServerId, transaction.PlayerId, transaction.TransactionId, transaction.Operation.ToString(), transaction.Source.ToString(), transaction.BusinessOrderId, entries.Select(entry => (AssetKind: entry.AssetKind.ToString(), AssetId: entry.AssetId, Delta: entry.Delta, AmountBefore: entry.AmountBefore, AmountAfter: entry.AmountAfter)).ToList());
         await _eventPublisher.PublishAsync(changeEvent, cancellationToken);
 
         return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transaction.TransactionId, State = transaction.State, IsReplay = false, Entries = entries, });
@@ -236,13 +234,13 @@ public sealed class OnlineGrantService
     private async Task<OnlineResult<OnlineGrantResult>> SettleInterruptedAsync(OnlineAssetTransaction transaction, CancellationToken cancellationToken)
     {
         var appliedEntries = await _assetStore.FindLedgerEntriesByTransactionIdAsync(transaction.TransactionId, cancellationToken);
-        var scope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
+        var scope = new OnlineScope(transaction.InitiatingServerId, transaction.PlayerId);
 
-        // 归属校验：仅统计 Tenant/App/Player 与交易主体一致的条目；异主体条目属数据完整性异常，告警留痕。
+        // 归属校验：仅统计 Player 与交易主体一致的条目；异主体条目属数据完整性异常，告警留痕。
         var ownedEntries = new List<OnlineLedgerEntry>();
         foreach (var entry in appliedEntries)
         {
-            if (entry.TenantId == transaction.TenantId && entry.AppId == transaction.AppId && entry.PlayerId == transaction.PlayerId)
+            if (entry.PlayerId == transaction.PlayerId)
             {
                 ownedEntries.Add(entry);
                 continue;
@@ -300,7 +298,7 @@ public sealed class OnlineGrantService
                 transaction.State = OnlineAssetTransactionState.Compensated;
                 transaction.SettledTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 await _transactionStore.SaveAsync(transaction, cancellationToken).ConfigureAwait(false);
-                var existingScope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
+                var existingScope = new OnlineScope(transaction.InitiatingServerId, transaction.PlayerId);
                 await FailIdempotencyAsync(existingScope, transaction.IdempotencyKey, cancellationToken).ConfigureAwait(false);
                 return true;
             }
@@ -326,8 +324,6 @@ public sealed class OnlineGrantService
             TransactionId = "tx-" + Guid.NewGuid().ToString("N"),
             IdempotencyKey = "compensate-" + transaction.TransactionId,
             CompensatesTransactionId = transaction.TransactionId,
-            TenantId = transaction.TenantId,
-            AppId = transaction.AppId,
             PlayerId = transaction.PlayerId,
             HomeServerId = transaction.HomeServerId,
             InitiatingServerId = transaction.InitiatingServerId,
@@ -346,7 +342,7 @@ public sealed class OnlineGrantService
         var apply = await _assetStore.ApplyAsync(batch, cancellationToken);
         if (!apply.Success)
         {
-            await AlertAsync(OnlineAssetAlertKind.CompensationFailed, transaction.TransactionId, new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId).ToScopeKey(true), string.Empty, "补偿批次被拒：" + apply.Message, cancellationToken);
+            await AlertAsync(OnlineAssetAlertKind.CompensationFailed, transaction.TransactionId, new OnlineScope(transaction.InitiatingServerId, transaction.PlayerId).ToScopeKey(true), string.Empty, "补偿批次被拒：" + apply.Message, cancellationToken);
             return false;
         }
 
@@ -359,7 +355,7 @@ public sealed class OnlineGrantService
         transaction.SettledTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await _transactionStore.SaveAsync(transaction, cancellationToken);
 
-        var scope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
+        var scope = new OnlineScope(transaction.InitiatingServerId, transaction.PlayerId);
         await FailIdempotencyAsync(scope, transaction.IdempotencyKey, cancellationToken);
         await AlertAsync(OnlineAssetAlertKind.CompensatedAfterApplyFailure, transaction.TransactionId, scope.ToScopeKey(true), string.Empty, "已追加反转条目，净效应 0", cancellationToken);
         return true;
@@ -469,7 +465,7 @@ public sealed class OnlineGrantService
     private static string BuildCanonicalRequestText(OnlineGrantRequest request)
     {
         var builder = new StringBuilder();
-        builder.Append("v1|").Append(request.Scope.TenantId).Append(':').Append(request.Scope.AppId).Append(':').Append(request.Scope.PlayerId);
+        builder.Append("v1|").Append(request.Scope.PlayerId);
         builder.Append('|').Append((int)request.Operation).Append('|').Append((int)request.Source);
         builder.Append('|').Append(request.BusinessOrderId).Append('|').Append(request.Reason);
         var orderedLines = request.Changes.OrderBy(line => line.AssetKind).ThenBy(line => line.AssetId, StringComparer.Ordinal);

@@ -79,8 +79,6 @@ public static class OnlineSessionEvents
     /// </summary>
     /// <param name="eventType">事件类型（本类常量）。</param>
     /// <param name="sessionId">会话标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="state">会话状态码（<see cref="OnlineSessionState"/> 数值）。</param>
@@ -89,7 +87,7 @@ public static class OnlineSessionEvents
     /// <param name="reason">原因描述（审计承载；踢下线事件由装配层写入操作者）。</param>
     /// <param name="correlationId">关联标识（可空；接续请求上下文）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(string eventType, string sessionId, long tenantId, long appId, long serverId, long playerId, int state, int closeReason, int tokenGeneration, string reason, string correlationId = null)
+    public static OnlineEvent Create(string eventType, string sessionId, long serverId, long playerId, int state, int closeReason, int tokenGeneration, string reason, string correlationId = null)
     {
         var payload = new SessionEventPayload
         {
@@ -112,8 +110,6 @@ public static class OnlineSessionEvents
             EventType = eventType,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = playerId,
             Source = Source,

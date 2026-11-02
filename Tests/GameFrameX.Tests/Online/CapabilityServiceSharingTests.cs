@@ -84,7 +84,7 @@ public class CapabilityServiceSharingTests
     {
         return new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 },
+            HostOptions = new CapabilityHostOptions { ServerId = 1 },
             Filter = new CapabilityAssemblyFilter(enabledIds),
         };
     }

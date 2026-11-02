@@ -96,14 +96,12 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <summary>
     /// 裁决一次定向社交互动（<see cref="IOnlineSocialGate"/> 的实现：Party / Matchmaking 的唯一入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="fromPlayerId">发起互动的玩家。</param>
     /// <param name="toPlayerId">互动的目标玩家。</param>
     /// <param name="purpose">互动目的（决定裁决力度）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>裁决结果。</returns>
-    public async Task<OnlineSocialDecision> EvaluateAsync(long tenantId, long appId, long fromPlayerId, long toPlayerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken = default)
+    public async Task<OnlineSocialDecision> EvaluateAsync(long fromPlayerId, long toPlayerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken = default)
     {
         if (fromPlayerId <= 0 || toPlayerId <= 0)
         {
@@ -115,13 +113,13 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineSocialDecision.Deny(OnlineErrorCode.ParameterInvalid, "不能与自己发生定向互动");
         }
 
-        var selfDecision = await EvaluatePunishmentsAsync(tenantId, appId, fromPlayerId, purpose, cancellationToken).ConfigureAwait(false);
+        var selfDecision = await EvaluatePunishmentsAsync(fromPlayerId, purpose, cancellationToken).ConfigureAwait(false);
         if (!selfDecision.Allowed)
         {
             return selfDecision;
         }
 
-        var blocked = await _graphStore.IsBlockedEitherWayAsync(tenantId, appId, fromPlayerId, toPlayerId, cancellationToken).ConfigureAwait(false);
+        var blocked = await _graphStore.IsBlockedEitherWayAsync(fromPlayerId, toPlayerId, cancellationToken).ConfigureAwait(false);
         if (blocked)
         {
             // 双向生效、不指明方向：屏蔽是单向私密事实，泄露方向等于把「谁屏蔽了谁」透给被屏蔽方。
@@ -144,7 +142,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return Task.FromResult(OnlineSocialDecision.Deny(OnlineErrorCode.ParameterInvalid, "缺少玩家主体位"));
         }
 
-        return EvaluatePunishmentsAsync(scope.TenantId, scope.AppId, scope.PlayerId, OnlineSocialInteractionPurpose.DirectMessage, cancellationToken);
+        return EvaluatePunishmentsAsync(scope.PlayerId, OnlineSocialInteractionPurpose.DirectMessage, cancellationToken);
     }
 
     /// <summary>
@@ -169,7 +167,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineBlockEntry>.Fail(OnlineErrorCode.ParameterInvalid, "被屏蔽玩家无效");
         }
 
-        var existing = await _graphStore.FindBlockAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var existing = await _graphStore.FindBlockAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return OnlineResult<OnlineBlockEntry>.Ok(existing);
@@ -181,8 +179,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             EntryId = "blk-" + Guid.NewGuid().ToString("N"),
             OwnerId = scope.PlayerId,
             BlockedPlayerId = targetPlayerId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             Reason = reason ?? string.Empty,
             CreatedAtTime = now,
@@ -199,8 +195,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(
             effective.OwnerId,
             effective.BlockedPlayerId,
-            effective.TenantId,
-            effective.AppId,
             effective.ServerId,
             OnlineSocialEvents.BlockAdded,
             correlationId), cancellationToken).ConfigureAwait(false);
@@ -223,15 +217,13 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var entry = await _graphStore.FindBlockAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
-        var removed = await _graphStore.RemoveBlockAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var entry = await _graphStore.FindBlockAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var removed = await _graphStore.RemoveBlockAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (removed && entry != null)
         {
             await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(
                 entry.OwnerId,
                 entry.BlockedPlayerId,
-                entry.TenantId,
-                entry.AppId,
                 entry.ServerId,
                 OnlineSocialEvents.BlockRemoved,
                 correlationId), cancellationToken).ConfigureAwait(false);
@@ -254,7 +246,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var entries = await _graphStore.ListBlocksAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var entries = await _graphStore.ListBlocksAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineBlockEntry>>.Ok(entries);
     }
 
@@ -280,7 +272,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineMuteEntry>.Fail(OnlineErrorCode.ParameterInvalid, "被静音玩家无效");
         }
 
-        var existing = await _graphStore.FindMuteAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var existing = await _graphStore.FindMuteAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return OnlineResult<OnlineMuteEntry>.Ok(existing);
@@ -292,8 +284,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             EntryId = "mut-" + Guid.NewGuid().ToString("N"),
             OwnerId = scope.PlayerId,
             MutedPlayerId = targetPlayerId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             ExpiresAtTime = expiresAtTime,
             CreatedAtTime = now,
@@ -309,8 +299,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             effective.OwnerId,
             effective.MutedPlayerId,
             effective.ExpiresAtTime,
-            effective.TenantId,
-            effective.AppId,
             effective.ServerId,
             OnlineSocialEvents.MuteAdded,
             correlationId), cancellationToken).ConfigureAwait(false);
@@ -333,16 +321,14 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var entry = await _graphStore.FindMuteAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
-        var removed = await _graphStore.RemoveMuteAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var entry = await _graphStore.FindMuteAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var removed = await _graphStore.RemoveMuteAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (removed && entry != null)
         {
             await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateMuteChanged(
                 entry.OwnerId,
                 entry.MutedPlayerId,
                 entry.ExpiresAtTime,
-                entry.TenantId,
-                entry.AppId,
                 entry.ServerId,
                 OnlineSocialEvents.MuteRemoved,
                 correlationId), cancellationToken).ConfigureAwait(false);
@@ -365,7 +351,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var entries = await _graphStore.ListMutesAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var entries = await _graphStore.ListMutesAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineMuteEntry>>.Ok(entries);
     }
 
@@ -384,7 +370,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var entry = await _graphStore.FindMuteAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var entry = await _graphStore.FindMuteAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (entry == null)
         {
             return OnlineResult<bool>.Ok(false);
@@ -441,7 +427,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         var now = Now();
         // 频控先于新案件标识生成：超限不落案件、不发事件；合法提交尝试（含重复举报）都计数，
         // 防止脚本刷重复提交探测存储或绕过频控。
-        if (!_reportRateLimiter.TryAcquire(scope.TenantId, scope.AppId, scope.PlayerId, now))
+        if (!_reportRateLimiter.TryAcquire(scope.PlayerId, now))
         {
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.RateLimitExceeded, "举报提交过于频繁，请稍后再试");
         }
@@ -449,8 +435,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         var prototype = new OnlineReportCase
         {
             ReportId = "rpt-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ReporterId = scope.PlayerId,
             ReportedPlayerId = reportedPlayerId,
             Scene = scene,
@@ -479,8 +463,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
                 effective.Reason.ToString(),
                 effective.State.ToString(),
                 effective.Resolution.ToString(),
-                effective.TenantId,
-                effective.AppId,
                 correlationId), cancellationToken).ConfigureAwait(false);
         }
 
@@ -503,7 +485,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var reportCase = await _reportStore.FindAsync(scope.TenantId, scope.AppId, reportId, cancellationToken).ConfigureAwait(false);
+        var reportCase = await _reportStore.FindAsync(reportId, cancellationToken).ConfigureAwait(false);
         if (reportCase == null || reportCase.ReporterId != scope.PlayerId)
         {
             // 反预言：非举报人看不到这条案件的存在。
@@ -527,7 +509,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return failure;
         }
 
-        var cases = await _reportStore.ListByReporterAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var cases = await _reportStore.ListByReporterAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineReportCase>>.Ok(cases);
     }
 
@@ -544,20 +526,18 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             throw new ArgumentNullException(nameof(transition));
         }
 
-        var tenantId = transition.TenantId;
-        var appId = transition.AppId;
         var reportId = transition.ReportId;
         var targetState = transition.TargetState;
         var resolution = transition.Resolution;
         var handlerAdminId = transition.HandlerAdminId;
         var adminCaseId = transition.AdminCaseId;
         var correlationId = transition.CorrelationId;
-        if (IsScopeLocatorInvalid(tenantId, appId) || string.IsNullOrEmpty(reportId))
+        if (string.IsNullOrEmpty(reportId))
         {
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ParameterInvalid, "案件定位参数无效");
         }
 
-        var reportCase = await _reportStore.FindAsync(tenantId, appId, reportId, cancellationToken).ConfigureAwait(false);
+        var reportCase = await _reportStore.FindAsync(reportId, cancellationToken).ConfigureAwait(false);
         if (reportCase == null)
         {
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ResourceNotFound, "举报案件不存在");
@@ -569,35 +549,25 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <summary>
     /// 按状态列出案件（Admin 待办队列输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">案件状态。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>案件列表。</returns>
-    public async Task<OnlineResult<IReadOnlyList<OnlineReportCase>>> ListReportsByStateAsync(long tenantId, long appId, OnlineReportState state, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<IReadOnlyList<OnlineReportCase>>> ListReportsByStateAsync(OnlineReportState state, CancellationToken cancellationToken = default)
     {
-        if (IsScopeLocatorInvalid(tenantId, appId))
-        {
-            // 与同族的 TransitionReportAsync 同口径：Admin 面的入口先校验定位参数，不留「读接口不校验」的口子。
-            return OnlineResult<IReadOnlyList<OnlineReportCase>>.Fail(OnlineErrorCode.ParameterInvalid, "案件定位参数无效");
-        }
-
-        var cases = await _reportStore.ListByStateAsync(tenantId, appId, state, cancellationToken).ConfigureAwait(false);
+        var cases = await _reportStore.ListByStateAsync(state, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineReportCase>>.Ok(cases);
     }
 
     /// <summary>
     /// 按玩家当前实际生效的处罚裁决（封禁拒绝全部目的，禁言只拒绝发言，未命中放行）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">被裁决玩家。</param>
     /// <param name="purpose">互动目的。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>裁决结果。</returns>
-    private async Task<OnlineSocialDecision> EvaluatePunishmentsAsync(long tenantId, long appId, long playerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken)
+    private async Task<OnlineSocialDecision> EvaluatePunishmentsAsync(long playerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken)
     {
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = Now(), }, cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = Now(), }, cancellationToken).ConfigureAwait(false);
         foreach (var punishment in active)
         {
             if (punishment.Kind == OnlinePunishmentKind.Ban)
@@ -672,7 +642,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         if (effective == null)
         {
             // CAS 失败 = 已被并发裁决 / 撤回抢先；重读后按当前事实返回，保证收敛。
-            var current = await _reportStore.FindAsync(reportCase.TenantId, reportCase.AppId, reportCase.ReportId, cancellationToken).ConfigureAwait(false);
+            var current = await _reportStore.FindAsync(reportCase.ReportId, cancellationToken).ConfigureAwait(false);
             if (current == null)
             {
                 return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ResourceNotFound, "举报案件不存在");
@@ -689,8 +659,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             effective.Reason.ToString(),
             effective.State.ToString(),
             effective.Resolution.ToString(),
-            effective.TenantId,
-            effective.AppId,
             correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineReportCase>.Ok(effective);
     }
@@ -714,17 +682,6 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// 判定租户与 App 定位是否无效（Admin 命令面无玩家主体位，只能靠作用域二元组定位）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <returns>无效返回 <c>true</c>。</returns>
-    private static bool IsScopeLocatorInvalid(long tenantId, long appId)
-    {
-        return tenantId <= 0 || appId <= 0;
     }
 
     /// <summary>取当前 UTC 毫秒时刻。</summary>

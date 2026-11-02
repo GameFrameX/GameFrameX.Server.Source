@@ -54,11 +54,6 @@ namespace GameFrameX.Tests.Online
     [Collection(CapabilityRuntimeCollection.Name)]
     public class OnlineMatchSettledLeaderboardProjectorTests
     {
-        /// <summary>租户标识（直接构造基座用）。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识（直接构造基座用）。</summary>
-        private const long AppId = 10;
 
         /// <summary>区服标识（直接构造基座用）。</summary>
         private const long ServerId = 100;
@@ -98,7 +93,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.Equal(30, await harness.ScoreOfAsync(PlayerOne));
             Assert.Equal(10, await harness.ScoreOfAsync(PlayerTwo));
-            Assert.Equal(1, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, BoardId, PlayerOne)).SubmissionCount);
+            Assert.Equal(1, (await harness.LeaderboardStore.FindEntryAsync(BoardId, PlayerOne)).SubmissionCount);
             Assert.Empty(harness.Projector.QueryStatus());
         }
 
@@ -115,7 +110,7 @@ namespace GameFrameX.Tests.Online
             await harness.Projector.HandleEventAsync(harness.CreateSettledEvent("mrs-2", "match-2", (PlayerOne, 7)));
             await harness.Projector.HandleEventAsync(harness.CreateSettledEvent("mrs-2", "match-2", (PlayerOne, 7)));
 
-            var entry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, BoardId, PlayerOne);
+            var entry = await harness.LeaderboardStore.FindEntryAsync(BoardId, PlayerOne);
             Assert.Equal(7, entry.Score);
             Assert.Equal(1, entry.SubmissionCount);
             Assert.Empty(harness.Projector.QueryStatus());
@@ -143,7 +138,7 @@ namespace GameFrameX.Tests.Online
             // 重投后再次手动重投：幂等键回放，不双计。
             await harness.Projector.RetryPendingAsync(CancellationToken.None);
 
-            var entry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, BoardId, PlayerOne);
+            var entry = await harness.LeaderboardStore.FindEntryAsync(BoardId, PlayerOne);
             Assert.NotNull(entry);
             Assert.Equal(50, entry.Score);
             Assert.Equal(1, entry.SubmissionCount);
@@ -166,7 +161,7 @@ namespace GameFrameX.Tests.Online
             await harness.Projector.RetryPendingAsync(CancellationToken.None);
 
             Assert.Empty(harness.Projector.QueryStatus());
-            Assert.Null(await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, BoardId, PlayerOne));
+            Assert.Null(await harness.LeaderboardStore.FindEntryAsync(BoardId, PlayerOne));
         }
 
         /// <summary>
@@ -200,17 +195,17 @@ namespace GameFrameX.Tests.Online
                 var projector = services.GetService<OnlineMatchSettledLeaderboardProjector>();
                 Assert.NotNull(projector);
 
-                var hostScope = new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId);
+                var hostScope = new OnlineScope(OnlineCapabilityTestHarness.ServerId);
                 var probe = await services.GetService<OnlineLeaderboardService>().GetTopAsync(hostScope, new OnlineLeaderboardTopQuery { LeaderboardId = BoardId, Count = 1, });
                 Assert.True(probe.IsSuccess, probe.Message);
 
-                await CommitResultAsync(services.GetService<IOnlineMatchResultStore>(), OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, "match-mod", "mrs-mod", (PlayerOne, 42));
-                var settledEvent = OnlineMatchRuntimeEvents.CreateMatchSettled(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, "mrs-mod", "match-mod", OnlineRockPaperScissorsGame.MatchMode, 1, OnlineMatchState.Completed.ToString(), Now, new (long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)[] { (PlayerOne, 1, true, 42, 0) });
+                await CommitResultAsync(services.GetService<IOnlineMatchResultStore>(), OnlineCapabilityTestHarness.ServerId, "match-mod", "mrs-mod", (PlayerOne, 42));
+                var settledEvent = OnlineMatchRuntimeEvents.CreateMatchSettled(OnlineCapabilityTestHarness.ServerId, "mrs-mod", "match-mod", OnlineRockPaperScissorsGame.MatchMode, 1, OnlineMatchState.Completed.ToString(), Now, new (long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)[] { (PlayerOne, 1, true, 42, 0) });
                 Assert.Equal("online.match.settled", settledEvent.EventType);
 
                 await services.GetService<IOnlineEventPublisher>().PublishAsync(settledEvent);
 
-                var entry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, BoardId, PlayerOne);
+                var entry = await services.GetService<IOnlineLeaderboardStore>().FindEntryAsync(BoardId, PlayerOne);
                 Assert.NotNull(entry);
                 Assert.Equal(42, entry.Score);
                 Assert.Empty(projector.QueryStatus());
@@ -218,17 +213,18 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证模块装配半边二：未配置投影榜 id 或 id 空白 → 不装配投影器、不注册重投 tick job（一轮 tick 比投影形态少执行一个 job），也不报错。
+        /// 验证模块装配半边二（C460 默认开）：零 Settings（缺省装配）与显式配置投影榜 id 均装配投影器 + 重投 tick job
+        ///（两者 tick job 数相同）；显式配置空白榜单 id（覆盖关闭）→ 不装配投影器（一轮 tick 比投影形态少执行一个 job），不报错。
         /// </summary>
         [Fact]
-        public async Task Compose_WithoutProjectionBoard_SkipsProjectorAndRetryJob()
+        public async Task Compose_ZeroSettingsDefaultsProjectionOn_BlankOverrideTurnsItOff()
         {
-            var withProjection = await RunOneTickRoundAsync(ProjectionSettings, true);
-            var withoutSettings = await RunOneTickRoundAsync(null, false);
+            var configured = await RunOneTickRoundAsync(ProjectionSettings, true);
+            var zeroSettings = await RunOneTickRoundAsync(null, true);
             var blankBoard = await RunOneTickRoundAsync("{\"online-competition\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"  \"}}}", false);
 
-            Assert.Equal(withProjection - 1, withoutSettings);
-            Assert.Equal(withProjection - 1, blankBoard);
+            Assert.Equal(configured, zeroSettings);
+            Assert.Equal(configured - 1, blankBoard);
         }
 
         /// <summary>
@@ -308,14 +304,12 @@ namespace GameFrameX.Tests.Online
         /// 直接向结算存储落一份服务端形态的结果（模拟已结算事实）。
         /// </summary>
         /// <param name="resultStore">结算结果存储。</param>
-        /// <param name="tenantId">租户标识。</param>
-        /// <param name="appId">App 标识。</param>
         /// <param name="serverId">区服标识。</param>
         /// <param name="matchId">对局标识。</param>
         /// <param name="matchResultId">结果标识。</param>
         /// <param name="entries">条目（玩家, 分数）序列。</param>
         /// <returns>完成通知。</returns>
-        private static async Task CommitResultAsync(IOnlineMatchResultStore resultStore, long tenantId, long appId, long serverId, string matchId, string matchResultId, params (long PlayerId, long Score)[] entries)
+        private static async Task CommitResultAsync(IOnlineMatchResultStore resultStore, long serverId, string matchId, string matchResultId, params (long PlayerId, long Score)[] entries)
         {
             var resultEntries = new List<OnlineMatchResultEntry>();
             foreach (var item in entries)
@@ -327,8 +321,6 @@ namespace GameFrameX.Tests.Online
             {
                 MatchResultId = matchResultId,
                 MatchId = matchId,
-                TenantId = tenantId,
-                AppId = appId,
                 ServerId = serverId,
                 Mode = OnlineRockPaperScissorsGame.MatchMode,
                 Region = 1,
@@ -433,7 +425,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>完成通知。</returns>
             public async Task CreateBoardAsync()
             {
-                var created = await Service.CreateAsync(new OnlineScope(TenantId, AppId, ServerId), new OnlineLeaderboardCreateRequest { LeaderboardId = BoardId, ScoreUpdatePolicy = OnlineLeaderboardScoreUpdatePolicy.Sum }, Now);
+                var created = await Service.CreateAsync(new OnlineScope(ServerId), new OnlineLeaderboardCreateRequest { LeaderboardId = BoardId, ScoreUpdatePolicy = OnlineLeaderboardScoreUpdatePolicy.Sum }, Now);
                 Assert.True(created.IsSuccess, created.Message);
             }
 
@@ -446,7 +438,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>完成通知。</returns>
             public async Task CommitResultAsync(string matchId, string matchResultId, params (long PlayerId, long Score)[] entries)
             {
-                await OnlineMatchSettledLeaderboardProjectorTests.CommitResultAsync(ResultStore, TenantId, AppId, ServerId, matchId, matchResultId, entries);
+                await OnlineMatchSettledLeaderboardProjectorTests.CommitResultAsync(ResultStore, ServerId, matchId, matchResultId, entries);
             }
 
             /// <summary>
@@ -464,7 +456,7 @@ namespace GameFrameX.Tests.Online
                     payloadEntries.Add((item.PlayerId, payloadEntries.Count + 1, payloadEntries.Count == 0, item.Score, 0));
                 }
 
-                return OnlineMatchRuntimeEvents.CreateMatchSettled(TenantId, AppId, ServerId, matchResultId, matchId, OnlineRockPaperScissorsGame.MatchMode, 1, OnlineMatchState.Completed.ToString(), Now, payloadEntries);
+                return OnlineMatchRuntimeEvents.CreateMatchSettled(ServerId, matchResultId, matchId, OnlineRockPaperScissorsGame.MatchMode, 1, OnlineMatchState.Completed.ToString(), Now, payloadEntries);
             }
 
             /// <summary>
@@ -474,7 +466,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>分数。</returns>
             public async Task<long> ScoreOfAsync(long playerId)
             {
-                var entry = await LeaderboardStore.FindEntryAsync(TenantId, AppId, BoardId, playerId);
+                var entry = await LeaderboardStore.FindEntryAsync(BoardId, playerId);
                 Assert.NotNull(entry);
                 return entry.Score;
             }

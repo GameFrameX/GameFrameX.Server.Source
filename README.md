@@ -161,6 +161,12 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
     - Health check: `http://localhost:28080/health` (liveness probe: `/alive`)
     - Check console logs to confirm successful startup
 
+   **Zero-JSON golden path**: start the server without writing any `Online.Settings` and the sample
+   RPS chain (matchmaking → match → settlement → reward grant → leaderboard) works out of the box —
+   `MatchSettledBoardId` projects onto the default board `match-settled` (pre-created during
+   assembly). To turn the projection off, explicitly blank
+   `online-competition.LeaderboardProjection.MatchSettledBoardId` under `Online.Settings`.
+
 ### SQLite Provider Boundaries
 
 SQLite (`--DatabaseProvider=Sqlite`) is positioned for quick starts, development evaluation, and
@@ -877,6 +883,8 @@ other hosts.
 | `Quartz` | Scheduled task scheduling |
 | `Swashbuckle.AspNetCore.SwaggerGen` | Swagger documentation for the HTTP API |
 | `xunit` | Unit testing framework |
+
+**Version governance (2.0.0 line):** the source version line of this repository is unified at **2.0.0** (clean break; no 1.x compatibility layer). The server runtime repository (`GameFrameX.Server`) keeps all `GameFrameX.*` package references pinned to **1.13.0** and will move to 2.0.0 only after the framework 2.0 release (convergence stage P5). `GameFrameX.Capability.*` capability packages debut on the 2.0.0 line.
 
 ---
 

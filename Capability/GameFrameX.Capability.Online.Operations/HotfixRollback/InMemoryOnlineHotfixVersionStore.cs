@@ -28,7 +28,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Localization.Core;
@@ -39,7 +38,7 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// Hotfix 版本清单内存存储（单进程默认实现；生产持久化实现归运行时装配，X4）。
 /// <para>
 /// 维护约束：「登记判重 + 落档」与「活跃版本切换」在 <see cref="_gate"/> 锁内**同一临界区**完成
-/// （并发登记与切换不撕裂）；作用域索引键为 (TenantId, AppId) 两键；出入参防御性拷贝
+/// （并发登记与切换不撕裂）；出入参防御性拷贝
 /// （持久化行语义，调用方引用不得别名存储内部状态）。
 /// </para>
 /// <para>
@@ -56,9 +55,9 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
     private readonly object _gate = new();
 
     /// <summary>
-    /// 作用域级状态索引（键 = "TenantId|AppId"；值为作用域内的版本登记簿与活跃指针）。
+    /// 版本登记簿与活跃指针（全局唯一状态；清单是全局资产，无作用域隔离位）。
     /// </summary>
-    private readonly Dictionary<string, ScopeState> _statesByScope = new(StringComparer.Ordinal);
+    private readonly RegistryState _state = new RegistryState();
 
     /// <summary>
     /// 登记一份版本协议清单（锁内判重 + 落档同一临界区；重复登记不覆盖）。
@@ -75,7 +74,7 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
 
         lock (_gate)
         {
-            var state = GetOrCreateState(manifest.TenantId, manifest.AppId);
+            var state = _state;
             if (state.Manifests.ContainsKey(manifest.Version))
             {
                 return Task.FromResult(false);
@@ -89,17 +88,15 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
     /// <summary>
     /// 按版本号查找清单（快照拷贝）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="version">版本号。</param>
     /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
     /// <returns>清单快照；未登记返回 <see langword="null"/>。</returns>
-    public Task<OnlineHotfixProtocolManifest> FindAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+    public Task<OnlineHotfixProtocolManifest> FindAsync(string version, CancellationToken cancellationToken = default)
     {
         lock (_gate)
         {
-            var state = FindState(tenantId, appId);
-            if (state == null || !state.Manifests.TryGetValue(version, out var manifest))
+            var state = _state;
+            if (!state.Manifests.TryGetValue(version, out var manifest))
             {
                 return Task.FromResult<OnlineHotfixProtocolManifest>(null);
             }
@@ -111,16 +108,14 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
     /// <summary>
     /// 查找当前活跃版本清单（快照拷贝）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
     /// <returns>活跃清单快照；从未激活返回 <see langword="null"/>。</returns>
-    public Task<OnlineHotfixProtocolManifest> FindActiveAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<OnlineHotfixProtocolManifest> FindActiveAsync(CancellationToken cancellationToken = default)
     {
         lock (_gate)
         {
-            var state = FindState(tenantId, appId);
-            if (state == null || string.IsNullOrEmpty(state.ActiveVersion) || !state.Manifests.TryGetValue(state.ActiveVersion, out var manifest))
+            var state = _state;
+            if (string.IsNullOrEmpty(state.ActiveVersion) || !state.Manifests.TryGetValue(state.ActiveVersion, out var manifest))
             {
                 return Task.FromResult<OnlineHotfixProtocolManifest>(null);
             }
@@ -132,16 +127,14 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
     /// <summary>
     /// 把活跃版本切换到已登记的目标版本（锁内完成；返回切换前活跃版本号）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="version">目标版本号（须已登记）。</param>
     /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
     /// <returns>切换前的活跃版本号（从未激活返回空字符串）。</returns>
-    public Task<string> SetActiveAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+    public Task<string> SetActiveAsync(string version, CancellationToken cancellationToken = default)
     {
         lock (_gate)
         {
-            var state = GetOrCreateState(tenantId, appId);
+            var state = _state;
             if (!state.Manifests.ContainsKey(version))
             {
                 // Localization: Online.HotfixRollback.TargetVersionNotRegistered - 目标版本未登记，拒绝切换活跃版本：{0}
@@ -152,47 +145,6 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
             state.ActiveVersion = version;
             return Task.FromResult(previous);
         }
-    }
-
-    /// <summary>
-    /// 查找作用域状态（不在锁内新建）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <returns>作用域状态；作用域无任何登记返回 <see langword="null"/>。</returns>
-    private ScopeState FindState(long tenantId, long appId)
-    {
-        var scopeKey = BuildScopeKey(tenantId, appId);
-        return _statesByScope.TryGetValue(scopeKey, out var state) ? state : null;
-    }
-
-    /// <summary>
-    /// 获取或创建作用域状态（调用方须持 <see cref="_gate"/>）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <returns>作用域状态。</returns>
-    private ScopeState GetOrCreateState(long tenantId, long appId)
-    {
-        var scopeKey = BuildScopeKey(tenantId, appId);
-        if (!_statesByScope.TryGetValue(scopeKey, out var state))
-        {
-            state = new ScopeState();
-            _statesByScope[scopeKey] = state;
-        }
-
-        return state;
-    }
-
-    /// <summary>
-    /// 构造作用域索引键（"TenantId|AppId"）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <returns>作用域键。</returns>
-    private static string BuildScopeKey(long tenantId, long appId)
-    {
-        return tenantId.ToString(CultureInfo.InvariantCulture) + "|" + appId.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -220,17 +172,15 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
         return new OnlineHotfixProtocolManifest
         {
             Version = manifest.Version,
-            TenantId = manifest.TenantId,
-            AppId = manifest.AppId,
             Messages = messages,
             RegisteredTime = manifest.RegisteredTime,
         };
     }
 
     /// <summary>
-    /// 作用域级状态（版本登记簿 + 活跃版本指针）。
+    /// 版本登记簿与活跃指针（全局唯一状态）。
     /// </summary>
-    private sealed class ScopeState
+    private sealed class RegistryState
     {
         /// <summary>
         /// 版本登记簿（版本号 → 清单；一经登记不可变更）。

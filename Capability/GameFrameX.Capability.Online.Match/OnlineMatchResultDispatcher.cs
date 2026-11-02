@@ -97,7 +97,7 @@ public sealed class OnlineMatchResultDispatcher
             }
 
             var businessOrderId = BuildBusinessOrderId(result.MatchResultId, entry.PlayerId);
-            var scope = new OnlineScope(result.TenantId, result.AppId, result.ServerId, entry.PlayerId);
+            var scope = new OnlineScope(result.ServerId, entry.PlayerId);
             var request = new OnlineGrantRequest(
                 scope,
                 OnlineAssetChangeSource.MatchReward,

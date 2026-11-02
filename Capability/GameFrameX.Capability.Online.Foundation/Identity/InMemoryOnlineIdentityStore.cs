@@ -27,6 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Abstractions.Keys;
+
 namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
@@ -42,7 +44,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
     /// <summary>全局读写锁（身份域低频写入，粗粒度锁足够）。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>身份表：键 = (TenantId, AppId, Kind, Identifier)。</summary>
+    /// <summary>身份表：键 = OnlineRowKey.Identity(Kind, Identifier)。</summary>
     private readonly Dictionary<string, OnlineIdentity> _identities = new();
 
     /// <summary>账号表：键 = GameAccountId。</summary>
@@ -61,17 +63,15 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
     private long _playerIdSequence;
 
     /// <summary>按唯一键查找身份。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>身份实体；不存在返回 null。</returns>
-    public Task<OnlineIdentity> FindIdentityAsync(long tenantId, long appId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
+    public Task<OnlineIdentity> FindIdentityAsync(OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _identities.TryGetValue(BuildIdentityKey(tenantId, appId, kind, identifier), out var identity);
+            _identities.TryGetValue(OnlineRowKey.Identity((int)kind, identifier), out var identity);
             return Task.FromResult(identity);
         }
     }
@@ -88,7 +88,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 
         lock (_syncRoot)
         {
-            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            var key = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
             if (_identities.TryGetValue(key, out var existing))
             {
                 // 盲写不改版本（版本推进仅经条件写面）：保留存量版本号，防盲写绕过 CAS 判定。
@@ -118,7 +118,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 
         lock (_syncRoot)
         {
-            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            var key = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
             if (_identities.ContainsKey(key))
             {
                 return Task.FromResult(false);
@@ -144,7 +144,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 
         lock (_syncRoot)
         {
-            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            var key = OnlineRowKey.Identity((int)identity.Kind, identity.Identifier);
             if (!_identities.TryGetValue(key, out var existing) || existing.RowVersion != expectedRowVersion)
             {
                 return Task.FromResult(false);
@@ -239,20 +239,19 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
         return Task.CompletedTask;
     }
 
-    /// <summary>列出账号在指定 App/Server 归属下的玩家档案（按创建时间升序）。</summary>
+    /// <summary>列出账号在指定区服归属下的玩家档案（按创建时间升序）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表。</returns>
-    public Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePlayerProfile>> ListPlayersAsync(long gameAccountId, long serverId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlinePlayerProfile>();
             foreach (var player in _players.Values)
             {
-                if (player.GameAccountId == gameAccountId && player.AppId == appId && player.ServerId == serverId)
+                if (player.GameAccountId == gameAccountId && player.ServerId == serverId)
                 {
                     result.Add(player);
                 }
@@ -263,7 +262,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
         }
     }
 
-    /// <summary>列出账号下全部玩家档案（不限 App/Server 归属；合并迁移用，按创建时间升序）。</summary>
+    /// <summary>列出账号下全部玩家档案（不限区服归属；合并迁移用，按创建时间升序）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家档案列表。</returns>
@@ -294,7 +293,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
     {
         lock (_syncRoot)
         {
-            _devices.TryGetValue(BuildDeviceKey(gameAccountId, deviceIdentifier), out var device);
+            _devices.TryGetValue(OnlineRowKey.PlayerDevice(gameAccountId, deviceIdentifier), out var device);
             return Task.FromResult(device);
         }
     }
@@ -311,7 +310,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 
         lock (_syncRoot)
         {
-            _devices[BuildDeviceKey(device.GameAccountId, device.DeviceIdentifier)] = device;
+            _devices[OnlineRowKey.PlayerDevice(device.GameAccountId, device.DeviceIdentifier)] = device;
         }
 
         return Task.CompletedTask;
@@ -331,25 +330,5 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
     public Task<long> NextPlayerIdAsync(CancellationToken cancellationToken = default)
     {
         return Task.FromResult(Interlocked.Increment(ref _playerIdSequence));
-    }
-
-    /// <summary>构造身份唯一键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="kind">身份类型。</param>
-    /// <param name="identifier">身份标识串。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildIdentityKey(long tenantId, long appId, OnlineIdentityKind kind, string identifier)
-    {
-        return tenantId + ":" + appId + ":" + (int)kind + ":" + identifier;
-    }
-
-    /// <summary>构造设备唯一键。</summary>
-    /// <param name="gameAccountId">游戏账号标识。</param>
-    /// <param name="deviceIdentifier">设备唯一标识串。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildDeviceKey(long gameAccountId, string deviceIdentifier)
-    {
-        return gameAccountId + ":" + deviceIdentifier;
     }
 }

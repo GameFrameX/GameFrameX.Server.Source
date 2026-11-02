@@ -136,7 +136,7 @@ namespace GameFrameX.Tests.Online
             {
                 var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
 
-                var envelopeJson = await dispatcher.DispatchAsync("query_compensation_queue", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var envelopeJson = await dispatcher.DispatchAsync("query_compensation_queue", "{\"ServerId\":1001}");
                 var innerJson = ReadInnerJson(envelopeJson);
                 using (var document = JsonDocument.Parse(innerJson))
                 {
@@ -159,7 +159,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithDispatcherAsync(async dispatcher =>
             {
-                var envelope = await dispatcher.DispatchAsync("definitely_not_an_action", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var envelope = await dispatcher.DispatchAsync("definitely_not_an_action", "{\"ServerId\":1001}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ResourceNotFound);
             });
         }
@@ -191,14 +191,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证跨租户 / 跨应用 / 跨区服分别返回 3002 / 3003 / 3004。
+        /// 验证跨区服作用域返回 3004（单键化后不再产生 3002/3003）。
         /// </summary>
         /// <param name="body">请求体。</param>
         /// <param name="expectedCode">期望业务码。</param>
         [Theory]
-        [InlineData("{\"TenantId\":2,\"AppId\":1,\"ServerId\":1001}", OnlineErrorCode.CrossTenantDenied)]
-        [InlineData("{\"TenantId\":1,\"AppId\":2,\"ServerId\":1001}", OnlineErrorCode.CrossAppDenied)]
-        [InlineData("{\"TenantId\":1,\"AppId\":1,\"ServerId\":2002}", OnlineErrorCode.ServerScopeDenied)]
+        [InlineData("{\"ServerId\":2002}", OnlineErrorCode.ServerScopeDenied)]
         public async Task Dispatch_ScopeMismatch_ShouldReturnGuardCode(string body, OnlineErrorCode expectedCode)
         {
             await WithDispatcherAsync(async dispatcher =>
@@ -217,7 +215,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var grantEnvelope = await dispatcher.DispatchAsync("grant_asset",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9001\",\"Reason\":\"admin-test\",\"IdempotencyKey\":\"GFX-GRANT-test-1\",\"GrantItems\":[{\"ItemOrCurrencyType\":\"Coin\",\"Quantity\":100}]}");
+                    "{\"ServerId\":1001,\"PlayerId\":\"9001\",\"Reason\":\"admin-test\",\"IdempotencyKey\":\"GFX-GRANT-test-1\",\"GrantItems\":[{\"ItemOrCurrencyType\":\"Coin\",\"Quantity\":100}]}");
                 string transactionId;
                 using (var document = JsonDocument.Parse(ReadInnerJson(grantEnvelope)))
                 {
@@ -232,7 +230,7 @@ namespace GameFrameX.Tests.Online
                 }
 
                 var ledgerEnvelope = await dispatcher.DispatchAsync("query_wallet_ledger",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9001\",\"PageSize\":20}");
+                    "{\"ServerId\":1001,\"PlayerId\":\"9001\",\"PageSize\":20}");
                 using (var ledgerDocument = JsonDocument.Parse(ReadInnerJson(ledgerEnvelope)))
                 {
                     var items = ledgerDocument.RootElement.GetProperty("Data").GetProperty("Items");
@@ -244,7 +242,7 @@ namespace GameFrameX.Tests.Online
                 }
 
                 var detailEnvelope = await dispatcher.DispatchAsync("query_transaction_detail",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"TransactionId\":\"" + transactionId + "\"}");
+                    "{\"ServerId\":1001,\"TransactionId\":\"" + transactionId + "\"}");
                 using (var detailDocument = JsonDocument.Parse(ReadInnerJson(detailEnvelope)))
                 {
                     var data = detailDocument.RootElement.GetProperty("Data");
@@ -266,7 +264,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("grant_asset",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"Reason\":\"admin-test\",\"GrantItems\":[{\"ItemOrCurrencyType\":\"Coin\",\"Quantity\":100}]}");
+                    "{\"ServerId\":1001,\"Reason\":\"admin-test\",\"GrantItems\":[{\"ItemOrCurrencyType\":\"Coin\",\"Quantity\":100}]}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
             });
         }
@@ -279,7 +277,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithDispatcherAsync(async dispatcher =>
             {
-                const string body = "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9002\",\"PenaltyId\":77,\"IdempotencyKey\":\"penalty-77-mute-1001\"}";
+                const string body = "{\"ServerId\":1001,\"PlayerId\":\"9002\",\"PenaltyId\":77,\"IdempotencyKey\":\"penalty-77-mute-1001\"}";
                 var first = await dispatcher.DispatchAsync("mute_player", body);
                 var second = await dispatcher.DispatchAsync("mute_player", body);
                 Assert.Equal(first, second);
@@ -301,7 +299,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("kick_player",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9003\",\"PenaltyId\":78,\"IdempotencyKey\":\"penalty-78-kick-1001\"}");
+                    "{\"ServerId\":1001,\"PlayerId\":\"9003\",\"PenaltyId\":78,\"IdempotencyKey\":\"penalty-78-kick-1001\"}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var root = document.RootElement;
@@ -319,7 +317,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithDispatcherAsync(async dispatcher =>
             {
-                var envelope = await dispatcher.DispatchAsync("query_online_overview", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var envelope = await dispatcher.DispatchAsync("query_online_overview", "{\"ServerId\":1001}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var root = document.RootElement;
@@ -344,7 +342,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("end_abnormal_match",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"MatchId\":\"m-1\",\"Reason\":\"test\",\"ReviewerOperatorId\":\"admin\",\"IdempotencyKey\":\"onlineControlled-end_abnormal_match-m-1-1001\"}");
+                    "{\"ServerId\":1001,\"MatchId\":\"m-1\",\"Reason\":\"test\",\"ReviewerOperatorId\":\"admin\",\"IdempotencyKey\":\"onlineControlled-end_abnormal_match-m-1-1001\"}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.StateOperationForbidden);
             });
         }
@@ -358,7 +356,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("query_player_timeline",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9004\"}");
+                    "{\"ServerId\":1001,\"PlayerId\":\"9004\"}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var data = document.RootElement.GetProperty("Data");
@@ -377,7 +375,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("publishRemoteConfig",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigId\":5001,\"Reason\":\"admin-test\"}");
+                    "{\"ServerId\":1001,\"ConfigId\":5001,\"Reason\":\"admin-test\"}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var root = document.RootElement;
@@ -398,11 +396,11 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("publishConfigRollout",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":101,\"Reason\":\"admin-test\"}");
+                    "{\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":101,\"Reason\":\"admin-test\"}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
 
                 envelope = await dispatcher.DispatchAsync("publishConfigRollout",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":-1,\"Reason\":\"admin-test\"}");
+                    "{\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":-1,\"Reason\":\"admin-test\"}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
             });
         }
@@ -418,7 +416,7 @@ namespace GameFrameX.Tests.Online
                 foreach (var percent in new[] { "\"Percent\":0,", "\"Percent\":100,", "" })
                 {
                     var envelope = await dispatcher.DispatchAsync("publishConfigRollout",
-                        "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3," + percent + "\"Reason\":\"admin-test\"}");
+                        "{\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3," + percent + "\"Reason\":\"admin-test\"}");
                     using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                     {
                         var root = document.RootElement;
@@ -438,7 +436,7 @@ namespace GameFrameX.Tests.Online
             await WithDispatcherAsync(async dispatcher =>
             {
                 var envelope = await dispatcher.DispatchAsync("suspend_resume_player",
-                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"PlayerId\":\"9005\",\"Reason\":\"test\",\"ReviewerOperatorId\":\"admin\",\"IdempotencyKey\":\"onlineControlled-suspend_resume_player-9005-1001\"}");
+                    "{\"ServerId\":1001,\"PlayerId\":\"9005\",\"Reason\":\"test\",\"ReviewerOperatorId\":\"admin\",\"IdempotencyKey\":\"onlineControlled-suspend_resume_player-9005-1001\"}");
                 AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
             });
         }
@@ -451,7 +449,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithDispatcherAsync(async dispatcher =>
             {
-                var envelope = await dispatcher.DispatchAsync("query_report_cases", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var envelope = await dispatcher.DispatchAsync("query_report_cases", "{\"ServerId\":1001}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var data = document.RootElement.GetProperty("Data");
@@ -469,7 +467,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithDispatcherAsync(async dispatcher =>
             {
-                var envelope = await dispatcher.DispatchAsync("query_match_queue_overview", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var envelope = await dispatcher.DispatchAsync("query_match_queue_overview", "{\"ServerId\":1001}");
                 using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
                 {
                     var data = document.RootElement.GetProperty("Data");

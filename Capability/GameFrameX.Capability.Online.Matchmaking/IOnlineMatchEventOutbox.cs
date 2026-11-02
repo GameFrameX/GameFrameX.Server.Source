@@ -53,22 +53,18 @@ public interface IOnlineMatchEventOutbox
     Task AppendAsync(IReadOnlyList<OnlineEvent> events, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 列出作用域内全部待投递条目（按写入顺序）。
+    /// 列出全部待投递条目（按写入顺序）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>待投递条目列表；无则空列表。</returns>
-    Task<IReadOnlyList<OnlineMatchEventOutboxEntry>> ListPendingAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatchEventOutboxEntry>> ListPendingAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 标记条目已投递（条目不存在时静默返回——重投竞态下对端可能已标记）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="eventId">事件标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
-    Task MarkDeliveredAsync(long tenantId, long appId, string eventId, CancellationToken cancellationToken = default);
+    Task MarkDeliveredAsync(string eventId, CancellationToken cancellationToken = default);
 }
 

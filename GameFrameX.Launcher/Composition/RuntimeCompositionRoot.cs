@@ -214,7 +214,7 @@ internal sealed class RuntimeCompositionRoot
     }
 
     /// <summary>
-    /// 构造宿主选项（作用域三元组取配置值，未配置（&lt;=0）回落 1 占位——宿主模块不消费作用域，仅满足机制合法性校验）。
+    /// 构造宿主选项（作用域单键化 D4 后仅 ServerId，未配置（&lt;=0）回落 1 占位——宿主模块不消费作用域，仅满足机制合法性校验）。
     /// </summary>
     /// <param name="setting">当前 Role 的应用配置。</param>
     /// <returns>宿主选项。</returns>
@@ -222,8 +222,6 @@ internal sealed class RuntimeCompositionRoot
     {
         return new CapabilityHostOptions
         {
-            TenantId = setting.OnlineTenantId > 0 ? setting.OnlineTenantId : 1,
-            AppId = setting.OnlineAppId > 0 ? setting.OnlineAppId : 1,
             ServerId = setting.ServerId > 0 ? setting.ServerId : 1,
         };
     }
@@ -275,8 +273,6 @@ internal sealed class RuntimeCompositionRoot
             EnableRuntime = enableRuntime,
             HostOptions = new CapabilityHostOptions
             {
-                TenantId = setting.OnlineTenantId,
-                AppId = setting.OnlineAppId,
                 ServerId = setting.ServerId,
             },
             Filter = new CapabilityAssemblyFilter(online.Capabilities, online.Disable),
@@ -339,7 +335,7 @@ internal sealed class RuntimeCompositionRoot
     }
 
     /// <summary>
-    /// 重建族配置段原始 JSON（族级键 + Settings 节点）：族脊柱包读取 TenantId / AppId / ServerId 落授权作用域，
+    /// 重建族配置段原始 JSON（族级键 + Settings 节点）：族脊柱包读取 ServerId 落授权作用域（单键化 D4），
     /// 机制 Options 绑定器读取 Settings.&lt;能力Id&gt; 做能力级参数覆盖。
     /// </summary>
     /// <param name="setting">当前 Role 的应用配置。</param>
@@ -349,8 +345,6 @@ internal sealed class RuntimeCompositionRoot
         var online = setting.Online;
         var section = new Dictionary<string, object>
         {
-            ["TenantId"] = setting.OnlineTenantId,
-            ["AppId"] = setting.OnlineAppId,
             ["ServerId"] = setting.ServerId,
             ["EnableRuntime"] = online.EnableRuntime,
             ["EnableAdminApi"] = online.EnableAdminApi,

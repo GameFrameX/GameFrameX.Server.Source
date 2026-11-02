@@ -81,7 +81,7 @@ public class CapabilityOptionsBindingTests
         var section = familySectionJson == null ? default : FamilySection(familySectionJson);
         return new CapabilityCompositionOptions(section, new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 },
+            HostOptions = new CapabilityHostOptions { ServerId = 1 },
             Filter = new CapabilityAssemblyFilter(enabledIds),
         };
     }

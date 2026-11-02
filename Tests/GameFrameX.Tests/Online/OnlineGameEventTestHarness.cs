@@ -46,15 +46,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     internal sealed class OnlineGameEventTestHarness
     {
-        /// <summary>租户标识。</summary>
-        public const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        public const long AppId = 10;
-
-        /// <summary>另一 App 标识（跨 App 反预言用例）。</summary>
-        public const long OtherAppId = 11;
-
         /// <summary>区服标识。</summary>
         public const long ServerId = 100;
 
@@ -115,12 +106,10 @@ namespace GameFrameX.Tests.Online
         /// <param name="eventName">事件名。</param>
         /// <param name="fields">载荷字段投影（可空，取登记表必需字段的全零填充）。</param>
         /// <param name="schemaVersion">Schema 版本。</param>
-        /// <param name="tenantId">租户标识。</param>
-        /// <param name="appId">App 标识。</param>
         /// <param name="occurredTime">事件发生时刻（UTC 毫秒）。</param>
         /// <param name="playerId">玩家标识（信封维度）。</param>
         /// <returns>事件信封实例。</returns>
-        public static OnlineEvent BuildEnvelope(string eventName, Dictionary<string, string> fields = null, int schemaVersion = 1, long tenantId = TenantId, long appId = AppId, long occurredTime = Now, long playerId = PlayerOne)
+        public static OnlineEvent BuildEnvelope(string eventName, Dictionary<string, string> fields = null, int schemaVersion = 1, long occurredTime = Now, long playerId = PlayerOne)
         {
             return new OnlineEvent
             {
@@ -128,8 +117,6 @@ namespace GameFrameX.Tests.Online
                 EventType = eventName,
                 OccurredTime = occurredTime,
                 SchemaVersion = schemaVersion,
-                TenantId = tenantId,
-                AppId = appId,
                 ServerId = ServerId,
                 PlayerId = playerId,
                 Source = OnlineGameEventSchema.Source,
@@ -169,7 +156,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>事件列表。</returns>
         public Task<List<OnlineEvent>> StoredEventsAsync()
         {
-            return EventStore.ListAsync(TenantId, AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
+            return EventStore.ListAsync(new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
         }
 
         /// <summary>
@@ -178,7 +165,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>死信列表。</returns>
         public Task<List<OnlineGameEventDeadLetter>> DeadLettersAsync()
         {
-            return DeadLetterSink.ListAsync(TenantId, AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
+            return DeadLetterSink.ListAsync(new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
         }
 
         /// <summary>
@@ -193,8 +180,6 @@ namespace GameFrameX.Tests.Online
             return new OnlineSession
             {
                 Id = sessionId,
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 GameAccountId = playerId,
                 PlayerId = playerId,
@@ -221,8 +206,6 @@ namespace GameFrameX.Tests.Online
                 TicketId = "ticket-1",
                 PartyId = "party-1",
                 PlayerIds = new List<long> { PlayerOne, PlayerTwo },
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 Mode = 7,
                 Region = 1,
@@ -241,8 +224,6 @@ namespace GameFrameX.Tests.Online
         {
             return new OnlineMatch
             {
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 MatchId = matchId,
                 AssignmentId = "assign-1",
@@ -280,8 +261,6 @@ namespace GameFrameX.Tests.Online
             {
                 MatchResultId = "mrs-1",
                 MatchId = "match-1",
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 Mode = 7,
                 Region = 1,
@@ -305,8 +284,6 @@ namespace GameFrameX.Tests.Online
                 TransactionId = "txn-1",
                 IdempotencyKey = "idem-1",
                 RequestDigest = "digest-1",
-                TenantId = TenantId,
-                AppId = AppId,
                 PlayerId = PlayerOne,
                 HomeServerId = ServerId,
                 InitiatingServerId = ServerId,
@@ -331,8 +308,6 @@ namespace GameFrameX.Tests.Online
             return new OnlineReportCase
             {
                 ReportId = "report-1",
-                TenantId = TenantId,
-                AppId = AppId,
                 ReporterId = PlayerOne,
                 ReportedPlayerId = PlayerTwo,
                 Scene = scene,
@@ -356,8 +331,6 @@ namespace GameFrameX.Tests.Online
             return new OnlinePunishment
             {
                 PunishmentId = "punish-1",
-                TenantId = TenantId,
-                AppId = AppId,
                 PlayerId = PlayerTwo,
                 Kind = OnlinePunishmentKind.Ban,
                 Reason = "测试处罚",

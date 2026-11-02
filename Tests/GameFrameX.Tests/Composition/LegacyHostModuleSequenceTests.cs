@@ -182,7 +182,7 @@ public class LegacyHostModuleSequenceTests
     {
         var options = new CapabilityCompositionOptions(JsonSerializer.SerializeToElement(new Dictionary<string, object>()), new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+            HostOptions = new CapabilityHostOptions { ServerId = 1, },
         };
         options.AddHostModule(new LegacyRuntimeHostModule(owner), CapabilityHostModulePhase.BeforeCapabilities);
         options.AddHostModule(new LegacyNetworkListenerHostModule(owner), CapabilityHostModulePhase.AfterCapabilities);
@@ -281,7 +281,7 @@ public class LegacyHostModuleSequenceTests
     {
         var emptyOptions = new CapabilityCompositionOptions(default(JsonElement), new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+            HostOptions = new CapabilityHostOptions { ServerId = 1, },
         };
         Assert.Throws<InvalidOperationException>(() => CapabilityComposition.Compose(emptyOptions));
 

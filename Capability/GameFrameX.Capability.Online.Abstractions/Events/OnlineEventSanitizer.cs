@@ -105,8 +105,6 @@ public sealed class OnlineEventSanitizer
             EventType = onlineEvent.EventType,
             OccurredTime = onlineEvent.OccurredTime,
             SchemaVersion = onlineEvent.SchemaVersion,
-            TenantId = onlineEvent.TenantId,
-            AppId = onlineEvent.AppId,
             ServerId = onlineEvent.ServerId,
             PlayerId = onlineEvent.PlayerId,
             Source = onlineEvent.Source,

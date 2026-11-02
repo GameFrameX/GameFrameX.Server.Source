@@ -35,25 +35,16 @@ namespace GameFrameX.Capability.Online.Abstractions.Scope;
 /// Online 作用域解析器（作用域在 Server / Client API / Hub API / Admin API 四端间传递，
 /// 以鉴权上下文为准，客户端伪造字段被忽略）。
 /// <para>
-/// 维护约束：字段名兼容 Admin 既成事实——GET 查询参数 camelCase（<c>tenantId/appId/serverId</c>）、
-/// POST 请求体 PascalCase 合并字段（<c>TenantId/AppId/ServerId</c>），本解析器按键名大小写不敏感统一提取；
+/// 维护约束：字段名兼容 Admin 既成事实——GET 查询参数 camelCase（<c>serverId</c>）、
+/// POST 请求体 PascalCase 合并字段（<c>ServerId</c>），本解析器按键名大小写不敏感统一提取；
 /// 提取结果只是「客户端声称」，必须经 <see cref="EnforceAuthorized"/> 与鉴权上下文合并后方可使用。
+/// 单键化（D4）后客户端携带的租户位/App 位遗留字段一律忽略（无对应作用域位）。
 /// </para>
 /// </summary>
 public static class OnlineScopeResolver
 {
     /// <summary>
-    /// 作用域租户字段名（查询参数 camelCase 形态；body PascalCase 形态经大小写不敏感匹配覆盖）。
-    /// </summary>
-    public const string TenantFieldName = "tenantId";
-
-    /// <summary>
-    /// 作用域 App 字段名。
-    /// </summary>
-    public const string AppFieldName = "appId";
-
-    /// <summary>
-    /// 作用域区服字段名。
+    /// 作用域区服字段名（查询参数 camelCase 形态；body PascalCase 形态经大小写不敏感匹配覆盖）。
     /// </summary>
     public const string ServerFieldName = "serverId";
 
@@ -62,7 +53,7 @@ public static class OnlineScopeResolver
     /// </summary>
     /// <param name="parameters">请求参数字典（键大小写不敏感处理）。</param>
     /// <param name="authorizedScope">鉴权上下文作用域（服务端权威值，客户端同名字段不可覆盖）。</param>
-    /// <param name="error">提取失败时的错误码（三元组缺失或格式非法时为 <see cref="OnlineErrorCode.ScopeMissing"/>）。</param>
+    /// <param name="error">提取失败时的错误码（区服键缺失或格式非法时为 <see cref="OnlineErrorCode.ScopeMissing"/>）。</param>
     /// <returns>提取成功返回合并鉴权上下文后的作用域；失败返回 <see langword="null"/>。</returns>
     public static OnlineScope TryResolve(IReadOnlyDictionary<string, object> parameters, OnlineScope authorizedScope, out OnlineErrorCode error)
     {
@@ -73,26 +64,22 @@ public static class OnlineScopeResolver
         }
 
         // 鉴权上下文（服务端权威）直接生效；客户端字段仅用于服务端路由参考，永远不覆盖鉴权值。
-        var claimedTenantId = ReadInt64(parameters, TenantFieldName, authorizedScope.TenantId);
-        var claimedAppId = ReadInt64(parameters, AppFieldName, authorizedScope.AppId);
         var claimedServerId = ReadInt64(parameters, ServerFieldName, authorizedScope.ServerId);
 
-        if (claimedTenantId != authorizedScope.TenantId || claimedAppId != authorizedScope.AppId || claimedServerId != authorizedScope.ServerId)
+        if (claimedServerId != authorizedScope.ServerId)
         {
             // 客户端声称与鉴权上下文不一致：以鉴权为准忽略声称值；是否构成越权拒绝由 Guard 判定（留审计）。
-            claimedTenantId = authorizedScope.TenantId;
-            claimedAppId = authorizedScope.AppId;
             claimedServerId = authorizedScope.ServerId;
         }
 
-        if (authorizedScope.TenantId <= 0 || authorizedScope.AppId <= 0 || authorizedScope.ServerId <= 0)
+        if (authorizedScope.ServerId <= 0)
         {
             error = OnlineErrorCode.ScopeMissing;
             return null;
         }
 
         error = OnlineErrorCode.None;
-        return new OnlineScope(authorizedScope.TenantId, authorizedScope.AppId, authorizedScope.ServerId, authorizedScope.PlayerId);
+        return new OnlineScope(authorizedScope.ServerId, authorizedScope.PlayerId);
     }
 
     /// <summary>

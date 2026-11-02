@@ -42,16 +42,6 @@ public sealed class OnlineMatchEventOutboxEntry
     public string EventId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置事件信封（追加时存档引用，投递时原样发布）。
     /// </summary>
     public OnlineEvent Event { get; set; }

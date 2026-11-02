@@ -774,26 +774,6 @@ public class AppSetting
     public string OnlineAdminApiPrefix { get; set; } = "online/admin";
 
     /// <summary>
-    /// Online 运行时授权租户标识（与 ServerId 构成作用域三元组，跨租户请求按 3002 拒绝）
-    /// </summary>
-    /// <remarks>
-    /// Online runtime authorized tenant id (part of the scope triple; cross-tenant requests are rejected with 3002).
-    /// </remarks>
-    [Option(nameof(OnlineTenantId), DefaultValue = 0L, Description = "Online 运行时授权租户标识,与 OnlineAppId、ServerId 构成作用域三元组,默认值为 0(未配置)")]
-    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
-    public long OnlineTenantId { get; set; }
-
-    /// <summary>
-    /// Online 运行时授权应用标识（跨 App 请求按 3003 拒绝）
-    /// </summary>
-    /// <remarks>
-    /// Online runtime authorized app id (cross-app requests are rejected with 3003).
-    /// </remarks>
-    [Option(nameof(OnlineAppId), DefaultValue = 0L, Description = "Online 运行时授权应用标识,默认值为 0(未配置)")]
-    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
-    public long OnlineAppId { get; set; }
-
-    /// <summary>
     /// Online 能力配置段（角色配置内嵌套 "Online" 节点的强类型绑定，C294 键集重定）
     /// <para>双闸 EnableRuntime / EnableAdminApi、EnableRoles 名单、Capabilities 白名单 / Disable 排除表、
     /// UseGameDbStores 覆盖开关与 Settings 能力级参数节点；EnableRoles 命中的 Role 在进程内组合一次

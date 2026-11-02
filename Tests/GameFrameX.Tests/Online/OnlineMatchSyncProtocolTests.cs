@@ -43,11 +43,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchSyncProtocolTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
@@ -400,8 +395,6 @@ namespace GameFrameX.Tests.Online
                 Region = 1,
                 CreatedAtTime = Now,
                 TicketIds = new List<string>(),
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
             };
         }
@@ -466,7 +459,7 @@ namespace GameFrameX.Tests.Online
             {
                 var created = await Runtime.CreateFromAssignmentAsync(BuildAssignment(PlayerOne, PlayerTwo), Now);
                 Assert.True(created.IsSuccess, created.Message);
-                Actor = await Runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+                Actor = await Runtime.ResolveActorAsync(MatchId);
                 Assert.NotNull(Actor);
             }
 
@@ -526,7 +519,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>作用域。</returns>
             public OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
     }

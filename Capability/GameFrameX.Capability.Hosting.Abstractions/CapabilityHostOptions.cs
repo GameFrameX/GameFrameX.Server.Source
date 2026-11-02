@@ -33,21 +33,11 @@ namespace GameFrameX.Capability.Hosting.Abstractions;
 /// 能力宿主装配选项（本进程的运行时授权作用域身份 + 调度壳驱动参数；
 /// 原 OnlineRuntimeOptions 作用域半边的机制承接位，admin 监听参数归 AdminApiOptions）。
 /// <para>
-/// 维护约束：三元组是本进程的服务端权威作用域（请求体作用域字段不可覆盖，跨租户/App/服请求拒绝）。
+/// 维护约束：单键化 D4 后区服键是本进程的服务端权威作用域（请求体作用域字段不可覆盖，跨服请求拒绝）。
 /// </para>
 /// </summary>
 public sealed class CapabilityHostOptions
 {
-    /// <summary>
-    /// 获取或设置授权租户标识（必须为正数）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置授权应用标识（必须为正数）。
-    /// </summary>
-    public long AppId { get; set; }
-
     /// <summary>
     /// 获取或设置授权区服标识（必须为正数）。
     /// </summary>
@@ -59,12 +49,12 @@ public sealed class CapabilityHostOptions
     public int SchedulerIntervalMilliseconds { get; set; } = 1000;
 
     /// <summary>
-    /// 校验选项合法性（作用域三元组与调度间隔）。
+    /// 校验选项合法性（作用域区服键与调度间隔）。
     /// </summary>
     /// <returns>合法返回 <c>true</c>；否则 <c>false</c>（宿主不应在非法配置下启动）。</returns>
     public bool IsValid()
     {
-        if (TenantId <= 0 || AppId <= 0 || ServerId <= 0)
+        if (ServerId <= 0)
         {
             return false;
         }

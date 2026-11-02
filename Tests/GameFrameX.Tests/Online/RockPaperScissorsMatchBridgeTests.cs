@@ -42,11 +42,6 @@ namespace GameFrameX.Tests.Online
     [Collection(CapabilityRuntimeCollection.Name)]
     public class RockPaperScissorsMatchBridgeTests
     {
-        /// <summary>授权作用域租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>授权作用域应用标识。</summary>
-        private const long AppId = 1;
 
         /// <summary>授权作用域区服标识。</summary>
         private const long ServerId = 1001;
@@ -76,7 +71,7 @@ namespace GameFrameX.Tests.Online
                     context.Bridges.Publish<IOnlineMatchGameBridge>(stub);
                     if (publishScopeProvider)
                     {
-                        context.Bridges.Publish<IOnlineAuthorizedScopeProvider>(new StubScopeProvider(new OnlineScope(TenantId, AppId, ServerId)));
+                        context.Bridges.Publish<IOnlineAuthorizedScopeProvider>(new StubScopeProvider(new OnlineScope(ServerId)));
                     }
 
                     return Task.CompletedTask;
@@ -84,7 +79,7 @@ namespace GameFrameX.Tests.Online
 
                 var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
                 {
-                    HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+                    HostOptions = new CapabilityHostOptions { ServerId = 1, },
                     Filter = new CapabilityAssemblyFilter(new[] { MechanismScenario.First.DefaultId }),
                 };
                 var runtime = CapabilityComposition.Compose(new MechanismTestFamily(), options);
@@ -275,8 +270,6 @@ namespace GameFrameX.Tests.Online
                 Assert.True(startHandled);
                 Assert.Equal(0, startResponse.ErrorCode);
                 Assert.Equal(1, stub.StartCallCount);
-                Assert.Equal(TenantId, stub.LastStartScope.TenantId);
-                Assert.Equal(AppId, stub.LastStartScope.AppId);
                 Assert.Equal(ServerId, stub.LastStartScope.ServerId);
                 Assert.Equal(ActorId, stub.LastStartScope.PlayerId);
                 Assert.Equal(RoomId, stub.LastStartRoomId);
@@ -290,7 +283,6 @@ namespace GameFrameX.Tests.Online
                 Assert.Equal(0, submitResponse.ErrorCode);
                 Assert.NotNull(submitResponse.GameInfo);
                 Assert.Equal(ActorId, stub.LastSubmitScope.PlayerId);
-                Assert.Equal(TenantId, stub.LastSubmitScope.TenantId);
                 Assert.Equal(ServerId, stub.LastSubmitScope.ServerId);
                 Assert.Equal(RoomId, stub.LastSubmitRoomId);
                 Assert.Equal(Round, stub.LastSubmitRound);

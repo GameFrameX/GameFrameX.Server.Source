@@ -135,7 +135,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var existing = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var existing = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (existing != null)
         {
             return OnlineResult<OnlineParty>.Ok(existing);
@@ -145,8 +145,6 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         var party = new OnlineParty
         {
             PartyId = "pty-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             LeaderId = scope.PlayerId,
             State = OnlinePartyState.Created,
@@ -191,7 +189,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlinePartyInvite>.Fail(OnlineErrorCode.ParameterInvalid, "被邀请玩家标识无效");
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         var reachable = EnsureLeaderReachable(party, scope.PlayerId);
         if (reachable != null)
         {
@@ -202,7 +200,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             // 社交裁决走跨域唯一入口：屏蔽双向生效、封禁拒绝、禁言不影响组队。
             // 置于去重检查之前——被屏蔽/被封禁的邀请即使此前已存在待答复记录也不得再取得答复通道。
-            var decision = await _socialGate.EvaluateAsync(scope.TenantId, scope.AppId, scope.PlayerId, inviteeId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
+            var decision = await _socialGate.EvaluateAsync(scope.PlayerId, inviteeId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
             if (!decision.Allowed)
             {
                 return OnlineResult<OnlinePartyInvite>.Fail(decision.Code, decision.Reason);
@@ -214,13 +212,13 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlinePartyInvite>.Fail(OnlineErrorCode.StateNotReady, "队伍人数已达上限");
         }
 
-        var existingInvite = await _store.FindPendingInviteAsync(scope.TenantId, scope.AppId, inviteeId, partyId, cancellationToken);
+        var existingInvite = await _store.FindPendingInviteAsync(inviteeId, partyId, cancellationToken);
         if (existingInvite != null)
         {
             return OnlineResult<OnlinePartyInvite>.Ok(existingInvite);
         }
 
-        var target = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, inviteeId, cancellationToken);
+        var target = await _store.FindPartyByPlayerAsync(inviteeId, cancellationToken);
         if (target != null)
         {
             return OnlineResult<OnlinePartyInvite>.Fail(OnlineErrorCode.DuplicateRequest, "被邀请玩家已在其它队伍中");
@@ -231,8 +229,6 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             InviteId = "inv-" + Guid.NewGuid().ToString("N"),
             PartyId = party.PartyId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             InviterId = scope.PlayerId,
             InviteeId = inviteeId,
             State = OnlinePartyInviteState.Pending,
@@ -240,7 +236,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             ExpiresAtTime = now + _inviteTimeToLiveSeconds * 1000,
         };
         await _store.SaveInviteAsync(invite, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
 
         var invited = await TransitionAsync(party, OnlinePartyState.Inviting, OnlinePartyLeaveReason.Left, correlationId, cancellationToken);
         if (!invited.IsSuccess)
@@ -272,13 +268,13 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var invite = await _store.FindInviteAsync(scope.TenantId, scope.AppId, inviteId, cancellationToken);
+        var invite = await _store.FindInviteAsync(inviteId, cancellationToken);
         if (invite == null || invite.InviteeId != scope.PlayerId)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "邀请不存在");
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, invite.PartyId, cancellationToken);
+        var party = await _store.FindPartyAsync(invite.PartyId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "队伍不存在");
@@ -293,7 +289,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             invite.State = OnlinePartyInviteState.Expired;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.StateEnded, "邀请已过期");
         }
 
@@ -301,7 +297,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             invite.State = OnlinePartyInviteState.Rejected;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
             return OnlineResult<OnlineParty>.Ok(party);
         }
 
@@ -312,7 +308,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             // 等于绕开红线。这里复核的是与重新发起邀请时同一组关系的裁决（屏蔽本就双向生效）。
             // 拒绝不做裁决——拒绝是脱离互动，拦下它只会把玩家困在待答复状态里。
             // 禁言 / 封禁的持续强制不在此处重复：其后果由下游同源判定兜底（聊天发送 / 匹配成组）。
-            var decision = await _socialGate.EvaluateAsync(scope.TenantId, scope.AppId, invite.InviterId, scope.PlayerId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
+            var decision = await _socialGate.EvaluateAsync(invite.InviterId, scope.PlayerId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
             if (!decision.Allowed)
             {
                 return OnlineResult<OnlineParty>.Fail(decision.Code, decision.Reason);
@@ -336,7 +332,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
         invite.State = OnlinePartyInviteState.Accepted;
         await _store.SaveInviteAsync(invite, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
         return await RefreshAfterMemberChangeAsync(party, OnlinePartyLeaveReason.Left, correlationId, cancellationToken);
     }
 
@@ -356,7 +352,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "队伍不存在");
@@ -377,7 +373,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlineParty>.Ok(party);
         }
 
-        var occupied = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var occupied = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (occupied != null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.DuplicateRequest, "玩家已在其它队伍中");
@@ -413,7 +409,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var party = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "玩家不在任何队伍中");
@@ -439,7 +435,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         var reachable = EnsureLeaderReachable(party, scope.PlayerId);
         if (reachable != null)
         {
@@ -476,7 +472,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         var reachable = EnsureLeaderReachable(party, scope.PlayerId);
         if (reachable != null)
         {
@@ -511,7 +507,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var party = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "玩家不在任何队伍中");
@@ -547,7 +543,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var party = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "玩家不在任何队伍中");
@@ -577,7 +573,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         var reachable = EnsureLeaderReachable(party, scope.PlayerId);
         if (reachable != null)
         {
@@ -613,7 +609,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         var reachable = EnsureLeaderReachable(party, scope.PlayerId);
         if (reachable != null)
         {
@@ -633,7 +629,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
                 continue;
             }
 
-            var online = await _presenceProbe.IsOnlineAsync(scope.TenantId, scope.AppId, member.PlayerId, cancellationToken);
+            var online = await _presenceProbe.IsOnlineAsync(member.PlayerId, cancellationToken);
             if (!online)
             {
                 offline.Add(member.PlayerId);
@@ -667,7 +663,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ParameterInvalid, "缺少作用域");
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "队伍不存在");
@@ -691,21 +687,19 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     /// 一律返回 <c>false</c>（不认领），由对应的归属域应答。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="kind">频道类型。</param>
     /// <param name="boundId">频道绑定的业务标识（本域为队伍标识）。</param>
     /// <param name="playerId">待裁决玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>是成员且队伍仍可发言返回 <c>true</c>。</returns>
-    public async Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<bool> IsChannelMemberAsync(OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
     {
         if (kind != OnlineChatChannelKind.Party || string.IsNullOrEmpty(boundId))
         {
             return false;
         }
 
-        var party = await _store.FindPartyAsync(tenantId, appId, boundId, cancellationToken).ConfigureAwait(false);
+        var party = await _store.FindPartyAsync(boundId, cancellationToken).ConfigureAwait(false);
         if (party == null || OnlinePartyStateMachine.IsTerminal(party.State) || party.Members == null)
         {
             return false;
@@ -736,7 +730,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var party = await _store.FindPartyByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var party = await _store.FindPartyByPlayerAsync(scope.PlayerId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "玩家不在任何队伍中");
@@ -759,7 +753,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var invites = await _store.ListInvitesAsync(scope.TenantId, scope.AppId, cancellationToken);
+        var invites = await _store.ListInvitesAsync(cancellationToken);
         var result = new List<OnlinePartyInvite>();
         foreach (var invite in invites)
         {
@@ -802,7 +796,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ParameterInvalid, "匹配域不允许迁入状态：" + targetState);
         }
 
-        var party = await _store.FindPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken);
+        var party = await _store.FindPartyAsync(partyId, cancellationToken);
         if (party == null)
         {
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.ResourceNotFound, "队伍不存在");
@@ -815,17 +809,15 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     /// 扫描并终结过期对象：超期邀请置 <see cref="OnlinePartyInviteState.Expired"/>；空闲队伍置
     /// <see cref="OnlinePartyState.Expired"/>。匹配中与终态队伍不参与空闲过期。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次终结的（邀请 + 队伍）总数。</returns>
-    public async Task<OnlineResult<int>> SweepExpiredAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> SweepExpiredAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
         var affected = 0;
 
-        var invites = await _store.ListInvitesAsync(tenantId, appId, cancellationToken);
+        var invites = await _store.ListInvitesAsync(cancellationToken);
         foreach (var invite in invites)
         {
             if (invite.State != OnlinePartyInviteState.Pending || invite.ExpiresAtTime > now)
@@ -835,11 +827,11 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
             invite.State = OnlinePartyInviteState.Expired;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), 0), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), 0), cancellationToken);
             affected++;
         }
 
-        var parties = await _store.ListPartiesAsync(tenantId, appId, cancellationToken);
+        var parties = await _store.ListPartiesAsync(cancellationToken);
         foreach (var party in parties)
         {
             if (OnlinePartyStateMachine.IsTerminal(party.State) || party.State == OnlinePartyState.Matching)
@@ -956,7 +948,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         party.UpdatedAtTime = Now();
         party.ExpiresAtTime = party.UpdatedAtTime + _idleTimeToLiveSeconds * 1000;
         await _store.SavePartyAsync(party, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreatePartyChanged(party.TenantId, party.AppId, party.ServerId, party.PartyId, party.LeaderId, from.ToString(), target.ToString(), reason.ToString(), party.Members == null ? 0 : party.Members.Count, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreatePartyChanged(party.ServerId, party.PartyId, party.LeaderId, from.ToString(), target.ToString(), reason.ToString(), party.Members == null ? 0 : party.Members.Count, correlationId), cancellationToken);
         return OnlineResult<OnlineParty>.Ok(party);
     }
 

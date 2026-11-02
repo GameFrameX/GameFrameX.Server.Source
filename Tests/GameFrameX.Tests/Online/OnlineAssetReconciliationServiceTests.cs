@@ -95,18 +95,18 @@ namespace GameFrameX.Tests.Online
                 _balanceOffset = balanceOffset;
             }
 
-            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
             {
                 if (playerId != _playerId)
                 {
-                    return _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
+                    return _inner.ListWalletAccountsAsync(playerId, cancellationToken);
                 }
 
-                var drifted = _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken).GetAwaiter().GetResult();
+                var drifted = _inner.ListWalletAccountsAsync(playerId, cancellationToken).GetAwaiter().GetResult();
                 var tampered = new List<OnlineWalletAccount>();
                 foreach (var account in drifted)
                 {
-                    tampered.Add(new OnlineWalletAccount { TenantId = account.TenantId, AppId = account.AppId, PlayerId = account.PlayerId, CurrencyId = account.CurrencyId, Balance = account.Balance + _balanceOffset, Version = account.Version, UpdatedTime = account.UpdatedTime });
+                    tampered.Add(new OnlineWalletAccount { PlayerId = account.PlayerId, CurrencyId = account.CurrencyId, Balance = account.Balance + _balanceOffset, Version = account.Version, UpdatedTime = account.UpdatedTime });
                 }
 
                 return Task.FromResult<IReadOnlyList<OnlineWalletAccount>>(tampered);
@@ -117,19 +117,19 @@ namespace GameFrameX.Tests.Online
                 return _inner.ApplyAsync(batch, cancellationToken);
             }
 
-            public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+            public Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindWalletAsync(tenantId, appId, playerId, currencyId, cancellationToken);
+                return _inner.FindWalletAsync(playerId, currencyId, cancellationToken);
             }
 
-            public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+            public Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindInventoryAsync(tenantId, appId, playerId, itemId, cancellationToken);
+                return _inner.FindInventoryAsync(playerId, itemId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListInventoryStacksAsync(playerId, cancellationToken);
             }
 
             public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
@@ -142,14 +142,14 @@ namespace GameFrameX.Tests.Online
                 return _inner.FindLedgerEntriesByTransactionIdAsync(transactionId, cancellationToken);
             }
 
-            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.SumLedgerDeltasByAssetAsync(playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+                return _inner.ListPlayerIdsAsync(cancellationToken);
             }
         }
 
@@ -184,7 +184,7 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private static OnlineGrantRequest BuildRequest(long playerId, string key, long amount)
         {
-            var scope = new OnlineScope(1, 10, 100, playerId);
+            var scope = new OnlineScope(100, playerId);
             return new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "赛季结算", "bo-" + key, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", amount) }, key);
         }
 
@@ -202,7 +202,7 @@ namespace GameFrameX.Tests.Online
             var reconciliation = harness.CreateReconciliationService();
 
             // Act
-            var report = await reconciliation.ReconcilePlayerAsync(new OnlineScope(1, 10, 100, 10001));
+            var report = await reconciliation.ReconcilePlayerAsync(new OnlineScope(100, 10001));
 
             // Assert
             Assert.Equal(1, report.PlayerCount);
@@ -224,7 +224,7 @@ namespace GameFrameX.Tests.Online
             var reconciliation = harness.CreateReconciliationService(drifting);
 
             // Act
-            var report = await reconciliation.ReconcilePlayerAsync(new OnlineScope(1, 10, 100, 10001));
+            var report = await reconciliation.ReconcilePlayerAsync(new OnlineScope(100, 10001));
 
             // Assert
             Assert.False(report.IsConsistent);
@@ -251,7 +251,7 @@ namespace GameFrameX.Tests.Online
             var reconciliation = harness.CreateReconciliationService(drifting);
 
             // Act
-            var report = await reconciliation.ReconcileAllAsync(1, 10);
+            var report = await reconciliation.ReconcileAllAsync();
 
             // Assert
             Assert.Equal(2, report.PlayerCount);

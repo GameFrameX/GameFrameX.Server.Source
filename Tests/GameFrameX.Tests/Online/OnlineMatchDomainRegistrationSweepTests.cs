@@ -18,12 +18,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchDomainRegistrationSweepTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
 
@@ -43,14 +37,12 @@ namespace GameFrameX.Tests.Online
             var enqueued = await harness.Domain.EnqueueAsync(harness.ScopeOf(PlayerOne), 1, 1000);
             Assert.True(enqueued.IsSuccess, enqueued.Message);
             Assert.Equal(0, enqueued.Data.MatchId);
-            var activeTicket = await harness.TicketStore.FindActiveByPlayerAsync(TenantId, AppId, PlayerOne, CancellationToken.None);
+            var activeTicket = await harness.TicketStore.FindActiveByPlayerAsync(PlayerOne, CancellationToken.None);
             Assert.NotNull(activeTicket);
 
             // 手工落档陈年分配（CreatedAtTime = 3 小时前，超过默认 7200 秒生命周期；InMemory 落档保留传入值）。
             var staleAssignment = new OnlineMatchAssignment
             {
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 AssignmentId = "as-stale-assignment-1",
                 MatchId = "matched-s100-m-stale-1",
@@ -90,7 +82,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(second.IsSuccess, second.Message);
 
             // 定时批次撮合（GFX-1104）：入队只建票，撮合由协调器批量驱动；数值对局标识经状态解析惰性登记。
-            var matched = await harness.Coordinator.RunOnceAsync(TenantId, AppId);
+            var matched = await harness.Coordinator.RunOnceAsync();
             Assert.True(matched.IsSuccess, matched.Message);
             var statusOne = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerOne));
             Assert.True(statusOne.IsSuccess, statusOne.Message);
@@ -164,7 +156,7 @@ namespace GameFrameX.Tests.Online
 
             public OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
     }

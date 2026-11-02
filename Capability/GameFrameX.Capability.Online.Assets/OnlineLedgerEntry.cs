@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Assets;
 /// 维护约束（资产红线）：本类型一经落账即为事实，任何代码路径不得修改或删除历史条目；
 /// 错误发放只能通过追加带符号反转条目（来源 <see cref="OnlineAssetChangeSource.SystemCompensation"/>，
 /// <see cref="CompensatesTransactionId"/> 指向原交易）纠正；每条必须携带完整追溯字段——
-/// 作用域（Player/App/Server 双侧）、来源、原因、业务单号、操作者、前后值与所属交易
+/// 作用域（Player/Server 双侧）、来源、原因、业务单号、操作者、前后值与所属交易
 /// （反查依据）；<see cref="AmountBefore"/> + <see cref="Delta"/> == <see cref="AmountAfter"/>
 /// 由构造函数强制校验（checked 防溢出回绕，违反抛 ArgumentException；存量脏数据读取即暴露）；<see cref="SequenceNumber"/> 为玩家维度单调递增账本序
 /// （对账与游标分页的稳定排序键）。
@@ -55,16 +55,6 @@ public sealed class OnlineLedgerEntry
     /// 获取所属资产交易标识（幂等边界的交易外键）。
     /// </summary>
     public string TransactionId { get; }
-
-    /// <summary>
-    /// 获取租户标识。
-    /// </summary>
-    public long TenantId { get; }
-
-    /// <summary>
-    /// 获取 App 标识。
-    /// </summary>
-    public long AppId { get; }
 
     /// <summary>
     /// 获取玩家标识。
@@ -179,8 +169,6 @@ public sealed class OnlineLedgerEntry
 
         EntryId = entryId;
         TransactionId = transactionId;
-        TenantId = header.TenantId;
-        AppId = header.AppId;
         PlayerId = header.PlayerId;
         HomeServerId = header.HomeServerId;
         InitiatingServerId = header.InitiatingServerId;

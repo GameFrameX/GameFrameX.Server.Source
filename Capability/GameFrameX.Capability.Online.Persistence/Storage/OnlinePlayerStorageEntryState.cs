@@ -35,8 +35,9 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// <summary>
 /// 玩家云存储条目持久化行（一级 store：Storage 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码与版本约定：<see cref="UniqueKey"/> = 物化复合键（五元组无损拼接，
-/// 与 InMemory <c>BuildKey</c> 同构）单列唯一索引，承接「expectedVersion == 0 仅创建」的互斥；
+/// 键编码与版本约定：<see cref="UniqueKey"/> = 物化复合键（三元组无损拼接，
+/// 与 InMemory 键同构，唯一构造点 <c>OnlineRowKey.PlayerStorage</c>）单列唯一索引，
+/// 承接「expectedVersion == 0 仅创建」的互斥；
 /// 行 Id 由 <c>NextSequenceAsync</c> 分配。版本换算：<see cref="BaseCacheState"/> 的 RowVersion
 /// 从 0 起（插入 = 0、每次 CAS 递增），实体 <c>Version</c> 从 1 起——恒等式
 /// <c>Version = RowVersion + 1</c>，CAS 目标行版本 = expectedVersion - 1（适配层内换算）。
@@ -47,20 +48,10 @@ using GameFrameX.Foundation.Orm.Attribute;
 public sealed class OnlinePlayerStorageEntryState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"tenant:app:player:collection:key"；唯一索引列）。
+    /// 获取或设置物化复合键（"player:collection:key"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_storage_entry_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

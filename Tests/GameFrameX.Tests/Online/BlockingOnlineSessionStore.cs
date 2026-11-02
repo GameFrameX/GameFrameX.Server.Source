@@ -51,9 +51,9 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>并发计数透传内层（读路径不悬挂）。</summary>
-        public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default)
         {
-            return _inner.CountNonTerminalByScopeAsync(tenantId, appId, serverId, cancellationToken);
+            return _inner.CountNonTerminalByScopeAsync(serverId, cancellationToken);
         }
 
         /// <summary>布防：指定会话的写入此后全部悬挂，直至 <see cref="ReleaseBlockedWrites"/>。</summary>
@@ -111,14 +111,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>列出玩家非终态会话（透传）。</summary>
-        /// <param name="tenantId">租户标识。</param>
-        /// <param name="appId">应用标识。</param>
         /// <param name="playerId">玩家标识。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>非终态会话列表。</returns>
-        public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
         {
-            return _inner.ListActiveByPlayerAsync(tenantId, appId, playerId, cancellationToken);
+            return _inner.ListActiveByPlayerAsync(playerId, cancellationToken);
         }
 
         /// <summary>列出全部非终态会话（透传）。</summary>

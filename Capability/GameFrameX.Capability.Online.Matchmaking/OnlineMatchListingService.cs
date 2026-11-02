@@ -107,8 +107,6 @@ public sealed class OnlineMatchListingService
         var listing = new OnlineMatchListing
         {
             ListingId = "lst-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             PartyId = request.PartyId ?? string.Empty,
             OwnerPlayerId = scope.PlayerId,
@@ -145,7 +143,7 @@ public sealed class OnlineMatchListingService
         var filter = query == null ? new OnlineMatchListingQuery() : query;
         var limit = filter.Limit > 0 ? filter.Limit : DefaultQueryLimit;
 
-        var all = await _store.ListAsync(scope.TenantId, scope.AppId, cancellationToken);
+        var all = await _store.ListAsync(cancellationToken);
         var result = new List<OnlineMatchListing>();
         foreach (var listing in all)
         {
@@ -210,7 +208,7 @@ public sealed class OnlineMatchListingService
             return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ParameterInvalid, "缺少作用域");
         }
 
-        var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+        var listing = await _store.FindAsync(listingId, cancellationToken);
         if (listing == null)
         {
             return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
@@ -266,7 +264,7 @@ public sealed class OnlineMatchListingService
     /// <returns>终态结果；返回 null 表示 CAS 版本冲突，调用方应重读重试。</returns>
     private async Task<OnlineResult<OnlineMatchListing>> TryJoinOnceAsync(OnlineScope scope, string listingId, List<long> members, string password, CancellationToken cancellationToken)
     {
-        var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+        var listing = await _store.FindAsync(listingId, cancellationToken);
         if (listing == null)
         {
             return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
@@ -317,7 +315,7 @@ public sealed class OnlineMatchListingService
 
         for (var attempt = 0; attempt < MaxWriteAttempts; attempt++)
         {
-            var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+            var listing = await _store.FindAsync(listingId, cancellationToken);
             if (listing == null || listing.OwnerPlayerId != scope.PlayerId)
             {
                 return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");

@@ -36,7 +36,7 @@ namespace GameFrameX.Capability.Online.Competition.Season;
 /// 赛季存储契约（赛季定义 + 历史快照；InMemory 为单进程默认实现，生产持久化归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) 作用域隔离——所有查询以 (TenantId, AppId) 为前置条件，跨作用域访问与不存在同构（null，反预言）；
+/// (1) 赛季为全局域数据——字典键即 SeasonId（无区服隔离位，同键即同季）；
 /// (2) 快照与赛季定义**分离存储**：快照一经写入即为冻结历史，赛季状态推进（<see cref="SaveAsync"/>）
 /// 不得改写快照内容——「赛季结束不删除历史数据」的存储层保证；
 /// (3) 出入参一律防御性拷贝——返回对象与内部状态无别名，调用方改写不影响存储。
@@ -45,25 +45,23 @@ namespace GameFrameX.Capability.Online.Competition.Season;
 public interface IOnlineSeasonStore
 {
     /// <summary>
-    /// 创建赛季（同作用域同标识赛季已存在时拒绝，返回 null，不覆盖）。
+    /// 创建赛季（同标识赛季已存在时拒绝，返回 null，不覆盖）。
     /// </summary>
-    /// <param name="season">赛季定义（作用域取其 TenantId / AppId）。</param>
+    /// <param name="season">赛季定义。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>创建后的赛季副本；已存在返回 null。</returns>
     Task<OnlineSeason> CreateAsync(OnlineSeason season, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按作用域查找赛季定义。
+    /// 按赛季标识查找赛季定义。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>赛季副本；不存在或跨作用域返回 null。</returns>
-    Task<OnlineSeason> FindAsync(long tenantId, long appId, string seasonId, CancellationToken cancellationToken = default);
+    /// <returns>赛季副本；不存在返回 null。</returns>
+    Task<OnlineSeason> FindAsync(string seasonId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 保存赛季定义（状态推进落档；按作用域 + 赛季标识覆盖既有定义，赛季必须已存在）。
+    /// 保存赛季定义（状态推进落档；按赛季标识覆盖既有定义，赛季必须已存在）。
     /// </summary>
     /// <param name="season">赛季定义（含推进后的状态与时间戳）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -71,7 +69,7 @@ public interface IOnlineSeasonStore
     Task SaveAsync(OnlineSeason season, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 保存历史快照（按作用域 + 赛季标识覆盖；赛季结束流程在**清空榜单之前**调用——快照先行）。
+    /// 保存历史快照（按赛季标识覆盖；赛季结束流程在**清空榜单之前**调用——快照先行）。
     /// </summary>
     /// <param name="snapshot">历史快照。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -79,12 +77,10 @@ public interface IOnlineSeasonStore
     Task SaveSnapshotAsync(OnlineSeasonSnapshot snapshot, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按作用域查找历史快照。
+    /// 按赛季标识查找历史快照。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>快照副本；不存在或跨作用域返回 null。</returns>
-    Task<OnlineSeasonSnapshot> FindSnapshotAsync(long tenantId, long appId, string seasonId, CancellationToken cancellationToken = default);
+    /// <returns>快照副本；不存在返回 null。</returns>
+    Task<OnlineSeasonSnapshot> FindSnapshotAsync(string seasonId, CancellationToken cancellationToken = default);
 }

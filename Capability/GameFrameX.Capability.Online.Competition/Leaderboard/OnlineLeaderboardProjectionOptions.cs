@@ -31,13 +31,19 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 
 /// <summary>
 /// 排行榜投影选项（<see cref="OnlineCompetitionOptions.LeaderboardProjection"/> 的子对象；
-/// <see cref="MatchSettledBoardId"/> 非空白才装配 Match.Settled 投影与激活期榜单预建，
-/// 空白 / 缺省 = 不投影，不报错）。
+/// <see cref="MatchSettledBoardId"/> 默认投影到默认榜（C460：默认值服务黄金路径开箱即通——
+/// 零 JSON 配置起服即装配 Match.Settled 投影并在激活期预建默认榜）；显式置空白 / null
+/// 或经配置段覆盖为空白 = 关闭投影（不装配、不预建，不报错）。
 /// </summary>
 public sealed class OnlineLeaderboardProjectionOptions
 {
     /// <summary>
-    /// 获取或设置 Match.Settled 事件的目标榜单标识（空白 = 不投影）。
+    /// 默认投影目标榜单标识（Match.Settled 投影的默认榜；装配期由 Leaderboard 能力预建）。
     /// </summary>
-    public string MatchSettledBoardId { get; set; }
+    public const string DefaultMatchSettledBoardId = "match-settled";
+
+    /// <summary>
+    /// 获取或设置 Match.Settled 事件的目标榜单标识（默认 = <see cref="DefaultMatchSettledBoardId"/>；空白 = 不投影）。
+    /// </summary>
+    public string MatchSettledBoardId { get; set; } = DefaultMatchSettledBoardId;
 }

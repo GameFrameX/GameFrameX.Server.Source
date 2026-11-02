@@ -45,16 +45,6 @@ public sealed class OnlineParty
     public string PartyId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
     public long ServerId { get; set; }
@@ -117,8 +107,6 @@ public sealed class OnlineParty
         return new OnlineParty
         {
             PartyId = PartyId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             LeaderId = LeaderId,
             State = State,

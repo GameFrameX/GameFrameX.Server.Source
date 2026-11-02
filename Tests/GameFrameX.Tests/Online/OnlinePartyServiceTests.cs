@@ -43,11 +43,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlinePartyServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -346,7 +341,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>
@@ -372,12 +367,10 @@ namespace GameFrameX.Tests.Online
             /// <remarks>
             /// Only checks whether the player is in the online whitelist supplied at construction.
             /// </remarks>
-            /// <param name="tenantId">租户标识 / Tenant id</param>
-            /// <param name="appId">App 标识 / App id</param>
             /// <param name="playerId">玩家标识 / Player id</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
-            public Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<bool> IsOnlineAsync(long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_online.Contains(playerId));
             }

@@ -35,23 +35,14 @@ namespace GameFrameX.Capability.Online.Abstractions.Events;
 /// Online 事件与 Foundation 事件信封的双向映射（红线：Online 领域语义不进 Foundation，
 /// 作用域字段经 Foundation 信封 <c>Attributes</c> 稳定键承载）。
 /// <para>
-/// 维护约束：稳定键 <c>online.tenantId</c>/<c>online.appId</c>/<c>online.serverId</c>/<c>online.playerId</c>
-/// 为跨端契约，禁止重命名或挪用；未知 Attributes 键在反向映射时原样保留于 <c>ExtraAttributes</c> 语义外（当前丢弃），
+/// 维护约束：稳定键 <c>online.serverId</c>/<c>online.playerId</c>
+/// 为跨端契约，禁止重命名或挪用（单键化 D4 后不再有租户位/App 位稳定键）；
+/// 未知 Attributes 键在反向映射时原样保留于 <c>ExtraAttributes</c> 语义外（当前丢弃），
 /// 新增传输字段必须走信封结构版本评审。
 /// </para>
 /// </summary>
 public static class OnlineEventEnvelopeMapper
 {
-    /// <summary>
-    /// Attributes 稳定键：租户标识。
-    /// </summary>
-    public const string TenantAttributeKey = "online.tenantId";
-
-    /// <summary>
-    /// Attributes 稳定键：App 标识。
-    /// </summary>
-    public const string AppAttributeKey = "online.appId";
-
     /// <summary>
     /// Attributes 稳定键：区服标识。
     /// </summary>
@@ -76,8 +67,6 @@ public static class OnlineEventEnvelopeMapper
 
         var attributes = new Dictionary<string, string>
         {
-            { TenantAttributeKey, onlineEvent.TenantId.ToString() },
-            { AppAttributeKey, onlineEvent.AppId.ToString() },
             { ServerAttributeKey, onlineEvent.ServerId.ToString() },
             { PlayerAttributeKey, onlineEvent.PlayerId.ToString() },
         };
@@ -106,8 +95,6 @@ public static class OnlineEventEnvelopeMapper
             Source = envelope.Source,
             CorrelationId = envelope.CorrelationId,
             Payload = envelope.Payload,
-            TenantId = ReadInt64(envelope, TenantAttributeKey),
-            AppId = ReadInt64(envelope, AppAttributeKey),
             ServerId = ReadInt64(envelope, ServerAttributeKey),
             PlayerId = ReadInt64(envelope, PlayerAttributeKey),
         };

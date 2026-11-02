@@ -80,8 +80,6 @@ namespace GameFrameX.Tests.Online
                 EventType = "online.session.kicked",
                 OccurredTime = 1760000000999,
                 SchemaVersion = 1,
-                TenantId = 1,
-                AppId = 10,
                 ServerId = 100,
                 PlayerId = 10001,
                 Source = "online-identity",
@@ -112,8 +110,6 @@ namespace GameFrameX.Tests.Online
             Assert.Same(onlineEvent, payload);
             Assert.Equal("evt-0004", payload.EventId);
             Assert.Equal("req-0004", payload.CorrelationId);
-            Assert.Equal(1, payload.TenantId);
-            Assert.Equal(10, payload.AppId);
             Assert.Equal(100, payload.ServerId);
             Assert.Equal(10001, payload.PlayerId);
         }

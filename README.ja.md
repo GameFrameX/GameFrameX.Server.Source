@@ -833,6 +833,8 @@ GameFrameX.Server.Source/
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API の Swagger ドキュメント |
 | `xunit` | ユニットテストフレームワーク |
 
+**バージョンガバナンス（2.0.0 ライン）：** 本リポジトリのソースバージョンラインは **2.0.0** に統一されました（ブレークイグチャンジ、1.x 互換層なし）。サーバー実行リポジトリ（`GameFrameX.Server`）の `GameFrameX.*` パッケージ参照は **1.13.0** に固定されたままで、フレームワーク 2.0 の公開後（収束計画 P5 段階）に一括アップグレードします。`GameFrameX.Capability.*` 能力パッケージは 2.0.0 ラインで初公開されます。
+
 ---
 
 ## ドキュメントとリソース

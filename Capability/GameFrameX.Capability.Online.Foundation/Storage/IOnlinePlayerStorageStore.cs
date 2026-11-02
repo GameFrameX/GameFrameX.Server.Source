@@ -35,7 +35,7 @@ using System.Threading.Tasks;
 /// <summary>
 /// 玩家云存储接口（CAS 乐观锁内建于存储层——<see cref="UpsertAsync"/> 为原子比较交换）。
 /// <para>
-/// 维护约束：键 = (TenantId, AppId, PlayerId, Collection, Key)；<see cref="UpsertAsync"/> 的
+/// 维护约束：键 = (PlayerId, Collection, Key)；<see cref="UpsertAsync"/> 的
 /// <c>expectedVersion</c> == 0 表示仅创建（已存在即失败），&gt; 0 表示版本必须匹配；软删条目对列举不可见
 /// 但物理保留（复活按 CAS 版本接管）；列举按键字典序稳定排序（游标分页的基础）。
 /// </para>
@@ -43,7 +43,7 @@ using System.Threading.Tasks;
 public interface IOnlinePlayerStorageStore
 {
     /// <summary>按键查找条目（含软删条目；可见性判定归服务层）。</summary>
-    /// <param name="key">条目键载荷（租户 + App + 玩家 + 集合名 + 条目键）。</param>
+    /// <param name="key">条目键载荷（玩家 + 集合名 + 条目键）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>条目；不存在返回 null。</returns>
     Task<OnlinePlayerStorageEntry> FindAsync(OnlineStorageEntryKey key, CancellationToken cancellationToken = default);
@@ -62,13 +62,11 @@ public interface IOnlinePlayerStorageStore
     Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(OnlineStorageListQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>统计集合内活跃（非软删）键数（键数上限 enforcement 输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="collection">集合名。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>活跃键数。</returns>
-    Task<int> CountActiveKeysAsync(long tenantId, long appId, long playerId, string collection, CancellationToken cancellationToken = default);
+    Task<int> CountActiveKeysAsync(long playerId, string collection, CancellationToken cancellationToken = default);
 
     /// <summary>列出全部条目（含软删；过期清理任务的扫描输入）。</summary>
     /// <param name="cancellationToken">取消令牌。</param>

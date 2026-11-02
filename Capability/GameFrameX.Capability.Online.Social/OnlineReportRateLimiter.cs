@@ -51,7 +51,7 @@ public sealed class OnlineReportRateLimiter
     /// <summary>并发保护锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>双窗计数桶：键 = (租户, App, 举报人)。</summary>
+    /// <summary>双窗计数桶：键 = 举报人。</summary>
     private readonly Dictionary<string, ReportWindow> _windows = new(StringComparer.Ordinal);
 
     /// <summary>上一次惰性清扫时刻（UTC 毫秒）。</summary>
@@ -83,15 +83,13 @@ public sealed class OnlineReportRateLimiter
     /// <summary>
     /// 尝试获取一次举报提交配额（两窗都在额度内才同时计数；任一超限则两窗都不消耗）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="reporterId">举报人。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <returns>允许返回 <c>true</c>；任一窗口超限返回 <c>false</c>。</returns>
-    public bool TryAcquire(long tenantId, long appId, long reporterId, long nowUnixMilliseconds = 0)
+    public bool TryAcquire(long reporterId, long nowUnixMilliseconds = 0)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var key = tenantId + ":" + appId + ":" + reporterId;
+        var key = reporterId.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         lock (_syncRoot)
         {

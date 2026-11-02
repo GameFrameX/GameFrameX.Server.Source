@@ -71,7 +71,7 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
             throw new ArgumentNullException(nameof(reportCase));
         }
 
-        var key = BuildKey(reportCase.TenantId, reportCase.AppId, reportCase.ReportId);
+        var key = BuildKey(reportCase.ReportId);
         lock (_syncRoot)
         {
             // 第一层：按案件标识重放（客户端带服务端已返回标识的重试收敛到同一条）。
@@ -83,12 +83,12 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
 
             // 第二层：未结案组合唯一性——同一举报人对同一被举报人在同一场景下的
             // Submitted/Reviewing 案件只能有一条；重复提交返回既有案件，不落新案。
-            var combinationKey = BuildActiveCombinationKey(reportCase.TenantId, reportCase.AppId, reportCase.ReporterId, reportCase.ReportedPlayerId, reportCase.Scene);
+            var combinationKey = BuildActiveCombinationKey(reportCase.ReporterId, reportCase.ReportedPlayerId, reportCase.Scene);
             string activeCaseId;
             if (_activeCaseIdByCombination.TryGetValue(combinationKey, out activeCaseId))
             {
                 OnlineReportCase active;
-                if (_casesById.TryGetValue(BuildKey(reportCase.TenantId, reportCase.AppId, activeCaseId), out active))
+                if (_casesById.TryGetValue(BuildKey(activeCaseId), out active))
                 {
                     return Task.FromResult(active.Copy());
                 }
@@ -108,14 +108,12 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <remarks>
     /// Finds a report case in the in-memory table by scope and case id.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="reportId">案件标识 / Case id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>案件副本；不存在返回 null / Copy of the report case, or null if absent</returns>
-    public Task<OnlineReportCase> FindAsync(long tenantId, long appId, string reportId, CancellationToken cancellationToken = default)
+    public Task<OnlineReportCase> FindAsync(string reportId, CancellationToken cancellationToken = default)
     {
-        var key = BuildKey(tenantId, appId, reportId);
+        var key = BuildKey(reportId);
         lock (_syncRoot)
         {
             OnlineReportCase found;
@@ -147,7 +145,7 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
             throw new ArgumentNullException(nameof(reportCase));
         }
 
-        var key = BuildKey(reportCase.TenantId, reportCase.AppId, reportCase.ReportId);
+        var key = BuildKey(reportCase.ReportId);
         lock (_syncRoot)
         {
             OnlineReportCase current;
@@ -174,7 +172,7 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
 
             // 组合索引与 CAS 同一临界区维护：进入终态释放占位（终态后可就同一组合新建案件）；
             // 仅当该索引仍指向本案件时才允许改写——旧终态更新不得释放已归属后续新案的占位。
-            var combinationKey = BuildActiveCombinationKey(stored.TenantId, stored.AppId, stored.ReporterId, stored.ReportedPlayerId, stored.Scene);
+            var combinationKey = BuildActiveCombinationKey(stored.ReporterId, stored.ReportedPlayerId, stored.Scene);
             string indexedCaseId;
             if (_activeCaseIdByCombination.TryGetValue(combinationKey, out indexedCaseId) && string.Equals(indexedCaseId, stored.ReportId, StringComparison.Ordinal))
             {
@@ -194,12 +192,10 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <remarks>
     /// Linearly scans the whole table to list all cases submitted by a reporter.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="reporterId">举报人标识 / Reporter id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>案件副本列表 / List of report case copies</returns>
-    public Task<IReadOnlyList<OnlineReportCase>> ListByReporterAsync(long tenantId, long appId, long reporterId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineReportCase>> ListByReporterAsync(long reporterId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineReportCase>();
         lock (_syncRoot)
@@ -207,7 +203,7 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
             foreach (var pair in _casesById)
             {
                 var reportCase = pair.Value;
-                if (reportCase.TenantId == tenantId && reportCase.AppId == appId && reportCase.ReporterId == reporterId)
+                if (reportCase.ReporterId == reporterId)
                 {
                     result.Add(reportCase.Copy());
                 }
@@ -223,12 +219,10 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <remarks>
     /// Linearly scans the whole table to list cases in the scope with the given state (input for the admin pending queue).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="state">案件状态 / Case state</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>案件副本列表 / List of report case copies</returns>
-    public Task<IReadOnlyList<OnlineReportCase>> ListByStateAsync(long tenantId, long appId, OnlineReportState state, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineReportCase>> ListByStateAsync(OnlineReportState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineReportCase>();
         lock (_syncRoot)
@@ -236,7 +230,7 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
             foreach (var pair in _casesById)
             {
                 var reportCase = pair.Value;
-                if (reportCase.TenantId == tenantId && reportCase.AppId == appId && reportCase.State == state)
+                if (reportCase.State == state)
                 {
                     result.Add(reportCase.Copy());
                 }
@@ -249,27 +243,23 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <summary>
     /// 构造案件索引键（作用域 + 案件标识）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="reportId">案件标识。</param>
     /// <returns>索引键。</returns>
-    private static string BuildKey(long tenantId, long appId, string reportId)
+    private static string BuildKey(string reportId)
     {
-        return "rpt:" + tenantId + ":" + appId + ":" + (reportId ?? string.Empty);
+        return "rpt:" + (reportId ?? string.Empty);
     }
 
     /// <summary>
     /// 构造未结案组合唯一键（作用域 + 举报人 + 被举报人 + 场景）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="reporterId">举报人。</param>
     /// <param name="reportedPlayerId">被举报人。</param>
     /// <param name="scene">举报场景。</param>
     /// <returns>组合唯一键。</returns>
-    private static string BuildActiveCombinationKey(long tenantId, long appId, long reporterId, long reportedPlayerId, OnlineReportScene scene)
+    private static string BuildActiveCombinationKey(long reporterId, long reportedPlayerId, OnlineReportScene scene)
     {
-        return "rpt-active:" + tenantId + ":" + appId + ":" + reporterId + ":" + reportedPlayerId + ":" + (int)scene;
+        return "rpt-active:" + reporterId + ":" + reportedPlayerId + ":" + (int)scene;
     }
 
     /// <summary>

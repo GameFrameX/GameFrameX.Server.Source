@@ -42,16 +42,6 @@ namespace GameFrameX.Capability.Online.Operations.GameEvents;
 public sealed class OnlineGameEventMetrics
 {
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置统计窗口起点（UTC 毫秒，含）。
     /// </summary>
     public long FromTime { get; set; }

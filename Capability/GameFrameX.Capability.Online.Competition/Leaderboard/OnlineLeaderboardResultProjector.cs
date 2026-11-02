@@ -44,7 +44,7 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 /// <para>
 /// 维护约束（红线）：
 /// (1) **载荷零信任**——结算结果只从 <see cref="IOnlineMatchResultStore"/>（结算唯一落定点）按
-/// (TenantId, AppId, MatchId) 读取，且核对调用方传入的 MatchResultId 与存储值一致；本类型不接受
+/// MatchId 读取，且核对调用方传入的 MatchResultId 与存储值一致；本类型不接受
 /// 任何调用方直接携带分数 / 结果载荷的入口（伪造标识 → ResourceNotFound，篡改载荷 → RiskControlRejected）；
 /// (2) **写入幂等**——复用 <see cref="OnlineIdempotencyService"/>，键确定性派生
 /// <c>lb-{MatchResultId}-{LeaderboardId}-{PlayerId}</c>（沿用「业务单号由结果标识派生」的既有约定），
@@ -79,7 +79,7 @@ public sealed class OnlineLeaderboardResultProjector
     /// <summary>
     /// 将一局已结算结果投影到目标榜单（幂等；逐玩家失败隔离）。
     /// </summary>
-    /// <param name="scope">生效作用域（榜单与结果的 TenantId / AppId 以此为准）。</param>
+    /// <param name="scope">生效作用域。</param>
     /// <param name="leaderboardId">目标榜单标识。</param>
     /// <param name="matchId">对局标识（据此从结算存储读取结果）。</param>
     /// <param name="expectedMatchResultId">调用方持有的结果标识（与存储值核对，防伪造载荷）。</param>
@@ -115,7 +115,7 @@ public sealed class OnlineLeaderboardResultProjector
         }
 
         var board = boardResult.Data;
-        var stored = await _matchResultStore.FindByMatchAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        var stored = await _matchResultStore.FindByMatchAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (stored == null)
         {
             return OnlineResult<OnlineLeaderboardProjectionOutcome>.Fail(OnlineErrorCode.ResourceNotFound, "对局结果不存在或未结算");
@@ -163,7 +163,7 @@ public sealed class OnlineLeaderboardResultProjector
     /// <returns>完成通知。</returns>
     private async Task ProjectEntryAsync(OnlineLeaderboard board, OnlineMatchResult result, OnlineMatchResultEntry entry, long now, OnlineLeaderboardProjectionOutcome outcome, CancellationToken cancellationToken)
     {
-        var playerScope = new OnlineScope(result.TenantId, result.AppId, result.ServerId, entry.PlayerId);
+        var playerScope = new OnlineScope(result.ServerId, entry.PlayerId);
         var idempotencyKey = BuildIdempotencyKey(result.MatchResultId, board.LeaderboardId, entry.PlayerId);
         var decision = await _idempotencyService.BeginAsync(playerScope, idempotencyKey, BuildCanonicalRequestText(result.MatchResultId, board.LeaderboardId, entry.PlayerId, entry.Score), true, cancellationToken).ConfigureAwait(false);
 

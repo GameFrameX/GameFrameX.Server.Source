@@ -62,22 +62,18 @@ public sealed class OnlineMatchQueueObserver
     /// <summary>
     /// 观测指定作用域的匹配队列。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队列观测快照。</returns>
-    public async Task<OnlineResult<OnlineMatchQueueSnapshot>> ObserveAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineMatchQueueSnapshot>> ObserveAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-        var tickets = await _store.ListAllAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
-        var assignments = await _store.ListAssignmentsAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        var tickets = await _store.ListAllAsync(cancellationToken).ConfigureAwait(false);
+        var assignments = await _store.ListAssignmentsAsync(cancellationToken).ConfigureAwait(false);
 
         var snapshot = new OnlineMatchQueueSnapshot
         {
-            TenantId = tenantId,
-            AppId = appId,
             ObservedAtTime = now,
             AssignmentCount = assignments.Count,
             Tickets = new List<OnlineMatchTicketSummary>(tickets.Count),

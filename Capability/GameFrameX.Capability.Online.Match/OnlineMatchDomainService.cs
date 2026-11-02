@@ -204,7 +204,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             return OnlineResult<OnlineMatchDomainCancel>.Fail(failureCode.Value.Code, failureCode.Value.Message);
         }
 
-        var active = await _store.FindActiveByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var active = await _store.FindActiveByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (active == null)
         {
             // 无排队票据 = 终态回执（未在排队），不算失败——协议面映射旧 420003。
@@ -242,7 +242,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             return OnlineResult<OnlineMatchDomainStatus>.Fail(failureCode.Value.Code, failureCode.Value.Message);
         }
 
-        var latest = await _store.FindLatestByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var latest = await _store.FindLatestByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (latest == null)
         {
             return OnlineResult<OnlineMatchDomainStatus>.Ok(new OnlineMatchDomainStatus { Queuing = false, Matched = false, MatchId = 0 });
@@ -330,12 +330,10 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// Resolves an assignment id to numeric match id, mode and players. Empty id fails with <c>ParameterInvalid</c>;
     /// the in-memory registration is preferred, otherwise the assignment is loaded from the ticket store and registered; a missing assignment fails with <c>ResourceNotFound</c>.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">应用标识 / Application id</param>
     /// <param name="assignmentId">撮合分配标识 / Matchmaking assignment id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>分配解析结果 / Assignment resolution result</returns>
-    public async Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(assignmentId))
         {
@@ -345,7 +343,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         var registration = FindRegistration(assignmentId);
         if (registration == null)
         {
-            var assignment = await _store.FindAssignmentAsync(tenantId, appId, assignmentId, cancellationToken).ConfigureAwait(false);
+            var assignment = await _store.FindAssignmentAsync(assignmentId, cancellationToken).ConfigureAwait(false);
             if (assignment == null)
             {
                 return OnlineResult<OnlineMatchDomainAssignment>.Fail(OnlineErrorCode.ResourceNotFound, "分配不存在");
@@ -567,13 +565,11 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>对局 Actor 结果（失败携带错误码与描述）。</returns>
     private async Task<OnlineResult<OnlineMatchActor>> ResolveOrCreateActorAsync(OnlineScope scope, AssignmentRegistration registration, string runtimeMatchId, long now, CancellationToken cancellationToken)
     {
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(runtimeMatchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             var assignment = new OnlineMatchAssignment
             {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
                 ServerId = scope.ServerId,
                 MatchId = runtimeMatchId,
                 AssignmentId = registration.AssignmentId,
@@ -591,7 +587,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             }
 
             // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径）。
-            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+            actor = await _runtime.ResolveActorAsync(runtimeMatchId, cancellationToken).ConfigureAwait(false);
             if (actor == null)
             {
                 return OnlineResult<OnlineMatchActor>.Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
@@ -654,7 +650,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>(数值对局标识, Actor, 成员)；无归属返回 null。</returns>
     private async Task<(long NumericMatchId, OnlineMatchActor Actor, OnlineMatchMember Member)?> LocatePlayerMatchAsync(OnlineScope scope, CancellationToken cancellationToken)
     {
-        var latest = await _store.FindLatestByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var latest = await _store.FindLatestByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (latest == null || latest.State != OnlineMatchTicketState.Matched || string.IsNullOrEmpty(latest.AssignmentId))
         {
             return null;
@@ -667,7 +663,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         }
 
         var runtimeMatchId = DeriveRuntimeMatchId(scope.ServerId, registration.NumericMatchId);
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(runtimeMatchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return null;
@@ -720,7 +716,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         }
 
         // 懒登记：撮合可能发生在后台 tick（等待方首次查询 / 通知推送前于此收敛为同一数值标识）。
-        var assignment = await _store.FindAssignmentAsync(ticket.TenantId, ticket.AppId, ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
+        var assignment = await _store.FindAssignmentAsync(ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
         return assignment == null ? 0 : RegisterAssignment(assignment).NumericMatchId;
     }
 
@@ -885,14 +881,14 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     }
 
     /// <summary>
-    /// 以既有作用域三元组派生玩家位作用域。
+    /// 以既有作用域派生玩家位作用域。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>玩家级作用域。</returns>
     private static OnlineScope WithPlayer(OnlineScope scope, long playerId)
     {
-        return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, playerId);
+        return new OnlineScope(scope.ServerId, playerId);
     }
 
     /// <summary>

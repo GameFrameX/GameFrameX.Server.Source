@@ -49,15 +49,7 @@ public sealed class OnlinePunishment
     /// </summary>
     public string PunishmentId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置被处罚玩家。
@@ -153,8 +145,6 @@ public sealed class OnlinePunishment
         return new OnlinePunishment
         {
             PunishmentId = PunishmentId,
-            TenantId = TenantId,
-            AppId = AppId,
             PlayerId = PlayerId,
             Kind = Kind,
             Reason = Reason,

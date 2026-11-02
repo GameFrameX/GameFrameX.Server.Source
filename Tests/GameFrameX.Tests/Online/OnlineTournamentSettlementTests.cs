@@ -209,7 +209,7 @@ namespace GameFrameX.Tests.Online
             Assert.True((await harness.SettleTournamentAsync("t1")).IsSuccess);
 
             // 从另一个区服作用域重复触发（无归属服 → 幂等键不随调用方区服漂移）。
-            var otherServerScope = new GameFrameX.Capability.Online.Abstractions.Scope.OnlineScope(OnlineTournamentTestHarness.TenantId, OnlineTournamentTestHarness.AppId, 999, 0);
+            var otherServerScope = new GameFrameX.Capability.Online.Abstractions.Scope.OnlineScope(999, 0);
             var replay = await harness.TournamentService.SettleAsync(otherServerScope, "t1", OnlineTournamentTestHarness.Now + 400);
 
             Assert.True(replay.IsSuccess, replay.Message);

@@ -192,24 +192,24 @@ namespace GameFrameX.Tests.Online
                 }
             }
 
-            public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+            public Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindWalletAsync(tenantId, appId, playerId, currencyId, cancellationToken);
+                return _inner.FindWalletAsync(playerId, currencyId, cancellationToken);
             }
 
-            public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+            public Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindInventoryAsync(tenantId, appId, playerId, itemId, cancellationToken);
+                return _inner.FindInventoryAsync(playerId, itemId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListWalletAccountsAsync(playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListInventoryStacksAsync(playerId, cancellationToken);
             }
 
             public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
@@ -222,14 +222,14 @@ namespace GameFrameX.Tests.Online
                 return _inner.FindLedgerEntriesByTransactionIdAsync(transactionId, cancellationToken);
             }
 
-            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.SumLedgerDeltasByAssetAsync(playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+                return _inner.ListPlayerIdsAsync(cancellationToken);
             }
 
             /// <summary>
@@ -240,8 +240,6 @@ namespace GameFrameX.Tests.Online
                 var constructor = typeof(OnlineAssetChangeBatch).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).Single();
                 var header = new OnlineLedgerHeader
                 {
-                    TenantId = source.TenantId,
-                    AppId = source.AppId,
                     PlayerId = source.PlayerId,
                     HomeServerId = source.HomeServerId,
                     InitiatingServerId = source.InitiatingServerId,
@@ -357,7 +355,7 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private static OnlineGrantRequest BuildRequest(long playerId, OnlineAssetChangeSource source, string key, OnlineAssetChangeLine line, params OnlineAssetChangeLine[] moreLines)
         {
-            var scope = new OnlineScope(1, 10, 100, playerId);
+            var scope = new OnlineScope(100, playerId);
             var lines = new List<OnlineAssetChangeLine> { line };
             lines.AddRange(moreLines);
             return new OnlineGrantRequest(scope, source, OnlineGrantOperation.Grant, "赛季结算奖励", "bo-" + key, lines, key);
@@ -388,7 +386,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(second.IsSuccess);
             Assert.True(second.Data.IsReplay);
             Assert.Equal(first.Data.TransactionId, second.Data.TransactionId);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
             var entries = await harness.AssetStore.FindLedgerEntriesByTransactionIdAsync(first.Data.TransactionId);
             Assert.Single(entries);
@@ -414,7 +412,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(first.IsSuccess);
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.VersionConflict, result.Code);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
         }
 
@@ -427,7 +425,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var harness = new Harness();
             var service = harness.CreateService();
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act / Assert
             var compensationSource = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.SystemCompensation, OnlineGrantOperation.Adjust, "r", "bo-x", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-c") { OperatorId = "op-1" });
@@ -468,9 +466,9 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, result.Code);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Single(ledger);
             Assert.Contains(harness.AlertSink.Records, record => record.Kind == OnlineAssetAlertKind.NegativeBalanceAttempt);
         }
@@ -495,9 +493,9 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal(5, results.Count(result => result.IsSuccess));
             Assert.Equal(5, results.Count(result => !result.IsSuccess));
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(0, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Equal(6, ledger.Count);
         }
 
@@ -557,13 +555,12 @@ namespace GameFrameX.Tests.Online
             // Act
             var result = await service.ExecuteAsync(request);
 
-            // Assert
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.InternalError, result.Code);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.NotNull(wallet);
             Assert.Equal(0, wallet.Balance);
-            var stack = await harness.AssetStore.FindInventoryAsync(1, 10, 10001, "sword");
+            var stack = await harness.AssetStore.FindInventoryAsync(10001, "sword");
             Assert.Null(stack);
 
             var compensated = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Compensated);
@@ -614,15 +611,15 @@ namespace GameFrameX.Tests.Online
             var topUp = await service.ExecuteAsync(BuildRequest(10001, OnlineAssetChangeSource.PaymentConfirm, "key-topup", new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100)));
             Assert.True(topUp.IsSuccess);
 
-            var entriesBefore = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var entriesBefore = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
 
             // Act：重启恢复
             var recovered = await service.RecoverAsync();
 
             // Assert：不得追加第二条反转（账本条目数与余额都不变）
-            var entriesAfter = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var entriesAfter = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Equal(entriesBefore.Count, entriesAfter.Count);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
             Assert.Equal(1, recovered);
         }
@@ -650,7 +647,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.InternalError, crashed.Code);
             var failed = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Failed);
             Assert.Single(failed);
-            var walletAfterCrash = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var walletAfterCrash = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Null(walletAfterCrash);
 
             // Act（第二段：换新幂等键重试）
@@ -658,7 +655,7 @@ namespace GameFrameX.Tests.Online
 
             // Assert
             Assert.True(retried.IsSuccess);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
         }
 
@@ -691,9 +688,9 @@ namespace GameFrameX.Tests.Online
             Assert.Single(succeeded);
             Assert.True(replayed.IsSuccess);
             Assert.True(replayed.Data.IsReplay);
-            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            var wallet = await harness.AssetStore.FindWalletAsync(10001, "gold");
             Assert.Equal(100, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Single(ledger);
         }
 
@@ -711,8 +708,6 @@ namespace GameFrameX.Tests.Online
                 TransactionId = "tx-orphan-1",
                 IdempotencyKey = "key-orphan",
                 RequestDigest = string.Empty,
-                TenantId = 1,
-                AppId = 10,
                 PlayerId = 10001,
                 HomeServerId = 100,
                 InitiatingServerId = 100,
@@ -808,8 +803,6 @@ namespace GameFrameX.Tests.Online
                 TransactionId = transactionId,
                 IdempotencyKey = idempotencyKey,
                 RequestDigest = string.Empty,
-                TenantId = 1,
-                AppId = 10,
                 PlayerId = 10001,
                 HomeServerId = 100,
                 InitiatingServerId = 100,
@@ -834,8 +827,6 @@ namespace GameFrameX.Tests.Online
         {
             var header = new OnlineLedgerHeader
             {
-                TenantId = 1,
-                AppId = 10,
                 PlayerId = playerId,
                 HomeServerId = 100,
                 InitiatingServerId = 100,
@@ -864,24 +855,24 @@ namespace GameFrameX.Tests.Online
                 _fabricate = fabricate;
             }
 
-            public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+            public Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindWalletAsync(tenantId, appId, playerId, currencyId, cancellationToken);
+                return _inner.FindWalletAsync(playerId, currencyId, cancellationToken);
             }
 
-            public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+            public Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindInventoryAsync(tenantId, appId, playerId, itemId, cancellationToken);
+                return _inner.FindInventoryAsync(playerId, itemId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListWalletAccountsAsync(playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListInventoryStacksAsync(playerId, cancellationToken);
             }
 
             public Task<OnlineAssetApplyResult> ApplyAsync(OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default)
@@ -904,14 +895,14 @@ namespace GameFrameX.Tests.Online
                 return _inner.FindLedgerEntriesByTransactionIdAsync(transactionId, cancellationToken);
             }
 
-            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.SumLedgerDeltasByAssetAsync(playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+                return _inner.ListPlayerIdsAsync(cancellationToken);
             }
         }
     }

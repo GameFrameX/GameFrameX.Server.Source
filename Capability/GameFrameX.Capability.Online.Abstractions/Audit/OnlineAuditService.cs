@@ -44,15 +44,15 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 /// 维护约束（红线）：
 /// ① **只写审计存储**——本服务不持有任何其它域服务/存储，不触碰 Online Actor 与资产状态
 /// （「不得直写」由类型系统结构性保证，对齐「只依赖读取面」在写入侧的镜像）；
-/// ② **审计完整性**：接入条目缺 操作者/原因/标识/类型/租户/App 或域未知 → 拒绝
+/// ② **审计完整性**：接入条目缺 操作者/原因/标识/类型 或域未知 → 拒绝
 /// 4001（宁拒毋缺——「关键操作无审计次数 = 0」的服务端结构性保障：不完整审计进不了链路）；
 /// ③ **幂等**：EventId 全局唯一，判重与落档在存储临界区内完成，重复接入回执
 /// <c>IsDuplicate=true</c>、无副作用；
 /// ④ **脱敏**：落档前经 <see cref="OnlineEventSanitizer"/> 生成 SanitizedFields，
 /// 存储与检索自落档起结构性无明文敏感值；
-/// ⑤ **检索锚定**：QueryAsync 的作用域只锚定 TenantId/AppId 两键——审计是跨区服检索域
-/// （支付/远程配置等 App 级审计 ServerId=0），区服/玩家/操作者等维度走 <see cref="OnlineAuditQuery"/>
-/// 可选过滤；scope.ServerId/scope.PlayerId 不参与审计过滤，防止误把跨域联查切割成单区服视角。
+/// ⑤ **检索无锚点**：单键化（D4）后审计检索不再有作用域锚定键——审计是跨区服检索域
+/// （支付/远程配置等全局级审计 ServerId=0），区服/玩家/操作者等维度走 <see cref="OnlineAuditQuery"/>
+/// 可选过滤；防止误把跨域联查切割成单区服视角。
 /// </para>
 /// </summary>
 public sealed class OnlineAuditService : IOnlineAuditReader
@@ -125,8 +125,6 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             Domain = entry.Domain,
             EventType = entry.EventType,
             OccurredTime = entry.OccurredTime,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             ServerId = entry.ServerId,
             PlayerId = entry.PlayerId,
             OperatorId = entry.OperatorId,
@@ -142,30 +140,20 @@ public sealed class OnlineAuditService : IOnlineAuditReader
     }
 
     /// <summary>
-    /// 跨域检索统一审计（只读；按作用域两键锚定 + 可选维度过滤 + keyset 全序分页）。
+    /// 跨域检索统一审计（只读；可选维度过滤 + keyset 全序分页；单键化 D4 后无作用域锚定键）。
     /// </summary>
-    /// <param name="scope">生效作用域（只锚定 TenantId/AppId 两键，须均大于 0；区服/玩家走查询条件）。</param>
     /// <param name="query">查询条件；传 <see langword="null"/> 等价于默认条件（全部域、首页、默认页大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>审计分页结果；作用域两键缺失、页大小越界、游标非法返回 <see cref="OnlineErrorCode.ParameterInvalid"/>。
-    /// 无任何数据时返回**空行集**（与跨作用域读取同构，不是错误）。</returns>
-    public async Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineScope scope, OnlineAuditQuery query = null, CancellationToken cancellationToken = default)
+    /// <returns>审计分页结果；页大小越界、游标非法返回 <see cref="OnlineErrorCode.ParameterInvalid"/>。
+    /// 无任何数据时返回**空行集**（与无匹配同构，不是错误）。</returns>
+    public async Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineAuditQuery query = null, CancellationToken cancellationToken = default)
     {
-        if (scope == null)
-        {
-            throw new ArgumentNullException(nameof(scope));
-        }
-
-        if (scope.TenantId <= 0 || scope.AppId <= 0)
-        {
-            return OnlineResult<OnlineAuditPage>.Fail(OnlineErrorCode.ParameterInvalid, "统一审计检索必须锚定租户与 App（TenantId / AppId 大于 0；区服与玩家走查询条件可选过滤）");
-        }
-
         var request = query;
         if (request == null)
         {
             request = new OnlineAuditQuery();
         }
+
 
         var pageSize = request.PageSize <= 0 ? DefaultPageSize : request.PageSize;
         if (pageSize > MaxPageSize)
@@ -181,12 +169,10 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             return OnlineResult<OnlineAuditPage>.Fail(OnlineErrorCode.ParameterInvalid, "游标格式非法（不透明令牌只回传不构造）");
         }
 
-        // 反预言同构：存储按 (Tenant, App) 索引结构性隔离，跨作用域查询与「无数据」都得到空行集；
+        // 反预言同构：存储单桶全序索引，无匹配查询与「无数据」都得到空行集；
         // 过滤 + keyset 游标 + 全序排序 + 页大小下推存储层完成（服务层只做校验、游标编解码与页组装）。
         var storeQuery = new OnlineAuditStoreQuery
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             Domains = request.Domains,
             PlayerId = request.PlayerId,
             OperatorId = request.OperatorId,
@@ -251,14 +237,9 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "操作原因（Reason）必填——审计完整性要求含原因");
         }
 
-        if (entry.TenantId <= 0 || entry.AppId <= 0)
-        {
-            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "审计条目必须携带租户与 App（TenantId / AppId 大于 0）");
-        }
-
         if (entry.ServerId < 0 || entry.PlayerId < 0)
         {
-            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "区服与玩家标识不可为负（0 分别表示 App 级操作与系统级操作）");
+            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "区服与玩家标识不可为负（0 分别表示全局级操作与系统级操作）");
         }
 
         return null;
@@ -300,8 +281,6 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             EventType = entry.EventType,
             OccurredTime = entry.OccurredTime,
             SchemaVersion = 1,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             ServerId = entry.ServerId,
             PlayerId = entry.PlayerId,
             Source = entry.Source,

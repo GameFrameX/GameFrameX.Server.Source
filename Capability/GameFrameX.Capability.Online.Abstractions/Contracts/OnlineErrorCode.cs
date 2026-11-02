@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// <summary>
 /// GFX Online 平台协议错误码（八段分层，Server 侧承载）。
 /// <para>
-/// 协议码分段固定：<c>1xxx</c> 系统与网络 / <c>2xxx</c> 鉴权与 Session / <c>3xxx</c> 租户·App·Server 作用域 /
+/// 协议码分段固定：<c>1xxx</c> 系统与网络 / <c>2xxx</c> 鉴权与 Session / <c>3xxx</c> 区服作用域（单键化 D4 后租户位/App 位退役，3002/3003 保留数值契约不再产生） /
 /// <c>4xxx</c> 参数与资源 / <c>5xxx</c> 业务状态 / <c>6xxx</c> 幂等与冲突 / <c>7xxx</c> 限流与风控 / <c>8xxx</c> 临时失败与可重试；
 /// <c>0</c> 表示成功。成员集合与 Admin 侧错误码表快照（唯一权威详表）的 23 个错误成员一一同构，
 /// Admin 按「协议段 Nxxx ↔ 镜像段 32(N-1)」映射消费（Admin 仓 <c>OnlineErrorCode</c> 镜像码 32000001～32700002）。
@@ -84,7 +84,7 @@ public enum OnlineErrorCode
     /// </summary>
     SessionInvalid = 2003,
 
-    // ---- 段 3xxx：租户、App、Server 作用域 ----
+    // ---- 段 3xxx：区服作用域（单键化 D4 后只剩区服位；3002/3003 为保留位不再产生） ----
 
     /// <summary>
     /// 作用域越界拒绝（泛化越权：不归属其他更具体作用域错误时的兜底拒绝码）。
@@ -92,22 +92,22 @@ public enum OnlineErrorCode
     ScopeDenied = 3001,
 
     /// <summary>
-    /// 跨租户请求被拒绝（作用域三元组的租户与鉴权上下文不一致）。
+    /// 跨租户请求被拒绝（保留位：单键化 D4 后作用域无租户位，本码不再产生；数值契约与 Admin 镜像锁定不动）。
     /// </summary>
     CrossTenantDenied = 3002,
 
     /// <summary>
-    /// 跨 App 请求被拒绝（目标资源不归属当前 AppId）。
+    /// 跨 App 请求被拒绝（保留位：单键化 D4 后作用域无 App 位，本码不再产生；数值契约与 Admin 镜像锁定不动）。
     /// </summary>
     CrossAppDenied = 3003,
 
     /// <summary>
-    /// 区服作用域非法（ServerId 不存在或不归属当前 AppId）。
+    /// 区服作用域非法（ServerId 不存在或不归属当前部署）。
     /// </summary>
     ServerScopeDenied = 3004,
 
     /// <summary>
-    /// 作用域缺失（TenantId/AppId/ServerId 未提供且无法从鉴权上下文补齐）。
+    /// 作用域缺失（ServerId 未提供且无法从鉴权上下文补齐）。
     /// </summary>
     ScopeMissing = 3005,
 

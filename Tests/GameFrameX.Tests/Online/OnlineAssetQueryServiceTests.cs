@@ -115,7 +115,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var harness = new Harness();
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             await harness.CreateGrantService().ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MailAttachment, OnlineGrantOperation.Grant, "邮件附件", "bo-q1", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100), new OnlineAssetChangeLine(OnlineAssetKind.Item, "sword", 2) }, "key-q1"));
             var query = harness.CreateQueryService();
 
@@ -145,13 +145,13 @@ namespace GameFrameX.Tests.Online
             var grantService = harness.CreateGrantService();
             for (var index = 1; index <= 5; index++)
             {
-                var scope = new OnlineScope(1, 10, 100, 10001);
+                var scope = new OnlineScope(100, 10001);
                 var ok = await grantService.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "五连发", "bo-p" + index, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 10) }, "key-p" + index));
                 Assert.True(ok.IsSuccess);
             }
 
             var query = harness.CreateQueryService();
-            var scope2 = new OnlineScope(1, 10, 100, 10001);
+            var scope2 = new OnlineScope(100, 10001);
 
             // Act
             var page1 = await query.GetLedgerPageAsync(scope2, string.Empty, 4);
@@ -184,7 +184,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var harness = new Harness();
             var query = harness.CreateQueryService();
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
 
             // Act
             var result = await query.GetLedgerPageAsync(scope, cursor, maxCount);
@@ -202,7 +202,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var harness = new Harness();
-            var scope = new OnlineScope(1, 10, 100, 10001);
+            var scope = new OnlineScope(100, 10001);
             var granted = await harness.CreateGrantService().ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Reissue, "客诉补发", "bo-detail", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 88) }, "key-detail") { OperatorId = "op-42" });
             var query = harness.CreateQueryService();
 
@@ -229,10 +229,10 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var harness = new Harness();
-            var ownerScope = new OnlineScope(1, 10, 100, 10001);
+            var ownerScope = new OnlineScope(100, 10001);
             var granted = await harness.CreateGrantService().ExecuteAsync(new OnlineGrantRequest(ownerScope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "赛果", "bo-cross", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 10) }, "key-cross"));
             var query = harness.CreateQueryService();
-            var strangerScope = new OnlineScope(1, 10, 100, 10999);
+            var strangerScope = new OnlineScope(100, 10999);
 
             // Act
             var crossScope = await query.GetTransactionDetailAsync(strangerScope, granted.Data.TransactionId);
@@ -254,7 +254,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var harness = new Harness();
             var query = harness.CreateQueryService();
-            var scope = new OnlineScope(1, 10, 100, 0);
+            var scope = new OnlineScope(100, 0);
 
             // Act
             var result = await query.GetWalletAsync(scope, "gold");

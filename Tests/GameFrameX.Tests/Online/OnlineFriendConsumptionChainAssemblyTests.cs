@@ -51,11 +51,6 @@ namespace GameFrameX.Tests.Online
     [Collection(CapabilityRuntimeCollection.Name)]
     public class OnlineFriendConsumptionChainAssemblyTests
     {
-        /// <summary>测试用租户标识（与族配置段授权作用域一致）。</summary>
-        private const long TenantId = OnlineCapabilityTestHarness.TenantId;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = OnlineCapabilityTestHarness.AppId;
 
         /// <summary>测试用区服标识（与族配置段授权作用域一致）。</summary>
         private const long ServerId = OnlineCapabilityTestHarness.ServerId;
@@ -67,13 +62,13 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 构造玩家作用域（作用域三元组与测试常量一致）。
+        /// 构造玩家作用域（作用域区服键与测试常量一致）。
         /// </summary>
         /// <param name="playerId">玩家标识。</param>
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>
@@ -86,7 +81,7 @@ namespace GameFrameX.Tests.Online
         {
             var options = new CapabilityCompositionOptions(OnlineCapabilityTestHarness.FamilySection(), new CollectingCapabilityAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, },
+                HostOptions = new CapabilityHostOptions { ServerId = ServerId, },
             };
             options.Override<IOnlinePlayerDirectory>(directory);
             options.Override<IOnlineHotfixRollbackExecutor>(new OnlineCapabilityTestHarness.NoopHotfixRollbackExecutor());
@@ -97,20 +92,16 @@ namespace GameFrameX.Tests.Online
         /// 直接向存储落一条已超期的待答复请求（清扫用例的种子数据；不经过服务以控制时间戳）。
         /// </summary>
         /// <param name="store">好友存储。</param>
-        /// <param name="tenantId">租户标识。</param>
-        /// <param name="appId">App 标识。</param>
         /// <param name="requesterId">发起方。</param>
         /// <param name="addresseeId">被请求方。</param>
         /// <returns>落库后的关系记录。</returns>
-        private static async Task<OnlineFriendship> SeedExpiredRequestAsync(IOnlineFriendStore store, long tenantId, long appId, long requesterId, long addresseeId)
+        private static async Task<OnlineFriendship> SeedExpiredRequestAsync(IOnlineFriendStore store, long requesterId, long addresseeId)
         {
             OnlineFriendship.Canonicalize(requesterId, addresseeId, out var low, out var high);
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             return await store.SaveIfAbsentAsync(new OnlineFriendship
             {
                 FriendshipId = "frd-seed-" + Guid.NewGuid().ToString("N"),
-                TenantId = tenantId,
-                AppId = appId,
                 ServerId = ServerId,
                 LowPlayerId = low,
                 HighPlayerId = high,
@@ -162,14 +153,14 @@ namespace GameFrameX.Tests.Online
 
                 var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo, "corr-2");
                 Assert.True(request.IsSuccess);
-                Assert.NotNull(await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo));
+                Assert.NotNull(await store.FindAsync(PlayerOne, PlayerTwo));
 
-                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                await SeedExpiredRequestAsync(store, PlayerTwo, PlayerOne + 10);
                 await runtime.Host.Scheduler.TickAsync();
 
-                var expired = await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                var expired = await store.FindAsync(PlayerTwo, PlayerOne + 10);
                 Assert.Equal(OnlineFriendshipState.Expired, expired.State);
-                var live = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+                var live = await store.FindAsync(PlayerOne, PlayerTwo);
                 Assert.Equal(OnlineFriendshipState.Requested, live.State);
             });
         }
@@ -182,7 +173,7 @@ namespace GameFrameX.Tests.Online
         public async Task OverrideFriendStore_PreSeed_DrivesServiceAndSweepOnSameStateSource()
         {
             var preSeeded = new InMemoryOnlineFriendStore();
-            await SeedExpiredRequestAsync(preSeeded, TenantId, AppId, PlayerOne, PlayerTwo);
+            await SeedExpiredRequestAsync(preSeeded, PlayerOne, PlayerTwo);
 
             await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
             {
@@ -192,11 +183,11 @@ namespace GameFrameX.Tests.Online
                 var service = runtime.Host.Services.GetService<OnlineFriendService>();
                 var request = await service.RequestAsync(CreatePlayerScope(PlayerTwo), PlayerOne + 10);
                 Assert.True(request.IsSuccess);
-                Assert.NotNull(await preSeeded.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10));
+                Assert.NotNull(await preSeeded.FindAsync(PlayerTwo, PlayerOne + 10));
 
                 await runtime.Host.Scheduler.TickAsync();
 
-                var expired = await preSeeded.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+                var expired = await preSeeded.FindAsync(PlayerOne, PlayerTwo);
                 Assert.Equal(OnlineFriendshipState.Expired, expired.State);
             }, null, options => options.Override<IOnlineFriendStore>(preSeeded));
         }
@@ -291,25 +282,22 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 清扫的作用域隔离：滴答 job 经族基建授权作用域锚定租户 / App——
-        /// 其余租户或 App 的超期请求不被本宿主触碰。
+        /// 清扫的全局覆盖：好友关系为全局键，滴答 job 终结全部超期请求（不同玩家对互不遮蔽）。
         /// </summary>
         [Fact]
-        public async Task Sweep_ScopedToAuthorizedTenantAndApp()
+        public async Task Sweep_ExpiredRequestsAcrossPlayerPairs_AllSwept()
         {
             await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
             {
                 var store = runtime.Host.Services.GetService<IOnlineFriendStore>();
-                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
-                await SeedExpiredRequestAsync(store, TenantId + 1, AppId, PlayerOne, PlayerTwo);
-                await SeedExpiredRequestAsync(store, TenantId, AppId + 1, PlayerOne, PlayerTwo);
+                await SeedExpiredRequestAsync(store, PlayerOne, PlayerTwo);
+                await SeedExpiredRequestAsync(store, PlayerTwo, PlayerOne + 10);
                 await runtime.Host.StartAsync();
 
                 await runtime.Host.Scheduler.TickAsync();
 
-                Assert.Equal(OnlineFriendshipState.Expired, (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo)).State);
-                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId + 1, AppId, PlayerOne, PlayerTwo)).State);
-                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId + 1, PlayerOne, PlayerTwo)).State);
+                Assert.Equal(OnlineFriendshipState.Expired, (await store.FindAsync(PlayerOne, PlayerTwo)).State);
+                Assert.Equal(OnlineFriendshipState.Expired, (await store.FindAsync(PlayerTwo, PlayerOne + 10)).State);
             });
         }
 
@@ -325,14 +313,14 @@ namespace GameFrameX.Tests.Online
                 var store = runtime.Host.Services.GetService<IOnlineFriendStore>();
 
                 await runtime.Host.StartAsync();
-                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
-                var swept = await UntilAsync(async () => (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo))?.State == OnlineFriendshipState.Expired, 5000);
+                await SeedExpiredRequestAsync(store, PlayerOne, PlayerTwo);
+                var swept = await UntilAsync(async () => (await store.FindAsync(PlayerOne, PlayerTwo))?.State == OnlineFriendshipState.Expired, 5000);
                 Assert.True(swept);
 
                 await runtime.Host.StopAsync();
-                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                await SeedExpiredRequestAsync(store, PlayerTwo, PlayerOne + 10);
                 await Task.Delay(600);
-                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10)).State);
+                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(PlayerTwo, PlayerOne + 10)).State);
             }, null, options => options.HostOptions.SchedulerIntervalMilliseconds = 100);
         }
 
@@ -371,13 +359,11 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>按名称子串检索。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="keyword">名称关键字。</param>
             /// <param name="limit">返回条数上限。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>匹配的目录条目。</returns>
-            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(string keyword, int limit, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlinePlayerDirectoryEntry>();
                 foreach (var entry in _entries)
@@ -397,12 +383,10 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>按标识批量解析。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="playerIds">玩家标识集合。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>命中标识的目录条目。</returns>
-            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlinePlayerDirectoryEntry>();
                 foreach (var entry in _entries)
@@ -435,12 +419,10 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>白名单判定。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>在白名单中返回 true。</returns>
-            public Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<bool> IsOnlineAsync(long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_online.Contains(playerId));
             }
@@ -476,69 +458,57 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>委托内层。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="leftPlayerId">一侧玩家标识。</param>
             /// <param name="rightPlayerId">另一侧玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>关系副本；不存在返回 null。</returns>
-            public Task<OnlineFriendship> FindAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
+            public Task<OnlineFriendship> FindAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindAsync(tenantId, appId, leftPlayerId, rightPlayerId, cancellationToken);
+                return _inner.FindAsync(leftPlayerId, rightPlayerId, cancellationToken);
             }
 
             /// <summary>委托内层。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="transition">状态迁移载荷。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-            public Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default)
+            public Task<OnlineFriendship> UpdateStateAsync(FriendshipStateTransition transition, CancellationToken cancellationToken = default)
             {
-                return _inner.UpdateStateAsync(tenantId, appId, transition, cancellationToken);
+                return _inner.UpdateStateAsync(transition, cancellationToken);
             }
 
             /// <summary>委托内层。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="transition">状态迁移载荷。</param>
             /// <param name="establishedFriendLimit">已建立好友数上限（<= 0 表示不启用上限判定）。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 FriendLimitReached；CAS 失败两者皆空。</returns>
-            public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+            public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
             {
-                return _inner.UpdateStateWithFriendLimitAsync(tenantId, appId, transition, establishedFriendLimit, cancellationToken);
+                return _inner.UpdateStateWithFriendLimitAsync(transition, establishedFriendLimit, cancellationToken);
             }
 
             /// <summary>委托内层。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="renewal">重新发起载荷。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-            public Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default)
+            public Task<OnlineFriendship> RenewRequestAsync(FriendshipRenewal renewal, CancellationToken cancellationToken = default)
             {
-                return _inner.RenewRequestAsync(tenantId, appId, renewal, cancellationToken);
+                return _inner.RenewRequestAsync(renewal, cancellationToken);
             }
 
             /// <summary>委托内层。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>关系副本列表。</returns>
-            public Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListByPlayerAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListByPlayerAsync(playerId, cancellationToken);
             }
 
             /// <summary>清扫输入面：计数后抛异常。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="state">关系状态。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>不返回（恒抛）。</returns>
-            public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(OnlineFriendshipState state, CancellationToken cancellationToken = default)
             {
                 Interlocked.Increment(ref _sweepInputFailures);
                 throw new InvalidOperationException("friend sweep input failure (test)");

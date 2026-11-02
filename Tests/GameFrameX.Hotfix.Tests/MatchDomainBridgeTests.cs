@@ -72,8 +72,6 @@ public sealed class MatchDomainBridgeTests
             // 作用域玩家位 = 会话 playerId（R2），授权提供者的玩家位不可覆盖。
             Assert.NotNull(face.LastEnqueueScope);
             Assert.Equal(PlayerOne, face.LastEnqueueScope.PlayerId);
-            Assert.Equal(HotfixBridgeStubScopeProvider.TenantId, face.LastEnqueueScope.TenantId);
-            Assert.Equal(HotfixBridgeStubScopeProvider.AppId, face.LastEnqueueScope.AppId);
             Assert.Equal(HotfixBridgeStubScopeProvider.ServerId, face.LastEnqueueScope.ServerId);
             Assert.Equal((int)MatchMode.OneVsOne, face.LastEnqueueMode);
             Assert.Equal(1000, face.LastEnqueueRating);
@@ -395,7 +393,7 @@ public sealed class MatchDomainBridgeTests
             }));
         }
 
-        public Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default)
+        public Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default)
         {
             CallCount++;
             return Task.FromResult(OnlineResult<OnlineMatchDomainAssignment>.Fail(OnlineErrorCode.ResourceNotFound, "stub"));

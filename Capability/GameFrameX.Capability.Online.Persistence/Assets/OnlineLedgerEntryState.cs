@@ -38,7 +38,7 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// 资产红线：账本只追加——适配层仅经插入路径写本表（<c>SaveOneAsync</c>），结构性不提供任何
 /// 修改/删除调用；<see cref="EntryId"/> 单列唯一索引兜底条目级幂等。玩家维度账本序
 /// <see cref="SequenceNumber"/> 由 <c>NextSequenceAsync</c> 玩家键控序列分配
-/// （"tenant:app:player"，原子单调、重启不复用——接管 InMemory 内存计数器）。
+/// （<c>OnlineRowKey.LedgerSequence</c>，原子单调、重启不复用——接管 InMemory 内存计数器）。
 /// 账本是余额/库存对账的事实源（快照为派生面，崩溃残留由对账服务重算兜底）。
 /// </para>
 /// </summary>
@@ -54,16 +54,6 @@ public sealed class OnlineLedgerEntryState : BaseCacheState
     /// 获取或设置所属交易标识。
     /// </summary>
     public string TransactionId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

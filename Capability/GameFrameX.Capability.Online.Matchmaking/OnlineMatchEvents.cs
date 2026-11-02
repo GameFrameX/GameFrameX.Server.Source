@@ -55,8 +55,6 @@ public static class OnlineMatchEvents
     /// <summary>
     /// 构造票据状态变更事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="ticketId">票据标识（可空；载荷落空字符串）。</param>
     /// <param name="partyId">来源队伍标识（可空；载荷落空字符串）。</param>
@@ -68,7 +66,7 @@ public static class OnlineMatchEvents
     /// <param name="toState">目标状态名。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTicketChanged(long tenantId, long appId, long serverId, string ticketId, string partyId, string failureReason, string assignmentId, int playerCount, long firstPlayerId, string fromState, string toState, string correlationId = null)
+    public static OnlineEvent CreateTicketChanged(long serverId, string ticketId, string partyId, string failureReason, string assignmentId, int playerCount, long firstPlayerId, string fromState, string toState, string correlationId = null)
     {
         var payload = new TicketChangedPayload
         {
@@ -96,8 +94,6 @@ public static class OnlineMatchEvents
             EventType = TicketChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = firstPlayerId,
             Source = Source,
@@ -110,8 +106,6 @@ public static class OnlineMatchEvents
     /// <summary>
     /// 构造对局分配事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="assignmentId">分配标识（可空；载荷落空字符串）。</param>
     /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
@@ -122,7 +116,7 @@ public static class OnlineMatchEvents
     /// <param name="ticketIds">消费的票据集合（可空；载荷落空集合）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateAssignmentCreated(long tenantId, long appId, long serverId, string assignmentId, string matchId, int mode, int region, int playerCount, long firstPlayerId, IReadOnlyList<string> ticketIds, string correlationId = null)
+    public static OnlineEvent CreateAssignmentCreated(long serverId, string assignmentId, string matchId, int mode, int region, int playerCount, long firstPlayerId, IReadOnlyList<string> ticketIds, string correlationId = null)
     {
         var ticketCount = ticketIds == null ? 0 : ticketIds.Count;
         var payload = new AssignmentCreatedPayload
@@ -149,8 +143,6 @@ public static class OnlineMatchEvents
             EventType = AssignmentCreated,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = firstPlayerId,
             Source = Source,

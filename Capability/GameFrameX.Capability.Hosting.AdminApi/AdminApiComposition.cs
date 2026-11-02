@@ -101,7 +101,7 @@ public static class AdminApiComposition
             registry,
             errorCodes,
             scopeAdapter,
-            new AdminApiClaimedScope(host.TenantId, host.AppId, host.ServerId),
+            new AdminApiClaimedScope(host.ServerId),
             idempotencyAdapter,
             host.Report,
             host.Services);

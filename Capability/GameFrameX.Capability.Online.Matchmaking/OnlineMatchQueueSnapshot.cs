@@ -41,16 +41,6 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 public sealed class OnlineMatchQueueSnapshot
 {
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置观测时刻（UTC 毫秒）。
     /// </summary>
     public long ObservedAtTime { get; set; }

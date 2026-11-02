@@ -316,8 +316,6 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
             EventId = view.EventId,
             EventType = view.EventType,
             OccurredTime = view.OccurredTime,
-            TenantId = view.TenantId,
-            AppId = view.AppId,
             ServerId = view.ServerId,
             PlayerId = view.PlayerId,
             OperatorId = "online-runtime",

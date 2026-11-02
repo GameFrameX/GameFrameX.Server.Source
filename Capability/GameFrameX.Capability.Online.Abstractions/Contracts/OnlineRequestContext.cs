@@ -33,8 +33,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// Online 公共请求上下文（任何 Online 请求至少包含 <c>RequestId</c>、<c>ProtocolVersion</c>、
 /// <c>ClientVersion</c>、<c>Timestamp</c>；产生副作用的请求必须携带 <c>IdempotencyKey</c>）。
 /// <para>
-/// 维护约束：<c>TenantId</c>/<c>AppId</c>/<c>ServerId</c> 以鉴权或服务端路由为准，不由本上下文的客户端字段直接覆盖
-/// （作用域统一经 <c>OnlineScope</c> 由服务端管线注入）；<c>RequestId</c> 标识一次请求尝试，
+/// 维护约束：<c>ServerId</c> 以鉴权或服务端路由为准，不由本上下文的客户端字段直接覆盖
+/// （作用域统一经 <c>OnlineScope</c> 由服务端管线注入；单键化 D4 后无租户位/App 位）；<c>RequestId</c> 标识一次请求尝试，
 /// <c>IdempotencyKey</c> 标识一次业务意图，二者语义不同不可混用。
 /// </para>
 /// </summary>

@@ -65,8 +65,6 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造消息发送事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="messageId">消息标识（可空；载荷落空字符串）。</param>
     /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
     /// <param name="channelKind">频道类型名。</param>
@@ -75,7 +73,7 @@ public static class OnlineChatEvents
     /// <param name="sequence">频道内序号。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMessageSent(long tenantId, long appId, string messageId, string channelId, string channelKind, long senderId, long sentAtTime, long sequence, string correlationId = null)
+    public static OnlineEvent CreateMessageSent(string messageId, string channelId, string channelKind, long senderId, long sentAtTime, long sequence, string correlationId = null)
     {
         var payload = new MessageSentPayload
         {
@@ -100,8 +98,6 @@ public static class OnlineChatEvents
             EventType = MessageSent,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = senderId,
             Source = Source,
@@ -114,8 +110,6 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造消息撤回事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="messageId">消息标识（可空；载荷落空字符串）。</param>
     /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
     /// <param name="senderId">原发送者。</param>
@@ -123,7 +117,7 @@ public static class OnlineChatEvents
     /// <param name="recalledAtTime">撤回时刻（UTC 毫秒）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMessageRecalled(long tenantId, long appId, string messageId, string channelId, long senderId, long recalledByPlayerId, long recalledAtTime, string correlationId = null)
+    public static OnlineEvent CreateMessageRecalled(string messageId, string channelId, long senderId, long recalledByPlayerId, long recalledAtTime, string correlationId = null)
     {
         var payload = new MessageRecalledPayload
         {
@@ -146,8 +140,6 @@ public static class OnlineChatEvents
             EventType = MessageRecalled,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = recalledByPlayerId,
             Source = Source,
@@ -160,8 +152,6 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造已读位点更新事件（消费端据此清红点）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="lastReadMessageId">最后已读消息标识（可空；载荷落空字符串）。</param>
@@ -169,7 +159,7 @@ public static class OnlineChatEvents
     /// <param name="lastReadSequence">最后已读位置的频道内序号。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateReadMarkUpdated(long tenantId, long appId, string channelId, long playerId, string lastReadMessageId, long lastReadSentAtTime, long lastReadSequence, string correlationId = null)
+    public static OnlineEvent CreateReadMarkUpdated(string channelId, long playerId, string lastReadMessageId, long lastReadSentAtTime, long lastReadSequence, string correlationId = null)
     {
         var payload = new ReadMarkUpdatedPayload
         {
@@ -192,8 +182,6 @@ public static class OnlineChatEvents
             EventType = ReadMarkUpdated,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,
@@ -206,14 +194,12 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造审核插件执行失败事件（放行留痕：这条事件标记出了「未经审核即放行」的时间窗）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">发送者。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="reason">插件失败原因（异常消息；供排障）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateModerationFailed(long tenantId, long appId, long playerId, string channelId, string reason, string correlationId = null)
+    public static OnlineEvent CreateModerationFailed(long playerId, string channelId, string reason, string correlationId = null)
     {
         var payload = new ModerationFailedPayload
         {
@@ -233,8 +219,6 @@ public static class OnlineChatEvents
             EventType = ModerationFailed,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,

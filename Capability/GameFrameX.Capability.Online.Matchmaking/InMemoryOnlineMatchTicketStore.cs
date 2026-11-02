@@ -39,7 +39,7 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 /// </para>
 /// <para>
 /// 天花板：单锁全串行，票据基数上万后成组扫描会成为热点；
-/// 升级路径是按 (TenantId, AppId) 分片加锁并保留同样的 CAS 语义，调用方无感。
+/// 升级路径是按键前缀分片加锁并保留同样的 CAS 语义，调用方无感。
 /// </para>
 /// </summary>
 public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
@@ -47,13 +47,13 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>票据表：键 = (TenantId, AppId, TicketId)。</summary>
+    /// <summary>票据表：键 = TicketId。</summary>
     private readonly Dictionary<string, OnlineMatchTicket> _tickets = new();
 
-    /// <summary>玩家反查索引：键 = (TenantId, AppId, PlayerId)，值 = 其排队中票据标识。</summary>
+    /// <summary>玩家反查索引：键 = PlayerId，值 = 其排队中票据标识。</summary>
     private readonly Dictionary<string, string> _playerIndex = new();
 
-    /// <summary>对局分配表：键 = (TenantId, AppId, AssignmentId)。</summary>
+    /// <summary>对局分配表：键 = AssignmentId。</summary>
     private readonly Dictionary<string, OnlineMatchAssignment> _assignments = new();
 
     /// <summary>
@@ -75,7 +75,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         lock (_syncRoot)
         {
-            _tickets[BuildKey(ticket.TenantId, ticket.AppId, ticket.TicketId)] = ticket.Copy();
+            _tickets[ticket.TicketId] = ticket.Copy();
             if (ticket.State == OnlineMatchTicketState.Queued)
             {
                 IndexPlayers(ticket);
@@ -109,7 +109,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
             // 队伍维度先查：同一队伍至多一张活跃票据，命中即整体拒绝。
             if (!string.IsNullOrEmpty(ticket.PartyId))
             {
-                var conflictingParty = FindActiveByPartyInternal(ticket.TenantId, ticket.AppId, ticket.PartyId);
+                var conflictingParty = FindActiveByPartyInternal(ticket.PartyId);
                 if (conflictingParty != null)
                 {
                     return Task.FromResult(conflictingParty);
@@ -121,7 +121,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
             {
                 foreach (var playerId in ticket.PlayerIds)
                 {
-                    var conflictingPlayer = FindActiveByPlayerInternal(ticket.TenantId, ticket.AppId, playerId);
+                    var conflictingPlayer = FindActiveByPlayerInternal(playerId);
                     if (conflictingPlayer != null)
                     {
                         return Task.FromResult(conflictingPlayer);
@@ -131,7 +131,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
             // 存档存副本而非调用方实例（调用方复用该实例不会回写库内记录）。
             var stored = ticket.Copy();
-            _tickets[BuildKey(stored.TenantId, stored.AppId, stored.TicketId)] = stored;
+            _tickets[stored.TicketId] = stored;
             if (stored.State == OnlineMatchTicketState.Queued)
             {
                 IndexPlayers(stored);
@@ -147,16 +147,14 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Reads a copy of the ticket from the in-memory ticket table by scope and ticket id, including terminal-state history.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="ticketId">票据标识 / Ticket id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>票据副本；不存在返回 null / A copy of the ticket, or null when not found</returns>
-    public Task<OnlineMatchTicket> FindAsync(long tenantId, long appId, string ticketId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> FindAsync(string ticketId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(FindInternal(tenantId, appId, ticketId));
+            return Task.FromResult(FindInternal(ticketId));
         }
     }
 
@@ -166,12 +164,10 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Scans the in-memory ticket table and returns a copy of the first queued ticket whose party id matches within the scope; returns null immediately when <paramref name="partyId"/> is empty.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="partyId">队伍标识 / Party id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
-    public Task<OnlineMatchTicket> FindActiveByPartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> FindActiveByPartyAsync(string partyId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(partyId))
         {
@@ -180,7 +176,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         lock (_syncRoot)
         {
-            return Task.FromResult(FindActiveByPartyInternal(tenantId, appId, partyId));
+            return Task.FromResult(FindActiveByPartyInternal(partyId));
         }
     }
 
@@ -190,16 +186,14 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Locates the ticket id through the player reverse-lookup index, verifies the ticket is still queued, and returns its copy.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">玩家标识 / Player id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
-    public Task<OnlineMatchTicket> FindActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> FindActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(FindActiveByPlayerInternal(tenantId, appId, playerId));
+            return Task.FromResult(FindActiveByPlayerInternal(playerId));
         }
     }
 
@@ -210,19 +204,17 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// Locates the ticket id through the player reverse-lookup index and returns its copy regardless of state
     /// (the latest matching attempt; the match-domain bridge status face).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">玩家标识 / Player id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>最近票据副本；从未入队返回 null / A copy of the latest ticket, or null when the player never enqueued</returns>
-    public Task<OnlineMatchTicket> FindLatestByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> FindLatestByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             OnlineMatchTicket latest = null;
             foreach (var ticket in _tickets.Values)
             {
-                if (ticket.TenantId != tenantId || ticket.AppId != appId || ticket.PlayerIds == null || !ticket.PlayerIds.Contains(playerId))
+                if (ticket.PlayerIds == null || !ticket.PlayerIds.Contains(playerId))
                 {
                     continue;
                 }
@@ -246,11 +238,9 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Iterates the in-memory ticket table and collects copies of all queued tickets within the scope.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>排队中的票据副本列表 / The list of queued ticket copies</returns>
-    public Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(CancellationToken cancellationToken = default)
     {
         var queued = new List<OnlineMatchTicket>();
 
@@ -258,7 +248,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         {
             foreach (var ticket in _tickets.Values)
             {
-                if (ticket.TenantId == tenantId && ticket.AppId == appId && ticket.State == OnlineMatchTicketState.Queued)
+                if (ticket.State == OnlineMatchTicketState.Queued)
                 {
                     queued.Add(ticket.Copy());
                 }
@@ -274,11 +264,9 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Iterates the in-memory ticket table and collects copies of all tickets within the scope, including terminal-state history.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>票据副本列表 / The list of ticket copies</returns>
-    public Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(CancellationToken cancellationToken = default)
     {
         var tickets = new List<OnlineMatchTicket>();
 
@@ -286,10 +274,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         {
             foreach (var ticket in _tickets.Values)
             {
-                if (ticket.TenantId == tenantId && ticket.AppId == appId)
-                {
-                    tickets.Add(ticket.Copy());
-                }
+                tickets.Add(ticket.Copy());
             }
         }
 
@@ -302,12 +287,10 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Updates a single ticket state with CAS semantics: returns null without leaving any write trace when the ticket is missing or its current state does not match the expected one; on success writes the new state, failure reason and assignment id, and releases the player reverse-lookup index when leaving the queued state.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="transition">状态 CAS 迁移载荷（票据标识 / 期望状态 / 目标状态 / 失败原因 / 分配标识）/ The ticket state CAS transition payload (ticket id, expected state, target state, failure reason, assignment id)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null / A copy of the updated ticket, or null when the CAS fails or the ticket does not exist</returns>
-    public Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, MatchTicketStateTransition transition, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> UpdateStateAsync(MatchTicketStateTransition transition, CancellationToken cancellationToken = default)
     {
         var ticketId = transition.TicketId;
         var expectedState = transition.ExpectedState;
@@ -316,13 +299,13 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         var assignmentId = transition.AssignmentId;
         lock (_syncRoot)
         {
-            var current = FindInternal(tenantId, appId, ticketId);
+            var current = FindInternal(ticketId);
             if (current == null || current.State != expectedState)
             {
                 return Task.FromResult<OnlineMatchTicket>(null);
             }
 
-            var stored = _tickets[BuildKey(tenantId, appId, ticketId)];
+            var stored = _tickets[ticketId];
             stored.State = newState;
             stored.FailureReason = failureReason;
             stored.AssignmentId = string.IsNullOrEmpty(assignmentId) ? stored.AssignmentId : assignmentId;
@@ -372,13 +355,13 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
                     return Task.FromResult<OnlineMatchAssignment>(null);
                 }
 
-                var current = FindInternal(assignment.TenantId, assignment.AppId, ticketId);
+                var current = FindInternal(ticketId);
                 if (current == null || current.State != expectedState)
                 {
                     return Task.FromResult<OnlineMatchAssignment>(null);
                 }
 
-                resolved.Add(_tickets[BuildKey(assignment.TenantId, assignment.AppId, ticketId)]);
+                resolved.Add(_tickets[ticketId]);
             }
 
             var storedAssignment = assignment.Copy();
@@ -390,7 +373,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
                 ReleasePlayers(stored);
             }
 
-            _assignments[BuildKey(assignment.TenantId, assignment.AppId, assignment.AssignmentId)] = storedAssignment;
+            _assignments[assignment.AssignmentId] = storedAssignment;
 
             return Task.FromResult(storedAssignment.Copy());
         }
@@ -402,12 +385,10 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Reads a copy of the assignment from the in-memory assignment table by scope and assignment id; returns null immediately when <paramref name="assignmentId"/> is empty.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="assignmentId">分配标识 / Assignment id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>分配副本；不存在返回 null / A copy of the assignment, or null when not found</returns>
-    public Task<OnlineMatchAssignment> FindAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchAssignment> FindAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(assignmentId))
         {
@@ -416,7 +397,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         lock (_syncRoot)
         {
-            if (_assignments.TryGetValue(BuildKey(tenantId, appId, assignmentId), out var assignment))
+            if (_assignments.TryGetValue(assignmentId, out var assignment))
             {
                 return Task.FromResult(assignment.Copy());
             }
@@ -431,11 +412,9 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Iterates the in-memory assignment table and collects copies of all match assignments within the scope.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>分配副本列表 / The list of assignment copies</returns>
-    public Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(CancellationToken cancellationToken = default)
     {
         var assignments = new List<OnlineMatchAssignment>();
 
@@ -443,10 +422,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         {
             foreach (var assignment in _assignments.Values)
             {
-                if (assignment.TenantId == tenantId && assignment.AppId == appId)
-                {
-                    assignments.Add(assignment.Copy());
-                }
+                assignments.Add(assignment.Copy());
             }
         }
 
@@ -459,20 +435,18 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Aggregates queued tickets by (Mode, Region) slot under the global lock, without producing entity copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="serverId">区服标识 / Server id</param>
     /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒）/ Observation time (unix milliseconds)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>槽位聚合列表 / The list of slot aggregates</returns>
-    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long tenantId, long appId, long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
     {
         var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
         lock (_syncRoot)
         {
             foreach (var ticket in _tickets.Values)
             {
-                if (ticket.TenantId != tenantId || ticket.AppId != appId || ticket.ServerId != serverId || ticket.State != OnlineMatchTicketState.Queued)
+                if (ticket.ServerId != serverId || ticket.State != OnlineMatchTicketState.Queued)
                 {
                     continue;
                 }
@@ -492,21 +466,19 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <remarks>
     /// Counts tickets consumed by assignments archived within the (start, end] window, grouped by (Mode, Region) slot under the global lock.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="serverId">区服标识 / Server id</param>
     /// <param name="windowStartExclusiveUnixMilliseconds">窗口起点（UTC 毫秒；不含）/ Window start (unix milliseconds, exclusive)</param>
     /// <param name="windowEndInclusiveUnixMilliseconds">窗口终点（UTC 毫秒；含）/ Window end (unix milliseconds, inclusive)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>槽位聚合列表（TotalWaitSeconds 恒为 0）/ The list of slot aggregates (TotalWaitSeconds always 0)</returns>
-    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long tenantId, long appId, long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default)
     {
         var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
         lock (_syncRoot)
         {
             foreach (var assignment in _assignments.Values)
             {
-                if (assignment.TenantId != tenantId || assignment.AppId != appId || assignment.ServerId != serverId
+                if (assignment.ServerId != serverId
                     || assignment.CreatedAtTime <= windowStartExclusiveUnixMilliseconds || assignment.CreatedAtTime > windowEndInclusiveUnixMilliseconds)
                 {
                     continue;
@@ -542,18 +514,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <summary>
     /// 按标识读取票据副本（调用方必须已持有 <see cref="_syncRoot"/>）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ticketId">票据标识。</param>
     /// <returns>票据副本；不存在返回 null。</returns>
-    private OnlineMatchTicket FindInternal(long tenantId, long appId, string ticketId)
+    private OnlineMatchTicket FindInternal(string ticketId)
     {
         if (string.IsNullOrEmpty(ticketId))
         {
             return null;
         }
 
-        if (_tickets.TryGetValue(BuildKey(tenantId, appId, ticketId), out var ticket))
+        if (_tickets.TryGetValue(ticketId, out var ticket))
         {
             return ticket.Copy();
         }
@@ -564,11 +534,9 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <summary>
     /// 按队伍标识读取其排队中票据副本（调用方必须已持有 <see cref="_syncRoot"/>；<paramref name="partyId"/> 为空返回 null）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="partyId">队伍标识。</param>
     /// <returns>票据副本；无则返回 null。</returns>
-    private OnlineMatchTicket FindActiveByPartyInternal(long tenantId, long appId, string partyId)
+    private OnlineMatchTicket FindActiveByPartyInternal(string partyId)
     {
         if (string.IsNullOrEmpty(partyId))
         {
@@ -577,7 +545,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         foreach (var ticket in _tickets.Values)
         {
-            if (ticket.TenantId == tenantId && ticket.AppId == appId && ticket.State == OnlineMatchTicketState.Queued && ticket.PartyId == partyId)
+            if (ticket.State == OnlineMatchTicketState.Queued && ticket.PartyId == partyId)
             {
                 return ticket.Copy();
             }
@@ -589,18 +557,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <summary>
     /// 按玩家读取其排队中票据副本（调用方必须已持有 <see cref="_syncRoot"/>）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>票据副本；无则返回 null。</returns>
-    private OnlineMatchTicket FindActiveByPlayerInternal(long tenantId, long appId, long playerId)
+    private OnlineMatchTicket FindActiveByPlayerInternal(long playerId)
     {
-        if (!_playerIndex.TryGetValue(BuildKey(tenantId, appId, playerId.ToString()), out var ticketId))
+        if (!_playerIndex.TryGetValue(playerId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var ticketId))
         {
             return null;
         }
 
-        var ticket = FindInternal(tenantId, appId, ticketId);
+        var ticket = FindInternal(ticketId);
         if (ticket == null || ticket.State != OnlineMatchTicketState.Queued)
         {
             return null;
@@ -622,7 +588,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         foreach (var playerId in ticket.PlayerIds)
         {
-            _playerIndex[BuildKey(ticket.TenantId, ticket.AppId, playerId.ToString())] = ticket.TicketId;
+            _playerIndex[playerId.ToString(System.Globalization.CultureInfo.InvariantCulture)] = ticket.TicketId;
         }
     }
 
@@ -643,23 +609,11 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         foreach (var playerId in ticket.PlayerIds)
         {
-            var key = BuildKey(ticket.TenantId, ticket.AppId, playerId.ToString());
+            var key = playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (_playerIndex.TryGetValue(key, out var indexedTicketId) && indexedTicketId == ticket.TicketId)
             {
                 _playerIndex.Remove(key);
             }
         }
-    }
-
-    /// <summary>
-    /// 构造存储键。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="id">末段标识。</param>
-    /// <returns>存储键。</returns>
-    private static string BuildKey(long tenantId, long appId, string id)
-    {
-        return tenantId + ":" + appId + ":" + id;
     }
 }

@@ -42,9 +42,7 @@ namespace GameFrameX.Capability.Online.Operations.GameEvents;
 /// 「不污染下游」的结构性保证即失效。
 /// </para>
 /// <para>
-/// 归档口径：死信按**事件自身的作用域**归档，故作用域非法的事件会落在其退化作用域
-/// （TenantId 或 AppId 为 0）之下——不丢失、可检索，但正常作用域的查询看不到它们，
-/// 这类拒绝对投递方的可达路径是摄取回执。
+/// 归档口径：死信全量落档、按拒收时刻全局可检索（不丢失）；这类拒绝对投递方的可达路径是摄取回执。
 /// </para>
 /// </summary>
 public interface IOnlineGameEventDeadLetterSink
@@ -61,12 +59,10 @@ public interface IOnlineGameEventDeadLetterSink
     Task<OnlineGameEventDeadLetter> WriteAsync(OnlineEvent onlineEvent, OnlineGameEventRejectionReason reason, string message, long rejectedTime, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按作用域与时间窗列出死信（查询与指标复算入口；跨作用域查不到，反预言）。
+    /// 按时间窗列出死信（查询与指标复算入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="query">时间窗查询载荷（闭区间；与事件存储同型）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>死信列表（按拒收时刻升序）；无记录返回空列表。</returns>
-    Task<List<OnlineGameEventDeadLetter>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default);
+    Task<List<OnlineGameEventDeadLetter>> ListAsync(EventTimeRangeQuery query, CancellationToken cancellationToken = default);
 }

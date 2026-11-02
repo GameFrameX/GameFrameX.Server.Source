@@ -241,7 +241,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         try
         {
             var replacedSessionIds = new List<string>();
-            var activeSessions = await _store.ListActiveByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+            var activeSessions = await _store.ListActiveByPlayerAsync(scope.PlayerId, cancellationToken);
             if (activeSessions.Count > 0)
             {
                 switch (multiDevicePolicy)
@@ -279,8 +279,6 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             var session = new OnlineSession
             {
                 Id = "sess-" + Guid.NewGuid().ToString("N"),
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
                 ServerId = scope.ServerId,
                 PlayerId = scope.PlayerId,
                 DeviceId = deviceId ?? string.Empty,
@@ -296,7 +294,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                 CloseReason = OnlineSessionCloseReason.None,
             };
             await _store.AddOrUpdateAsync(session, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionAuthenticated, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token issued", correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionAuthenticated, session.Id, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token issued", correlationId), cancellationToken);
 
             return OnlineResult<OnlineSessionStartResult>.Ok(new OnlineSessionStartResult
             {
@@ -349,7 +347,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             session.CurrentTokenHash = HashToken(newToken);
             session.TokenExpiresAtTime = now + session.TokenTimeToLiveSeconds * 1000L;
             await _store.AddOrUpdateAsync(session, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionTokenRefreshed, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token rotated", correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionTokenRefreshed, session.Id, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token rotated", correlationId), cancellationToken);
 
             return OnlineResult<OnlineTokenRefreshResult>.Ok(new OnlineTokenRefreshResult
             {
@@ -459,22 +457,13 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     }
 
     /// <summary>
-    /// 校验作用域与会话一致（跨租户/跨 App/跨服一律拒绝）。
+    /// 校验作用域与会话一致（跨服一律拒绝）。
     /// </summary>
     /// <param name="session">目标会话。</param>
     /// <param name="scope">生效作用域。</param>
     /// <returns>失败结果；一致返回 null。</returns>
     private static OnlineResult<OnlineTokenRefreshResult> EnsureScopeMatch(OnlineSession session, OnlineScope scope)
     {
-        if (session.TenantId != scope.TenantId)
-        {
-            return OnlineResult<OnlineTokenRefreshResult>.Fail(OnlineErrorCode.CrossTenantDenied, "会话不属于当前租户");
-        }
-
-        if (session.AppId != scope.AppId)
-        {
-            return OnlineResult<OnlineTokenRefreshResult>.Fail(OnlineErrorCode.CrossAppDenied, "会话不属于当前应用");
-        }
 
         if (session.ServerId != scope.ServerId)
         {

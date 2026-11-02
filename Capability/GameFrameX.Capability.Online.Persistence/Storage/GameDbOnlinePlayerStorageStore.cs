@@ -31,13 +31,14 @@ namespace GameFrameX.Capability.Online.Persistence.Storage;
 
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Foundation.Storage;
 using GameFrameX.DataBase;
 
 /// <summary>
 /// 玩家云存储 GameDb 持久化适配（一级 store；CAS 乐观锁经条件写原语落地）。
 /// <para>
-/// CAS 语义（版本换算）：expectedVersion == 0 → <c>TryAddUniqueAsync</c>（五元组唯一索引互斥，
+/// CAS 语义（版本换算）：expectedVersion == 0 → <c>TryAddUniqueAsync</c>（三元组唯一索引互斥，
 /// 已存在即 false）；&gt; 0 → <c>UpdateIfRowVersionAsync(行Id, expectedVersion - 1, 新档)</c>
 /// （行缺失或存量 RowVersion 不符即 false——原子单语句比较交换）。恒等式
 /// <c>实体 Version = 行 RowVersion + 1</c>（实体从 1 起、行版本从 0 起），读回按此校准。
@@ -71,7 +72,7 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     {
         ArgumentNullException.ThrowIfNull(key);
 
-        var state = await FindStateAsync(BuildKey(key.TenantId, key.AppId, key.PlayerId, key.Collection, key.Key), cancellationToken).ConfigureAwait(false);
+        var state = await FindStateAsync(OnlineRowKey.PlayerStorage(key.PlayerId, key.Collection, key.Key), cancellationToken).ConfigureAwait(false);
         return state == null ? null : ToEntity(state);
     }
 
@@ -86,7 +87,7 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        var uniqueKey = BuildKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.Collection, entry.Key);
+        var uniqueKey = OnlineRowKey.PlayerStorage(entry.PlayerId, entry.Collection, entry.Key);
         var existing = await FindStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (expectedVersion == 0)
         {
@@ -117,7 +118,7 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
         ArgumentNullException.ThrowIfNull(query);
 
         var afterKey = query.AfterKey ?? string.Empty;
-        var states = await GameDb.FindListAsync<OnlinePlayerStorageEntryState>(state => state.TenantId == query.TenantId && state.AppId == query.AppId && state.PlayerId == query.PlayerId && state.Collection == query.Collection, cancellationToken).ConfigureAwait(false);
+        var states = await GameDb.FindListAsync<OnlinePlayerStorageEntryState>(state => state.PlayerId == query.PlayerId && state.Collection == query.Collection, cancellationToken).ConfigureAwait(false);
         return states.Where(state => state.DeletedAtTime == 0)
             .Where(state => afterKey.Length == 0 || string.CompareOrdinal(state.Key, afterKey) > 0)
             .OrderBy(state => state.Key, StringComparer.Ordinal)
@@ -127,15 +128,13 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     }
 
     /// <summary>统计集合内活跃（非软删）键数。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="collection">集合名。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>活跃键数。</returns>
-    public async Task<int> CountActiveKeysAsync(long tenantId, long appId, long playerId, string collection, CancellationToken cancellationToken = default)
+    public async Task<int> CountActiveKeysAsync(long playerId, string collection, CancellationToken cancellationToken = default)
     {
-        var count = await GameDb.CountAsync<OnlinePlayerStorageEntryState>(state => state.TenantId == tenantId && state.AppId == appId && state.PlayerId == playerId && state.Collection == collection && state.DeletedAtTime == 0, cancellationToken).ConfigureAwait(false);
+        var count = await GameDb.CountAsync<OnlinePlayerStorageEntryState>(state => state.PlayerId == playerId && state.Collection == collection && state.DeletedAtTime == 0, cancellationToken).ConfigureAwait(false);
         return checked((int)count);
     }
 
@@ -157,18 +156,6 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
         return GameDb.FindAsync<OnlinePlayerStorageEntryState>(state => state.UniqueKey == uniqueKey, isCreateIfNotExists: false, cancellationToken: cancellationToken);
     }
 
-    /// <summary>构造条目完整键（与 InMemory BuildKey 同构）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="key">条目键。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, long playerId, string collection, string key)
-    {
-        return tenantId + ":" + appId + ":" + playerId + ":" + collection + ":" + key;
-    }
-
     /// <summary>条目实体 → 行（指定行 Id；RowVersion 由写原语管理，不作映射输入）。</summary>
     private static OnlinePlayerStorageEntryState ToState(OnlinePlayerStorageEntry entry, string uniqueKey, long rowId)
     {
@@ -176,8 +163,6 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
         {
             Id = rowId,
             UniqueKey = uniqueKey,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
             PlayerId = entry.PlayerId,
             Collection = entry.Collection,
             Key = entry.Key,
@@ -196,8 +181,6 @@ public sealed class GameDbOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     {
         return new OnlinePlayerStorageEntry
         {
-            TenantId = state.TenantId,
-            AppId = state.AppId,
             PlayerId = state.PlayerId,
             Collection = state.Collection,
             Key = state.Key,

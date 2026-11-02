@@ -163,16 +163,14 @@ public sealed class OnlineChatService
     /// 全局频道不绑定主体（同一 App 一个）。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="kind">频道类型。</param>
     /// <param name="leftPlayerId">私聊一侧玩家（仅 <see cref="OnlineChatChannelKind.Direct"/> 使用）。</param>
     /// <param name="rightPlayerId">私聊另一侧玩家（仅 <see cref="OnlineChatChannelKind.Direct"/> 使用）。</param>
     /// <param name="boundId">绑定主体标识（Party 的 PartyId / Group 的 GroupId）。</param>
     /// <returns>频道标识。</returns>
-    public static string BuildChannelId(long tenantId, long appId, OnlineChatChannelKind kind, long leftPlayerId, long rightPlayerId, string boundId)
+    public static string BuildChannelId(OnlineChatChannelKind kind, long leftPlayerId, long rightPlayerId, string boundId)
     {
-        var scopePrefix = ChannelIdPrefix + tenantId + ":" + appId + ":";
+        var scopePrefix = ChannelIdPrefix;
         if (kind == OnlineChatChannelKind.Global)
         {
             return scopePrefix + "global";
@@ -212,7 +210,7 @@ public sealed class OnlineChatService
             return Task.FromResult(OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ParameterInvalid, "私聊对端玩家无效"));
         }
 
-        var channelId = BuildChannelId(scope.TenantId, scope.AppId, OnlineChatChannelKind.Direct, scope.PlayerId, otherPlayerId, null);
+        var channelId = BuildChannelId(OnlineChatChannelKind.Direct, scope.PlayerId, otherPlayerId, null);
         return OpenChannelAsync(scope, OnlineChatChannelKind.Direct, channelId, string.Empty, scope.PlayerId, otherPlayerId, cancellationToken);
     }
 
@@ -242,7 +240,7 @@ public sealed class OnlineChatService
             return Task.FromResult(OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ParameterInvalid, "绑定主体标识不能为空"));
         }
 
-        var channelId = BuildChannelId(scope.TenantId, scope.AppId, kind, 0, 0, boundId);
+        var channelId = BuildChannelId(kind, 0, 0, boundId);
         return OpenChannelAsync(scope, kind, channelId, boundId, 0, 0, cancellationToken);
     }
 
@@ -260,7 +258,7 @@ public sealed class OnlineChatService
             return Task.FromResult(failure);
         }
 
-        var channelId = BuildChannelId(scope.TenantId, scope.AppId, OnlineChatChannelKind.Global, 0, 0, null);
+        var channelId = BuildChannelId(OnlineChatChannelKind.Global, 0, 0, null);
         return OpenChannelAsync(scope, OnlineChatChannelKind.Global, channelId, string.Empty, 0, 0, cancellationToken);
     }
 
@@ -300,7 +298,7 @@ public sealed class OnlineChatService
             // 重发短路：命中即返回既有消息，不再走裁决 / 频控 / 审核（「同一逻辑发送只落一条」）。
             // 顺序不可后移——移到最后则重放要先过频控，窗口期内重发会拿到 RateLimitExceeded，
             // 客户端据此判定「发送失败」而消息其实早已入库。
-            var replayed = await _store.FindByDedupeKeyAsync(scope.TenantId, scope.AppId, channelId, dedupeKey, cancellationToken).ConfigureAwait(false);
+            var replayed = await _store.FindByDedupeKeyAsync(channelId, dedupeKey, cancellationToken).ConfigureAwait(false);
             if (replayed != null)
             {
                 return OnlineResult<OnlineChatMessage>.Ok(replayed);
@@ -313,7 +311,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Fail(decision.Code, decision.Reason);
         }
 
-        if (!_rateLimiter.TryAcquire(scope.TenantId, scope.AppId, scope.PlayerId, channelId))
+        if (!_rateLimiter.TryAcquire(scope.PlayerId, channelId))
         {
             return OnlineResult<OnlineChatMessage>.Fail(OnlineErrorCode.RateLimitExceeded, "发送过于频繁");
         }
@@ -322,8 +320,6 @@ public sealed class OnlineChatService
         var draft = new OnlineChatMessage
         {
             MessageId = "msg-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ChannelId = channelId,
             ChannelKind = channel.Kind,
             SenderId = scope.PlayerId,
@@ -347,7 +343,7 @@ public sealed class OnlineChatService
         {
             // 只有真的新增才发事件：并发重放会在存储临界区内被去重键拦下并返回既有消息，
             // 无条件发布会让「消息已存在」这件事对外表现为第二次 MessageSent。
-            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageSent(stored.TenantId, stored.AppId, stored.MessageId, stored.ChannelId, stored.ChannelKind.ToString(), stored.SenderId, stored.SentAtTime, stored.Sequence, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageSent(stored.MessageId, stored.ChannelId, stored.ChannelKind.ToString(), stored.SenderId, stored.SentAtTime, stored.Sequence, correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineChatMessage>.Ok(stored);
@@ -386,7 +382,7 @@ public sealed class OnlineChatService
         }
 
         // 多取一条用于判定 HasMore，避免为「是否还有下一页」再查一次存储。
-        var fetched = await _store.ReadAfterAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, Limit = effectivePageSize + 1, }, cancellationToken).ConfigureAwait(false);
+        var fetched = await _store.ReadAfterAsync(new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, Limit = effectivePageSize + 1, }, cancellationToken).ConfigureAwait(false);
         var hasMore = fetched.Count > effectivePageSize;
         var pageMessages = new List<OnlineChatMessage>();
         var lastMessageId = string.Empty;
@@ -428,10 +424,10 @@ public sealed class OnlineChatService
             return OnlineResult<int>.Fail(authorized.Code, authorized.Message);
         }
 
-        var mark = await _store.FindReadMarkAsync(scope.TenantId, scope.AppId, scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
+        var mark = await _store.FindReadMarkAsync(scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
         var afterSentAtTime = mark == null ? 0 : mark.LastReadSentAtTime;
         var afterSequence = mark == null ? 0 : mark.LastReadSequence;
-        var count = await _store.CountUnreadAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, }, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var count = await _store.CountUnreadAsync(new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, }, scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<int>.Ok(count);
     }
 
@@ -452,13 +448,13 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatReadMark>.Fail(authorized.Code, authorized.Message);
         }
 
-        var message = await _store.FindMessageAsync(scope.TenantId, scope.AppId, channelId, messageId, cancellationToken).ConfigureAwait(false);
+        var message = await _store.FindMessageAsync(channelId, messageId, cancellationToken).ConfigureAwait(false);
         if (message == null)
         {
             return OnlineResult<OnlineChatReadMark>.Fail(OnlineErrorCode.ResourceNotFound, "消息不存在");
         }
 
-        var mark = await _store.FindReadMarkAsync(scope.TenantId, scope.AppId, scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
+        var mark = await _store.FindReadMarkAsync(scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
         if (mark != null && mark.IsNotAfterPosition(message.SentAtTime, message.Sequence))
         {
             // 位点只进不退：乱序到达的旧「已读」不得把位点推回去（否则红点会莫名其妙重新亮起）。
@@ -467,8 +463,6 @@ public sealed class OnlineChatService
 
         var updated = new OnlineChatReadMark
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             PlayerId = scope.PlayerId,
             ChannelId = channelId,
             LastReadMessageId = message.MessageId ?? string.Empty,
@@ -481,7 +475,7 @@ public sealed class OnlineChatService
         {
             // 上面的读-比-写与本次写入不在同一临界区：期间已被更晚的位点抢写（或并发重复标记）。
             // 收敛到既有位点，且**不发事件**——位点并没有被这次调用改动。
-            var converged = await _store.FindReadMarkAsync(scope.TenantId, scope.AppId, scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
+            var converged = await _store.FindReadMarkAsync(scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
             if (converged == null)
             {
                 return OnlineResult<OnlineChatReadMark>.Fail(OnlineErrorCode.ResourceNotFound, "已读位点不存在");
@@ -490,7 +484,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatReadMark>.Ok(converged);
         }
 
-        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateReadMarkUpdated(stored.TenantId, stored.AppId, stored.ChannelId, stored.PlayerId, stored.LastReadMessageId, stored.LastReadSentAtTime, stored.LastReadSequence, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateReadMarkUpdated(stored.ChannelId, stored.PlayerId, stored.LastReadMessageId, stored.LastReadSentAtTime, stored.LastReadSequence, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineChatReadMark>.Ok(stored);
     }
 
@@ -511,7 +505,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Fail(authorized.Code, authorized.Message);
         }
 
-        var message = await _store.FindMessageAsync(scope.TenantId, scope.AppId, channelId, messageId, cancellationToken).ConfigureAwait(false);
+        var message = await _store.FindMessageAsync(channelId, messageId, cancellationToken).ConfigureAwait(false);
         if (message == null || message.SenderId != scope.PlayerId)
         {
             // 反预言：非发送者看不到这条消息（也谈不上撤回）。
@@ -530,11 +524,11 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Fail(OnlineErrorCode.StateOperationForbidden, "已超出撤回窗口");
         }
 
-        var updated = await _store.UpdateMessageStateAsync(scope.TenantId, scope.AppId, new ChatMessageStateTransition { ChannelId = channelId, MessageId = messageId, ExpectedState = OnlineChatMessageState.Normal, NewState = OnlineChatMessageState.Recalled, NowUnixMilliseconds = now, RecalledByPlayerId = scope.PlayerId, }, cancellationToken).ConfigureAwait(false);
+        var updated = await _store.UpdateMessageStateAsync(new ChatMessageStateTransition { ChannelId = channelId, MessageId = messageId, ExpectedState = OnlineChatMessageState.Normal, NewState = OnlineChatMessageState.Recalled, NowUnixMilliseconds = now, RecalledByPlayerId = scope.PlayerId, }, cancellationToken).ConfigureAwait(false);
         if (updated == null)
         {
             // CAS 失败 = 已被并发撤回；重读后按当前事实返回，保证收敛。
-            var current = await _store.FindMessageAsync(scope.TenantId, scope.AppId, channelId, messageId, cancellationToken).ConfigureAwait(false);
+            var current = await _store.FindMessageAsync(channelId, messageId, cancellationToken).ConfigureAwait(false);
             if (current == null)
             {
                 return OnlineResult<OnlineChatMessage>.Fail(OnlineErrorCode.ResourceNotFound, "消息不存在");
@@ -543,7 +537,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Ok(RedactRecalled(current));
         }
 
-        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageRecalled(updated.TenantId, updated.AppId, updated.MessageId, updated.ChannelId, updated.SenderId, updated.RecalledByPlayerId, updated.RecalledAtTime, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageRecalled(updated.MessageId, updated.ChannelId, updated.SenderId, updated.RecalledByPlayerId, updated.RecalledAtTime, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineChatMessage>.Ok(RedactRecalled(updated));
     }
 
@@ -565,7 +559,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineReportCase>.Fail(authorized.Code, authorized.Message);
         }
 
-        var message = await _store.FindMessageAsync(scope.TenantId, scope.AppId, channelId, messageId, cancellationToken).ConfigureAwait(false);
+        var message = await _store.FindMessageAsync(channelId, messageId, cancellationToken).ConfigureAwait(false);
         if (message == null)
         {
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ResourceNotFound, "消息不存在");
@@ -598,7 +592,7 @@ public sealed class OnlineChatService
             return membership;
         }
 
-        var existing = await _store.FindChannelAsync(scope.TenantId, scope.AppId, channelId, cancellationToken).ConfigureAwait(false);
+        var existing = await _store.FindChannelAsync(channelId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return OnlineResult<OnlineChatChannel>.Ok(existing);
@@ -614,8 +608,6 @@ public sealed class OnlineChatService
         var prototype = new OnlineChatChannel
         {
             ChannelId = channelId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             Kind = kind,
             BoundId = boundId ?? string.Empty,
             Participants = participants,
@@ -644,7 +636,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ParameterInvalid, "频道标识不能为空");
         }
 
-        var channel = await _store.FindChannelAsync(scope.TenantId, scope.AppId, channelId, cancellationToken).ConfigureAwait(false);
+        var channel = await _store.FindChannelAsync(channelId, cancellationToken).ConfigureAwait(false);
         if (channel == null)
         {
             return OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ResourceNotFound, "频道不存在");
@@ -697,7 +689,7 @@ public sealed class OnlineChatService
 
         foreach (var probe in _membershipProbes)
         {
-            var isMember = await probe.IsChannelMemberAsync(scope.TenantId, scope.AppId, kind, boundId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+            var isMember = await probe.IsChannelMemberAsync(kind, boundId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
             if (isMember)
             {
                 return null;
@@ -724,7 +716,7 @@ public sealed class OnlineChatService
                 return OnlineSocialDecision.Deny(OnlineErrorCode.ResourceNotFound, "频道不存在");
             }
 
-            return await _decisionService.EvaluateAsync(scope.TenantId, scope.AppId, scope.PlayerId, otherPlayerId, OnlineSocialInteractionPurpose.DirectMessage, cancellationToken).ConfigureAwait(false);
+            return await _decisionService.EvaluateAsync(scope.PlayerId, otherPlayerId, OnlineSocialInteractionPurpose.DirectMessage, cancellationToken).ConfigureAwait(false);
         }
 
         return await _decisionService.EvaluateSendAsync(scope, cancellationToken).ConfigureAwait(false);
@@ -748,7 +740,7 @@ public sealed class OnlineChatService
         catch (Exception exception)
         {
             // 审核服务故障不得导致聊天不可用：放行 + 留痕（放行窗口可由该事件回扫）。
-            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateModerationFailed(draft.TenantId, draft.AppId, draft.SenderId, draft.ChannelId, exception.Message, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateModerationFailed(draft.SenderId, draft.ChannelId, exception.Message, correlationId), cancellationToken).ConfigureAwait(false);
             return null;
         }
 

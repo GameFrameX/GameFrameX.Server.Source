@@ -41,15 +41,6 @@ using GameFrameX.DataBase;
 /// </summary>
 public sealed class OnlineGameAccountState : BaseCacheState
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置账号状态（枚举数值落库）。

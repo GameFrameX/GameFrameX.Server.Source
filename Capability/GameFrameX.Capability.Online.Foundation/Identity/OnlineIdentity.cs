@@ -30,9 +30,9 @@
 namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
-/// 外源身份实体（邮箱/设备/渠道/第三方身份，绑定明确的 TenantId + AppId）。
+/// 外源身份实体（邮箱/设备/渠道/第三方身份，归玩家全局所有）。
 /// <para>
-/// 维护约束：唯一性键 = (TenantId, AppId, Kind, Identifier)，四元组重复即同一身份；
+/// 维护约束：唯一性键 = (Kind, Identifier)，二元组重复即同一身份；
 /// 凭证材料（口令散列、第三方 token）由装配层凭据组件持有，本实体只承载身份指向；
 /// 解绑后 <see cref="UnboundAtTime"/> 置位，同一 Identifier 可被重新绑定（换绑显式操作）。
 /// </para>
@@ -44,15 +44,6 @@ public sealed class OnlineIdentity
     /// </summary>
     public string Id { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（身份必须绑定明确租户）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识（身份必须绑定明确应用）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置身份类型。

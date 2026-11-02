@@ -78,16 +78,14 @@ public sealed class OnlineChatRateLimiter
     /// <summary>
     /// 尝试获取一次发送配额。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">发送者。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <returns>允许返回 <c>true</c>；超限返回 <c>false</c>。</returns>
-    public bool TryAcquire(long tenantId, long appId, long playerId, string channelId, long nowUnixMilliseconds = 0)
+    public bool TryAcquire(long playerId, string channelId, long nowUnixMilliseconds = 0)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var key = tenantId + ":" + appId + ":" + playerId + ":" + (channelId ?? string.Empty);
+        var key = playerId + ":" + (channelId ?? string.Empty);
 
         lock (_syncRoot)
         {

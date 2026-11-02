@@ -61,8 +61,6 @@ public static class OnlineMatchRuntimeEvents
     /// <summary>
     /// 构造对局生命周期状态变更事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
     /// <param name="assignmentId">来源分配标识（可空；载荷落空字符串）。</param>
@@ -71,7 +69,7 @@ public static class OnlineMatchRuntimeEvents
     /// <param name="serverSequence">变更时的服务器序号。</param>
     /// <param name="memberCount">成员数（含断线成员）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMatchStateChanged(long tenantId, long appId, long serverId, string matchId, string assignmentId, string fromState, string toState, long serverSequence, int memberCount)
+    public static OnlineEvent CreateMatchStateChanged(long serverId, string matchId, string assignmentId, string fromState, string toState, long serverSequence, int memberCount)
     {
         var payload = new MatchStateChangedPayload
         {
@@ -97,8 +95,6 @@ public static class OnlineMatchRuntimeEvents
             EventType = MatchStateChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = 0,
             Source = Source,
@@ -111,8 +107,6 @@ public static class OnlineMatchRuntimeEvents
     /// <summary>
     /// 构造对局结算完成事件（可信结果事件）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="matchResultId">结果标识（可空；载荷落空字符串）。</param>
     /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
@@ -123,7 +117,7 @@ public static class OnlineMatchRuntimeEvents
     /// <param name="entries">玩家条目集合（标识 / 名次 / 是否胜方 / 得分 / 奖励条目数；空元素被跳过）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMatchSettled(long tenantId, long appId, long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries, string correlationId = null)
+    public static OnlineEvent CreateMatchSettled(long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries, string correlationId = null)
     {
         var entryPayloads = new List<MatchSettledEntryPayload>();
         var winnerCount = 0;
@@ -173,8 +167,6 @@ public static class OnlineMatchRuntimeEvents
             EventType = MatchSettled,
             OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = 0,
             Source = Source,
@@ -191,8 +183,6 @@ public static class OnlineMatchRuntimeEvents
     /// 消费端（风控）据此告警或画像，不得回写对局。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="matchResultId">结果标识（可空；载荷落空字符串）。</param>
     /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
@@ -202,7 +192,7 @@ public static class OnlineMatchRuntimeEvents
     /// <param name="settledTime">结算时刻（UTC 毫秒）。</param>
     /// <param name="entries">玩家条目集合（标识 / 名次 / 是否胜方 / 得分 / 奖励条目数；空元素被跳过）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMatchParticipationRewardsSuppressed(long tenantId, long appId, long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries)
+    public static OnlineEvent CreateMatchParticipationRewardsSuppressed(long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries)
     {
         var entryPayloads = new List<MatchSettledEntryPayload>();
         if (entries != null)
@@ -245,8 +235,6 @@ public static class OnlineMatchRuntimeEvents
             EventType = MatchParticipationRewardsSuppressed,
             OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = 0,
             Source = Source,

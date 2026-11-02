@@ -82,20 +82,18 @@ public sealed class OnlineMatchSettlementService
     /// <summary>
     /// 对指定对局执行结算（幂等）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结算执行结果；失败返回对应错误码。</returns>
-    public async Task<OnlineResult<OnlineMatchSettlementOutcome>> SettleAsync(long tenantId, long appId, string matchId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineMatchSettlementOutcome>> SettleAsync(string matchId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(matchId))
         {
             return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "对局标识不能为空");
         }
 
-        var existing = await _settlementStore.FindByMatchAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+        var existing = await _settlementStore.FindByMatchAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome
@@ -106,7 +104,7 @@ public sealed class OnlineMatchSettlementService
             });
         }
 
-        var actor = await _runtime.ResolveActorAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");
@@ -160,11 +158,11 @@ public sealed class OnlineMatchSettlementService
         var entries = committed.Entries == null
             ? null
             : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
-        await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
         if (committed.ParticipationRewardsSuppressed)
         {
             // 挂机刷奖可疑信号：存在零有效出拳玩家的结算，外发风控事件（发布失败不改变已落定的结算事实）。
-            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
         }
     }
 

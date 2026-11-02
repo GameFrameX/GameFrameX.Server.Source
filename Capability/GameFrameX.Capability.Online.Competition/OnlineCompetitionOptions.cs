@@ -45,17 +45,19 @@ public sealed class OnlineCompetitionOptions : ICapabilityOptions
     public OnlineLeaderboardOptions Leaderboard { get; set; } = new OnlineLeaderboardOptions();
 
     /// <summary>
-    /// 获取或设置 Match.Settled 写榜投影配置（<c>MatchSettledBoardId</c> 空白 = 不投影不预建）。
+    /// 获取或设置 Match.Settled 写榜投影配置（默认投影到默认榜；显式置空白或配置段覆盖可关闭）。
     /// </summary>
     public OnlineLeaderboardProjectionOptions LeaderboardProjection { get; set; } = new OnlineLeaderboardProjectionOptions();
 
     /// <summary>
-    /// 校验排行榜组件选项：单次提交最大分数、限流最大提交次数、限流窗口秒数、缓存有效期秒数与最大分页大小均须为正数；投影配置不做校验（空白榜单标识表示不投影）。
+    /// 校验排行榜组件与投影组合选项：单次提交最大分数、限流最大提交次数、限流窗口秒数、缓存有效期秒数与最大分页大小均须为正数；
+    /// 投影配置须为非 null 对象，目标榜单标识非空白（投影开启）时长度不得超过上限且不得包含空白字符（装配期 fail-fast，全部问题一次报全）。
     /// </summary>
     /// <remarks>
     /// Validates the leaderboard options: default maximum score per submission, rate-limit maximum submissions, rate-limit window
-    /// seconds, cache time-to-live seconds and maximum page size must all be positive. The projection settings are not validated because
-    /// a blank board id simply disables the projection. Failures are recorded on the validation collector.
+    /// seconds, cache time-to-live seconds and maximum page size must all be positive. The projection settings must be a non-null
+    /// object, and when the target board id is not blank (projection enabled) it must not exceed the maximum length or contain any
+    /// whitespace characters. All problems are collected and reported together on the validation collector.
     /// </remarks>
     /// <param name="validation">选项校验结果收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
@@ -65,5 +67,38 @@ public sealed class OnlineCompetitionOptions : ICapabilityOptions
         validation.RequirePositive("Leaderboard.RateLimitWindowSeconds", Leaderboard.RateLimitWindowSeconds);
         validation.RequirePositive("Leaderboard.CacheTtlSeconds", Leaderboard.CacheTtlSeconds);
         validation.RequirePositive("Leaderboard.MaxPageSize", Leaderboard.MaxPageSize);
+
+        // 投影组合校验（C460）：子对象缺席 = 代码 Configure 写坏，fail-fast；榜单 id 非空白（投影开启）时
+        // 校验长度与空白字符——该 id 会拼进事件幂等键与读缓存键，超长 / 含空白属于配置错误而非运行期输入。
+        if (LeaderboardProjection == null)
+        {
+            validation.AddError("LeaderboardProjection", "must be a non-null options object");
+            return;
+        }
+
+        var boardId = LeaderboardProjection.MatchSettledBoardId;
+        if (string.IsNullOrWhiteSpace(boardId))
+        {
+            return;
+        }
+
+        if (boardId.Length > MaxMatchSettledBoardIdLength)
+        {
+            validation.AddError("LeaderboardProjection.MatchSettledBoardId", "must be at most " + MaxMatchSettledBoardIdLength + " characters (actual: " + boardId.Length + ")");
+        }
+
+        for (var index = 0; index < boardId.Length; index++)
+        {
+            if (char.IsWhiteSpace(boardId[index]))
+            {
+                validation.AddError("LeaderboardProjection.MatchSettledBoardId", "must not contain whitespace characters");
+                break;
+            }
+        }
     }
+
+    /// <summary>
+    /// 投影目标榜单标识的最大长度（<see cref="OnlineLeaderboardProjectionOptions.MatchSettledBoardId"/> 非空白时的上限）。
+    /// </summary>
+    public const int MaxMatchSettledBoardIdLength = 128;
 }

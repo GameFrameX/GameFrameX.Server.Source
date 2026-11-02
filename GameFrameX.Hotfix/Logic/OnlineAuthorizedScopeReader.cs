@@ -52,9 +52,9 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 internal static class OnlineAuthorizedScopeReader
 {
     /// <summary>
-    /// 读取授权作用域三元组（玩家位为 0，由调用方按请求主体填充）。
+    /// 读取授权作用域区服键（玩家位为 0，由调用方按请求主体填充；单键化 D4 后无租户位/App 位）。
     /// </summary>
-    /// <param name="authorizedScope">输出：授权作用域三元组（提供者桥缺席 / 已撤销时为 null）。</param>
+    /// <param name="authorizedScope">输出：授权作用域（提供者桥缺席 / 已撤销时为 null）。</param>
     /// <returns>提供者在场且可达返回 true；缺席 / 撤销返回 false。</returns>
     internal static bool TryGetAuthorizedScope(out OnlineScope authorizedScope)
     {
@@ -79,14 +79,14 @@ internal static class OnlineAuthorizedScopeReader
     }
 
     /// <summary>
-    /// 组装生效作用域（授权三元组 + 请求玩家位）。
+    /// 组装生效作用域（授权区服键 + 请求玩家位）。
     /// </summary>
     /// <param name="playerId">请求主体玩家标识（会话绑定身份或 Token 解析身份）。</param>
     /// <returns>生效作用域；提供者桥缺席 / 已撤销时为 null。</returns>
     internal static OnlineScope BuildRequestScope(long playerId)
     {
         return TryGetAuthorizedScope(out var authorizedScope)
-            ? new OnlineScope(authorizedScope.TenantId, authorizedScope.AppId, authorizedScope.ServerId, playerId)
+            ? new OnlineScope(authorizedScope.ServerId, playerId)
             : null;
     }
 }

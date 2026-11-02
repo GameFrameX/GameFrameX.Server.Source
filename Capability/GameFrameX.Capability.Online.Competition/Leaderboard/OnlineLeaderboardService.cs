@@ -45,7 +45,7 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 /// (1) **本服务没有任何接受「裸分数」的公开提交 API**——分数写入只经内部
 /// <see cref="ApplyTrustedScoreAsync"/>（由可信写入链路 <see cref="OnlineLeaderboardResultProjector"/> 调用），
 /// 客户端无入口可刷分；
-/// (2) 跨 App / 跨租户读写与「榜单不存在」同构返回 ResourceNotFound（反预言，不泄露榜单存在性）；
+/// (2) 作用域校验失败与「榜单不存在」同构返回 ResourceNotFound（反预言，不泄露榜单存在性）；
 /// (3) Top N 读缓存 TTL + 写失效——任何成功写榜立即失效该榜缓存，缓存只影响读延迟不影响正确性。
 /// </para>
 /// </summary>
@@ -84,9 +84,9 @@ public sealed class OnlineLeaderboardService
     }
 
     /// <summary>
-    /// 创建榜单（同作用域同名榜单已存在时拒绝；创建成功发布 <c>Online.Leaderboard.Created</c> 事件）。
+    /// 创建榜单（同名榜单已存在时拒绝；创建成功发布 <c>Online.Leaderboard.Created</c> 事件）。
     /// </summary>
-    /// <param name="scope">生效作用域（鉴权上下文产物；榜单归属取其 TenantId / AppId）。</param>
+    /// <param name="scope">生效作用域（鉴权上下文产物）。</param>
     /// <param name="request">创建请求。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -126,8 +126,6 @@ public sealed class OnlineLeaderboardService
         var board = new OnlineLeaderboard
         {
             LeaderboardId = request.LeaderboardId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             SortOrder = request.SortOrder,
             ScoreUpdatePolicy = request.ScoreUpdatePolicy,
             MaxScorePerSubmission = request.MaxScorePerSubmission,
@@ -140,14 +138,14 @@ public sealed class OnlineLeaderboardService
             return OnlineResult<OnlineLeaderboard>.Fail(OnlineErrorCode.ParameterInvalid, "榜单标识已存在");
         }
 
-        await PublishAsync(OnlineLeaderboardEvents.CreateLeaderboardCreated(created.TenantId, created.AppId, created.LeaderboardId, created.SortOrder.ToString(), created.ScoreUpdatePolicy.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineLeaderboardEvents.CreateLeaderboardCreated(created.LeaderboardId, created.SortOrder.ToString(), created.ScoreUpdatePolicy.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineLeaderboard>.Ok(created);
     }
 
     /// <summary>
     /// 查询 Top N（带 keyset 游标分页；游标由本服务编码，客户端不透明）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨 App / 跨租户与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域。</param>
     /// <param name="query">Top N 查询载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本页条目与后继游标；失败返回对应错误码。</returns>
@@ -302,7 +300,7 @@ public sealed class OnlineLeaderboardService
     }
 
     /// <summary>
-    /// 内部：按作用域解析榜单定义（跨作用域与不存在同构返回失败 ResourceNotFound）。
+    /// 内部：解析榜单定义（不存在同构返回失败 ResourceNotFound）。
     /// </summary>
     /// <param name="scope">生效作用域。</param>
     /// <param name="leaderboardId">榜单标识。</param>
@@ -320,7 +318,7 @@ public sealed class OnlineLeaderboardService
             return OnlineResult<OnlineLeaderboard>.Fail(OnlineErrorCode.ParameterInvalid, "榜单标识不能为空");
         }
 
-        var board = await _store.FindAsync(scope.TenantId, scope.AppId, leaderboardId, cancellationToken).ConfigureAwait(false);
+        var board = await _store.FindAsync(leaderboardId, cancellationToken).ConfigureAwait(false);
         if (board == null)
         {
             return OnlineResult<OnlineLeaderboard>.Fail(OnlineErrorCode.ResourceNotFound, "排行榜不存在");
@@ -361,7 +359,7 @@ public sealed class OnlineLeaderboardService
         }
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        if (!_rateLimiter.TryAcquire(leaderboard.TenantId, leaderboard.AppId, submission.PlayerId, now))
+        if (!_rateLimiter.TryAcquire(submission.PlayerId, now))
         {
             return Failed(OnlineErrorCode.RateLimitExceeded, "提交过于频繁，已限流");
         }
@@ -374,7 +372,7 @@ public sealed class OnlineLeaderboardService
         }
 
         InvalidateCache(leaderboard);
-        await PublishAsync(OnlineLeaderboardEvents.CreateScoreUpdated(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId, submission.PlayerId, applied.OldScore, applied.Entry.Score, submission.SourceMatchResultId, applied.Entry.LastUpdateTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineLeaderboardEvents.CreateScoreUpdated(leaderboard.LeaderboardId, submission.PlayerId, applied.OldScore, applied.Entry.Score, submission.SourceMatchResultId, applied.Entry.LastUpdateTime), cancellationToken).ConfigureAwait(false);
 
         return new OnlineLeaderboardWriteOutcome
         {
@@ -450,7 +448,7 @@ public sealed class OnlineLeaderboardService
     private async Task<List<OnlineLeaderboardEntry>> GetSnapshotAsync(OnlineLeaderboard leaderboard, long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var cacheKey = leaderboard.TenantId.ToString(CultureInfo.InvariantCulture) + ":" + leaderboard.AppId.ToString(CultureInfo.InvariantCulture) + ":" + leaderboard.LeaderboardId;
+        var cacheKey = leaderboard.LeaderboardId ?? string.Empty;
         if (_options.CacheEnabled)
         {
             lock (_cacheSyncRoot)
@@ -484,7 +482,7 @@ public sealed class OnlineLeaderboardService
     /// <param name="leaderboard">榜单定义。</param>
     private void InvalidateCache(OnlineLeaderboard leaderboard)
     {
-        var cacheKey = leaderboard.TenantId.ToString(CultureInfo.InvariantCulture) + ":" + leaderboard.AppId.ToString(CultureInfo.InvariantCulture) + ":" + leaderboard.LeaderboardId;
+        var cacheKey = leaderboard.LeaderboardId ?? string.Empty;
         lock (_cacheSyncRoot)
         {
             _snapshotCache.Remove(cacheKey);

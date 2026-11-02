@@ -65,16 +65,6 @@ public sealed class OnlineAssetTransactionRowState : BaseCacheState
     public string CompensatesTransactionId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
     public long PlayerId { get; set; }

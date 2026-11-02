@@ -65,13 +65,11 @@ public interface IOnlineNotificationStore
     /// <summary>
     /// 按通知标识查找（标识在「作用域 + 接收者」内定位，故查询必须带接收者）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="notificationId">通知标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>通知副本；不存在返回 null。</returns>
-    Task<OnlineNotification> FindAsync(long tenantId, long appId, long playerId, string notificationId, CancellationToken cancellationToken = default);
+    Task<OnlineNotification> FindAsync(long playerId, string notificationId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义整体替换通知记录（推送落定 / 已读 / 过期走此入口）。
@@ -98,20 +96,16 @@ public interface IOnlineNotificationStore
     /// <summary>
     /// 列出某接收者的全部通知（任意状态；通知列表与离线补发的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>通知副本列表。</returns>
-    Task<IReadOnlyList<OnlineNotification>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineNotification>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内处于指定状态的全部通知（超期扫描与重试扫描的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">通知状态。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>通知副本列表。</returns>
-    Task<IReadOnlyList<OnlineNotification>> ListByStateAsync(long tenantId, long appId, OnlineNotificationState state, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineNotification>> ListByStateAsync(OnlineNotificationState state, CancellationToken cancellationToken = default);
 }

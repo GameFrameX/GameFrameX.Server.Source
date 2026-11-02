@@ -623,7 +623,7 @@ public class CapabilitySchedulerTests
             };
             var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, SchedulerIntervalMilliseconds = LoopIntervalMilliseconds },
+                HostOptions = new CapabilityHostOptions { ServerId = 1, SchedulerIntervalMilliseconds = LoopIntervalMilliseconds },
                 Filter = new CapabilityAssemblyFilter(new[] { "mech-first" }),
                 SchedulerClock = clock,
                 SchedulerObserver = observer,

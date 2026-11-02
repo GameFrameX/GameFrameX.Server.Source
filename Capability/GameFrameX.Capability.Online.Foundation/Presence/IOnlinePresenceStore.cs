@@ -32,54 +32,44 @@ namespace GameFrameX.Capability.Online.Foundation.Presence;
 /// <summary>
 /// 在线状态存储接口（Presence 事实源的持久化契约）。
 /// <para>
-/// 维护约束：键 = (TenantId, AppId, PlayerId)——玩家维度唯一（多端并存时以会话域为准，Presence 表达玩家事实）；
-/// 无记录即 Offline（RemoveAsync 即下线）；查询按 (TenantId, AppId) 列举，在线计数在服务层过滤状态。
+/// 维护约束：键 = PlayerId——玩家维度唯一（多端并存时以会话域为准，Presence 表达玩家事实）；
+/// 无记录即 Offline（RemoveAsync 即下线）；全量列举供在线计数，在线计数在服务层过滤状态。
 /// </para>
 /// </summary>
 public interface IOnlinePresenceStore
 {
-    /// <summary>写入或覆盖在线状态记录（按 (TenantId, AppId, PlayerId) 全量写）。</summary>
+    /// <summary>写入或覆盖在线状态记录（按 PlayerId 全量写）。</summary>
     /// <param name="record">在线状态记录。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     Task SetAsync(OnlinePresenceRecord record, CancellationToken cancellationToken = default);
 
-    /// <summary>按 (TenantId, AppId, PlayerId) 查找在线状态记录。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>按 PlayerId 查找在线状态记录。</summary>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录；无记录返回 null（即 Offline）。</returns>
-    Task<OnlinePresenceRecord> FindAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<OnlinePresenceRecord> FindAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>移除在线状态记录（即 Offline）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    Task RemoveAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task RemoveAsync(long playerId, CancellationToken cancellationToken = default);
 
-    /// <summary>列出 (TenantId, AppId) 下全部在线状态记录（在线计数与 Admin 查询输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>列出全部在线状态记录（在线计数与 Admin 查询输入）。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录列表。</returns>
-    Task<IReadOnlyList<OnlinePresenceRecord>> ListByAppAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePresenceRecord>> ListAllAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内的在线玩家数（聚合谓词下推：State 为 Blocked 的记录不计入，与在线总览口径一致）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>统计区服内的在线玩家数（聚合谓词下推：State 为 Blocked 的记录不计入，与在线总览口径一致）。</summary>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线玩家数。</returns>
-    Task<int> CountOnlineByServerAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+    Task<int> CountOnlineByServerAsync(long serverId, CancellationToken cancellationToken = default);
 
     /// <summary>列出已到期的清扫候选（Reconnecting 超重连窗 / Online 超空闲阈值），按到期时间升序取头部。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒）。</param>
     /// <param name="idleTimeoutMilliseconds">空闲判定阈值（毫秒；Online 态心跳早于该阈值即到期）。</param>
     /// <param name="maxCount">最多返回条数（批量清扫的批次大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>到期候选记录快照（服务层仍须逐条复核状态与到期条件）；无候选返回空列表。</returns>
-    Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long tenantId, long appId, long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default);
 }

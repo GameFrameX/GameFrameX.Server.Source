@@ -36,8 +36,8 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// 好友关系持久化行（Social 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码约定（物化复合键）：<see cref="UniqueKey"/> =
-/// "friend:{TenantId}:{AppId}:{LowPlayerId}:{HighPlayerId}"（作用域 + 规范化无向对，与 InMemory
-/// <c>BuildPairKey</c> 同构），单列唯一索引承接「一对玩家至多一条关系记录」的结构性不变量。
+/// "friend:{LowPlayerId}:{HighPlayerId}"（规范化无向对，与 InMemory 键同构，
+/// 唯一构造点 <c>OnlineRowKey.Friendship</c>），单列唯一索引承接「一对玩家至多一条关系记录」的结构性不变量。
 /// 行 Id 无自然主键，由 <c>NextSequenceAsync</c> 分配；业务字段保留为独立列供等值/归属查询；
 /// 状态以枚举数值落库。
 /// </para>
@@ -45,7 +45,7 @@ using GameFrameX.Foundation.Orm.Attribute;
 public sealed class OnlineFriendshipRowState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"friend:{TenantId}:{AppId}:{LowPlayerId}:{HighPlayerId}"；唯一索引列）。
+    /// 获取或设置物化复合键（"friend:{LowPlayerId}:{HighPlayerId}"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_friendship_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
@@ -54,16 +54,6 @@ public sealed class OnlineFriendshipRowState : BaseCacheState
     /// 获取或设置关系标识（服务端生成的字符串 Id，定位 + 回读保真）。
     /// </summary>
     public string FriendshipId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（数据隔离根边界）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（数据隔离根边界）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关系建立时的来源区服标识（仅审计参考，不参与唯一键）。

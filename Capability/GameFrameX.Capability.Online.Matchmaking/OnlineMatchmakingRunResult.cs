@@ -40,16 +40,6 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 public sealed class OnlineMatchmakingRunResult
 {
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置本轮开始时排队中的票据数。
     /// </summary>
     public int ScannedTicketCount { get; set; }

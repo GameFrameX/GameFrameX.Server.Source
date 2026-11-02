@@ -51,15 +51,6 @@ public sealed class OnlineIdentityRebindAuthorization
     /// </summary>
     public string TicketId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（票据作用域：必须与被改绑身份一致）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识（票据作用域：必须与被改绑身份一致）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置身份类型（票据作用域：必须与被改绑身份一致）。

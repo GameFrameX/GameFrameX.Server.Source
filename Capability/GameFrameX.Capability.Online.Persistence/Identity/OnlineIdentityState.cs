@@ -35,8 +35,8 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// <summary>
 /// 外源身份持久化行（Identity 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（无损拼接原文，与 InMemory
-/// <c>BuildIdentityKey</c> 同构），单列唯一索引承接四元组 (TenantId, AppId, Kind, Identifier) 唯一性；
+/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（无损拼接原文，与 InMemory 键同构，
+/// 唯一构造点 <c>OnlineRowKey.Identity</c>），单列唯一索引承接二元组 (Kind, Identifier) 唯一性；
 /// 分隔符冒号与业务串内冒号的歧义语义与 InMemory 键逐字节同构（保真优先）。行 Id 无自然主键，
 /// 由 <c>NextSequenceAsync</c> 分配；业务字段保留为独立列供等值/归属查询。
 /// </para>
@@ -44,7 +44,7 @@ using GameFrameX.Foundation.Orm.Attribute;
 public sealed class OnlineIdentityState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"tenant:app:kind:identifier"；唯一索引列）。
+    /// 获取或设置物化复合键（"kind:identifier"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_identity_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
@@ -53,16 +53,6 @@ public sealed class OnlineIdentityState : BaseCacheState
     /// 获取或设置实体标识（服务端生成的字符串 Id，仅回读保真，不作查找键）。
     /// </summary>
     public string EntityId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置身份类型（枚举数值落库）。

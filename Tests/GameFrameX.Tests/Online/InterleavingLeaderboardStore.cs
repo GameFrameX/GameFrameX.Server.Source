@@ -130,14 +130,12 @@ namespace GameFrameX.Tests.Online
         /// <remarks>
         /// Forwards directly to the inner store to find the leaderboard definition by scope.
         /// </remarks>
-        /// <param name="tenantId">租户标识 / Tenant id</param>
-        /// <param name="appId">App 标识 / App id</param>
         /// <param name="leaderboardId">榜单标识 / Leaderboard id</param>
         /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
-        /// <returns>内部存储返回的榜单副本（不存在或跨作用域时为 null）/ The leaderboard copy from the inner store (null when missing or cross-scope)</returns>
-        public Task<OnlineLeaderboard> FindAsync(long tenantId, long appId, string leaderboardId, CancellationToken cancellationToken = default)
+        /// <returns>内部存储返回的榜单副本（不存在时为 null）/ The leaderboard copy from the inner store (null when missing)</returns>
+        public Task<OnlineLeaderboard> FindAsync(string leaderboardId, CancellationToken cancellationToken = default)
         {
-            return _inner.FindAsync(tenantId, appId, leaderboardId, cancellationToken);
+            return _inner.FindAsync(leaderboardId, cancellationToken);
         }
 
         /// <summary>
@@ -146,15 +144,13 @@ namespace GameFrameX.Tests.Online
         /// <remarks>
         /// Forwards directly to the inner store to find a single player's entry.
         /// </remarks>
-        /// <param name="tenantId">租户标识 / Tenant id</param>
-        /// <param name="appId">App 标识 / App id</param>
         /// <param name="leaderboardId">榜单标识 / Leaderboard id</param>
         /// <param name="playerId">玩家标识 / Player id</param>
         /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
         /// <returns>内部存储返回的条目副本（未上榜时为 null）/ The entry copy from the inner store (null when the player is unranked)</returns>
-        public Task<OnlineLeaderboardEntry> FindEntryAsync(long tenantId, long appId, string leaderboardId, long playerId, CancellationToken cancellationToken = default)
+        public Task<OnlineLeaderboardEntry> FindEntryAsync(string leaderboardId, long playerId, CancellationToken cancellationToken = default)
         {
-            return _inner.FindEntryAsync(tenantId, appId, leaderboardId, playerId, cancellationToken);
+            return _inner.FindEntryAsync(leaderboardId, playerId, cancellationToken);
         }
 
         /// <summary>

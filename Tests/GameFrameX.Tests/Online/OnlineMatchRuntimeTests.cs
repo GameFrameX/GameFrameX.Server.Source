@@ -46,12 +46,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchRuntimeTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
 
@@ -154,19 +148,19 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineMatchState.Closed, harness.Actor.State);
             Assert.Equal(0, harness.Runtime.ActiveActorCount);
             Assert.Equal(1, harness.Runtime.ReleasedActorCount);
-            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, MatchId));
+            Assert.Null(await harness.Store.FindAsync(MatchId));
         }
 
         /// <summary>
-        /// 验证跨租户作用域不得读写他人对局。
+        /// 验证跨区服作用域不得读写他人对局。
         /// </summary>
         [Fact]
-        public async Task CrossTenantScope_ShouldBeDenied()
+        public async Task CrossServerScope_ShouldBeDenied()
         {
             var harness = new Harness();
             await harness.CreateAsync();
 
-            var foreign = new OnlineScope(TenantId + 1, AppId, ServerId, PlayerOne);
+            var foreign = new OnlineScope(ServerId + 1, PlayerOne);
             var result = await harness.Actor.SetReadyAsync(foreign, true, Now);
 
             Assert.False(result.IsSuccess);
@@ -236,8 +230,8 @@ namespace GameFrameX.Tests.Online
             var runtime = new OnlineMatchRuntime(store, new OnlineEventRecorder(), new OnlineMatchRuntimeOptions());
             runtime.RegisterGame(new OnlineRockPaperScissorsGame());
 
-            var first = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
-            var second = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
+            var first = Task.Run(() => runtime.ResolveActorAsync(MatchId));
+            var second = Task.Run(() => runtime.ResolveActorAsync(MatchId));
             var actors = await Task.WhenAll(first, second);
 
             Assert.NotNull(actors[0]);
@@ -260,14 +254,14 @@ namespace GameFrameX.Tests.Online
             var createTask = Task.Run(() => runtime.CreateFromAssignmentAsync(BuildAssignment(PlayerOne, PlayerTwo), Now));
             await store.CreatePersisted.Task.WaitAsync(OrchestrationTimeout);
 
-            var resolverActor = await runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+            var resolverActor = await runtime.ResolveActorAsync(MatchId);
             Assert.NotNull(resolverActor);
             store.ResolverRegistered.TrySetResult();
 
             var created = await createTask;
             Assert.True(created.IsSuccess, created.Message);
 
-            var afterCreate = await runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+            var afterCreate = await runtime.ResolveActorAsync(MatchId);
             Assert.Same(resolverActor, afterCreate);
             Assert.Equal(1, runtime.ActiveActorCount);
         }
@@ -290,7 +284,7 @@ namespace GameFrameX.Tests.Online
                 var resolves = new Task<OnlineMatchActor>[8];
                 for (var index = 0; index < resolves.Length; index++)
                 {
-                    resolves[index] = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
+                    resolves[index] = Task.Run(() => runtime.ResolveActorAsync(MatchId));
                 }
 
                 var actors = await Task.WhenAll(resolves);
@@ -320,8 +314,6 @@ namespace GameFrameX.Tests.Online
                 Region = 1,
                 CreatedAtTime = Now,
                 TicketIds = new List<string>(),
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
             };
         }
@@ -383,7 +375,7 @@ namespace GameFrameX.Tests.Online
             {
                 var created = await Runtime.CreateFromAssignmentAsync(BuildAssignment(PlayerOne, PlayerTwo), Now);
                 Assert.True(created.IsSuccess, created.Message);
-                Actor = await Runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+                Actor = await Runtime.ResolveActorAsync(MatchId);
                 Assert.NotNull(Actor);
             }
 
@@ -430,7 +422,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>作用域。</returns>
             public OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
 
@@ -442,8 +434,6 @@ namespace GameFrameX.Tests.Online
         {
             return new OnlineMatch
             {
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 MatchId = MatchId,
                 Mode = OnlineRockPaperScissorsGame.MatchMode,
@@ -479,9 +469,9 @@ namespace GameFrameX.Tests.Online
             private int _findArrivalCount;
 
             /// <summary>并发计数委托内存实现。</summary>
-            public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long serverId, CancellationToken cancellationToken = default)
             {
-                return _inner.CountActiveByScopeAsync(tenantId, appId, serverId, cancellationToken);
+                return _inner.CountActiveByScopeAsync(serverId, cancellationToken);
             }
 
             /// <summary>
@@ -538,12 +528,10 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 对齐模式下前两次查找彼此等待后同时返回，确保两方都越过缓存 miss 各自构造后并发注册。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="matchId">对局标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>对局副本；不存在返回 null。</returns>
-            public async Task<OnlineMatch> FindAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+            public async Task<OnlineMatch> FindAsync(string matchId, CancellationToken cancellationToken = default)
             {
                 if (_alignConcurrentFinds)
                 {
@@ -560,7 +548,7 @@ namespace GameFrameX.Tests.Online
                     }
                 }
 
-                return await _inner.FindAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+                return await _inner.FindAsync(matchId, cancellationToken).ConfigureAwait(false);
             }
 
             /// <summary>委托内存实现。</summary>
@@ -573,24 +561,20 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>委托内存实现。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="matchId">对局标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>删除结果。</returns>
-            public Task<bool> DeleteAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+            public Task<bool> DeleteAsync(string matchId, CancellationToken cancellationToken = default)
             {
-                return _inner.DeleteAsync(tenantId, appId, matchId, cancellationToken);
+                return _inner.DeleteAsync(matchId, cancellationToken);
             }
 
             /// <summary>委托内存实现。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>对局副本列表。</returns>
-            public Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineMatch>> ListAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.ListAsync(tenantId, appId, cancellationToken);
+                return _inner.ListAsync(cancellationToken);
             }
 
             /// <summary>

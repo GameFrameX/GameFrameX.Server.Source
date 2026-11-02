@@ -61,15 +61,7 @@ public sealed class OnlineBlockEntry
     /// </summary>
     public long BlockedPlayerId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置发起屏蔽时所在的区服标识（仅作事件信封与审计记录用；
@@ -98,8 +90,6 @@ public sealed class OnlineBlockEntry
             EntryId = EntryId,
             OwnerId = OwnerId,
             BlockedPlayerId = BlockedPlayerId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             Reason = Reason,
             CreatedAtTime = CreatedAtTime,

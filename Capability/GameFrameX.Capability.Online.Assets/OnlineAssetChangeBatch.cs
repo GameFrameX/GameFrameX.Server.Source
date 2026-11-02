@@ -46,16 +46,6 @@ public sealed class OnlineAssetChangeBatch
     public string TransactionId { get; }
 
     /// <summary>
-    /// 获取租户标识。
-    /// </summary>
-    public long TenantId { get; }
-
-    /// <summary>
-    /// 获取 App 标识。
-    /// </summary>
-    public long AppId { get; }
-
-    /// <summary>
     /// 获取玩家标识。
     /// </summary>
     public long PlayerId { get; }
@@ -115,8 +105,6 @@ public sealed class OnlineAssetChangeBatch
     internal OnlineAssetChangeBatch(string transactionId, OnlineLedgerHeader header, IReadOnlyList<OnlineAssetChangeLine> lines, string compensatesTransactionId)
     {
         TransactionId = transactionId;
-        TenantId = header.TenantId;
-        AppId = header.AppId;
         PlayerId = header.PlayerId;
         HomeServerId = header.HomeServerId;
         InitiatingServerId = header.InitiatingServerId;

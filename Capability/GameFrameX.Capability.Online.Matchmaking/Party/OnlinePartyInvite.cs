@@ -50,16 +50,6 @@ public sealed class OnlinePartyInvite
     public string PartyId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置邀请发起人（队长）。
     /// </summary>
     public long InviterId { get; set; }
@@ -94,8 +84,6 @@ public sealed class OnlinePartyInvite
         {
             InviteId = InviteId,
             PartyId = PartyId,
-            TenantId = TenantId,
-            AppId = AppId,
             InviterId = InviterId,
             InviteeId = InviteeId,
             State = State,

@@ -256,7 +256,7 @@ public sealed class OnlineAdminAssetHandlers
             Cursor = OnlineAdminApiContract.ReadCursor(request),
             PageSize = OnlineAdminApiContract.ReadPageSize(request),
         };
-        var page = OnlineAdminApiContract.Unwrap(await _audit.QueryAsync(scope, query, cancellationToken).ConfigureAwait(false));
+        var page = OnlineAdminApiContract.Unwrap(await _audit.QueryAsync(query, cancellationToken).ConfigureAwait(false));
         var items = new List<AssetAuditEntryResponse>();
         foreach (var record in page.Records)
         {
@@ -296,14 +296,14 @@ public sealed class OnlineAdminAssetHandlers
     {
         var transactionId = OnlineAdminApiContract.RequireString(request, "TransactionId");
         var storedTransaction = await _assetTransactionStore.FindAsync(transactionId, cancellationToken).ConfigureAwait(false);
-        if (storedTransaction == null || storedTransaction.TenantId != scope.TenantId || storedTransaction.AppId != scope.AppId)
+        if (storedTransaction == null)
         {
             // Localization: Online.AdminApi.TransactionNotFound - 交易不存在：{0}
             throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.TransactionNotFound, transactionId));
         }
 
         // 线缆契约：query_transaction_detail 只携带交易标识；玩家位由交易记录回查补全（查询面按玩家位校验）。
-        var playerScope = new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, storedTransaction.PlayerId);
+        var playerScope = new OnlineScope(scope.ServerId, storedTransaction.PlayerId);
         var detail = OnlineAdminApiContract.Unwrap(await _assetQuery.GetTransactionDetailAsync(playerScope, transactionId, cancellationToken).ConfigureAwait(false));
         if (detail == null || detail.Transaction == null)
         {

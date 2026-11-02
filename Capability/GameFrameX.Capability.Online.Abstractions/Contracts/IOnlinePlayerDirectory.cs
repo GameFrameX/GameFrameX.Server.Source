@@ -44,23 +44,19 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 public interface IOnlinePlayerDirectory
 {
     /// <summary>
-    /// 按展示名关键字检索玩家（作用域内）。
+    /// 按展示名关键字检索玩家。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="keyword">名称关键字（前后空白由实现忽略；空关键字不返回结果）。</param>
     /// <param name="limit">返回条数上限（调用方须传正值）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>匹配的玩家目录条目（顺序由实现保证稳定）。</returns>
-    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(string keyword, int limit, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按玩家标识批量解析目录条目（好友列表展示名的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerIds">玩家标识集合。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>解析到的条目（不存在的标识不出现在结果中）。</returns>
-    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default);
 }

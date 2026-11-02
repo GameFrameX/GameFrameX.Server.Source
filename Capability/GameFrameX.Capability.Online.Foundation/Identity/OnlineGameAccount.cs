@@ -30,10 +30,10 @@
 namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
-/// 游戏账号实体（Tenant → App → Identity / GameAccount → Player 层级中的账号层）。
+/// 游戏账号实体（Identity / GameAccount → Player 层级中的账号层）。
 /// <para>
 /// 维护约束：账号是身份与玩家的归属聚合根；一个 GameAccount 可拥有多个 Player，
-/// 但每个 Player 必须有明确的 App/Server 归属；合并（Merged）与注销（Deactivated）
+/// 但每个 Player 必须有明确的 Server 归属；合并（Merged）与注销（Deactivated）
 /// 为显式操作，注销后的数据保留期由 <see cref="DataRetentionUntilTime"/> 承载，
 /// 保留期内不得物理删除（数据保留红线）。
 /// </para>
@@ -45,15 +45,6 @@ public sealed class OnlineGameAccount
     /// </summary>
     public long Id { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置账号生命周期状态。

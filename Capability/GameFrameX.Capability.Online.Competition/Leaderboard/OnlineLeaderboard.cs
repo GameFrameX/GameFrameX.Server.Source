@@ -30,10 +30,9 @@
 namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 
 /// <summary>
-/// 排行榜榜单定义（第一版个人榜；作用域 = (TenantId, AppId)，App 内跨区服聚合）。
+/// 排行榜榜单定义（第一版个人榜；全局域投影目标，无区服隔离位——同 LeaderboardId 即同榜）。
 /// <para>
-/// 维护约束（红线）：榜单归属租户与 App 双键隔离——跨 App / 跨租户读写一律查不到（ResourceNotFound 反预言，
-/// 对齐存储与频道的既有先例，不泄露榜单存在性）；<c>ServerId</c> 不参与榜单隔离，
+/// 维护约束（红线）：榜单为全局域数据——同键读写天然成立，无跨区服隔离维度；
 /// 队伍榜 / 公会榜 / 复杂跨服排名延后（超出首版范围）。排序方向与累计策略创建后固化，运行期不可变更；
 /// 赛季维度的生命周期（重置 / 快照）归赛季域，本类型不承载赛季字段。
 /// </para>
@@ -41,19 +40,9 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 public sealed class OnlineLeaderboard
 {
     /// <summary>
-    /// 获取或设置榜单标识（App 内唯一，创建方提供）。
+    /// 获取或设置榜单标识（全局唯一，创建方提供）。
     /// </summary>
     public string LeaderboardId { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置排序方向（创建后固化）。
@@ -84,8 +73,6 @@ public sealed class OnlineLeaderboard
         return new OnlineLeaderboard
         {
             LeaderboardId = LeaderboardId,
-            TenantId = TenantId,
-            AppId = AppId,
             SortOrder = SortOrder,
             ScoreUpdatePolicy = ScoreUpdatePolicy,
             MaxScorePerSubmission = MaxScorePerSubmission,

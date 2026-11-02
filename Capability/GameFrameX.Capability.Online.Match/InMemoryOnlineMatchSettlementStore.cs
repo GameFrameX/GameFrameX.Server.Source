@@ -15,9 +15,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 
 namespace GameFrameX.Capability.Online.Match;
 
@@ -40,21 +40,19 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
     /// <summary>全局读写锁（结果表与 outbox 表共用，保证跨表原子性）。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>结果表：键 = (TenantId, AppId, MatchId)。</summary>
+    /// <summary>结果表：键 = MatchId（<see cref="OnlineRowKey.MatchResult"/>）。</summary>
     private readonly Dictionary<string, OnlineMatchResult> _results = new();
 
     /// <summary>待发奖记录表：键 = MatchResultId。</summary>
     private readonly Dictionary<string, OnlineMatchRewardOutboxRecord> _outboxes = new();
 
     /// <summary>
-    /// 在全局锁内按作用域与对局标识查找结算结果并返回副本；标识为空直接返回 null。
+    /// 在全局锁内按对局标识查找结算结果并返回副本；标识为空直接返回 null。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结果副本；未结算返回 null。</returns>
-    public Task<OnlineMatchResult> FindByMatchAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchResult> FindByMatchAsync(string matchId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(matchId))
         {
@@ -63,7 +61,7 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
 
         lock (_syncRoot)
         {
-            return Task.FromResult(_results.TryGetValue(BuildResultKey(tenantId, appId, matchId), out var result) ? result.Copy() : null);
+            return Task.FromResult(_results.TryGetValue(OnlineRowKey.MatchResult(matchId), out var result) ? result.Copy() : null);
         }
     }
 
@@ -82,7 +80,7 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
 
         lock (_syncRoot)
         {
-            var key = BuildResultKey(result.TenantId, result.AppId, result.MatchId);
+            var key = OnlineRowKey.MatchResult(result.MatchId);
             if (_results.TryGetValue(key, out var existing))
             {
                 return Task.FromResult(existing.Copy());
@@ -109,7 +107,7 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
 
         lock (_syncRoot)
         {
-            var key = BuildResultKey(result.TenantId, result.AppId, result.MatchId);
+            var key = OnlineRowKey.MatchResult(result.MatchId);
             if (_results.TryGetValue(key, out var existing))
             {
                 return Task.FromResult(existing.Copy());
@@ -284,8 +282,6 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
         {
             MatchResultId = result.MatchResultId,
             MatchId = result.MatchId,
-            TenantId = result.TenantId,
-            AppId = result.AppId,
             Result = result.Copy(),
             RowVersion = 1,
         };
@@ -341,20 +337,4 @@ public sealed class InMemoryOnlineMatchSettlementStore : IOnlineMatchSettlementS
         };
     }
 
-    /// <summary>
-    /// 构造结果作用域隔离键。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="matchId">对局标识。</param>
-    /// <returns>复合键。</returns>
-    private static string BuildResultKey(long tenantId, long appId, string matchId)
-    {
-        return string.Concat(
-            tenantId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            appId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            matchId ?? string.Empty);
-    }
 }

@@ -232,7 +232,7 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
             return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "重连窗口必须为正数（秒）");
         }
 
-        var active = await _store.ListActiveByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var active = await _store.ListActiveByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         foreach (var session in active)
         {
             if (session == null)
@@ -273,22 +273,13 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
     }
 
     /// <summary>
-    /// 校验作用域与会话一致（跨租户 / 跨 App / 跨服 / 跨玩家一律拒绝）。
+    /// 校验作用域与会话一致（跨服 / 跨玩家一律拒绝）。
     /// </summary>
     /// <param name="session">目标会话。</param>
     /// <param name="scope">生效作用域。</param>
     /// <returns>失败结果；一致返回 null。</returns>
     private static (OnlineErrorCode Code, string Message)? EnsureScopeMatch(OnlineSession session, OnlineScope scope)
     {
-        if (session.TenantId != scope.TenantId)
-        {
-            return (OnlineErrorCode.CrossTenantDenied, "会话不属于当前租户");
-        }
-
-        if (session.AppId != scope.AppId)
-        {
-            return (OnlineErrorCode.CrossAppDenied, "会话不属于当前应用");
-        }
 
         if (session.ServerId != scope.ServerId)
         {
