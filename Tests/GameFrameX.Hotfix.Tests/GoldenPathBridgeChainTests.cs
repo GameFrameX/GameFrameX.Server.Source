@@ -35,6 +35,7 @@ using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Online.Abstractions;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Competition.Leaderboard;
@@ -86,10 +87,11 @@ public sealed class GoldenPathBridgeChainTests
             var options = new CapabilityCompositionOptions(section, new HotfixBridgeAssemblyLog())
             {
                 HostOptions = new CapabilityHostOptions { ServerId = ServerId, SchedulerIntervalMilliseconds = 3600000, },
-                Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social", "online-matchmaking", "online-match", "online-assets", "online-competition" }),
+                Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social", "online-matchmaking", "online-match", "online-assets", "online-leaderboard", "online-competition" }),
             };
             options.Override<IOnlinePlayerDirectory>(new EmptyPlayerDirectoryStub());
             options.Override<IOnlineHotfixRollbackExecutor>(new NoopHotfixRollbackExecutorStub());
+            options.Configure<OnlineMatchOptions>(match => match.AddGame(new OnlineRockPaperScissorsGame()));
 
             runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
             await runtime.Host.StartAsync();

@@ -13,7 +13,7 @@
     <Project Path="Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj" />
     <Project Path="Tests/GameFrameX.Hotfix.Tests.Probes/GameFrameX.Hotfix.Tests.Probes.csproj" />
   </Folder>
-  <Folder Name="/Capability/">
+  <Folder Name="/Capability/Standard/">
     <Project Path="Capability/GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj" />
@@ -23,9 +23,17 @@
     <Project Path="Capability/GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Leaderboard/GameFrameX.Capability.Online.Leaderboard.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/Capability/Frozen/">
     <Project Path="Capability/GameFrameX.Capability.Online.Competition/GameFrameX.Capability.Online.Competition.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Operations/GameFrameX.Capability.Online.Operations.csproj" />
-    <Project Path="Capability/GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/Capability/Experimental/">
+  </Folder>
+  <Folder Name="/Fixture/">
+    <Project Path="GameFrameX.Apps.Sample/GameFrameX.Apps.Sample.csproj" />
   </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />

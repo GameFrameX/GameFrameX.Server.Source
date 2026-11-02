@@ -12,11 +12,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
         <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="../GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj"/>
     </ItemGroup>
 
 </Project>

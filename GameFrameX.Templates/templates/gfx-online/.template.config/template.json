@@ -45,13 +45,19 @@
       "type": "parameter",
       "datatype": "bool",
       "defaultValue": "false",
-      "description": "引用并装配 online-match 能力包（闭包含 Foundation+Assets）"
+      "description": "引用并装配 online-match 能力包（对局运行时/结算；玩法由宿主注入，模板不含样例玩法，未注入玩法时对局能力零玩法装配）"
+    },
+    "Leaderboard": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-leaderboard 能力包（榜单/查询/对局结算投影；闭包含 Foundation+Assets+Match）"
     },
     "Competition": {
       "type": "parameter",
       "datatype": "bool",
       "defaultValue": "false",
-      "description": "引用并装配 online-competition 能力包（闭包含 Foundation+Assets）"
+      "description": "引用并装配 online-competition 能力包（冻结面：赛季/锦标赛；闭包含 Leaderboard 必选依赖）"
     },
     "Operations": {
       "type": "parameter",

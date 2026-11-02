@@ -53,6 +53,7 @@
       <ProjectReference Include="..\..\GameFrameX.StartUp\GameFrameX.StartUp.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.Apps.Sample\GameFrameX.Apps.Sample.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Hotfix.WrapperGenerator\GameFrameX.Hotfix.WrapperGenerator.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Network\GameFrameX.Network.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Launcher\GameFrameX.Launcher.csproj" />
@@ -65,6 +66,7 @@
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Persistence\GameFrameX.Capability.Online.Persistence.csproj" />

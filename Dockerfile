@@ -14,6 +14,7 @@ COPY Capability/GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting
 COPY Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj Capability/GameFrameX.Capability.Online.Abstractions/
 COPY Capability/GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj Capability/GameFrameX.Capability.Online.Assets/
 COPY Capability/GameFrameX.Capability.Online.Competition/GameFrameX.Capability.Online.Competition.csproj Capability/GameFrameX.Capability.Online.Competition/
+COPY Capability/GameFrameX.Capability.Online.Leaderboard/GameFrameX.Capability.Online.Leaderboard.csproj Capability/GameFrameX.Capability.Online.Leaderboard/
 COPY Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj Capability/GameFrameX.Capability.Online.Foundation/
 COPY Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj Capability/GameFrameX.Capability.Online.Match/
 COPY Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj Capability/GameFrameX.Capability.Online.Matchmaking/
@@ -21,6 +22,7 @@ COPY Capability/GameFrameX.Capability.Online.Operations/GameFrameX.Capability.On
 COPY Capability/GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj Capability/GameFrameX.Capability.Online.Persistence/
 COPY Capability/GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj Capability/GameFrameX.Capability.Online.Social/
 COPY GameFrameX.Apps/GameFrameX.Apps.csproj GameFrameX.Apps/
+COPY GameFrameX.Apps.Sample/GameFrameX.Apps.Sample.csproj GameFrameX.Apps.Sample/
 COPY GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj GameFrameX.Architecture.Analyzers/
 COPY GameFrameX.Client/GameFrameX.Client.csproj GameFrameX.Client/
 COPY GameFrameX.Config/GameFrameX.Config.csproj GameFrameX.Config/

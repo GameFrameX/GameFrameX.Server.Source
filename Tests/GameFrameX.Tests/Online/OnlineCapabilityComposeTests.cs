@@ -82,13 +82,14 @@ public class OnlineCapabilityComposeTests
     private static readonly HttpClient SharedHttpClient = new HttpClient();
 
     /// <summary>
-    /// 七能力全装配的拓扑序（依赖边：social→foundation、matchmaking→social、match 可选 assets/matchmaking、
-    /// competition 可选 assets/match、operations→foundation 可选 assets/social/match/matchmaking；同层按能力 Id Ordinal）。
+    /// 八能力全装配的拓扑序（依赖边：social→foundation、matchmaking→social、match 可选 assets/matchmaking、
+    /// leaderboard 可选 match、competition 必选 leaderboard 可选 assets、operations→foundation 可选 assets/social/match/matchmaking；
+    /// 同层按能力 Id Ordinal）。
     /// </summary>
     private static readonly string[] ExpectedTopologicalOrder =
     {
         "online-assets", "online-foundation", "online-social", "online-matchmaking",
-        "online-match", "online-competition", "online-operations",
+        "online-match", "online-leaderboard", "online-competition", "online-operations",
     };
 
     /// <summary>
@@ -189,7 +190,7 @@ public class OnlineCapabilityComposeTests
     }
 
     /// <summary>
-    /// 业务面单开：产出业务宿主、无管理面；七能力全部启用，装配序 = 拓扑序（依赖恒先于依赖方），宿主模块表同序。
+    /// 业务面单开：产出业务宿主、无管理面；八能力全部启用，装配序 = 拓扑序（依赖恒先于依赖方），宿主模块表同序。
     /// </summary>
     [Fact]
     public async Task Compose_RuntimeOnly_ComposesHostWithoutAdminInTopologicalOrder()
@@ -199,7 +200,7 @@ public class OnlineCapabilityComposeTests
             Assert.NotNull(runtime.Host);
             Assert.Null(runtime.AdminApi);
             Assert.Equal(ExpectedTopologicalOrder, runtime.Report.EnabledIdsInOrder);
-            Assert.Equal(7, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             Assert.Equal(ExpectedTopologicalOrder, runtime.Host.Modules.Select(module => module.Manifest.Id).ToArray());
 
             var order = runtime.Report.EnabledIdsInOrder.ToList();
@@ -221,7 +222,7 @@ public class OnlineCapabilityComposeTests
 
     /// <summary>
     /// 管理面单开（EnableRuntime=false + UseAdminApi）：业务宿主不交付（Host 为 null），管理面产出；
-    /// 新设计下每个模块的 Register 仍执行，报告完整（七能力全部启用、拓扑序不变）。
+    /// 新设计下每个模块的 Register 仍执行，报告完整（八能力全部启用、拓扑序不变）。
     /// </summary>
     [Fact]
     public async Task Compose_AdminOnly_HostNullAdminPresentReportComplete()
@@ -264,14 +265,14 @@ public class OnlineCapabilityComposeTests
     }
 
     /// <summary>
-    /// 空列表 = 全装配红线：白名单与排除表均为空数组时不过滤，七能力全部启用。
+    /// 空列表 = 全装配红线：白名单与排除表均为空数组时不过滤，八能力全部启用。
     /// </summary>
     [Fact]
     public async Task Compose_EmptyFilterLists_AssembleAll()
     {
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
-            Assert.Equal(7, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             Assert.Equal(ExpectedTopologicalOrder, runtime.Report.EnabledIdsInOrder);
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(Array.Empty<string>(), Array.Empty<string>()));
@@ -285,7 +286,7 @@ public class OnlineCapabilityComposeTests
     {
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
-            Assert.Equal(7, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+            Assert.Equal(8, runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(new[] { string.Empty, "  " }, new[] { string.Empty, "  " }));
     }
@@ -306,7 +307,7 @@ public class OnlineCapabilityComposeTests
     }
 
     /// <summary>
-    /// 排除表生效：叶子能力 online-operations（无下游必选依赖）为 ExcludedByDisableList，其余六能力保持装配。
+    /// 排除表生效：叶子能力 online-operations（无下游必选依赖）为 ExcludedByDisableList，其余七能力保持装配。
     /// </summary>
     [Fact]
     public async Task Compose_DisableList_ExcludesCapabilityFromReport()
@@ -314,7 +315,7 @@ public class OnlineCapabilityComposeTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
         {
             Assert.Equal(CapabilityFilterState.ExcludedByDisableList, FindEntry(runtime.Report, "online-operations").State);
-            Assert.Equal(6, runtime.Report.EnabledIdsInOrder.Count);
+            Assert.Equal(7, runtime.Report.EnabledIdsInOrder.Count);
             Assert.DoesNotContain("online-operations", runtime.Report.EnabledIdsInOrder);
             return Task.CompletedTask;
         }, null, options => options.Filter = new CapabilityAssemblyFilter(null, new[] { "online-operations" }));
@@ -336,7 +337,7 @@ public class OnlineCapabilityComposeTests
             var payload = inner.RootElement.GetProperty("Data");
             Assert.Equal("online-operations", payload.GetProperty("NotInstalledCapability").GetString());
             var installed = ReadStrings(payload.GetProperty("InstalledCapabilities"));
-            Assert.Equal(6, installed.Length);
+            Assert.Equal(7, installed.Length);
             Assert.DoesNotContain("online-operations", installed);
             }
         }, null, options => options.Filter = new CapabilityAssemblyFilter(null, new[] { "online-operations" }));
@@ -368,10 +369,10 @@ public class OnlineCapabilityComposeTests
                 Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
                 var data = inner.RootElement.GetProperty("Data");
                 var entries = IndexBy(data.GetProperty("Capabilities"), "Id");
-                Assert.Equal(7, entries.Count);
+                Assert.Equal(8, entries.Count);
                 Assert.Equal("ExcludedByDisableList", entries["online-assets"].GetProperty("State").GetString());
                 Assert.Equal("Enabled", entries["online-foundation"].GetProperty("State").GetString());
-                Assert.Equal(6, data.GetProperty("EnabledIdsInOrder").GetArrayLength());
+                Assert.Equal(7, data.GetProperty("EnabledIdsInOrder").GetArrayLength());
             }
 
             using (var inner = ParseInner(await PostAsync("grant_asset", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"RequestId\":\"r2\"}")))
@@ -601,7 +602,7 @@ public class OnlineCapabilityComposeTests
             Assert.Equal(ExpectedTopologicalOrder, ReadStrings(data.GetProperty("EnabledIdsInOrder")));
 
             var entries = IndexBy(data.GetProperty("Capabilities"), "Id");
-            Assert.Equal(7, entries.Count);
+            Assert.Equal(8, entries.Count);
 
             var match = entries["online-match"];
             Assert.Equal(new[] { "online-assets", "online-matchmaking" }, ReadStrings(match.GetProperty("OptionalCapabilityIds")));
@@ -733,7 +734,7 @@ public class OnlineCapabilityComposeTests
             var match = FindEntry(runtime.Report, "online-match");
             Assert.Equal(CapabilityFilterState.Enabled, match.State);
             Assert.Contains("online-match", runtime.Report.EnabledIdsInOrder);
-            Assert.Equal(5, runtime.Report.EnabledIdsInOrder.Count);
+            Assert.Equal(6, runtime.Report.EnabledIdsInOrder.Count);
 
             foreach (var absentId in new[] { "online-assets", "online-matchmaking" })
             {

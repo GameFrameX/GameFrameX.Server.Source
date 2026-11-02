@@ -126,7 +126,7 @@ namespace GameFrameX.Tests.Online
                 Assert.True(winnerEntry.Score >= loserEntry.Score, "winner score (" + winnerEntry.Score + ") should rank above loser score (" + loserEntry.Score + ")");
             }, null, options =>
             {
-                options.Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social", "online-matchmaking", "online-match", "online-assets", "online-competition" });
+                options.Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social", "online-matchmaking", "online-match", "online-assets", "online-leaderboard", "online-competition" });
                 options.HostOptions.SchedulerIntervalMilliseconds = 3600000;
             });
         }

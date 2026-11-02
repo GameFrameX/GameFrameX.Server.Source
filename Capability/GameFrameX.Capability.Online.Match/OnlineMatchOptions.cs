@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Capability.Hosting.Abstractions;
+using System.Collections.Generic;
 
 namespace GameFrameX.Capability.Online.Match;
 
@@ -62,6 +63,43 @@ public sealed class OnlineMatchOptions : ICapabilityOptions
     /// <see cref="OnlineMatchRegistryOptions"/> 字段初始值）。
     /// </summary>
     public OnlineMatchRegistryOptions Registry { get; set; } = new OnlineMatchRegistryOptions();
+
+    /// <summary>
+    /// 已注册玩法表（宿主经 <see cref="AddGame"/> 在 Configure 回调注入——能力包自身不携带任何具体玩法，
+    /// 样例游戏在验收夹具层）。私有字段 + 方法面暴露：玩法实例不参与配置合并，也不进入
+    /// <c>list_capability_settings</c> 观测面（玩法不是可配置参数）。
+    /// </summary>
+    private readonly List<IOnlineMatchGame> _games = new List<IOnlineMatchGame>();
+
+    /// <summary>
+    /// 注册一个玩法（Configure 回调入口）。每个 <see cref="IOnlineMatchGame.Mode"/> 至多一个实现——
+    /// 重复模式在注册期 fail-fast（装配期暴露配置错误，不留静默覆盖窗口）；
+    /// 零注册 = 对局能力以零玩法形态装配（运行时与结算管线在场，但无对局可开——最小宿主语义）。
+    /// </summary>
+    /// <param name="game">玩法实现。</param>
+    public void AddGame(IOnlineMatchGame game)
+    {
+        if (game == null)
+        {
+            throw new System.ArgumentNullException(nameof(game));
+        }
+
+        if (_games.Exists(registered => registered.Mode == game.Mode))
+        {
+            throw new System.ArgumentException("同一玩法模式已注册（Mode=" + game.Mode + "）：每个模式至多一个实现。", nameof(game));
+        }
+
+        _games.Add(game);
+    }
+
+    /// <summary>
+    /// 获取已注册玩法的只读快照（模块 Register 期取用）。
+    /// </summary>
+    /// <returns>玩法只读列表。</returns>
+    public System.Collections.Generic.IReadOnlyList<IOnlineMatchGame> GetGames()
+    {
+        return _games;
+    }
 
     /// <summary>
     /// 校验合并后的运行时与结算阈值与登记表清扫参数：等待超时、进行中超时、重连窗口、结束留存时长、单局服务端事件上限、

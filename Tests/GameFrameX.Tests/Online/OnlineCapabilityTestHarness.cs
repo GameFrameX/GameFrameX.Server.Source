@@ -38,6 +38,7 @@ using GameFrameX.Capability.Online.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Social;
 using Xunit;
@@ -87,6 +88,9 @@ public static class OnlineCapabilityTestHarness
         // 宿主扩展点：Social 的玩家目录与 Operations 的热更回滚执行器（两者均 RequireHostService，缺失即装配 fail-fast）。
         options.Override<IOnlinePlayerDirectory>(new EmptyPlayerDirectory());
         options.Override<IOnlineHotfixRollbackExecutor>(new NoopHotfixRollbackExecutor());
+
+        // 玩法注入：RPS 验收夹具游戏（原包内自动注册的对局玩法；生产装配由各宿主组合根自行注入）。
+        options.Configure<OnlineMatchOptions>(match => match.AddGame(new OnlineRockPaperScissorsGame()));
         return options;
     }
 

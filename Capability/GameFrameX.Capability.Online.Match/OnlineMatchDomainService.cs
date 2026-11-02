@@ -568,12 +568,20 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         var actor = await _runtime.ResolveActorAsync(runtimeMatchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
+            // 票据模式 → 承载玩法解析（精确命中优先；单玩法形态回落承载全部票据模式），
+            // 对局 Mode 取解析出玩法的注册键（与运行时玩法查表一致，多玩法下不再串写首个玩法的模式）。
+            var game = _runtime.ResolveGameForTicketMode(registration.Mode);
+            if (game == null)
+            {
+                return OnlineResult<OnlineMatchActor>.Fail(OnlineErrorCode.ParameterInvalid, "未注册该模式的玩法实现");
+            }
+
             var assignment = new OnlineMatchAssignment
             {
                 ServerId = scope.ServerId,
                 MatchId = runtimeMatchId,
                 AssignmentId = registration.AssignmentId,
-                Mode = _game.Mode,
+                Mode = game.Mode,
                 Region = registration.Region,
                 CreatedAtTime = registration.CreatedAtTime,
                 TicketIds = new List<string>(registration.TicketIds),

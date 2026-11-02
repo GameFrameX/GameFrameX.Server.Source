@@ -27,6 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
@@ -94,6 +96,16 @@ public interface IOnlineMatchGame
     /// <param name="match">对局。</param>
     /// <returns>已分出结果返回 <c>true</c>。</returns>
     bool IsCompleted(OnlineMatch match);
+
+    /// <summary>
+    /// 产出对局桥视图（保密投影：玩法私有字段由玩法自行裁剪，桥服务不拼装玩法字段；
+    /// 样例桥 <c>IOnlineMatchGameBridge</c> 的查询 / 提交 / 开局回执一律经本投影产出）。
+    /// </summary>
+    /// <param name="roomId">房间标识（对局标识派生源之一）。</param>
+    /// <param name="snapshot">对局快照。</param>
+    /// <param name="events">增量事件（重连补发面）。</param>
+    /// <returns>保密投影后的对局桥视图。</returns>
+    OnlineMatchBridgeGameView BuildBridgeView(long roomId, OnlineMatchSnapshot snapshot, IReadOnlyList<OnlineMatchServerEvent> events);
 
     /// <summary>
     /// 产出权威结算结果（仅在 <see cref="IsCompleted"/> 为 <c>true</c> 时调用）。

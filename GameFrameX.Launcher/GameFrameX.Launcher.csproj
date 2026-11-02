@@ -45,9 +45,11 @@
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Abstractions\GameFrameX.Capability.Online.Abstractions.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Apps.Sample\GameFrameX.Apps.Sample.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj"/>
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Persistence\GameFrameX.Capability.Online.Persistence.csproj"/>

@@ -52,14 +52,4 @@ public sealed class OnlineFriendOptions
     /// 获取或设置好友列表返回条数上限（默认 200；同时也是好友上限裁决依据）。
     /// </summary>
     public int FriendLimit { get; set; } = 200;
-
-    /// <summary>
-    /// 获取或设置是否在模块激活期执行旧好友数据一次性迁移（默认 false；C294 收编原族级
-    /// <c>Online.MigrateLegacyFriendData</c> 开关，配置路径 <c>Online.Settings.online-social.Friend.MigrateLegacyFriendData</c>）。
-    /// <para>
-    /// 维护约束：迁移只读单向复制旧表（域 120 FriendRelationState / 域 660 FriendState），旧数据零改动；
-    /// 幂等可重复执行；详见 <see cref="OnlineFriendLegacyMigration"/>。
-    /// </para>
-    /// </summary>
-    public bool MigrateLegacyFriendData { get; set; }
 }

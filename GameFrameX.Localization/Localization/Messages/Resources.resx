@@ -1173,7 +1173,7 @@
   <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
     <value>seasons and tournaments</value>
   </data>
-  <data name="Capability.Online.Competition.OptionalMatchAbsent" xml:space="preserve">
+  <data name="Capability.Online.Leaderboard.OptionalMatchAbsent" xml:space="preserve">
     <value>leaderboard projection from match settlement</value>
   </data>
   <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">
