@@ -37,7 +37,7 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 /// 排行榜存储契约（榜单定义 + 条目；InMemory 为单进程默认实现，生产持久化归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) 作用域隔离——所有查询以 (TenantId, AppId) 为前置条件，跨作用域访问与不存在同构（null，反预言）；
+/// (1) 榜单为全局域投影目标——字典键即 LeaderboardId（无区服隔离位，同键即同榜）；
 /// (2) <see cref="ApplySubmissionAsync"/> 是唯一条目写入入口，**累计策略裁决与条目落档必须在同一临界区**，
 /// 并发投递不得交错撕裂（形态对齐票据 / 通知存储的临界区约定）；
 /// (3) 出入参一律防御性拷贝——返回对象与内部状态无别名，调用方改写不影响存储。
@@ -46,33 +46,29 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 public interface IOnlineLeaderboardStore
 {
     /// <summary>
-    /// 创建榜单（同作用域同名榜单已存在时拒绝，返回 null，不覆盖）。
+    /// 创建榜单（同名榜单已存在时拒绝，返回 null，不覆盖）。
     /// </summary>
-    /// <param name="leaderboard">榜单定义（作用域取其 TenantId / AppId）。</param>
+    /// <param name="leaderboard">榜单定义。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>创建后的榜单副本；已存在返回 null。</returns>
     Task<OnlineLeaderboard> CreateAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按作用域查找榜单定义。
+    /// 按榜单标识查找榜单定义。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>榜单副本；不存在或跨作用域返回 null。</returns>
-    Task<OnlineLeaderboard> FindAsync(long tenantId, long appId, string leaderboardId, CancellationToken cancellationToken = default);
+    /// <returns>榜单副本；不存在返回 null。</returns>
+    Task<OnlineLeaderboard> FindAsync(string leaderboardId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 查找单玩家条目。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>条目副本；未上榜或榜单不存在返回 null。</returns>
-    Task<OnlineLeaderboardEntry> FindEntryAsync(long tenantId, long appId, string leaderboardId, long playerId, CancellationToken cancellationToken = default);
+    Task<OnlineLeaderboardEntry> FindEntryAsync(string leaderboardId, long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 应用一笔分数提交（原子：累计策略裁决 + 条目落档在同一临界区）。

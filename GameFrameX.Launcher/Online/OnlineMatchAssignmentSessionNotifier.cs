@@ -8,7 +8,7 @@
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//   please see the LICENSE file in the root directory of the source code.
+//   please see the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
@@ -27,41 +27,44 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Competition.Leaderboard;
+
+using System.Threading;
+using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Match;
+using GameFrameX.Core.Session;
+using GameFrameX.Proto.Proto;
+
+namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 玩家附近排名窗口查询载荷（<see cref="OnlineLeaderboardService.GetAroundPlayerAsync"/> 除作用域外的全部查询维度；
-/// 窗口含玩家本人，边界处截断）。
+/// 撮合成立通知的宿主投递实现（生产实现）：按旧链会话簿记定位成员连接并 best-effort 写出
+/// <see cref="NotifyMatchMade"/> 协议消息——会话通道与协议产物只存在于宿主侧，能力包经出站端口解耦。
+/// <para>
+/// 维护约束（红线）：逐成员 best-effort——离线（无会话）成员静默跳过，等待方经状态轮询兜底；
+/// 写出异常按调用方既有批次隔离路径外抛（单条失败不吞没，交调度器日志出口观测）。
+/// </para>
 /// </summary>
-public sealed class OnlineLeaderboardAroundQuery
+public sealed class OnlineMatchAssignmentSessionNotifier : IOnlineMatchAssignmentNotifier
 {
     /// <summary>
-    /// 获取或设置榜单标识。
+    /// 向通知载荷内的全部成员投递撮合成立通知：逐成员解析在线会话，离线跳过，在线写出协议消息。
     /// </summary>
-    /// <remarks>Gets or sets the leaderboard id.</remarks>
-    public string LeaderboardId { get; init; }
+    /// <param name="notification">撮合成立通知载荷（协议无关）。</param>
+    /// <param name="cancellationToken">停止取消令牌。</param>
+    /// <returns>投递任务。</returns>
+    public async Task NotifyAssignmentCreatedAsync(OnlineMatchAssignmentNotification notification, CancellationToken cancellationToken)
+    {
+        var notify = new NotifyMatchMade { MatchId = notification.MatchId, Mode = notification.Mode };
+        foreach (var playerId in notification.PlayerIds)
+        {
+            var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
+            if (session == null)
+            {
+                // 离线方静默跳过：best-effort 推送，等待方经状态轮询兜底。
+                continue;
+            }
 
-    /// <summary>
-    /// 获取或设置玩家标识（未上榜返回 ResourceNotFound）。
-    /// </summary>
-    /// <remarks>Gets or sets the player id (an unranked player yields ResourceNotFound).</remarks>
-    public long PlayerId { get; init; }
-
-    /// <summary>
-    /// 获取或设置前向窗口条数（缺省 0 = 不含前向邻居；Before / After 均缺省时窗口仅含本人）。
-    /// </summary>
-    /// <remarks>Gets or sets the number of entries before the player (default 0 = no preceding neighbors; when both Before and After are left at 0 the window contains only the player).</remarks>
-    public int Before { get; init; }
-
-    /// <summary>
-    /// 获取或设置后向窗口条数（缺省 0 = 不含后向邻居；Before / After 均缺省时窗口仅含本人）。
-    /// </summary>
-    /// <remarks>Gets or sets the number of entries after the player (default 0 = no following neighbors; when both Before and After are left at 0 the window contains only the player).</remarks>
-    public int After { get; init; }
-
-    /// <summary>
-    /// 获取或设置当前时刻（UTC 毫秒；传 0 取系统时钟）。
-    /// </summary>
-    /// <remarks>Gets or sets the current time (UTC milliseconds; 0 = system clock).</remarks>
-    public long NowUnixMilliseconds { get; init; }
+            await session.WriteAsync(notify).ConfigureAwait(false);
+        }
+    }
 }

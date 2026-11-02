@@ -713,7 +713,7 @@ public static partial class Keys
             }
 
             /// <summary>
-            /// online-competition（竞赛）能力相关消息
+            /// online-competition（竞赛，冻结面）能力相关消息
             /// </summary>
             public static class Competition
             {
@@ -725,15 +725,21 @@ public static partial class Keys
                 /// 用途: online-competition 可选依赖 online-assets 未装配时披露的缺失功能名
                 /// </remarks>
                 public const string OptionalAssetsAbsent = "Capability.Online.Competition.OptionalAssetsAbsent";
+            }
 
+            /// <summary>
+            /// online-leaderboard（排行榜）能力相关消息
+            /// </summary>
+            public static class Leaderboard
+            {
                 /// <summary>
                 /// 对局结算写榜投影
                 /// </summary>
                 /// <remarks>
-                /// 键名: Capability.Online.Competition.OptionalMatchAbsent
-                /// 用途: online-competition 可选依赖 online-match 未装配时披露的缺失功能名
+                /// 键名: Capability.Online.Leaderboard.OptionalMatchAbsent
+                /// 用途: online-leaderboard 可选依赖 online-match 未装配时披露的缺失功能名
                 /// </remarks>
-                public const string OptionalMatchAbsent = "Capability.Online.Competition.OptionalMatchAbsent";
+                public const string OptionalMatchAbsent = "Capability.Online.Leaderboard.OptionalMatchAbsent";
             }
 
             /// <summary>

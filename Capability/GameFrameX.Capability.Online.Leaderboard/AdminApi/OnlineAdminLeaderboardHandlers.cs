@@ -40,7 +40,7 @@ namespace GameFrameX.Capability.Online.Competition.AdminApi;
 /// <summary>
 /// 排行榜域 admin 命令（query_leaderboard——只读榜单查询：单元信息 + Top 条目 + 可选玩家附近窗口）。
 /// <para>
-/// 维护约束：只读幂等包裹 false（无状态变更，与 query_match_settlement 同族）；跨 App / 跨租户与
+/// 维护约束：只读幂等包裹 false（无状态变更，与 query_match_settlement 同族）；作用域校验失败与
 /// 榜单不存在同构 ResourceNotFound（排行榜服务反预言红线）；玩家附近窗口为尽力投影（玩家未上榜时省略）。
 /// </para>
 /// </summary>

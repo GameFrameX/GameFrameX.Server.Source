@@ -54,7 +54,9 @@ namespace GameFrameX.Capability.Online.Operations;
 
 /// <summary>
 /// 运营聚合能力（审计 / 游戏事件 / Hotfix 回滚 / 总览 / 时间线 + 事件桥/审计桥）的自装配模块
-/// （C294 迁入新机制三段生命周期）。
+/// （C294 迁入新机制三段生命周期）。<b>分析面冻结</b>：游戏事件 / 总览 / 时间线按包结构收敛裁决标注
+/// frozen（不删除、不演进；数据面契约留服务端，查询 UI 归运营台）；Hotfix 回滚为遗留活面
+/// （其向 Hosting 层的归并需先做契约下沉，另行裁决）。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——统一审计与幂等
 /// 为族基建（<c>OnlineCapabilityFamily</c> 预置，具型 / 读面同源），直接 GetService；Hotfix 回滚的版本切换

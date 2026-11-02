@@ -1174,7 +1174,7 @@
   <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
     <value>赛季、锦标赛</value>
   </data>
-  <data name="Capability.Online.Competition.OptionalMatchAbsent" xml:space="preserve">
+  <data name="Capability.Online.Leaderboard.OptionalMatchAbsent" xml:space="preserve">
     <value>对局结算写榜投影</value>
   </data>
   <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">

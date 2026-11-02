@@ -127,7 +127,7 @@ public sealed class OnlineMatchSettledLeaderboardProjector
         try
         {
             // 榜单级作用域（PlayerId=0）：投影器内部逐玩家以结算事实重建 scope。
-            var scope = new OnlineScope(sourceEvent.TenantId, sourceEvent.AppId, sourceEvent.ServerId, 0);
+            var scope = new OnlineScope(sourceEvent.ServerId, 0);
             var projected = await _projector.ProjectAsync(scope, _leaderboardId, payload.MatchId, payload.MatchResultId).ConfigureAwait(false);
             if (!projected.IsSuccess)
             {
@@ -163,7 +163,7 @@ public sealed class OnlineMatchSettledLeaderboardProjector
 
         foreach (var entry in snapshot)
         {
-            var stored = await _matchResultStore.FindByMatchAsync(entry.TenantId, entry.AppId, entry.MatchId, cancellationToken).ConfigureAwait(false);
+            var stored = await _matchResultStore.FindByMatchAsync(entry.MatchId, cancellationToken).ConfigureAwait(false);
             if (stored == null)
             {
                 // 结果已被清理：不可投影终态，移除。
@@ -171,7 +171,7 @@ public sealed class OnlineMatchSettledLeaderboardProjector
                 continue;
             }
 
-            var scope = new OnlineScope(entry.TenantId, entry.AppId, entry.ServerId, 0);
+            var scope = new OnlineScope(entry.ServerId, 0);
             var projected = await _projector.ProjectAsync(scope, _leaderboardId, entry.MatchId, entry.MatchResultId, 0, cancellationToken).ConfigureAwait(false);
             if (projected.IsSuccess)
             {
@@ -232,7 +232,7 @@ public sealed class OnlineMatchSettledLeaderboardProjector
     /// <summary>
     /// 记录待重试条目（按 MatchResultId 去重；重复失败 Attempts 不衰减）。
     /// </summary>
-    /// <param name="onlineEvent">来源事件（作用域三元组）。</param>
+    /// <param name="onlineEvent">来源事件（区服键）。</param>
     /// <param name="payload">已解析载荷。</param>
     private void RecordPending(OnlineEvent onlineEvent, MatchSettledPayload payload)
     {
@@ -248,8 +248,6 @@ public sealed class OnlineMatchSettledLeaderboardProjector
             {
                 MatchResultId = payload.MatchResultId,
                 MatchId = payload.MatchId,
-                TenantId = onlineEvent.TenantId,
-                AppId = onlineEvent.AppId,
                 ServerId = onlineEvent.ServerId,
                 Attempts = 1,
             };
@@ -363,12 +361,6 @@ public sealed class OnlineMatchSettledLeaderboardProjector
 
         /// <summary>对局标识。</summary>
         public string MatchId { get; set; }
-
-        /// <summary>租户标识。</summary>
-        public long TenantId { get; set; }
-
-        /// <summary>App 标识。</summary>
-        public long AppId { get; set; }
 
         /// <summary>区服标识。</summary>
         public long ServerId { get; set; }

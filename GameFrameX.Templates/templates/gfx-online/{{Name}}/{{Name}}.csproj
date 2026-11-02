@@ -11,8 +11,10 @@
 
     <ItemGroup>
         <!-- 引啥装配啥（编译期保证）：Compose 按部署前缀扫描能力包，本工程只引用所选能力包，引用集即装配集
-             （机制面 Hosting 三件 / Online.Abstractions 经 Online.Foundation 传递获得）。增减能力 = 只增删
-             ProjectReference，Program.cs 无按包装配代码。 -->
+             （机制面 Hosting.Abstractions / Hosting.Core 经 Online.Foundation 传递获得；管理面 UseAdminApi
+             需显式引 Hosting.AdminApi——管理契约上移后 Online.Abstractions 不再传递 AdminApi）。
+             增减能力 = 只增删 ProjectReference，Program.cs 无按包装配代码。 -->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Hosting.AdminApi\GameFrameX.Capability.Hosting.AdminApi.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj"/>
         <!--#if (Assets)-->
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj"/>
@@ -26,7 +28,12 @@
         <!--#if (Match)-->
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj"/>
         <!--#endif-->
+        <!--#if (Leaderboard)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj"/>
+        <!--#endif-->
         <!--#if (Competition)-->
+        <!-- online-competition 必选依赖 online-leaderboard（赛季 / 锦标赛的榜单写路径），引用集 = 装配集 -->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj"/>
         <!--#endif-->
         <!--#if (Operations)-->
