@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+        <Description>GameFrameX.Capability.Online.ServerLifecycle.Cli,GFX Online 合服行键重写自托管 CLI（dry-run 先行 + 幂等可重入；与 AdminApi action 双入口共用同一合服服务原语）。Self-hosted server-merge row-rewrite CLI for the GFX Online family. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,ServerMerge,Cli,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.ServerLifecycle/GameFrameX.Capability.Online.ServerLifecycle.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj"/>
+        <ProjectReference Include="../../GameFrameX.DataBase.Sqlite/GameFrameX.DataBase.Sqlite.csproj"/>
+    </ItemGroup>
+
+</Project>
