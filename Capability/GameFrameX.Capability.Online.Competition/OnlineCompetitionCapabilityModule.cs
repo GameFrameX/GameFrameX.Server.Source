@@ -52,9 +52,10 @@ namespace GameFrameX.Capability.Online.Competition;
 /// 锦标赛三个 store 以懒默认描述符注册（族 / 宿主覆盖恒胜出，模块不感知）；赛季 / 锦标赛对发放服务
 /// （<see cref="OnlineGrantService"/>，assets 域产物）的依赖经 manifest 可选声明 + GetOptionalService，
 /// 缺席（assets 能力被过滤）时不装配两者；对外产物（榜单 / 赛季 / 锦标赛服务与 LiveOps 注册表）注册回
-/// 共享面。<see cref="OnlineCompetitionOptions"/> 为唯一参数面（含榜单组件参数与 Match.Settled 投影配置，
-/// 后者收编族级键 <c>MatchBridgeLeaderboardId</c>）：投影榜 id 非空白且对局结果存储（online-match 可选产物）
-/// 在场时装配 Match.Settled 排行榜投影（机制总线订阅 + 失败重投 tick）；
+/// <see cref="OnlineCompetitionOptions"/> 为唯一参数面（含榜单组件参数与 Match.Settled 投影配置，
+/// 后者收编族级键 <c>MatchBridgeLeaderboardId</c>）：投影榜 id 非空白（C460 起默认投影到默认榜
+/// <see cref="OnlineLeaderboardProjectionOptions.DefaultMatchSettledBoardId"/>，显式空白可关闭）且对局结果存储
+/// （online-match 可选产物）在场时装配 Match.Settled 排行榜投影（机制总线订阅 + 失败重投 tick）；
 /// <c>ActivateAsync</c> 在投影榜 id 非空白时经榜单服务预建目标榜（查询-创建，见方法注释）。
 /// </para>
 /// </summary>
