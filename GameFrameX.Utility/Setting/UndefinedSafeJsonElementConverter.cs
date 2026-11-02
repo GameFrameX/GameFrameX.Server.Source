@@ -52,11 +52,15 @@ public sealed class UndefinedSafeJsonElementConverter : JsonConverter<JsonElemen
     /// 读取保持默认行为（由框架默认实现完成 JsonElement 的读取）。
     /// </summary>
     /// <remarks>
-    /// Reading keeps the default behavior (the framework's default implementation reads the JsonElement).
+    /// Reading keeps the default behavior: the element is parsed via <see cref="JsonDocument.ParseValue"/>
+    /// —不走 <c>JsonSerializer.Deserialize&lt;JsonElement&gt;</c>（那会绕开调用方选项且可能递归进入本转换器）。
     /// </remarks>
     public override JsonElement Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<JsonElement>(ref reader);
+        using (var document = JsonDocument.ParseValue(ref reader))
+        {
+            return document.RootElement.Clone();
+        }
     }
 
     /// <summary>
