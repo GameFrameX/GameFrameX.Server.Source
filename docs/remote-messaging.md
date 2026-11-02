@@ -1,14 +1,14 @@
 # 服务器间链路（ServerLink / RemoteMessaging）
 
 > 2.0 基础设施收敛后的定位：跨服玩法真正需要的服间通信 = **点对点 RPC + 一张心跳表 + 一张玩家路由表**。
-> 推荐入口是 `GameFrameX.ServerLink` 薄门面包；`GameFrameX.Network.RemoteMessaging` 原名保留、原位收缩。
+> 推荐入口是 `GameFrameX.ServerLink` 薄门面封装包；`GameFrameX.Network.RemoteMessaging` 原名保留、原位收缩。
 
 ## ServerLink 薄门面（推荐入口）
 
 `GameFrameX.ServerLink` 把服间链路的内置默认固化在一个薄门面上：
 
 - **直连拨号**：默认 TCP 直连（经心跳注册表路由表解析端点），KCP 可显式叠加（`WithKcpTransport()`，TCP 恒为回落传输）。
-- **固定重试上限**：默认 3 次重试（`WithFixedRetryLimit` 可调，0 = 不重试）；非幂等写操作请在业务侧关停重试。
+- **固定重试上限**：默认 2 次重试（`WithFixedRetryLimit` 可调，0 = 不重试）；非幂等写操作请在业务侧关停重试。
 - **玩家路由解析内置默认**：`ServerLinkPlayerRouting.ComposeUnifiedSender(...)` 以发现层玩家路由解析器为内置默认，装配统一消息发送器（`IUnifiedMessageSender`）与本服投递槽——跨服找人（合服后的刚需）开箱即用。
 - **信封转发门面**：`ServerLinkEnvelopeForwarder.ForwardAsync(role, message, ...)` 把跨 Role 消息交给进程级路由缝：本进程 Role 走本地投递，跨进程跳打包 `RoleRouteEnvelopeMessage` 经共享传输池转发。
 

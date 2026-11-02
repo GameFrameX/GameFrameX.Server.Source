@@ -61,12 +61,14 @@ namespace GameFrameX.ServerLink;
 public sealed class ServerLinkBuilder
 {
     /// <summary>
-    /// 固定重试上限的缺省值（3 次重试）。
+    /// 固定重试上限的缺省值（2 次重试；与 RemoteMessagingOptions.MaxRetryCount 缺省及
+    /// 「幂等操作最大重试不超过 2 次」的准入规范一致）。
     /// </summary>
     /// <remarks>
-    /// The default fixed retry limit (3 retries).
+    /// The default fixed retry limit (2 retries; aligned with the RemoteMessagingOptions.MaxRetryCount
+    /// default and the guideline that idempotent operations retry at most twice).
     /// </remarks>
-    public const int DefaultFixedRetryLimit = 3;
+    public const int DefaultFixedRetryLimit = 2;
 
     /// <summary>
     /// 缺省调用超时毫秒数（5000ms，与 RemoteMessaging 缺省一致）。
