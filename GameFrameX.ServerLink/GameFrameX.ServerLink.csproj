@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.ServerLink,GameFrameX 框架的服务器间链路薄门面：直连拨号（固定重试上限）+ RoleRouteEnvelopeMessage 信封转发 + 玩家路由解析内置默认. Thin inter-server link facade for the GameFrameX framework: direct dialing with a fixed retry limit, RoleRouteEnvelopeMessage envelope forwarding, and player-route resolution as the built-in default. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,ServerLink,RemoteMessaging,Routing,PlayerRoute,Server,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Network.RemoteMessaging\GameFrameX.Network.RemoteMessaging.csproj"/>
+    </ItemGroup>
+
+</Project>

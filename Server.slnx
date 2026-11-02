@@ -52,6 +52,7 @@
   <Project Path="GameFrameX.Network.Abstractions/GameFrameX.Network.Abstractions.csproj" />
   <Project Path="GameFrameX.Network.HTTP/GameFrameX.Network.HTTP.csproj" />
   <Project Path="GameFrameX.Network.RemoteMessaging/GameFrameX.Network.RemoteMessaging.csproj" />
+  <Project Path="GameFrameX.ServerLink/GameFrameX.ServerLink.csproj" />
   <Project Path="GameFrameX.Network/GameFrameX.Network.csproj" />
   <Project Path="GameFrameX.Proto/GameFrameX.Proto.csproj" />
   <Project Path="GameFrameX.ProtoBuf.Net/GameFrameX.ProtoBuf.Net.csproj" />
