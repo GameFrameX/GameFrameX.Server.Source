@@ -40,9 +40,9 @@ namespace GameFrameX.Tests.Online
     public class CapabilityPackageStructureTests
     {
         /// <summary>
-        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C294 终态，逐条取自 Capability/*/ *.csproj：
-        /// Hosting.Abstractions → Localization；Hosting.AdminApi → Abstractions + Localization + Hosting.Core；
-        /// Online.Abstractions → Localization + Hosting.AdminApi；Social → Apps + DataBase；Match → Core + Proto）。
+        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；包结构收敛终态，逐条取自 Capability/*/*.csproj：
+        /// 管理契约 13 型上移后 Online.Abstractions → Localization + Hosting.Abstractions（不再引 AdminApi）；
+        /// Social 拆 Apps/DataBase、Match 拆 Core/Proto；Leaderboard 自 Competition 拆包；Competition（冻结）→ Abstractions + Assets + Leaderboard）。
         /// </summary>
         private static readonly Dictionary<string, string[]> ExpectedProjectReferences = new()
         {
@@ -50,12 +50,13 @@ namespace GameFrameX.Tests.Online
             ["GameFrameX.Capability.Hosting.Core"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization" },
             ["GameFrameX.Capability.Hosting.AdminApi"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Assets"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase", "GameFrameX.Apps" },
+            ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Matchmaking"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Match"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Core", "GameFrameX.Proto", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Competition"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Leaderboard"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Match" },
+            ["GameFrameX.Capability.Online.Match"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Competition"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Leaderboard" },
             ["GameFrameX.Capability.Online.Operations"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.AdminApi" },
+            ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.Abstractions" },
             ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
         };
@@ -70,6 +71,7 @@ namespace GameFrameX.Tests.Online
             ("GameFrameX.Capability.Online.Assets", "online-assets", GameFrameX.Capability.Online.Assets.OnlineAssetsCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Social", "online-social", GameFrameX.Capability.Online.Social.OnlineSocialCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Matchmaking", "online-matchmaking", GameFrameX.Capability.Online.Matchmaking.OnlineMatchmakingCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Leaderboard", "online-leaderboard", GameFrameX.Capability.Online.Leaderboard.OnlineLeaderboardCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Match", "online-match", GameFrameX.Capability.Online.Match.OnlineMatchCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Competition", "online-competition", GameFrameX.Capability.Online.Competition.OnlineCompetitionCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Operations", "online-operations", GameFrameX.Capability.Online.Operations.OnlineOperationsCapabilityModule.ManifestInstance),
@@ -180,6 +182,7 @@ namespace GameFrameX.Tests.Online
                 "GameFrameX.Capability.Online.Assets",
                 "GameFrameX.Capability.Online.Competition",
                 "GameFrameX.Capability.Online.Foundation",
+                "GameFrameX.Capability.Online.Leaderboard",
                 "GameFrameX.Capability.Online.Match",
                 "GameFrameX.Capability.Online.Matchmaking",
                 "GameFrameX.Capability.Online.Operations",

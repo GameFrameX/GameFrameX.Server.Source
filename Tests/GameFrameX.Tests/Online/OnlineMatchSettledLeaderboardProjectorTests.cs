@@ -38,6 +38,9 @@ using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Competition;
+using GameFrameX.Capability.Online.Abstractions;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Leaderboard;
 using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Foundation.Idempotency;
@@ -73,8 +76,8 @@ namespace GameFrameX.Tests.Online
         /// <summary>静默调度间隔（毫秒）：tick 一律由用例显式驱动，后台循环在用例时长内不触发。</summary>
         private const int QuietSchedulerIntervalMilliseconds = 3600000;
 
-        /// <summary>Competition 投影配置段（Settings 子对象：目标榜单 = <see cref="BoardId"/>）。</summary>
-        private const string ProjectionSettings = "{\"online-competition\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"" + BoardId + "\"}}}";
+        /// <summary>Leaderboard 投影配置段（Settings 子对象：目标榜单 = <see cref="BoardId"/>）。</summary>
+        private const string ProjectionSettings = "{\"online-leaderboard\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"" + BoardId + "\"}}}";
 
         /// <summary>
         /// 验证订阅半边：结算事件驱动投影落榜（Top 查询可见分数），同 EventId 重复投递被去重。
@@ -209,7 +212,7 @@ namespace GameFrameX.Tests.Online
                 Assert.NotNull(entry);
                 Assert.Equal(42, entry.Score);
                 Assert.Empty(projector.QueryStatus());
-            }, ProjectionSettings, options => ConfigureComposition(options, null, "online-match", "online-competition"));
+            }, ProjectionSettings, options => ConfigureComposition(options, null, "online-match", "online-leaderboard"));
         }
 
         /// <summary>
@@ -221,10 +224,39 @@ namespace GameFrameX.Tests.Online
         {
             var configured = await RunOneTickRoundAsync(ProjectionSettings, true);
             var zeroSettings = await RunOneTickRoundAsync(null, true);
-            var blankBoard = await RunOneTickRoundAsync("{\"online-competition\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"  \"}}}", false);
+            var blankBoard = await RunOneTickRoundAsync("{\"online-leaderboard\":{\"LeaderboardProjection\":{\"MatchSettledBoardId\":\"  \"}}}", false);
 
             Assert.Equal(configured, zeroSettings);
             Assert.Equal(configured - 1, blankBoard);
+        }
+
+        /// <summary>
+        /// 零玩法形态回归：宿主未注入任何玩法时 online-match 照常装配（运行时 / 结算管线在场），
+        /// 但对局桥与匹配域桥均不发布（缺席态由桥显式失败承载）、通知出站端口保持缺省空实现。
+        /// </summary>
+        [Fact]
+        public async Task Compose_WithoutGames_SkipsBridgesButComposesRuntime()
+        {
+            var options = new CapabilityCompositionOptions(OnlineCapabilityTestHarness.FamilySection(null), new CollectingCapabilityAssemblyLog())
+            {
+                HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, },
+            };
+            ConfigureComposition(options, null, "online-match");
+            var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
+            try
+            {
+                await runtime.Host.StartAsync();
+                var entry = runtime.Report.Entries.Single(item => item.Manifest.Id == "online-match");
+                Assert.Equal(CapabilityFilterState.Enabled, entry.State);
+                Assert.NotNull(runtime.Host.Services.GetService<OnlineMatchRuntime>());
+                Assert.Null(runtime.Host.Services.GetOptionalService<IOnlineMatchGameBridge>());
+                Assert.Null(runtime.Host.Services.GetOptionalService<IOnlineMatchDomain>());
+                Assert.IsType<NullOnlineMatchAssignmentNotifier>(runtime.Host.Services.GetService<IOnlineMatchAssignmentNotifier>());
+            }
+            finally
+            {
+                await runtime.StopAsync();
+            }
         }
 
         /// <summary>
@@ -239,21 +271,27 @@ namespace GameFrameX.Tests.Online
 
                 Assert.DoesNotContain("online-match", runtime.Report.EnabledIdsInOrder);
                 Assert.Null(runtime.Host.Services.GetOptionalService<OnlineMatchSettledLeaderboardProjector>());
-            }, ProjectionSettings, options => ConfigureComposition(options, null, "online-competition"));
+            }, ProjectionSettings, options => ConfigureComposition(options, null, "online-leaderboard"));
         }
 
         /// <summary>
-        /// 验证依赖声明（C294：竞技对对局为可选依赖）：online-competition 以可选方式声明 online-match 且无必选依赖，
-        /// online-match 不以任何方式依赖 online-competition（拓扑无环）。
+        /// 验证依赖声明（榜单自竞技拆包后）：online-competition 必选依赖 online-leaderboard（赛季 / 锦标赛的榜单写路径）、
+        /// 可选依赖 online-assets；online-leaderboard 可选依赖 online-match 且无必选依赖；
+        /// online-match 不以任何方式依赖两者（拓扑无环）。
         /// </summary>
         [Fact]
         public void ManifestDependency_ShouldBeAcyclic()
         {
             var competition = OnlineCompetitionCapabilityModule.ManifestInstance;
+            var leaderboard = OnlineLeaderboardCapabilityModule.ManifestInstance;
             var match = OnlineMatchCapabilityModule.ManifestInstance;
 
-            Assert.Contains(competition.Optional, dependency => dependency.CapabilityId == "online-match");
-            Assert.DoesNotContain("online-match", competition.Requires);
+            Assert.Contains("online-leaderboard", competition.Requires);
+            Assert.Contains(competition.Optional, dependency => dependency.CapabilityId == "online-assets");
+            Assert.Contains(leaderboard.Optional, dependency => dependency.CapabilityId == "online-match");
+            Assert.Empty(leaderboard.Requires);
+            Assert.DoesNotContain("online-leaderboard", match.Requires);
+            Assert.DoesNotContain(match.Optional, dependency => dependency.CapabilityId == "online-leaderboard");
             Assert.DoesNotContain("online-competition", match.Requires);
             Assert.DoesNotContain(match.Optional, dependency => dependency.CapabilityId == "online-competition");
         }
@@ -294,7 +332,7 @@ namespace GameFrameX.Tests.Online
 
                 Assert.Empty(recorder.FailedJobNames);
                 executed = recorder.LastExecutedJobCount;
-            }, settingsJson, options => ConfigureComposition(options, recorder, "online-match", "online-competition"));
+            }, settingsJson, options => ConfigureComposition(options, recorder, "online-match", "online-leaderboard"));
 
             Assert.True(executed > 0);
             return executed;
