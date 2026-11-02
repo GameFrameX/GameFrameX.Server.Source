@@ -60,7 +60,7 @@ public static class OnlineAdminApiAdapters
     }
 
     /// <summary>
-    /// 构造作用域适配器（线缆三元组提取 + <see cref="OnlineScopeGuard"/> 比对）。
+    /// 构造作用域适配器（线缆区服键提取 + <see cref="OnlineScopeGuard"/> 比对）。
     /// </summary>
     /// <param name="authorizedScope">保留参数（既有公共签名兼容）：比对用授权作用域由 AdminApiDispatcher 单独持有，经 <see cref="IAdminApiScopeAdapter.ValidateClaimed"/> 实参传入。</param>
     /// <returns>作用域适配器。</returns>
@@ -106,13 +106,13 @@ public static class OnlineAdminApiAdapters
     }
 
     /// <summary>
-    /// 三元素组作用域 → <see cref="OnlineScope"/>。
+    /// 机制管道作用域 → <see cref="OnlineScope"/>。
     /// </summary>
     /// <param name="claimedScope">机制管道作用域。</param>
     /// <returns>Online 作用域。</returns>
     internal static OnlineScope ToOnlineScope(AdminApiClaimedScope claimedScope)
     {
-        return new OnlineScope(claimedScope.TenantId, claimedScope.AppId, claimedScope.ServerId);
+        return new OnlineScope(claimedScope.ServerId);
     }
 
     /// <summary>
@@ -131,10 +131,10 @@ public static class OnlineAdminApiAdapters
     private sealed class ScopeAdapter : IAdminApiScopeAdapter
     {
         /// <summary>
-        /// 从请求中读取声明的租户、应用、服务器三元素作用域；三者均可读取时组装为机制管道作用域并返回 true，否则输出 null 并返回 false。
+        /// 从请求中读取声明的区服键作用域（单键化 D4 后仅 ServerId 位）；可读取时组装为机制管道作用域并返回 true，否则输出 null 并返回 false。
         /// </summary>
         /// <remarks>
-        /// Reads the claimed tenant / app / server triple from the request; when all three are readable it builds an
+        /// Reads the claimed server key from the request; when readable it builds an
         /// <see cref="AdminApiClaimedScope"/> and returns true, otherwise outputs null and returns false.
         /// </remarks>
         /// <param name="request">管理 API 请求 / Admin API request</param>
@@ -142,9 +142,9 @@ public static class OnlineAdminApiAdapters
         /// <returns>是否成功读取声明作用域 / Whether the claimed scope was read successfully</returns>
         public bool TryReadClaimedScope(AdminApiRequest request, out AdminApiClaimedScope claimedScope)
         {
-            if (request.TryReadClaimedScope(out var tenantId, out var appId, out var serverId))
+            if (request.TryReadClaimedScope(out var serverId))
             {
-                claimedScope = new AdminApiClaimedScope(tenantId, appId, serverId);
+                claimedScope = new AdminApiClaimedScope(serverId);
                 return true;
             }
 

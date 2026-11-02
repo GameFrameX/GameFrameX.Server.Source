@@ -107,8 +107,6 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         var group = new OnlineGroup
         {
             GroupId = "grp-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             OwnerId = scope.PlayerId,
             Name = name.Trim(),
             Metadata = new Dictionary<string, string>(StringComparer.Ordinal),
@@ -190,8 +188,6 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         var invite = new OnlineGroupInvite
         {
             InviteId = "ginv-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             GroupId = group.GroupId,
             InviterId = scope.PlayerId,
             InviteeId = inviteeId,
@@ -628,21 +624,19 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
     /// 一律返回 <c>false</c>（不认领），由对应的归属域应答。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="kind">频道类型。</param>
     /// <param name="boundId">频道绑定的业务标识（本域为群组标识）。</param>
     /// <param name="playerId">待裁决玩家。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>是成员且群组仍可发言返回 <c>true</c>。</returns>
-    public async Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
+    public async Task<bool> IsChannelMemberAsync(OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
     {
         if (kind != OnlineChatChannelKind.Group || string.IsNullOrEmpty(boundId))
         {
             return false;
         }
 
-        var group = await _store.FindAsync(tenantId, appId, boundId, cancellationToken).ConfigureAwait(false);
+        var group = await _store.FindAsync(boundId, cancellationToken).ConfigureAwait(false);
         if (group == null || group.State != OnlineGroupState.Active)
         {
             return false;
@@ -665,7 +659,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             return failure;
         }
 
-        var groups = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var groups = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineGroup>>.Ok(groups);
     }
 
@@ -741,15 +735,13 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
     /// <summary>
     /// 扫描并终结超期待答复邀请（置 <see cref="OnlineGroupInviteState.Expired"/>；群组状态不受影响）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次置为过期的邀请条数。</returns>
-    public async Task<OnlineResult<int>> SweepExpiredInvitesAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> SweepExpiredInvitesAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var groups = await _store.ListByStateAsync(tenantId, appId, OnlineGroupState.Active, cancellationToken).ConfigureAwait(false);
+        var groups = await _store.ListByStateAsync(OnlineGroupState.Active, cancellationToken).ConfigureAwait(false);
         var affected = 0;
         foreach (var group in groups)
         {
@@ -917,7 +909,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             return saved;
         }
 
-        var current = await _store.FindAsync(snapshot.TenantId, snapshot.AppId, snapshot.GroupId, cancellationToken).ConfigureAwait(false);
+        var current = await _store.FindAsync(snapshot.GroupId, cancellationToken).ConfigureAwait(false);
         if (current == null)
         {
             return null;
@@ -1081,7 +1073,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             return Task.FromResult<OnlineGroup>(null);
         }
 
-        return _store.FindAsync(scope.TenantId, scope.AppId, groupId, cancellationToken);
+        return _store.FindAsync(groupId, cancellationToken);
     }
 
     /// <summary>
@@ -1228,8 +1220,6 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             group.State.ToString(),
             group.Members == null ? 0 : group.Members.Count,
             group.Revision,
-            group.TenantId,
-            group.AppId,
             action,
             correlationId), cancellationToken).ConfigureAwait(false);
     }

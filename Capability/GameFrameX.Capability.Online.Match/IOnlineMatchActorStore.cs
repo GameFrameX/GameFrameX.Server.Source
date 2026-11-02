@@ -58,12 +58,10 @@ public interface IOnlineMatchActorStore
     /// <summary>
     /// 按标识查找对局。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>对局副本；不存在返回 null。</returns>
-    Task<OnlineMatch> FindAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default);
+    Task<OnlineMatch> FindAsync(string matchId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以期望版本递增更新对局（CAS 语义）。
@@ -76,29 +74,23 @@ public interface IOnlineMatchActorStore
     /// <summary>
     /// 删除对局（Actor 释放；仅 <see cref="OnlineMatchState.Closed"/> 允许）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>删除成功返回 <c>true</c>。</returns>
-    Task<bool> DeleteAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(string matchId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 列出作用域内全部对局（Tick 扫描与可观测性用）。
+    /// 列出全部对局（Tick 扫描与可观测性用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>对局副本列表。</returns>
-    Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineMatch>> ListAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 统计作用域 (TenantId, AppId, ServerId) 内存活对局的按状态分组计数（聚合谓词下推：<see cref="OnlineMatchState.Closed"/> 即已释放、不计入，与在线总览口径一致；键按状态枚举值升序）。
+    /// 统计作用域 (ServerId) 内存活对局的按状态分组计数（聚合谓词下推：<see cref="OnlineMatchState.Closed"/> 即已释放、不计入，与在线总览口径一致；键按状态枚举值升序）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>状态 → 对局数（不含 Closed；无存活对局时为空表）。</returns>
-    Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long serverId, CancellationToken cancellationToken = default);
 }

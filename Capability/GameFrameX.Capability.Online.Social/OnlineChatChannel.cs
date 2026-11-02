@@ -53,15 +53,7 @@ public sealed class OnlineChatChannel
     /// </summary>
     public string ChannelId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置频道类型。
@@ -139,8 +131,6 @@ public sealed class OnlineChatChannel
         var copy = new OnlineChatChannel
         {
             ChannelId = ChannelId,
-            TenantId = TenantId,
-            AppId = AppId,
             Kind = Kind,
             BoundId = BoundId,
             CreatedAtTime = CreatedAtTime,

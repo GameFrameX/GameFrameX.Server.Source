@@ -60,15 +60,7 @@ public sealed class OnlineMuteEntry
     /// </summary>
     public long MutedPlayerId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置发起静音时所在的区服标识（仅作事件信封与审计记录用；**不参与存储键**）。
@@ -106,8 +98,6 @@ public sealed class OnlineMuteEntry
             EntryId = EntryId,
             OwnerId = OwnerId,
             MutedPlayerId = MutedPlayerId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             ExpiresAtTime = ExpiresAtTime,
             CreatedAtTime = CreatedAtTime,

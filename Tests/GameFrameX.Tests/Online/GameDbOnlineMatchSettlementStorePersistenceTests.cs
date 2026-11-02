@@ -33,11 +33,6 @@ using Xunit;
 [Collection("GameDbStaticStateCollection")]
 public sealed class GameDbOnlineMatchSettlementStorePersistenceTests : IDisposable
 {
-    /// <summary>租户标识。</summary>
-    private const long TenantId = 11L;
-
-    /// <summary>App 标识。</summary>
-    private const long AppId = 4L;
 
     /// <summary>临时根目录（文件库落点）。</summary>
     private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "gfx-c408-outbox-" + Guid.NewGuid().ToString("N"));
@@ -81,7 +76,7 @@ public sealed class GameDbOnlineMatchSettlementStorePersistenceTests : IDisposab
             var store = new GameDbOnlineMatchSettlementStore();
 
             // 结果面恢复：按对局可查回既有结果，重复提交不覆盖。
-            var existing = await store.FindByMatchAsync(TenantId, AppId, "match-1");
+            var existing = await store.FindByMatchAsync("match-1");
             Assert.NotNull(existing);
             Assert.Equal("result-1", existing.MatchResultId);
             var replay = await store.CommitWithOutboxAsync(BuildSampleResult("result-1-other", "match-1"));
@@ -174,8 +169,6 @@ public sealed class GameDbOnlineMatchSettlementStorePersistenceTests : IDisposab
         {
             MatchResultId = matchResultId,
             MatchId = matchId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = 9,
             Mode = 1,
             Region = 1,

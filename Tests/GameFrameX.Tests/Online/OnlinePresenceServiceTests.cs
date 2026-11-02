@@ -42,12 +42,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlinePresenceServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -65,7 +59,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out var recorder);
-            var scope = new OnlineScope(TenantId, AppId, ServerId, 0);
+            var scope = new OnlineScope(ServerId, 0);
 
             // Act
             var outcome = await service.SetOnlineAsync(scope, "sess-a");
@@ -164,7 +158,7 @@ namespace GameFrameX.Tests.Online
 
             // Act：窗口 30 秒，基准时刻推到 31 秒后。
             var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 31_000;
-            var swept = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var swept = await service.SweepTimeoutsAsync(futureNow);
             var state = await service.GetAsync(scope);
 
             // Assert
@@ -189,7 +183,7 @@ namespace GameFrameX.Tests.Online
 
             // Act：心跳推到 301 秒前（等效无操作 301 秒）。
             var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 301_000;
-            var swept = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var swept = await service.SweepTimeoutsAsync(futureNow);
             var idleState = await service.GetAsync(scope);
             var resumed = await service.HeartbeatAsync(scope);
             var finalState = await service.GetAsync(scope);
@@ -219,8 +213,8 @@ namespace GameFrameX.Tests.Online
 
             // Act：心跳全部推到 301 秒前。
             var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 301_000;
-            var firstSweep = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
-            var secondSweep = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var firstSweep = await service.SweepTimeoutsAsync(futureNow);
+            var secondSweep = await service.SweepTimeoutsAsync(futureNow);
             var idleCount = 0;
             foreach (var playerId in playerIdentifiers)
             {
@@ -249,7 +243,7 @@ namespace GameFrameX.Tests.Online
             await service.SetOnlineAsync(scope, "sess-a");
 
             var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 100_000;
-            var swept = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var swept = await service.SweepTimeoutsAsync(futureNow);
             var state = await service.GetAsync(scope);
 
             // Assert
@@ -298,9 +292,9 @@ namespace GameFrameX.Tests.Online
             await service.SetOnlineAsync(CreatePlayerScope(PlayerTwo), "sess-b");
 
             // Act
-            var before = await service.CountOnlineAsync(TenantId, AppId);
+            var before = await service.CountOnlineAsync();
             await service.MarkBlockedAsync(CreatePlayerScope(PlayerOne));
-            var after = await service.CountOnlineAsync(TenantId, AppId);
+            var after = await service.CountOnlineAsync();
 
             // Assert
             Assert.Equal(2, before);
@@ -384,8 +378,6 @@ namespace GameFrameX.Tests.Online
             {
                 await store.SetAsync(new OnlinePresenceRecord
                 {
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ServerId = ServerId,
                     PlayerId = playerId,
                     SessionId = "sess-" + playerId,
@@ -395,13 +387,13 @@ namespace GameFrameX.Tests.Online
             }
 
             // Act：清扫不得挂起。
-            var sweepTask = service.SweepTimeoutsAsync(TenantId, AppId, now);
+            var sweepTask = service.SweepTimeoutsAsync(now);
             var completed = await Task.WhenAny(sweepTask, Task.Delay(5000));
 
             // Assert：边界记录本轮不计入清扫量，但时钟推进后应被清扫。
             Assert.Same(sweepTask, completed);
             Assert.Equal(0, await sweepTask);
-            Assert.Equal(2, await service.SweepTimeoutsAsync(TenantId, AppId, now + 1));
+            Assert.Equal(2, await service.SweepTimeoutsAsync(now + 1));
         }
 
         /// <summary>
@@ -411,7 +403,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域实例。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
     }
 }

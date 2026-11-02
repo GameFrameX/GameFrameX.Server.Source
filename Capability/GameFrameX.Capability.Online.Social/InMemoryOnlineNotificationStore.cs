@@ -74,8 +74,8 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
             throw new ArgumentNullException(nameof(notification));
         }
 
-        var idKey = BuildIdKey(notification.TenantId, notification.AppId, notification.PlayerId, notification.NotificationId);
-        var dedupeKey = BuildDedupeKey(notification.TenantId, notification.AppId, notification.PlayerId, notification.DedupeKey);
+        var idKey = BuildIdKey(notification.PlayerId, notification.NotificationId);
+        var dedupeKey = BuildDedupeKey(notification.PlayerId, notification.DedupeKey);
         lock (_syncRoot)
         {
             string existingIdKey;
@@ -103,15 +103,13 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// <remarks>
     /// Finds a notification in the in-memory table by scope, recipient and notification id.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">接收者玩家标识 / Recipient player id</param>
     /// <param name="notificationId">通知标识 / Notification id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>通知副本；不存在返回 null / Copy of the notification, or null if absent</returns>
-    public Task<OnlineNotification> FindAsync(long tenantId, long appId, long playerId, string notificationId, CancellationToken cancellationToken = default)
+    public Task<OnlineNotification> FindAsync(long playerId, string notificationId, CancellationToken cancellationToken = default)
     {
-        var idKey = BuildIdKey(tenantId, appId, playerId, notificationId);
+        var idKey = BuildIdKey(playerId, notificationId);
         lock (_syncRoot)
         {
             OnlineNotification found;
@@ -144,7 +142,7 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
             throw new ArgumentNullException(nameof(notification));
         }
 
-        var idKey = BuildIdKey(notification.TenantId, notification.AppId, notification.PlayerId, notification.NotificationId);
+        var idKey = BuildIdKey(notification.PlayerId, notification.NotificationId);
         lock (_syncRoot)
         {
             OnlineNotification current;
@@ -172,12 +170,10 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// <remarks>
     /// Linearly scans the whole table to list all notifications of a recipient in any state.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="playerId">接收者玩家标识 / Recipient player id</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>通知副本列表 / List of notification copies</returns>
-    public Task<IReadOnlyList<OnlineNotification>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineNotification>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineNotification>();
         lock (_syncRoot)
@@ -185,7 +181,7 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
             foreach (var pair in _notificationsByIdKey)
             {
                 var notification = pair.Value;
-                if (notification.TenantId == tenantId && notification.AppId == appId && notification.PlayerId == playerId)
+                if (notification.PlayerId == playerId)
                 {
                     result.Add(notification.Copy());
                 }
@@ -201,12 +197,10 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// <remarks>
     /// Linearly scans the whole table to list all notifications in the scope with the given state.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant id</param>
-    /// <param name="appId">App 标识 / App id</param>
     /// <param name="state">通知状态 / Notification state</param>
     /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
     /// <returns>通知副本列表 / List of notification copies</returns>
-    public Task<IReadOnlyList<OnlineNotification>> ListByStateAsync(long tenantId, long appId, OnlineNotificationState state, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineNotification>> ListByStateAsync(OnlineNotificationState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineNotification>();
         lock (_syncRoot)
@@ -214,7 +208,7 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
             foreach (var pair in _notificationsByIdKey)
             {
                 var notification = pair.Value;
-                if (notification.TenantId == tenantId && notification.AppId == appId && notification.State == state)
+                if (notification.State == state)
                 {
                     result.Add(notification.Copy());
                 }
@@ -227,14 +221,12 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// <summary>
     /// 构造通知标识索引键（作用域 + 接收者 + 通知标识）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="notificationId">通知标识。</param>
     /// <returns>索引键。</returns>
-    private static string BuildIdKey(long tenantId, long appId, long playerId, string notificationId)
+    private static string BuildIdKey(long playerId, string notificationId)
     {
-        return "ntf:" + tenantId + ":" + appId + ":" + playerId + ":" + (notificationId ?? string.Empty);
+        return "ntf:" + playerId + ":" + (notificationId ?? string.Empty);
     }
 
     /// <summary>
@@ -244,13 +236,11 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// 去重只约束「同一接收者的同一业务动作」。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="dedupeKey">去重键。</param>
     /// <returns>索引键。</returns>
-    private static string BuildDedupeKey(long tenantId, long appId, long playerId, string dedupeKey)
+    private static string BuildDedupeKey(long playerId, string dedupeKey)
     {
-        return "ntfd:" + tenantId + ":" + appId + ":" + playerId + ":" + (dedupeKey ?? string.Empty);
+        return "ntfd:" + playerId + ":" + (dedupeKey ?? string.Empty);
     }
 }

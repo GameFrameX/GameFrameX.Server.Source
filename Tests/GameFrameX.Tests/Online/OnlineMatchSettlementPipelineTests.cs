@@ -33,11 +33,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchSettlementPipelineTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
@@ -479,7 +474,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>余额（无账户为 0）。</returns>
             public async Task<long> BalanceOfAsync(long playerId)
             {
-                var wallet = await AssetStore.FindWalletAsync(TenantId, AppId, playerId, OnlineRockPaperScissorsGame.RewardAssetId);
+                var wallet = await AssetStore.FindWalletAsync(playerId, OnlineRockPaperScissorsGame.RewardAssetId);
                 return wallet == null ? 0L : wallet.Balance;
             }
 
@@ -501,13 +496,11 @@ namespace GameFrameX.Tests.Online
                     Region = 1,
                     CreatedAtTime = Now,
                     TicketIds = new List<string>(),
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ServerId = ServerId,
                 };
                 var created = await Runtime.CreateFromAssignmentAsync(assignment, Now);
                 Assert.True(created.IsSuccess, created.Message);
-                Actor = await Runtime.ResolveActorAsync(TenantId, AppId, matchId);
+                Actor = await Runtime.ResolveActorAsync(matchId);
                 Assert.NotNull(Actor);
 
                 await Actor.SetReadyAsync(ScopeOf(playerOne), true, Now);
@@ -556,7 +549,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>作用域。</returns>
             private static OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
 
@@ -599,14 +592,12 @@ namespace GameFrameX.Tests.Online
             private readonly Dictionary<string, string> _dueMatchIds = new();
 
             /// <summary>委托给内部存储。</summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">App 标识。</param>
             /// <param name="matchId">对局标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>结果副本。</returns>
-            public Task<OnlineMatchResult> FindByMatchAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+            public Task<OnlineMatchResult> FindByMatchAsync(string matchId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindByMatchAsync(tenantId, appId, matchId, cancellationToken);
+                return _inner.FindByMatchAsync(matchId, cancellationToken);
             }
 
             /// <summary>委托给内部存储。</summary>
@@ -740,55 +731,47 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 查询钱包账户；原样委托给内部真实存储，不受失败注入影响。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="currencyId">货币标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>内部存储返回的钱包账户。</returns>
-            public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+            public Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindWalletAsync(tenantId, appId, playerId, currencyId, cancellationToken);
+                return _inner.FindWalletAsync(playerId, currencyId, cancellationToken);
             }
 
             /// <summary>
             /// 查询背包堆叠；原样委托给内部真实存储，不受失败注入影响。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="itemId">物品标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>内部存储返回的背包堆叠。</returns>
-            public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+            public Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
             {
-                return _inner.FindInventoryAsync(tenantId, appId, playerId, itemId, cancellationToken);
+                return _inner.FindInventoryAsync(playerId, itemId, cancellationToken);
             }
 
             /// <summary>
             /// 列出玩家全部钱包账户；原样委托给内部真实存储。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>内部存储返回的钱包账户集合。</returns>
-            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListWalletAccountsAsync(playerId, cancellationToken);
             }
 
             /// <summary>
             /// 列出玩家全部背包堆叠；原样委托给内部真实存储。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>内部存储返回的背包堆叠集合。</returns>
-            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.ListInventoryStacksAsync(playerId, cancellationToken);
             }
 
             /// <summary>
@@ -834,26 +817,22 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 按资产汇总玩家流水增量；原样委托给内部真实存储。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="playerId">玩家标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>资产标识到增量合计的映射。</returns>
-            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
             {
-                return _inner.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
+                return _inner.SumLedgerDeltasByAssetAsync(playerId, cancellationToken);
             }
 
             /// <summary>
             /// 列出拥有资产记录的玩家标识；原样委托给内部真实存储。
             /// </summary>
-            /// <param name="tenantId">租户标识。</param>
-            /// <param name="appId">应用标识。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>内部存储返回的玩家标识集合。</returns>
-            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
             {
-                return _inner.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+                return _inner.ListPlayerIdsAsync(cancellationToken);
             }
         }
 

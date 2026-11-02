@@ -42,24 +42,12 @@ namespace GameFrameX.Tests.Online
     /// 统一审计链路服务测试（审计半边 + 服务端半边：
     /// 审计完整性校验（操作者/原因/标识/类型/作用域/域白名单逐维度拒绝）、重复接入幂等（不重复落档无副作用）、
     /// 脱敏落档与检索（掩码逐键断言、无明文敏感值）、跨域联查与各维度过滤、keyset 全序分页不重不漏、
-    /// App 级与区服级审计共存、跨作用域读取与无数据同构（反预言））。
+    /// 全局级与区服级审计共存、无数据同构（反预言））。
     /// </summary>
     public class OnlineAuditServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 9101;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 9102;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 9103;
-
-        /// <summary>测试用其它租户标识（反预言用例）。</summary>
-        private const long OtherTenantId = 9901;
-
-        /// <summary>测试用其它 App 标识（反预言用例）。</summary>
-        private const long OtherAppId = 9902;
 
         /// <summary>
         /// 构造一条完整可接入的审计条目（各用例在此基础上按需破坏单一维度）。
@@ -76,8 +64,6 @@ namespace GameFrameX.Tests.Online
                 EventId = eventId,
                 EventType = "admin.audit." + domain.ToLowerInvariant(),
                 OccurredTime = occurredTime,
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 PlayerId = 42,
                 OperatorId = "admin-001",
@@ -117,7 +103,7 @@ namespace GameFrameX.Tests.Online
                 Assert.False(result.Data.IsDuplicate);
             }
 
-            var query = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
+            var query = await service.QueryAsync();
             Assert.True(query.IsSuccess);
             var records = query.Data.Records;
             Assert.Equal(3, records.Count);
@@ -148,7 +134,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
 
-            var query = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
+            var query = await service.QueryAsync();
             Assert.Empty(query.Data.Records);
         }
 
@@ -182,14 +168,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 审计半边：缺审计标识 / 缺事件类型 / 缺租户或 App 的条目分别被拒绝（参数非法）。
+        /// 审计半边：缺审计标识 / 缺事件类型的条目分别被拒绝（参数非法）。
         /// </summary>
         /// <param name="mutate">按维度破坏条目的委托。</param>
         [Theory]
         [InlineData("eventId")]
         [InlineData("eventType")]
-        [InlineData("tenant")]
-        [InlineData("app")]
         public async Task Ingest_MissingRequiredDimensions_Rejected(string dimension)
         {
             var service = CreateService();
@@ -201,12 +185,6 @@ namespace GameFrameX.Tests.Online
                     break;
                 case "eventType":
                     entry.EventType = string.Empty;
-                    break;
-                case "tenant":
-                    entry.TenantId = 0;
-                    break;
-                case "app":
-                    entry.AppId = 0;
                     break;
             }
 
@@ -294,7 +272,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(third.IsSuccess);
             Assert.True(third.Data.IsDuplicate);
 
-            var query = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
+            var query = await service.QueryAsync();
             var matched = query.Data.Records.Where(r => r.EventId == "audit-idem-001").ToList();
             Assert.Single(matched);
         }
@@ -321,7 +299,7 @@ namespace GameFrameX.Tests.Online
             var ingest = await service.IngestAsync(entry);
             Assert.True(ingest.IsSuccess);
 
-            var query = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
+            var query = await service.QueryAsync();
             var record = Assert.Single(query.Data.Records);
 
             Assert.Equal(OnlineEventSanitizer.MaskedValue, record.SanitizedFields["SessionToken"]);
@@ -352,14 +330,14 @@ namespace GameFrameX.Tests.Online
             await service.IngestAsync(CreateEntry("dj-penalty", OnlineAuditDomain.Penalty, 1_700_000_000_200L));
             await service.IngestAsync(CreateEntry("dj-mail", OnlineAuditDomain.Mail, 1_700_000_000_300L));
 
-            var joined = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId), new OnlineAuditQuery
+            var joined = await service.QueryAsync(new OnlineAuditQuery
             {
                 Domains = new List<string> { OnlineAuditDomain.Payment, OnlineAuditDomain.Penalty },
             });
             Assert.Equal(2, joined.Data.Records.Count);
             Assert.All(joined.Data.Records, r => Assert.NotEqual(OnlineAuditDomain.Mail, r.Domain));
 
-            var all = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId), new OnlineAuditQuery
+            var all = await service.QueryAsync(new OnlineAuditQuery
             {
                 Domains = new List<string>(),
             });
@@ -389,29 +367,28 @@ namespace GameFrameX.Tests.Online
             byCorrelation.CorrelationId = "trace-abc";
             await service.IngestAsync(byCorrelation);
 
-            var appLevel = CreateEntry("f-app-level", OnlineAuditDomain.RemoteConfig, 1_700_000_000_400L);
-            appLevel.ServerId = 0;
-            await service.IngestAsync(appLevel);
+            var globalLevel = CreateEntry("f-global-level", OnlineAuditDomain.RemoteConfig, 1_700_000_000_400L);
+            globalLevel.ServerId = 0;
+            await service.IngestAsync(globalLevel);
 
-            var scope = new OnlineScope(TenantId, AppId, ServerId);
 
-            var playerQuery = await service.QueryAsync(scope, new OnlineAuditQuery { PlayerId = 777 });
+            var playerQuery = await service.QueryAsync(new OnlineAuditQuery { PlayerId = 777 });
             Assert.Equal("f-player", Assert.Single(playerQuery.Data.Records).EventId);
 
-            var operatorQuery = await service.QueryAsync(scope, new OnlineAuditQuery { OperatorId = "admin-777" });
+            var operatorQuery = await service.QueryAsync(new OnlineAuditQuery { OperatorId = "admin-777" });
             Assert.Equal("f-operator", Assert.Single(operatorQuery.Data.Records).EventId);
 
-            var typeQuery = await service.QueryAsync(scope, new OnlineAuditQuery { EventType = "online.session.kicked" });
+            var typeQuery = await service.QueryAsync(new OnlineAuditQuery { EventType = "online.session.kicked" });
             Assert.Equal("f-type", Assert.Single(typeQuery.Data.Records).EventId);
 
-            var correlationQuery = await service.QueryAsync(scope, new OnlineAuditQuery { CorrelationId = "trace-abc" });
+            var correlationQuery = await service.QueryAsync(new OnlineAuditQuery { CorrelationId = "trace-abc" });
             Assert.Equal("f-corr", Assert.Single(correlationQuery.Data.Records).EventId);
 
-            var serverQuery = await service.QueryAsync(scope, new OnlineAuditQuery { ServerId = 0 });
-            Assert.Equal("f-app-level", Assert.Single(serverQuery.Data.Records).EventId);
+            var serverQuery = await service.QueryAsync(new OnlineAuditQuery { ServerId = 0 });
+            Assert.Equal("f-global-level", Assert.Single(serverQuery.Data.Records).EventId);
 
             // 时间窗为闭区间：[t, t] 命中恰好落在边界上的记录。
-            var windowQuery = await service.QueryAsync(scope, new OnlineAuditQuery
+            var windowQuery = await service.QueryAsync(new OnlineAuditQuery
             {
                 StartTime = 1_700_000_000_100L,
                 EndTime = 1_700_000_000_200L,
@@ -433,12 +410,11 @@ namespace GameFrameX.Tests.Online
             await service.IngestAsync(CreateEntry("page-d", OnlineAuditDomain.Reward, 1_700_000_000_300L));
             await service.IngestAsync(CreateEntry("page-e", OnlineAuditDomain.Mail, 1_700_000_000_200L));
 
-            var scope = new OnlineScope(TenantId, AppId, ServerId);
             var seen = new List<string>();
             string cursor = null;
             while (true)
             {
-                var page = await service.QueryAsync(scope, new OnlineAuditQuery { Cursor = cursor, PageSize = 2 });
+                var page = await service.QueryAsync(new OnlineAuditQuery { Cursor = cursor, PageSize = 2 });
                 Assert.True(page.IsSuccess);
                 seen.AddRange(page.Data.Records.Select(r => r.EventId));
                 if (!page.Data.Cursor.HasMore)
@@ -453,11 +429,11 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(new[] { "page-a", "page-b", "page-c", "page-d", "page-e" }, seen);
             Assert.Equal(5, seen.Distinct().Count());
 
-            var badCursor = await service.QueryAsync(scope, new OnlineAuditQuery { Cursor = "not-a-valid-cursor" });
+            var badCursor = await service.QueryAsync(new OnlineAuditQuery { Cursor = "not-a-valid-cursor" });
             Assert.False(badCursor.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, badCursor.Code);
 
-            var oversized = await service.QueryAsync(scope, new OnlineAuditQuery { PageSize = 201 });
+            var oversized = await service.QueryAsync(new OnlineAuditQuery { PageSize = 201 });
             Assert.False(oversized.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, oversized.Code);
         }
@@ -475,12 +451,11 @@ namespace GameFrameX.Tests.Online
             await service.IngestAsync(CreateEntry("full-page-c", OnlineAuditDomain.Reward, 1_700_000_000_200L));
             await service.IngestAsync(CreateEntry("full-page-d", OnlineAuditDomain.Reward, 1_700_000_000_100L));
 
-            var scope = new OnlineScope(TenantId, AppId, ServerId);
             var seen = new List<string>();
             string cursor = null;
             while (true)
             {
-                var page = await service.QueryAsync(scope, new OnlineAuditQuery { Cursor = cursor, PageSize = 2 });
+                var page = await service.QueryAsync(new OnlineAuditQuery { Cursor = cursor, PageSize = 2 });
                 Assert.True(page.IsSuccess);
                 seen.AddRange(page.Data.Records.Select(r => r.EventId));
                 if (!page.Data.Cursor.HasMore)
@@ -513,12 +488,11 @@ namespace GameFrameX.Tests.Online
             await service.IngestAsync(CreateEntry("mix-e", OnlineAuditDomain.Payment, 1_700_000_000_200L));
             await service.IngestAsync(CreateEntry("mix-f", OnlineAuditDomain.Mail, 1_700_000_000_200L));
 
-            var scope = new OnlineScope(TenantId, AppId, ServerId);
             var seen = new List<string>();
             string cursor = null;
             while (true)
             {
-                var page = await service.QueryAsync(scope, new OnlineAuditQuery
+                var page = await service.QueryAsync(new OnlineAuditQuery
                 {
                     Domains = new List<string> { OnlineAuditDomain.Payment },
                     Cursor = cursor,
@@ -540,54 +514,34 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 反预言（作用域越界）：跨租户/跨 App 检索与「无数据」（空存储同作用域）在页形状上逐项一致
-        /// （空行集 + HasMore=false + 空游标），不泄露其它作用域审计的存在性。
+        /// 无数据同构：空存储的默认查询在页形状上为空行集 + HasMore=false + 空游标（不误报错误）。
         /// </summary>
         [Fact]
-        public async Task Query_CrossScope_EmptyIsomorphicWithNoData()
+        public async Task Query_EmptyStore_EmptyPageShape()
         {
-            var service = CreateService();
-            await service.IngestAsync(CreateEntry("iso-001", OnlineAuditDomain.Payment, 1_700_000_000_000L));
+            var noData = await CreateService().QueryAsync();
 
-            var otherTenant = await service.QueryAsync(new OnlineScope(OtherTenantId, AppId, ServerId));
-            var otherApp = await service.QueryAsync(new OnlineScope(TenantId, OtherAppId, ServerId));
-            var noData = await CreateService().QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
-
-            foreach (var page in new[] { otherTenant, otherApp, noData })
-            {
-                Assert.True(page.IsSuccess);
-                Assert.Empty(page.Data.Records);
-                Assert.False(page.Data.Cursor.HasMore);
-                Assert.Equal(string.Empty, page.Data.Cursor.Cursor);
-            }
+            Assert.True(noData.IsSuccess);
+            Assert.Empty(noData.Data.Records);
+            Assert.False(noData.Data.Cursor.HasMore);
+            Assert.Equal(string.Empty, noData.Data.Cursor.Cursor);
         }
 
         /// <summary>
-        /// 作用域锚定语义：QueryAsync 只锚定 TenantId/AppId，缺任一即拒绝；
-        /// 区服维度完全由查询条件承载（App 级 ServerId=0 与区服级审计在默认查询中共存）。
+        /// 区服维度完全由查询条件承载（区服级与 ServerId=0 的全局级审计在默认查询中共存）。
         /// </summary>
         [Fact]
-        public async Task Query_ScopeAnchors_TenantAppOnly()
+        public async Task Query_ServerLevelCoexistsWithGlobalLevel()
         {
             var service = CreateService();
             await service.IngestAsync(CreateEntry("anchor-server", OnlineAuditDomain.Operation, 1_700_000_000_000L));
 
-            var appLevel = CreateEntry("anchor-app", OnlineAuditDomain.RemoteConfig, 1_700_000_000_100L);
-            appLevel.ServerId = 0;
-            await service.IngestAsync(appLevel);
+            var globalLevel = CreateEntry("anchor-global", OnlineAuditDomain.RemoteConfig, 1_700_000_000_100L);
+            globalLevel.ServerId = 0;
+            await service.IngestAsync(globalLevel);
 
-            // scope.ServerId=任意值不影响结果集（锚定语义只看 TenantId/AppId）。
-            var scopeWithServer = new OnlineScope(TenantId, AppId, 12345);
-            var page = await service.QueryAsync(scopeWithServer);
+            var page = await service.QueryAsync();
             Assert.Equal(2, page.Data.Records.Count);
-
-            var missingTenant = await service.QueryAsync(new OnlineScope(0, AppId, ServerId));
-            Assert.False(missingTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, missingTenant.Code);
-
-            var missingApp = await service.QueryAsync(new OnlineScope(TenantId, 0, ServerId));
-            Assert.False(missingApp.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, missingApp.Code);
         }
 
         /// <summary>
@@ -605,7 +559,7 @@ namespace GameFrameX.Tests.Online
             await service.IngestAsync(entry);
             payload["OrderAmount"] = "999999";
 
-            var query = await service.QueryAsync(new OnlineScope(TenantId, AppId, ServerId));
+            var query = await service.QueryAsync();
             Assert.Equal("100", Assert.Single(query.Data.Records).SanitizedFields["OrderAmount"]);
         }
     }

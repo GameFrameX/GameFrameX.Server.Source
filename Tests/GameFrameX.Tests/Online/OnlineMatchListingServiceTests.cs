@@ -42,12 +42,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchListingServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -172,8 +166,6 @@ namespace GameFrameX.Tests.Online
             var listing = new OnlineMatchListing
             {
                 ListingId = "lst-unknown",
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 OwnerPlayerId = PlayerOne,
                 Name = "unknown-room",
@@ -278,7 +270,7 @@ namespace GameFrameX.Tests.Online
 
             // Assert
             Assert.True(outcome);
-            var stored = await store.FindAsync(TenantId, AppId, listing.ListingId);
+            var stored = await store.FindAsync(listing.ListingId);
             Assert.Equal(2, stored.JoinedCount);
             Assert.Equal(1, stored.RowVersion);
         }
@@ -303,7 +295,7 @@ namespace GameFrameX.Tests.Online
 
             // Assert
             Assert.False(outcome);
-            var stored = await store.FindAsync(TenantId, AppId, listing.ListingId);
+            var stored = await store.FindAsync(listing.ListingId);
             Assert.Equal(1, stored.JoinedCount);
             Assert.Equal(1, stored.RowVersion);
         }
@@ -319,15 +311,13 @@ namespace GameFrameX.Tests.Online
             var ghost = new OnlineMatchListing
             {
                 ListingId = "lst-missing",
-                TenantId = TenantId,
-                AppId = AppId,
                 Capacity = 4,
                 State = OnlineMatchListingState.Open,
             };
 
             // Act + Assert
             Assert.False(await store.UpdateIfRowVersionAsync(ghost, expectedRowVersion: 0));
-            Assert.Null(await store.FindAsync(TenantId, AppId, "lst-missing"));
+            Assert.Null(await store.FindAsync("lst-missing"));
         }
 
         /// <summary>
@@ -364,7 +354,7 @@ namespace GameFrameX.Tests.Online
             }
 
             Assert.Equal(1, winners);
-            var stored = await innerStore.FindAsync(TenantId, AppId, listing.ListingId);
+            var stored = await innerStore.FindAsync(listing.ListingId);
             Assert.Equal(1, stored.JoinedCount);
             Assert.Equal(OnlineMatchListingState.Full, stored.State);
             Assert.Equal(1, stored.RowVersion);
@@ -391,7 +381,7 @@ namespace GameFrameX.Tests.Online
 
             // Assert
             Assert.True(raceOutcomes[1].IsSuccess);
-            var stored = await innerStore.FindAsync(TenantId, AppId, listing.ListingId);
+            var stored = await innerStore.FindAsync(listing.ListingId);
             Assert.Equal(OnlineMatchListingState.Closed, stored.State);
         }
 
@@ -433,7 +423,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.VersionConflict, outcome.Code);
             Assert.Equal(3, conflictStore.ConditionalWriteAttempts);
-            var stored = await conflictStore.FindAsync(TenantId, AppId, listing.ListingId);
+            var stored = await conflictStore.FindAsync(listing.ListingId);
             Assert.Equal(0, stored.JoinedCount);
         }
 
@@ -501,7 +491,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>
@@ -543,15 +533,15 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>按标识查找列表项（直接转发）。</summary>
-            public Task<OnlineMatchListing> FindAsync(long tenantId, long appId, string listingId, CancellationToken cancellationToken = default)
+            public Task<OnlineMatchListing> FindAsync(string listingId, CancellationToken cancellationToken = default)
             {
-                return _innerStore.FindAsync(tenantId, appId, listingId, cancellationToken);
+                return _innerStore.FindAsync(listingId, cancellationToken);
             }
 
             /// <summary>列出作用域内全部列表项（直接转发）。</summary>
-            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(CancellationToken cancellationToken = default)
             {
-                return _innerStore.ListAsync(tenantId, appId, cancellationToken);
+                return _innerStore.ListAsync(cancellationToken);
             }
 
             /// <summary>
@@ -605,15 +595,15 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>按标识查找列表项（直接转发）。</summary>
-            public Task<OnlineMatchListing> FindAsync(long tenantId, long appId, string listingId, CancellationToken cancellationToken = default)
+            public Task<OnlineMatchListing> FindAsync(string listingId, CancellationToken cancellationToken = default)
             {
-                return _innerStore.FindAsync(tenantId, appId, listingId, cancellationToken);
+                return _innerStore.FindAsync(listingId, cancellationToken);
             }
 
             /// <summary>列出作用域内全部列表项（直接转发）。</summary>
-            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(CancellationToken cancellationToken = default)
             {
-                return _innerStore.ListAsync(tenantId, appId, cancellationToken);
+                return _innerStore.ListAsync(cancellationToken);
             }
         }
     }

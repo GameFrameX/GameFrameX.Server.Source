@@ -59,8 +59,6 @@ public static class OnlineAssetEvents
     /// <summary>
     /// 构造资产变更事件（按操作类型名选择事件类型；混合批次以操作类型为准，逐资产前后值在载荷内）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="transactionId">交易标识。</param>
@@ -69,7 +67,7 @@ public static class OnlineAssetEvents
     /// <param name="businessOrderId">业务单号（可空；载荷落空字符串）。</param>
     /// <param name="lines">逐资产变更行（类别名 / 标识 / 带符号数额 / 变更前后值）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(long tenantId, long appId, long serverId, long playerId, string transactionId, string operation, string changeSource, string businessOrderId, IReadOnlyList<(string AssetKind, string AssetId, long Delta, long AmountBefore, long AmountAfter)> lines)
+    public static OnlineEvent Create(long serverId, long playerId, string transactionId, string operation, string changeSource, string businessOrderId, IReadOnlyList<(string AssetKind, string AssetId, long Delta, long AmountBefore, long AmountAfter)> lines)
     {
         string eventType;
         switch (operation)
@@ -109,8 +107,6 @@ public static class OnlineAssetEvents
             EventType = eventType,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = playerId,
             Source = Source,

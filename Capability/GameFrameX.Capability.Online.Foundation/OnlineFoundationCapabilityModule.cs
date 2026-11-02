@@ -155,10 +155,10 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         context.AddService<IOnlineSocialPresenceProbe>(new OnlineSocialPresenceProbe(_presence));
         context.AddService<IOnlinePartyPresenceProbe>(new OnlinePartyPresenceProbe(_presence));
 
-        // 清扫滴答 job（归属地基域；作用域三元组经族预置的授权作用域解析——壳时代 host.AuthorizedScope 等价）。
+        // 清扫滴答 job（归属地基域）。
         context.AddTickJob("presence-timeout-sweep", async ct =>
         {
-            await _presence.SweepTimeoutsAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _presence.SweepTimeoutsAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("session-token-expiry-sweep", ct => _tokens.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 

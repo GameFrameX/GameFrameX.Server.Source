@@ -206,7 +206,7 @@ namespace GameFrameX.Tests.Online
             var stored = await harness.StoredEventsAsync();
             Assert.Equal(events.Count, stored.Count);
 
-            var metrics = await harness.MetricsService.ComputeAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
+            var metrics = await harness.MetricsService.ComputeAsync(0, long.MaxValue);
             Assert.Equal(events.Count, metrics.TotalCount);
             Assert.Equal(3, metrics.GetCategoryCount(OnlineGameEventCategory.Login));
             Assert.Equal(1, metrics.GetCategoryCount(OnlineGameEventCategory.Matchmaking));

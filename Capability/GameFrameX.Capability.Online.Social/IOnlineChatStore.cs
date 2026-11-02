@@ -60,12 +60,10 @@ public interface IOnlineChatStore
     /// <summary>
     /// 按频道标识查找频道记录。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>频道记录副本；不存在返回 null。</returns>
-    Task<OnlineChatChannel> FindChannelAsync(long tenantId, long appId, string channelId, CancellationToken cancellationToken = default);
+    Task<OnlineChatChannel> FindChannelAsync(string channelId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 追加一条消息（分配频道内序号并落定发送时刻；去重键命中时返回既有消息且不写入）。
@@ -84,55 +82,45 @@ public interface IOnlineChatStore
     /// 本查询只是让重放走捷径；真正的并发唯一约束仍在 <see cref="AppendAsync"/> 的临界区内。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="dedupeKey">发送方去重键（空串表示无去重键，直接返回 null）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>命中的消息副本；无去重键或未命中返回 null。</returns>
-    Task<OnlineChatMessage> FindByDedupeKeyAsync(long tenantId, long appId, string channelId, string dedupeKey, CancellationToken cancellationToken = default);
+    Task<OnlineChatMessage> FindByDedupeKeyAsync(string channelId, string dedupeKey, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按消息标识查找。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="messageId">消息标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>消息副本；不存在返回 null。</returns>
-    Task<OnlineChatMessage> FindMessageAsync(long tenantId, long appId, string channelId, string messageId, CancellationToken cancellationToken = default);
+    Task<OnlineChatMessage> FindMessageAsync(string channelId, string messageId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义改写消息状态（当前只有撤回一种迁移）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="transition">消息状态迁移载荷（频道/消息定位 + 期望/目标状态 + 变更时刻与撤回人）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的消息副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, ChatMessageStateTransition transition, CancellationToken cancellationToken = default);
+    Task<OnlineChatMessage> UpdateMessageStateAsync(ChatMessageStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按稳定排序键升序读取游标之后的消息页（离线补拉与历史分页共用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cursor">读取游标（频道定位 + 位点二元组 + 页大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>严格位于游标之后、按 <c>(SentAtTime, Sequence)</c> 升序排列的消息副本列表。</returns>
-    Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, ChatReadCursor cursor, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(ChatReadCursor cursor, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 统计游标之后的未读条数（排除本人发送的与已撤回的消息）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cursor">读取游标（频道定位 + 已读位点二元组；页大小字段不消费）。</param>
     /// <param name="readerPlayerId">读取者（本人发的消息不计未读）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>未读条数。</returns>
-    Task<int> CountUnreadAsync(long tenantId, long appId, ChatReadCursor cursor, long readerPlayerId, CancellationToken cancellationToken = default);
+    Task<int> CountUnreadAsync(ChatReadCursor cursor, long readerPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 落定已读位点（整体替换：位点是只进不退的最终位置，不做增量合并）。
@@ -152,11 +140,9 @@ public interface IOnlineChatStore
     /// <summary>
     /// 查找已读位点。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>已读位点副本；从未标记过返回 null。</returns>
-    Task<OnlineChatReadMark> FindReadMarkAsync(long tenantId, long appId, long playerId, string channelId, CancellationToken cancellationToken = default);
+    Task<OnlineChatReadMark> FindReadMarkAsync(long playerId, string channelId, CancellationToken cancellationToken = default);
 }

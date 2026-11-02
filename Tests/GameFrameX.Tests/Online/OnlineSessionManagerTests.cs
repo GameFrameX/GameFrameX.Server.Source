@@ -43,12 +43,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineSessionManagerTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -235,7 +229,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域实例。</returns>
         private static OnlineScope CreatePlayerScope()
         {
-            return new OnlineScope(TenantId, AppId, ServerId, PlayerId);
+            return new OnlineScope(ServerId, PlayerId);
         }
     }
 }

@@ -107,11 +107,9 @@ public sealed class OnlineChatAuditProjection
     /// <summary>
     /// 查询聊天审计消息（跨频道；新到旧分页）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="query">检索条件载荷（可选过滤 + 游标 + 页大小）。</param>
     /// <returns>查询页（正文与参与者已回读补全）。</returns>
-    public async Task<ChatAuditPage> QueryAsync(long tenantId, long appId, ChatAuditQuery query)
+    public async Task<ChatAuditPage> QueryAsync(ChatAuditQuery query)
     {
         if (query == null)
         {
@@ -133,7 +131,7 @@ public sealed class OnlineChatAuditProjection
         for (var index = 0; index < ordered.Count; index++)
         {
             lastExamined = index;
-            var item = await TryComposeItemAsync(ordered[index], channelCache, tenantId, appId, channelKind, participantPlayerId, keyword, startTime, endTime).ConfigureAwait(false);
+            var item = await TryComposeItemAsync(ordered[index], channelCache, channelKind, participantPlayerId, keyword, startTime, endTime).ConfigureAwait(false);
             if (item != null)
             {
                 items.Add(item);
@@ -203,15 +201,13 @@ public sealed class OnlineChatAuditProjection
     /// </summary>
     /// <param name="reference">消息引用。</param>
     /// <param name="channelCache">频道回读缓存（跨引用共享）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="channelKind">频道类型过滤（null 表示不限）。</param>
     /// <param name="participantPlayerId">参与者过滤（null 表示不限）。</param>
     /// <param name="keyword">正文关键字过滤（null 或空表示不限）。</param>
     /// <param name="startTime">起始时刻（UTC 毫秒；null 表示不限）。</param>
     /// <param name="endTime">结束时刻（UTC 毫秒；null 表示不限）。</param>
     /// <returns>审计条目；任一过滤不满足或消息已不存在返回 null。</returns>
-    private async Task<ChatAuditItem> TryComposeItemAsync(MessageSentRef reference, Dictionary<string, OnlineChatChannel> channelCache, long tenantId, long appId, OnlineChatChannelKind? channelKind, long? participantPlayerId, string keyword, long? startTime, long? endTime)
+    private async Task<ChatAuditItem> TryComposeItemAsync(MessageSentRef reference, Dictionary<string, OnlineChatChannel> channelCache, OnlineChatChannelKind? channelKind, long? participantPlayerId, string keyword, long? startTime, long? endTime)
     {
         if (!MatchesTimeWindow(reference, startTime, endTime))
         {
@@ -226,7 +222,7 @@ public sealed class OnlineChatAuditProjection
         OnlineChatChannel channel;
         if (!channelCache.TryGetValue(reference.ChannelId, out channel))
         {
-            channel = await _chatStore.FindChannelAsync(tenantId, appId, reference.ChannelId).ConfigureAwait(false);
+            channel = await _chatStore.FindChannelAsync(reference.ChannelId).ConfigureAwait(false);
             channelCache[reference.ChannelId] = channel;
         }
 
@@ -236,7 +232,7 @@ public sealed class OnlineChatAuditProjection
             return null;
         }
 
-        var message = await _chatStore.FindMessageAsync(tenantId, appId, reference.ChannelId, reference.MessageId).ConfigureAwait(false);
+        var message = await _chatStore.FindMessageAsync(reference.ChannelId, reference.MessageId).ConfigureAwait(false);
         if (message == null)
         {
             return null;

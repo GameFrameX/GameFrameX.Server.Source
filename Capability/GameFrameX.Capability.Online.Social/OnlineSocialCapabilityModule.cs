@@ -141,7 +141,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineSocialOptions _options;
 
     /// <summary>
-    /// 族基建作用域（Register 期解析；迁移玩家作用域三元组来源）。
+    /// 族基建作用域（Register 期解析；迁移玩家作用域区服键来源）。
     /// </summary>
     private OnlineScope _scope;
 
@@ -225,11 +225,11 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         var scope = _scope;
         context.AddTickJob("notification-expiry-sweep", async ct =>
         {
-            await _notifications.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _notifications.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("friend-request-expiry-sweep", async ct =>
         {
-            await _friends.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _friends.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
     }
 
@@ -255,7 +255,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         // 旧好友数据一次性迁移（显式开关，默认关闭；只读单向 + 幂等 + 逐条 containment + 汇总）。
         if (_options.Friend.MigrateLegacyFriendData)
         {
-            await OnlineFriendLegacyMigration.MigrateAsync(_friends, _scope.TenantId, _scope.AppId, _scope.ServerId, cancellationToken).ConfigureAwait(false);
+            await OnlineFriendLegacyMigration.MigrateAsync(_friends, _scope.ServerId, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -36,7 +36,8 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// 道具库存堆栈快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码与行版本约定同 <see cref="OnlineWalletAccountState"/>：物化复合键
-/// （"tenant:app:player:道具标识"）单列唯一索引；行版本唯一事实源 = 基类 <c>RowVersion</c>
+/// （"player:道具标识"，与 InMemory 键同构，唯一构造点 <c>OnlineRowKey.InventoryStack</c>）
+/// 单列唯一索引；行版本唯一事实源 = 基类 <c>RowVersion</c>
 /// （乐观锁专用，不承载业务含义），实体 <c>Version</c> 为派生视图（实体 Version = 行
 /// RowVersion + 1）；存量行 null 行版本由适配层惰性回填。快照为账本派生面。
 /// </para>
@@ -44,20 +45,10 @@ using GameFrameX.Foundation.Orm.Attribute;
 public sealed class OnlineInventoryStackState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"tenant:app:player:itemId"；唯一索引列）。
+    /// 获取或设置物化复合键（"player:itemId"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_inventory_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

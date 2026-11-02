@@ -51,11 +51,9 @@ public interface IOnlineConfigHitProbe
     /// <summary>
     /// 列出指定玩家在作用域内的配置命中记录。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>命中记录（无命中返回空集合；顺序由实现保证稳定，时间线侧自行全量排序）。</returns>
-    Task<IReadOnlyList<OnlineConfigHitRecord>> ListHitsAsync(long tenantId, long appId, long serverId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineConfigHitRecord>> ListHitsAsync(long serverId, long playerId, CancellationToken cancellationToken = default);
 }

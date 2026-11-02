@@ -48,17 +48,11 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineLeaderboardTrustedResultTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
-        /// <summary>另一 App 标识（跨 App 用例）。</summary>
-        private const long OtherAppId = 11;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
+
+        /// <summary>另一区服标识（跨区服用例）。</summary>
+        private const long OtherServerId = 200;
 
         /// <summary>玩家一。</summary>
         private const long PlayerOne = 1001;
@@ -80,7 +74,7 @@ namespace GameFrameX.Tests.Online
         {
             var harness = new Harness();
             await harness.PlayToSettlingAsync();
-            var settled = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 100);
+            var settled = await harness.Settlement.SettleAsync(MatchId, Now + 100);
             Assert.True(settled.IsSuccess, settled.Message);
 
             await harness.CreateBoardAsync("board-trust", OnlineLeaderboardScoreUpdatePolicy.Sum);
@@ -94,7 +88,7 @@ namespace GameFrameX.Tests.Online
 
             foreach (var entry in settled.Data.Result.Entries)
             {
-                var boardEntry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-trust", entry.PlayerId);
+                var boardEntry = await harness.LeaderboardStore.FindEntryAsync("board-trust", entry.PlayerId);
                 Assert.NotNull(boardEntry);
                 Assert.Equal(entry.Score, boardEntry.Score);
                 Assert.Equal(OnlineLeaderboardScoreSource.MatchResult, boardEntry.SourceKind);
@@ -126,7 +120,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(tampered.IsSuccess);
             Assert.Equal(OnlineErrorCode.RiskControlRejected, tampered.Code);
-            Assert.Null(await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-trust", PlayerOne));
+            Assert.Null(await harness.LeaderboardStore.FindEntryAsync("board-trust", PlayerOne));
             Assert.Empty(harness.Recorder.Filter(OnlineLeaderboardEvents.ScoreUpdated));
 
             // 目标榜单不存在同样拒绝。
@@ -160,9 +154,9 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(0, third.Data.AppliedCount);
             Assert.Equal(2, third.Data.ReplayCount);
 
-            Assert.Equal(10, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-idem", PlayerOne)).Score);
-            Assert.Equal(20, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-idem", PlayerTwo)).Score);
-            Assert.Equal(1, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-idem", PlayerOne)).SubmissionCount);
+            Assert.Equal(10, (await harness.LeaderboardStore.FindEntryAsync("board-idem", PlayerOne)).Score);
+            Assert.Equal(20, (await harness.LeaderboardStore.FindEntryAsync("board-idem", PlayerTwo)).Score);
+            Assert.Equal(1, (await harness.LeaderboardStore.FindEntryAsync("board-idem", PlayerOne)).SubmissionCount);
             Assert.Equal(2, harness.Recorder.Filter(OnlineLeaderboardEvents.ScoreUpdated).Count);
         }
 
@@ -184,8 +178,8 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(PlayerTwo, projected.Data.FailedPlayers[0].PlayerId);
             Assert.Equal(OnlineErrorCode.RiskControlRejected, projected.Data.FailedPlayers[0].Code);
 
-            Assert.Equal(50, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-abuse", PlayerOne)).Score);
-            Assert.Null(await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-abuse", PlayerTwo));
+            Assert.Equal(50, (await harness.LeaderboardStore.FindEntryAsync("board-abuse", PlayerOne)).Score);
+            Assert.Null(await harness.LeaderboardStore.FindEntryAsync("board-abuse", PlayerTwo));
             Assert.Single(harness.Recorder.Filter(OnlineLeaderboardEvents.ScoreUpdated));
         }
 
@@ -214,33 +208,34 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(0, third.Data.AppliedCount);
             Assert.Single(third.Data.FailedPlayers);
             Assert.Equal(OnlineErrorCode.RateLimitExceeded, third.Data.FailedPlayers[0].Code);
-            Assert.Equal(3, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-rate", PlayerOne)).Score);
+            Assert.Equal(3, (await harness.LeaderboardStore.FindEntryAsync("board-rate", PlayerOne)).Score);
 
             // 窗口滚动后恢复正常（限流是速率保护不是配额）。
             var fourth = await harness.Projector.ProjectAsync(harness.Scope(), "board-rate", "match-r4", "mrs-r4", Now + 2000);
 
             Assert.True(fourth.IsSuccess, fourth.Message);
             Assert.Equal(1, fourth.Data.AppliedCount);
-            Assert.Equal(7, (await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-rate", PlayerOne)).Score);
+            Assert.Equal(7, (await harness.LeaderboardStore.FindEntryAsync("board-rate", PlayerOne)).Score);
         }
 
         /// <summary>
-        /// 验证投影半边：跨 App 作用域无法把结果投影到他 App 榜单（与不存在同构拒绝）。
+        /// 验证投影半边：榜单是全局域数据（单键化 D4）——跨区服作用域创建的榜对投影器可见，
+        /// 可信结果可投影上去并发 ScoreUpdated 事实。
         /// </summary>
         [Fact]
-        public async Task ProjectAsync_CrossAppBoard_ShouldBeResourceNotFound()
+        public async Task ProjectAsync_CrossServerCreatedBoard_ShouldProjectGlobally()
         {
             var harness = new Harness();
             await harness.CommitResultAsync("match-x", "mrs-x", (PlayerOne, 100));
 
-            var boardInOtherApp = await harness.Service.CreateAsync(harness.Scope(OtherAppId), new OnlineLeaderboardCreateRequest { LeaderboardId = "board-other-app" }, Now);
-            Assert.True(boardInOtherApp.IsSuccess, boardInOtherApp.Message);
+            var boardInOtherServer = await harness.Service.CreateAsync(harness.Scope(OtherServerId), new OnlineLeaderboardCreateRequest { LeaderboardId = "board-other-server" }, Now);
+            Assert.True(boardInOtherServer.IsSuccess, boardInOtherServer.Message);
 
-            var projected = await harness.Projector.ProjectAsync(harness.Scope(), "board-other-app", "match-x", "mrs-x", Now + 100);
+            var projected = await harness.Projector.ProjectAsync(harness.Scope(), "board-other-server", "match-x", "mrs-x", Now + 100);
 
-            Assert.False(projected.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, projected.Code);
-            Assert.Empty(harness.Recorder.Filter(OnlineLeaderboardEvents.ScoreUpdated));
+            Assert.True(projected.IsSuccess, projected.Message);
+            Assert.Single(harness.Recorder.Filter(OnlineLeaderboardEvents.ScoreUpdated));
+            Assert.Equal(100, (await harness.LeaderboardStore.FindEntryAsync("board-other-server", PlayerOne)).Score);
         }
 
         /// <summary>
@@ -259,7 +254,7 @@ namespace GameFrameX.Tests.Online
             await harness.Projector.ProjectAsync(harness.Scope(), "board-best", "match-b2", "mrs-b2", Now + 200);
             await harness.Projector.ProjectAsync(harness.Scope(), "board-best", "match-b3", "mrs-b3", Now + 300);
 
-            var entry = await harness.LeaderboardStore.FindEntryAsync(TenantId, AppId, "board-best", PlayerOne);
+            var entry = await harness.LeaderboardStore.FindEntryAsync("board-best", PlayerOne);
 
             Assert.Equal(150, entry.Score);
             Assert.Equal(3, entry.SubmissionCount);
@@ -363,12 +358,12 @@ namespace GameFrameX.Tests.Online
             /// <summary>
             /// 构造作用域。
             /// </summary>
-            /// <param name="appId">App 标识（默认本 App）。</param>
+            /// <param name="serverId">区服标识（默认本区服）。</param>
             /// <param name="playerId">玩家位（默认无主体）。</param>
             /// <returns>作用域。</returns>
-            public OnlineScope Scope(long appId = AppId, long playerId = 0)
+            public OnlineScope Scope(long serverId = ServerId, long playerId = 0)
             {
-                return new OnlineScope(TenantId, appId, ServerId, playerId);
+                return new OnlineScope(serverId, playerId);
             }
 
             /// <summary>
@@ -402,8 +397,6 @@ namespace GameFrameX.Tests.Online
                 {
                     MatchResultId = matchResultId,
                     MatchId = matchId,
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ServerId = ServerId,
                     Mode = OnlineRockPaperScissorsGame.MatchMode,
                     Region = 1,
@@ -434,18 +427,16 @@ namespace GameFrameX.Tests.Online
                     Region = 1,
                     CreatedAtTime = Now,
                     TicketIds = new List<string>(),
-                    TenantId = TenantId,
-                    AppId = AppId,
                     ServerId = ServerId,
                 };
                 var created = await runtime.CreateFromAssignmentAsync(assignment, Now);
                 Assert.True(created.IsSuccess, created.Message);
-                var actor = await runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+                var actor = await runtime.ResolveActorAsync(MatchId);
                 Assert.NotNull(actor);
 
-                await actor.SetReadyAsync(new OnlineScope(TenantId, AppId, ServerId, PlayerOne), true, Now);
-                await actor.SetReadyAsync(new OnlineScope(TenantId, AppId, ServerId, PlayerTwo), true, Now + 1);
-                var started = await actor.StartAsync(new OnlineScope(TenantId, AppId, ServerId, PlayerOne), Now + 2);
+                await actor.SetReadyAsync(new OnlineScope(ServerId, PlayerOne), true, Now);
+                await actor.SetReadyAsync(new OnlineScope(ServerId, PlayerTwo), true, Now + 1);
+                var started = await actor.StartAsync(new OnlineScope(ServerId, PlayerOne), Now + 2);
                 Assert.True(started.IsSuccess, started.Message);
 
                 await SubmitAsync(actor, PlayerOne, 1, OnlineRockPaperScissorsMove.Rock, Now + 10);
@@ -474,7 +465,7 @@ namespace GameFrameX.Tests.Online
                     ClientTime = nowUnixMilliseconds,
                 };
 
-                var ack = await actor.SubmitInputAsync(new OnlineScope(TenantId, AppId, ServerId, playerId), input, nowUnixMilliseconds);
+                var ack = await actor.SubmitInputAsync(new OnlineScope(ServerId, playerId), input, nowUnixMilliseconds);
                 Assert.True(ack.IsSuccess, ack.Message);
                 Assert.True(ack.Data.Accepted, ack.Data.Message);
             }

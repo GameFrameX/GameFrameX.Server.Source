@@ -167,8 +167,11 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
         context.AddService<IOnlineMatchActorStore>(static _ => new InMemoryOnlineMatchActorStore());
         var matchActorStore = context.GetService<IOnlineMatchActorStore>();
-        context.AddService<IOnlineMatchResultStore>(static _ => new InMemoryOnlineMatchSettlementStore());
-        context.AddService<IOnlineMatchSettlementStore>(static _ => new InMemoryOnlineMatchSettlementStore());
+        // 同一实例注册两接口键（C460）：结算写入与投影读取必须看到同一份事实——分别 new 会造成
+        // 「结算落库 / 投影读空」的分裂脑（默认内存形态下黄金路径静默断链）；族 / 宿主覆盖仍逐键恒胜出。
+        var settlementStoreInstance = new InMemoryOnlineMatchSettlementStore();
+        context.AddService<IOnlineMatchResultStore>(_ => settlementStoreInstance);
+        context.AddService<IOnlineMatchSettlementStore>(_ => settlementStoreInstance);
         var matchSettlementStore = context.GetService<IOnlineMatchSettlementStore>();
 
         var rpsGame = new OnlineRockPaperScissorsGame();
@@ -404,7 +407,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
             return;
         }
 
-        var resolved = await _matchDomain.ResolveAssignmentAsync(onlineEvent.TenantId, onlineEvent.AppId, payload.AssignmentId, cancellationToken).ConfigureAwait(false);
+        var resolved = await _matchDomain.ResolveAssignmentAsync(payload.AssignmentId, cancellationToken).ConfigureAwait(false);
         if (!resolved.IsSuccess || resolved.Data == null || resolved.Data.MatchId == 0)
         {
             return;

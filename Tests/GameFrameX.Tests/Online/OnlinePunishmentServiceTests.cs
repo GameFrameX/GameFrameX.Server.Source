@@ -45,11 +45,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlinePunishmentServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用被处罚玩家标识。</summary>
         private const long PlayerId = 1002;
@@ -67,7 +62,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out var recorder);
 
             // Act
-            var outcome = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId, AdminCaseId = "ADM-9" });
+            var outcome = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId, AdminCaseId = "ADM-9" });
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -78,7 +73,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(outcome.Data.Revoked);
             Assert.Equal(0, outcome.Data.ExpiresAtTime);
 
-            var active = await service.ListActiveAsync(TenantId, AppId, PlayerId);
+            var active = await service.ListActiveAsync(PlayerId);
             Assert.True(active.IsSuccess);
             Assert.Single(active.Data);
             Assert.Equal(outcome.Data.PunishmentId, active.Data[0].PunishmentId);
@@ -99,13 +94,13 @@ namespace GameFrameX.Tests.Online
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var effective = now - 1000;
             var expires = now + 60000;
-            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = effective, ExpiresAtTime = expires, AdminId = AdminId });
+            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = effective, ExpiresAtTime = expires, AdminId = AdminId });
             Assert.True(applied.IsSuccess);
 
             // Act & Assert
-            var beforeEffective = await service.ListActiveAsync(TenantId, AppId, PlayerId, effective - 1000);
-            var duringWindow = await service.ListActiveAsync(TenantId, AppId, PlayerId, now);
-            var afterExpiry = await service.ListActiveAsync(TenantId, AppId, PlayerId, expires + 1000);
+            var beforeEffective = await service.ListActiveAsync(PlayerId, effective - 1000);
+            var duringWindow = await service.ListActiveAsync(PlayerId, now);
+            var afterExpiry = await service.ListActiveAsync(PlayerId, expires + 1000);
 
             Assert.Empty(beforeEffective.Data);
             Assert.Single(duringWindow.Data);
@@ -123,8 +118,8 @@ namespace GameFrameX.Tests.Online
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             // Act
-            var equal = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = now, ExpiresAtTime = now, AdminId = AdminId });
-            var earlier = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = now, ExpiresAtTime = now - 1000, AdminId = AdminId });
+            var equal = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = now, ExpiresAtTime = now, AdminId = AdminId });
+            var earlier = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = now, ExpiresAtTime = now - 1000, AdminId = AdminId });
 
             // Assert
             Assert.False(equal.IsSuccess);
@@ -143,8 +138,8 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var noReason = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "   ", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
-            var noAdmin = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = 0 });
+            var noReason = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "   ", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
+            var noAdmin = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = 0 });
 
             // Assert
             Assert.False(noReason.IsSuccess);
@@ -163,12 +158,9 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var noTenant = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = 0, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
-            var noPlayer = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = 0, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
+            var noPlayer = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = 0, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
 
             // Assert
-            Assert.False(noTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, noTenant.Code);
             Assert.False(noPlayer.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, noPlayer.Code);
         }
@@ -181,11 +173,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out var recorder);
-            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
+            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
             Assert.True(applied.IsSuccess);
 
             // Act
-            var revoked = await service.RevokeAsync(TenantId, AppId, applied.Data.PunishmentId, AdminId);
+            var revoked = await service.RevokeAsync(applied.Data.PunishmentId, AdminId);
 
             // Assert
             Assert.True(revoked.IsSuccess);
@@ -193,10 +185,10 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(AdminId, revoked.Data.RevokedByAdminId);
             Assert.True(revoked.Data.RevokedAtTime > 0);
 
-            var active = await service.ListActiveAsync(TenantId, AppId, PlayerId);
+            var active = await service.ListActiveAsync(PlayerId);
             Assert.Empty(active.Data);
 
-            var history = await service.ListHistoryAsync(TenantId, AppId, PlayerId);
+            var history = await service.ListHistoryAsync(PlayerId);
             Assert.Single(history.Data);
             Assert.True(history.Data[0].Revoked);
 
@@ -215,7 +207,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var outcome = await service.RevokeAsync(TenantId, AppId, "pun-missing", AdminId);
+            var outcome = await service.RevokeAsync("pun-missing", AdminId);
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -230,11 +222,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
+            var applied = await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
             Assert.True(applied.IsSuccess);
 
             // Act
-            var outcome = await service.RevokeAsync(TenantId, AppId, applied.Data.PunishmentId, 0);
+            var outcome = await service.RevokeAsync(applied.Data.PunishmentId, 0);
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -250,11 +242,11 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var service = CreateService(out _);
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            Assert.True((await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
-            Assert.True((await service.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "历史封禁", EffectiveAtTime = now - 100000, ExpiresAtTime = now - 50000, AdminId = AdminId })).IsSuccess);
+            Assert.True((await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
+            Assert.True((await service.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerId, Kind = OnlinePunishmentKind.Ban, Reason = "历史封禁", EffectiveAtTime = now - 100000, ExpiresAtTime = now - 50000, AdminId = AdminId })).IsSuccess);
 
             // Act
-            var history = await service.ListHistoryAsync(TenantId, AppId, PlayerId);
+            var history = await service.ListHistoryAsync(PlayerId);
 
             // Assert
             Assert.True(history.IsSuccess);
@@ -271,8 +263,6 @@ namespace GameFrameX.Tests.Online
             var punishment = new OnlinePunishment
             {
                 PunishmentId = "pun-1",
-                TenantId = TenantId,
-                AppId = AppId,
                 PlayerId = PlayerId,
                 Kind = OnlinePunishmentKind.Mute,
                 Reason = "刷屏",

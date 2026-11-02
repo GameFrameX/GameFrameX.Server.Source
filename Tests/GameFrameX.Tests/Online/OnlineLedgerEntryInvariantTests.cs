@@ -44,7 +44,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public void ConsistentAmounts_ConstructsSuccessfully()
         {
-            var header = new OnlineLedgerHeader { TenantId = 1, AppId = 2, PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
+            var header = new OnlineLedgerHeader { PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
 
             var entry = new OnlineLedgerEntry("led-1", "txn-1", header, OnlineAssetKind.Currency, "gold", 100, -30, 70, string.Empty, 1, 1760000000000);
 
@@ -59,7 +59,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public void InconsistentAmounts_ThrowsArgumentException()
         {
-            var header = new OnlineLedgerHeader { TenantId = 1, AppId = 2, PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
+            var header = new OnlineLedgerHeader { PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
 
             Assert.Throws<ArgumentException>(() => new OnlineLedgerEntry("led-1", "txn-1", header, OnlineAssetKind.Currency, "gold", 100, 30, 200, string.Empty, 1, 1760000000000));
         }
@@ -70,7 +70,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public void OverflowingAmounts_ThrowsArgumentException()
         {
-            var header = new OnlineLedgerHeader { TenantId = 1, AppId = 2, PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
+            var header = new OnlineLedgerHeader { PlayerId = 3, HomeServerId = 4, InitiatingServerId = 5, Source = OnlineAssetChangeSource.SystemCompensation, Operation = OnlineGrantOperation.Grant, Reason = "test", BusinessOrderId = string.Empty, OperatorId = string.Empty, };
 
             // 回绕值 long.MinValue 不得被误判为一致。
             Assert.Throws<ArgumentException>(() => new OnlineLedgerEntry("led-1", "txn-1", header, OnlineAssetKind.Currency, "gold", long.MaxValue, 1, long.MinValue, string.Empty, 1, 1760000000000));

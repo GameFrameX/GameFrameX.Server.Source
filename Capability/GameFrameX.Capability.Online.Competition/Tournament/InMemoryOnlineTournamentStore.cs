@@ -49,13 +49,13 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     /// <summary>全局锁（三张表共用，保证出入参一致性与报名的临界区语义）。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>赛事定义表：键 = (TenantId, AppId, TournamentId)。</summary>
+    /// <summary>赛事定义表：键 = TournamentId（全局域数据，无区服隔离位）。</summary>
     private readonly Dictionary<string, OnlineTournament> _tournaments = new();
 
-    /// <summary>报名登记表：键 = (TenantId, AppId, TournamentId, PlayerId)。</summary>
+    /// <summary>报名登记表：键 = (TournamentId, PlayerId)。</summary>
     private readonly Dictionary<string, OnlineTournamentRegistration> _registrations = new();
 
-    /// <summary>冻结成绩表：键 = (TenantId, AppId, TournamentId)。</summary>
+    /// <summary>冻结成绩表：键 = TournamentId。</summary>
     private readonly Dictionary<string, OnlineTournamentStandings> _standings = new();
 
     /// <summary>
@@ -66,14 +66,14 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     }
 
     /// <summary>
-    /// 创建赛事（内存实现：在全局锁内完成重复判定与落档，同作用域同标识已存在时返回 null 且不覆盖，出入参均为防御性副本）。
+    /// 创建赛事（内存实现：在全局锁内完成重复判定与落档，同标识已存在时返回 null 且不覆盖，出入参均为防御性副本）。
     /// </summary>
     /// <remarks>
-    /// Creates a tournament (in-memory implementation: duplicate check and persistence complete inside the global lock; returns null without overwriting when the same identifier already exists in the same scope; inputs and outputs are defensive copies).
+    /// Creates a tournament (in-memory implementation: duplicate check and persistence complete inside the global lock; returns null without overwriting when the same identifier already exists; inputs and outputs are defensive copies).
     /// </remarks>
-    /// <param name="tournament">赛事定义（作用域取其 TenantId / AppId）/ The tournament definition (scope taken from its TenantId / AppId)</param>
+    /// <param name="tournament">赛事定义 / The tournament definition</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
-    /// <returns>创建后的赛事副本；同作用域同标识已存在时为 null / A copy of the created tournament; null when the identifier already exists in the same scope</returns>
+    /// <returns>创建后的赛事副本；同标识已存在时为 null / A copy of the created tournament; null when the identifier already exists</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="tournament"/> 为 null 时抛出 / Thrown when <paramref name="tournament"/> is null</exception>
     public Task<OnlineTournament> CreateAsync(OnlineTournament tournament, CancellationToken cancellationToken = default)
     {
@@ -84,7 +84,7 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(tournament.TenantId, tournament.AppId, tournament.TournamentId);
+            var key = BuildKey(tournament.TournamentId);
             if (_tournaments.ContainsKey(key))
             {
                 return Task.FromResult<OnlineTournament>(null);
@@ -96,21 +96,19 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     }
 
     /// <summary>
-    /// 按作用域查找赛事定义（内存实现：全局锁内按作用域 + 赛事标识查表，返回防御性副本；不存在返回 null）。
+    /// 按赛事标识查找赛事定义（内存实现：全局锁内按赛事标识查表，返回防御性副本；不存在返回 null）。
     /// </summary>
     /// <remarks>
-    /// Finds a tournament definition by scope (in-memory implementation: looks the table up by scope plus tournament identifier inside the global lock and returns a defensive copy; null when absent).
+    /// Finds a tournament definition (in-memory implementation: looks the table up by tournament identifier inside the global lock and returns a defensive copy; null when absent).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant identifier</param>
-    /// <param name="appId">App 标识 / The app identifier</param>
     /// <param name="tournamentId">赛事标识 / The tournament identifier</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
     /// <returns>赛事副本；不存在时为 null / A copy of the tournament; null when absent</returns>
-    public Task<OnlineTournament> FindAsync(long tenantId, long appId, string tournamentId, CancellationToken cancellationToken = default)
+    public Task<OnlineTournament> FindAsync(string tournamentId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(_tournaments.TryGetValue(BuildKey(tenantId, appId, tournamentId), out var stored) ? stored.Copy() : null);
+            return Task.FromResult(_tournaments.TryGetValue(BuildKey(tournamentId), out var stored) ? stored.Copy() : null);
         }
     }
 
@@ -123,7 +121,7 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     /// <param name="tournament">赛事定义（含推进后的状态与时间戳）/ The tournament definition (with the advanced state and timestamps)</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="tournament"/> 为 null 时抛出 / Thrown when <paramref name="tournament"/> is null</exception>
-    /// <exception cref="InvalidOperationException">当同作用域同标识的赛事不存在时抛出 / Thrown when the tournament with the same identifier in the same scope does not exist</exception>
+    /// <exception cref="InvalidOperationException">当同标识的赛事不存在时抛出 / Thrown when the tournament with the same identifier does not exist</exception>
     public Task SaveAsync(OnlineTournament tournament, CancellationToken cancellationToken = default)
     {
         if (tournament == null)
@@ -133,7 +131,7 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(tournament.TenantId, tournament.AppId, tournament.TournamentId);
+            var key = BuildKey(tournament.TournamentId);
             if (!_tournaments.ContainsKey(key))
             {
                 // Localization: Online.Tournament.NotFoundOnSave - 赛事不存在，保存前必须先经 CreateAsync 建立
@@ -164,7 +162,7 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
 
         lock (_syncRoot)
         {
-            var key = BuildRegistrationKey(registration.TenantId, registration.AppId, registration.TournamentId, registration.PlayerId);
+            var key = BuildRegistrationKey(registration.TournamentId, registration.PlayerId);
             if (_registrations.TryGetValue(key, out var existing))
             {
                 return Task.FromResult(new OnlineTournamentRegistrationResult { IsNew = false, Registration = existing.Copy(), });
@@ -176,22 +174,20 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     }
 
     /// <summary>
-    /// 查找单个玩家的报名登记（内存实现：全局锁内按作用域 + 赛事标识 + 玩家标识查表，返回防御性副本；未报名返回 null）。
+    /// 查找单个玩家的报名登记（内存实现：全局锁内按赛事标识 + 玩家标识查表，返回防御性副本；未报名返回 null）。
     /// </summary>
     /// <remarks>
-    /// Finds a single player's registration (in-memory implementation: looks the table up by scope, tournament identifier and player identifier inside the global lock and returns a defensive copy; null when not registered).
+    /// Finds a single player's registration (in-memory implementation: looks the table up by tournament identifier and player identifier inside the global lock and returns a defensive copy; null when not registered).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant identifier</param>
-    /// <param name="appId">App 标识 / The app identifier</param>
     /// <param name="tournamentId">赛事标识 / The tournament identifier</param>
     /// <param name="playerId">玩家标识 / The player identifier</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
     /// <returns>登记副本；未报名时为 null / A copy of the registration; null when not registered</returns>
-    public Task<OnlineTournamentRegistration> FindRegistrationAsync(long tenantId, long appId, string tournamentId, long playerId, CancellationToken cancellationToken = default)
+    public Task<OnlineTournamentRegistration> FindRegistrationAsync(string tournamentId, long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(_registrations.TryGetValue(BuildRegistrationKey(tenantId, appId, tournamentId, playerId), out var stored) ? stored.Copy() : null);
+            return Task.FromResult(_registrations.TryGetValue(BuildRegistrationKey(tournamentId, playerId), out var stored) ? stored.Copy() : null);
         }
     }
 
@@ -201,16 +197,14 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     /// <remarks>
     /// Lists all registrations of a tournament (in-memory implementation: scans the registration table by tournament-key prefix inside the global lock, copies each entry and sorts by registration time ascending).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant identifier</param>
-    /// <param name="appId">App 标识 / The app identifier</param>
     /// <param name="tournamentId">赛事标识 / The tournament identifier</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
     /// <returns>按报名时刻升序的登记副本列表；无报名时为空列表 / The list of registration copies sorted by registration time ascending; an empty list when none</returns>
-    public Task<List<OnlineTournamentRegistration>> ListRegistrationsAsync(long tenantId, long appId, string tournamentId, CancellationToken cancellationToken = default)
+    public Task<List<OnlineTournamentRegistration>> ListRegistrationsAsync(string tournamentId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            var prefix = BuildKey(tenantId, appId, tournamentId) + ":";
+            var prefix = BuildKey(tournamentId) + ":";
             var registrations = new List<OnlineTournamentRegistration>();
             foreach (var pair in _registrations)
             {
@@ -226,10 +220,10 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
     }
 
     /// <summary>
-    /// 保存冻结成绩（内存实现：全局锁内按作用域 + 赛事标识覆盖写入成绩表的防御性副本，独立于赛事定义表）。
+    /// 保存冻结成绩（内存实现：全局锁内按赛事标识覆盖写入成绩表的防御性副本，独立于赛事定义表）。
     /// </summary>
     /// <remarks>
-    /// Saves frozen standings (in-memory implementation: overwrites the standings table with a defensive copy keyed by scope plus tournament identifier inside the global lock, independently of the tournament table).
+    /// Saves frozen standings (in-memory implementation: overwrites the standings table with a defensive copy keyed by tournament identifier inside the global lock, independently of the tournament table).
     /// </remarks>
     /// <param name="standings">冻结成绩 / The frozen standings</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
@@ -243,52 +237,46 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
 
         lock (_syncRoot)
         {
-            _standings[BuildKey(standings.TenantId, standings.AppId, standings.TournamentId)] = standings.Copy();
+            _standings[BuildKey(standings.TournamentId)] = standings.Copy();
             return Task.CompletedTask;
         }
     }
 
     /// <summary>
-    /// 按作用域查找冻结成绩（内存实现：全局锁内查冻结成绩表，返回防御性副本；不存在返回 null）。
+    /// 按赛事标识查找冻结成绩（内存实现：全局锁内查冻结成绩表，返回防御性副本；不存在返回 null）。
     /// </summary>
     /// <remarks>
-    /// Finds frozen standings by scope (in-memory implementation: looks up the frozen-standings table inside the global lock and returns a defensive copy; null when absent).
+    /// Finds frozen standings (in-memory implementation: looks up the frozen-standings table inside the global lock and returns a defensive copy; null when absent).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant identifier</param>
-    /// <param name="appId">App 标识 / The app identifier</param>
     /// <param name="tournamentId">赛事标识 / The tournament identifier</param>
     /// <param name="cancellationToken">取消令牌（内存实现忽略）/ The cancellation token (ignored by the in-memory implementation)</param>
     /// <returns>成绩副本；不存在时为 null / A copy of the standings; null when absent</returns>
-    public Task<OnlineTournamentStandings> FindStandingsAsync(long tenantId, long appId, string tournamentId, CancellationToken cancellationToken = default)
+    public Task<OnlineTournamentStandings> FindStandingsAsync(string tournamentId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(_standings.TryGetValue(BuildKey(tenantId, appId, tournamentId), out var stored) ? stored.Copy() : null);
+            return Task.FromResult(_standings.TryGetValue(BuildKey(tournamentId), out var stored) ? stored.Copy() : null);
         }
     }
 
     /// <summary>
-    /// 构造赛事级存储键（作用域 + 赛事标识；跨作用域访问因键不同而自然隔离）。
+    /// 构造赛事级存储键（赛事标识即键——全局域数据，同键即同赛）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <returns>存储键。</returns>
-    private static string BuildKey(long tenantId, long appId, string tournamentId)
+    private static string BuildKey(string tournamentId)
     {
-        return tenantId.ToString(CultureInfo.InvariantCulture) + ":" + appId.ToString(CultureInfo.InvariantCulture) + ":" + (tournamentId ?? string.Empty);
+        return tournamentId ?? string.Empty;
     }
 
     /// <summary>
     /// 构造报名登记存储键（赛事键 + 玩家标识；同一玩家在同一赛事内只有一键）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>存储键。</returns>
-    private static string BuildRegistrationKey(long tenantId, long appId, string tournamentId, long playerId)
+    private static string BuildRegistrationKey(string tournamentId, long playerId)
     {
-        return BuildKey(tenantId, appId, tournamentId) + ":" + playerId.ToString(CultureInfo.InvariantCulture);
+        return BuildKey(tournamentId) + ":" + playerId.ToString(CultureInfo.InvariantCulture);
     }
 }

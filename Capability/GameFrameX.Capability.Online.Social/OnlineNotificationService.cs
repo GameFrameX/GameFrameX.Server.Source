@@ -142,8 +142,6 @@ public sealed class OnlineNotificationService
         var prototype = new OnlineNotification
         {
             NotificationId = "ntf-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             PlayerId = scope.PlayerId,
             Kind = kind,
@@ -171,9 +169,9 @@ public sealed class OnlineNotificationService
             return OnlineResult<OnlineNotification>.Ok(effective);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(effective.TenantId, effective.AppId, effective.ServerId, effective.PlayerId, effective.NotificationId, effective.Kind.ToString(), effective.State.ToString(), effective.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(effective.ServerId, effective.PlayerId, effective.NotificationId, effective.Kind.ToString(), effective.State.ToString(), effective.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
 
-        var dispatched = await TryDispatchAsync(scope.TenantId, scope.AppId, scope.PlayerId, effective.NotificationId, cancellationToken).ConfigureAwait(false);
+        var dispatched = await TryDispatchAsync(scope.PlayerId, effective.NotificationId, cancellationToken).ConfigureAwait(false);
         if (dispatched.IsSuccess && dispatched.Data != null)
         {
             // 推送已尝试：返回落定后的状态（Delivered / Retrying / Failed），入队本身仍是成功的。
@@ -208,20 +206,18 @@ public sealed class OnlineNotificationService
     /// <see cref="OnlineNotificationState.Expired"/> 并**原样返回、绝不推给玩家**（过期丢弃、不误导玩家）。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="notificationId">通知标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>推送尝试后的通知记录。</returns>
-    public async Task<OnlineResult<OnlineNotification>> TryDispatchAsync(long tenantId, long appId, long playerId, string notificationId, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineNotification>> TryDispatchAsync(long playerId, string notificationId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(notificationId))
         {
             return OnlineResult<OnlineNotification>.Fail(OnlineErrorCode.ParameterInvalid, "通知标识不能为空");
         }
 
-        var current = await _store.FindAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
+        var current = await _store.FindAsync(playerId, notificationId, cancellationToken).ConfigureAwait(false);
         if (current == null)
         {
             return OnlineResult<OnlineNotification>.Fail(OnlineErrorCode.ResourceNotFound, "通知不存在");
@@ -235,7 +231,7 @@ public sealed class OnlineNotificationService
 
         var now = Now();
         // 过期兜底独立成方法：命中即就地终结并返回，未到期返回 null 交回主流程继续推送。
-        var expiredResult = await TerminateIfExpiredAsync(tenantId, appId, playerId, current, now, cancellationToken).ConfigureAwait(false);
+        var expiredResult = await TerminateIfExpiredAsync(playerId, current, now, cancellationToken).ConfigureAwait(false);
         if (expiredResult != null)
         {
             return expiredResult;
@@ -259,10 +255,10 @@ public sealed class OnlineNotificationService
         if (queued == null)
         {
             // CAS 失败 = 状态被并发改写（如过期扫描抢先）；重读后按当前事实返回，不报错。
-            return await ConvergeAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
+            return await ConvergeAsync(playerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(queued.TenantId, queued.AppId, queued.ServerId, queued.PlayerId, queued.NotificationId, queued.Kind.ToString(), queued.State.ToString(), queued.AttemptCount, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(queued.ServerId, queued.PlayerId, queued.NotificationId, queued.Kind.ToString(), queued.State.ToString(), queued.AttemptCount, null), cancellationToken).ConfigureAwait(false);
 
         var outcome = await DispatchAsync(queued, cancellationToken).ConfigureAwait(false);
         var settled = SettleDispatchOutcome(queued, outcome);
@@ -275,10 +271,10 @@ public sealed class OnlineNotificationService
         var result = await _store.ReplaceAsync(settled, OnlineNotificationState.Queued, queued.AttemptCount, cancellationToken).ConfigureAwait(false);
         if (result == null)
         {
-            return await ConvergeAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
+            return await ConvergeAsync(playerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(result.TenantId, result.AppId, result.ServerId, result.PlayerId, result.NotificationId, result.Kind.ToString(), result.State.ToString(), result.AttemptCount, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(result.ServerId, result.PlayerId, result.NotificationId, result.Kind.ToString(), result.State.ToString(), result.AttemptCount, null), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(result);
     }
 
@@ -303,7 +299,7 @@ public sealed class OnlineNotificationService
             return OnlineResult<OnlineNotification>.Fail(OnlineErrorCode.ParameterInvalid, "通知标识不能为空");
         }
 
-        var notification = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, notificationId, cancellationToken).ConfigureAwait(false);
+        var notification = await _store.FindAsync(scope.PlayerId, notificationId, cancellationToken).ConfigureAwait(false);
         if (notification == null || notification.PlayerId != scope.PlayerId)
         {
             // 反预言：非接收者（含越权猜标识）看不到这条通知的存在，不泄露他人通知规模。
@@ -334,10 +330,10 @@ public sealed class OnlineNotificationService
         var updated = await _store.ReplaceAsync(read, OnlineNotificationState.Delivered, notification.AttemptCount, cancellationToken).ConfigureAwait(false);
         if (updated == null)
         {
-            return await ConvergeAsync(scope.TenantId, scope.AppId, scope.PlayerId, notificationId, cancellationToken).ConfigureAwait(false);
+            return await ConvergeAsync(scope.PlayerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.TenantId, updated.AppId, updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(updated);
     }
 
@@ -360,7 +356,7 @@ public sealed class OnlineNotificationService
             return failure;
         }
 
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         var result = new List<OnlineNotification>();
         foreach (var notification in all)
         {
@@ -396,7 +392,7 @@ public sealed class OnlineNotificationService
             return failure;
         }
 
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         var result = new List<OnlineNotification>();
         foreach (var notification in all)
         {
@@ -405,7 +401,7 @@ public sealed class OnlineNotificationService
                 continue;
             }
 
-            var dispatched = await TryDispatchAsync(scope.TenantId, scope.AppId, scope.PlayerId, notification.NotificationId, cancellationToken).ConfigureAwait(false);
+            var dispatched = await TryDispatchAsync(scope.PlayerId, notification.NotificationId, cancellationToken).ConfigureAwait(false);
             if (dispatched.IsSuccess && dispatched.Data != null)
             {
                 result.Add(dispatched.Data);
@@ -427,18 +423,16 @@ public sealed class OnlineNotificationService
     /// 租约已耗尽的在途记录（推送出口随进程消失的死在途）照常终结，这是死在途回收的唯一路径。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次终结的通知条数。</returns>
-    public async Task<OnlineResult<int>> SweepExpiredAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> SweepExpiredAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
         var affected = 0;
         foreach (var state in NonTerminalStates)
         {
-            var pending = await _store.ListByStateAsync(tenantId, appId, state, cancellationToken).ConfigureAwait(false);
+            var pending = await _store.ListByStateAsync(state, cancellationToken).ConfigureAwait(false);
             foreach (var notification in pending)
             {
                 if (notification.ExpiresAtTime <= 0 || notification.ExpiresAtTime > now)
@@ -464,7 +458,7 @@ public sealed class OnlineNotificationService
                     continue;
                 }
 
-                await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.TenantId, updated.AppId, updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
                 affected++;
             }
         }
@@ -481,12 +475,10 @@ public sealed class OnlineNotificationService
     /// 与离线补发并发时不会重复投递。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="maxCount">本轮最多尝试条数（&lt;= 0 时不重投）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本轮实际尝试条数。</returns>
-    public async Task<OnlineResult<int>> RetryPendingAsync(long tenantId, long appId, int maxCount = 100, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> RetryPendingAsync(int maxCount = 100, CancellationToken cancellationToken = default)
     {
         var limit = maxCount > 0 ? maxCount : 0;
         var attempted = 0;
@@ -497,8 +489,8 @@ public sealed class OnlineNotificationService
             // （实测尝试数会从 1 直接跳到 3），重试预算形同虚设。故按本轮游标去重。
             var attemptedIds = new HashSet<string>(StringComparer.Ordinal);
             // 待重试优先于已失败：前者还差一次推送，后者可能已不可达。
-            attempted += await RetryBatchAsync(tenantId, appId, OnlineNotificationState.Retrying, limit - attempted, attemptedIds, cancellationToken).ConfigureAwait(false);
-            attempted += await RetryBatchAsync(tenantId, appId, OnlineNotificationState.Failed, limit - attempted, attemptedIds, cancellationToken).ConfigureAwait(false);
+            attempted += await RetryBatchAsync(OnlineNotificationState.Retrying, limit - attempted, attemptedIds, cancellationToken).ConfigureAwait(false);
+            attempted += await RetryBatchAsync(OnlineNotificationState.Failed, limit - attempted, attemptedIds, cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<int>.Ok(attempted);
@@ -508,14 +500,12 @@ public sealed class OnlineNotificationService
     /// 过期兜底（仅由 <see cref="TryDispatchAsync"/> 调用）：到期通知就地终结为
     /// <see cref="OnlineNotificationState.Expired"/> 并原样返回，绝不推给玩家。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="current">推送入口读到的当前通知快照。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>命中过期兜底时返回终结结果（含 CAS 失败后的收敛结果）；未设有效期或未到期返回 null，由调用方继续推送主流程。</returns>
-    private async Task<OnlineResult<OnlineNotification>> TerminateIfExpiredAsync(long tenantId, long appId, long playerId, OnlineNotification current, long nowUnixMilliseconds, CancellationToken cancellationToken)
+    private async Task<OnlineResult<OnlineNotification>> TerminateIfExpiredAsync(long playerId, OnlineNotification current, long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
         if (current.ExpiresAtTime <= 0 || current.ExpiresAtTime > nowUnixMilliseconds)
         {
@@ -538,10 +528,10 @@ public sealed class OnlineNotificationService
         var terminated = await _store.ReplaceAsync(expired, current.State, current.AttemptCount, cancellationToken).ConfigureAwait(false);
         if (terminated == null)
         {
-            return await ConvergeAsync(tenantId, appId, playerId, current.NotificationId, cancellationToken).ConfigureAwait(false);
+            return await ConvergeAsync(playerId, current.NotificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated.TenantId, terminated.AppId, terminated.ServerId, terminated.PlayerId, terminated.NotificationId, terminated.Kind.ToString(), terminated.State.ToString(), terminated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated.ServerId, terminated.PlayerId, terminated.NotificationId, terminated.Kind.ToString(), terminated.State.ToString(), terminated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(terminated);
     }
 
@@ -614,15 +604,13 @@ public sealed class OnlineNotificationService
     /// <summary>
     /// CAS 失败后的收敛点：重读当前事实并按其返回（不报错、不覆盖并发结果）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">接收者玩家标识。</param>
     /// <param name="notificationId">通知标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>当前生效的通知记录。</returns>
-    private async Task<OnlineResult<OnlineNotification>> ConvergeAsync(long tenantId, long appId, long playerId, string notificationId, CancellationToken cancellationToken)
+    private async Task<OnlineResult<OnlineNotification>> ConvergeAsync(long playerId, string notificationId, CancellationToken cancellationToken)
     {
-        var current = await _store.FindAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
+        var current = await _store.FindAsync(playerId, notificationId, cancellationToken).ConfigureAwait(false);
         if (current == null)
         {
             return OnlineResult<OnlineNotification>.Fail(OnlineErrorCode.ResourceNotFound, "通知不存在");
@@ -634,21 +622,19 @@ public sealed class OnlineNotificationService
     /// <summary>
     /// 重投指定状态的一批通知（受剩余批次配额约束）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">目标状态。</param>
     /// <param name="limit">本轮剩余配额。</param>
     /// <param name="attemptedIds">本轮已处理的通知标识游标（同一轮内不得重复推送，跨批次去重）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本轮实际尝试条数。</returns>
-    private async Task<int> RetryBatchAsync(long tenantId, long appId, OnlineNotificationState state, int limit, HashSet<string> attemptedIds, CancellationToken cancellationToken)
+    private async Task<int> RetryBatchAsync(OnlineNotificationState state, int limit, HashSet<string> attemptedIds, CancellationToken cancellationToken)
     {
         if (limit <= 0)
         {
             return 0;
         }
 
-        var batch = await _store.ListByStateAsync(tenantId, appId, state, cancellationToken).ConfigureAwait(false);
+        var batch = await _store.ListByStateAsync(state, cancellationToken).ConfigureAwait(false);
         var attempted = 0;
         foreach (var notification in batch)
         {
@@ -664,7 +650,7 @@ public sealed class OnlineNotificationService
             }
 
             attempted++;
-            await TryDispatchAsync(tenantId, appId, notification.PlayerId, notification.NotificationId, cancellationToken).ConfigureAwait(false);
+            await TryDispatchAsync(notification.PlayerId, notification.NotificationId, cancellationToken).ConfigureAwait(false);
         }
 
         return attempted;

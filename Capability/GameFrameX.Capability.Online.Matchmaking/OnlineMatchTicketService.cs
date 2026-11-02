@@ -114,7 +114,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ParameterInvalid, "票据玩家集合非法");
         }
 
-        if (!_rateLimiter.TryAcquire(scope.TenantId, scope.AppId, scope.PlayerId))
+        if (!_rateLimiter.TryAcquire(scope.PlayerId))
         {
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.RateLimitExceeded, "操作过于频繁，请稍后重试");
         }
@@ -127,8 +127,6 @@ public sealed class OnlineMatchTicketService
             TicketId = "tkt-" + Guid.NewGuid().ToString("N"),
             PartyId = partyId,
             PlayerIds = members,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             Mode = request.Mode,
             Region = request.Region,
@@ -174,7 +172,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ParameterInvalid, "缺少票据标识");
         }
 
-        var ticket = await _store.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
+        var ticket = await _store.FindAsync(ticketId, cancellationToken).ConfigureAwait(false);
         if (ticket == null || !IsReachable(scope, ticket) || !ContainsPlayer(ticket, scope.PlayerId))
         {
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ResourceNotFound, "票据不存在或不属于当前玩家");
@@ -185,15 +183,15 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Ok(ticket);
         }
 
-        if (!_rateLimiter.TryAcquire(scope.TenantId, scope.AppId, scope.PlayerId))
+        if (!_rateLimiter.TryAcquire(scope.PlayerId))
         {
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.RateLimitExceeded, "操作过于频繁，请稍后重试");
         }
 
-        var cancelled = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new MatchTicketStateTransition { TicketId = ticketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Cancelled, FailureReason = OnlineMatchFailureReason.CancelledByPlayer, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
+        var cancelled = await _store.UpdateStateAsync(new MatchTicketStateTransition { TicketId = ticketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Cancelled, FailureReason = OnlineMatchFailureReason.CancelledByPlayer, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
         if (cancelled == null)
         {
-            var receipt = await _store.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
+            var receipt = await _store.FindAsync(ticketId, cancellationToken).ConfigureAwait(false);
             if (receipt == null)
             {
                 return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ResourceNotFound, "票据不存在或不属于当前玩家");
@@ -202,7 +200,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Ok(receipt);
         }
 
-        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(cancelled.TenantId, cancelled.AppId, cancelled.ServerId, cancelled.TicketId, cancelled.PartyId, cancelled.FailureReason.ToString(), cancelled.AssignmentId, cancelled.PlayerIds == null ? 0 : cancelled.PlayerIds.Count, cancelled.PlayerIds != null && cancelled.PlayerIds.Count > 0 ? cancelled.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Cancelled.ToString()), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(cancelled.ServerId, cancelled.TicketId, cancelled.PartyId, cancelled.FailureReason.ToString(), cancelled.AssignmentId, cancelled.PlayerIds == null ? 0 : cancelled.PlayerIds.Count, cancelled.PlayerIds != null && cancelled.PlayerIds.Count > 0 ? cancelled.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Cancelled.ToString()), cancellationToken).ConfigureAwait(false);
 
         return OnlineResult<OnlineMatchTicket>.Ok(cancelled);
     }
@@ -227,7 +225,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ParameterInvalid, "缺少票据标识");
         }
 
-        var ticket = await _store.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
+        var ticket = await _store.FindAsync(ticketId, cancellationToken).ConfigureAwait(false);
         if (ticket == null || !IsReachable(scope, ticket) || !ContainsPlayer(ticket, scope.PlayerId))
         {
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.ResourceNotFound, "票据不存在或不属于当前玩家");
@@ -250,22 +248,20 @@ public sealed class OnlineMatchTicketService
             return failure;
         }
 
-        var ticket = await _store.FindActiveByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var ticket = await _store.FindActiveByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineMatchTicket>.Ok(ticket);
     }
 
     /// <summary>
     /// 扫描并把超过存活时长的排队票据置为 <see cref="OnlineMatchTicketState.Expired"/>。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次过期的票据数。</returns>
-    public async Task<OnlineResult<int>> SweepExpiredAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> SweepExpiredAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var queued = await _store.ListQueuedAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        var queued = await _store.ListQueuedAsync(cancellationToken).ConfigureAwait(false);
 
         var expired = new List<OnlineMatchTicket>();
         foreach (var ticket in queued)
@@ -275,7 +271,7 @@ public sealed class OnlineMatchTicketService
                 continue;
             }
 
-            var updated = await _store.UpdateStateAsync(tenantId, appId, new MatchTicketStateTransition { TicketId = ticket.TicketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Expired, FailureReason = OnlineMatchFailureReason.WaitTimeout, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
+            var updated = await _store.UpdateStateAsync(new MatchTicketStateTransition { TicketId = ticket.TicketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Expired, FailureReason = OnlineMatchFailureReason.WaitTimeout, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
             if (updated != null)
             {
                 expired.Add(updated);
@@ -284,7 +280,7 @@ public sealed class OnlineMatchTicketService
 
         foreach (var ticket in expired)
         {
-            await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(ticket.TenantId, ticket.AppId, ticket.ServerId, ticket.TicketId, ticket.PartyId, ticket.FailureReason.ToString(), ticket.AssignmentId, ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count, ticket.PlayerIds != null && ticket.PlayerIds.Count > 0 ? ticket.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Expired.ToString()), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(ticket.ServerId, ticket.TicketId, ticket.PartyId, ticket.FailureReason.ToString(), ticket.AssignmentId, ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count, ticket.PlayerIds != null && ticket.PlayerIds.Count > 0 ? ticket.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Expired.ToString()), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<int>.Ok(expired.Count);

@@ -58,12 +58,10 @@ public interface IOnlineGroupStore
     /// <summary>
     /// 按作用域与群组标识查找群记录。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="groupId">群组标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>群记录副本；不存在返回 null。</returns>
-    Task<OnlineGroup> FindAsync(long tenantId, long appId, string groupId, CancellationToken cancellationToken = default);
+    Task<OnlineGroup> FindAsync(string groupId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义整体替换群记录（成员、邀请、角色、Metadata 等一切变更的唯一入口）。
@@ -73,7 +71,7 @@ public interface IOnlineGroupStore
     /// <c>UpdatedAtTime</c> 以入参为准（入参 &lt;= 0 时取当前时刻）。
     /// </para>
     /// </summary>
-    /// <param name="group">替换后的群记录（其 GroupId/TenantId/AppId 定位目标行；Revision 由存储层推进）。</param>
+    /// <param name="group">替换后的群记录（其 GroupId 定位目标行；Revision 由存储层推进）。</param>
     /// <param name="expectedRevision">期望的当前版本号（调用方读取快照时的 <c>Revision</c>）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>落库后的群记录副本；CAS 失败或记录不存在返回 null。</returns>
@@ -82,20 +80,16 @@ public interface IOnlineGroupStore
     /// <summary>
     /// 列出某玩家所属的全部群组（含已解散群组）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>群记录副本列表。</returns>
-    Task<IReadOnlyList<OnlineGroup>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineGroup>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内处于指定状态的全部群组（超期邀请扫描的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">群组状态。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>群记录副本列表。</returns>
-    Task<IReadOnlyList<OnlineGroup>> ListByStateAsync(long tenantId, long appId, OnlineGroupState state, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineGroup>> ListByStateAsync(OnlineGroupState state, CancellationToken cancellationToken = default);
 }

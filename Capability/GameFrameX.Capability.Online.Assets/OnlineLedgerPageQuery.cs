@@ -36,18 +36,6 @@ namespace GameFrameX.Capability.Online.Assets;
 public sealed class OnlineLedgerPageQuery
 {
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    /// <remarks>Gets or sets the tenant id.</remarks>
-    public long TenantId { get; init; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    /// <remarks>Gets or sets the app id.</remarks>
-    public long AppId { get; init; }
-
-    /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
     /// <remarks>Gets or sets the player id.</remarks>

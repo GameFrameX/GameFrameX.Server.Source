@@ -52,7 +52,7 @@ namespace GameFrameX.Capability.Online.Operations.Timeline;
 /// 与可空探针（<see cref="IOnlineConfigHitProbe"/>）。不持有任何写入型服务，调用本服务不产生状态副作用与事件
 /// ——「只读视图不直写各域状态」由类型系统结构性保证，对齐 <c>OnlineMatchQueueObserver</c> 先例；
 /// ② 数据源唯一 = 各权威域自身记录，**不拼接、不推断、不补齐**：缺数据源（配置命中未装配探针）即空槽；
-/// ③ 全部行按作用域三键 (TenantId, AppId, ServerId) + 玩家主体位过滤，跨作用域读取与「无数据」**同构**（反预言）：
+/// ③ 全部行按作用域区服键 (ServerId) + 玩家主体位过滤，跨作用域读取与「无数据」**同构**（反预言）：
 /// 查询先以**档案作用域门**判定「该玩家是否存在于本作用域」，不存在即直接返回空行集、不触及其余各腿
 /// （处罚记录没有区服维度，若逐腿各自过滤，跨作用域查询会返回「有处罚但无身份」的半截视图而泄露存在性）。
 /// </para>
@@ -74,7 +74,7 @@ namespace GameFrameX.Capability.Online.Operations.Timeline;
 /// </para>
 /// <para>
 /// 天花板（ponytail）：各腿均为按玩家 / 作用域过滤后的内存聚合，规模有限；账本腿受
-/// <see cref="LedgerScanCeiling"/> 限制（见该常量注释），对局腿按 App 级列表全扫后按玩家过滤。
+/// <see cref="LedgerScanCeiling"/> 限制（见该常量注释），对局腿按全量列表全扫后按玩家过滤。
 /// </para>
 /// </summary>
 public sealed class OnlinePlayerTimelineService
@@ -144,7 +144,7 @@ public sealed class OnlinePlayerTimelineService
     /// <summary>
     /// 查询指定玩家的跨域时间线（只读；不产生任何状态变更）。
     /// </summary>
-    /// <param name="scope">生效作用域（必须含完整三键与玩家主体位）。</param>
+    /// <param name="scope">生效作用域（必须含区服键与玩家主体位）。</param>
     /// <param name="query">查询条件；传 <see langword="null"/> 等价于默认条件（全部行、首页、默认页大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>时间线分页结果；作用域 / 玩家位缺失、页大小越界、游标非法返回 <see cref="OnlineErrorCode.ParameterInvalid"/>。
@@ -265,7 +265,7 @@ public sealed class OnlinePlayerTimelineService
     /// <summary>
     /// 按玩家标识加载档案并判定其是否落在本作用域（作用域门的唯一实现处）。
     /// <para>
-    /// 档案读取面按玩家标识单查、不带作用域参数，故此处显式做三键比对：跨作用域玩家与不存在**同构**（都返回 <see langword="null"/>）。
+    /// 档案读取面按玩家标识单查、不带作用域参数，故此处显式做区服键比对：跨作用域玩家与不存在**同构**（都返回 <see langword="null"/>）。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域。</param>
@@ -274,7 +274,7 @@ public sealed class OnlinePlayerTimelineService
     private async Task<OnlinePlayerProfile> LoadInScopeProfileAsync(OnlineScope scope, CancellationToken cancellationToken)
     {
         var profile = await _identityStore.FindPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
-        if (profile == null || !IsInScope(profile.TenantId, profile.AppId, profile.ServerId, scope))
+        if (profile == null || !IsInScope(profile.ServerId, scope))
         {
             return null;
         }
@@ -304,7 +304,7 @@ public sealed class OnlinePlayerTimelineService
         });
 
         var account = await _identityStore.FindAccountAsync(profile.GameAccountId, cancellationToken).ConfigureAwait(false);
-        if (account != null && account.TenantId == scope.TenantId && account.AppId == scope.AppId)
+        if (account != null)
         {
             rows.Add(new OnlinePlayerTimelineEntry
             {
@@ -326,7 +326,7 @@ public sealed class OnlinePlayerTimelineService
 
         foreach (var identity in identities)
         {
-            if (identity == null || identity.TenantId != scope.TenantId || identity.AppId != scope.AppId)
+            if (identity == null)
             {
                 continue;
             }
@@ -359,7 +359,7 @@ public sealed class OnlinePlayerTimelineService
     /// <returns>异步任务。</returns>
     private async Task CollectSessionRowsAsync(OnlineScope scope, List<OnlinePlayerTimelineEntry> rows, CancellationToken cancellationToken)
     {
-        var sessions = await _sessionStore.ListActiveByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var sessions = await _sessionStore.ListActiveByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (sessions == null)
         {
             return;
@@ -390,7 +390,7 @@ public sealed class OnlinePlayerTimelineService
     /// 收集资产腿行（分组 Asset）：账本流水。
     /// <para>
     /// 只读经 <see cref="OnlineAssetQueryService"/>（不直连存储，保持依赖面为「只读查询服务」）；
-    /// 账本键为 (租户, App, 玩家)、**无区服维度**（<c>HomeServerId</c> 只表资产归属/运行位置，不做数据隔离），
+    /// 账本键按玩家维度、**无区服维度**（<c>HomeServerId</c> 只表资产归属/运行位置，不做数据隔离），
     /// 故此处不按归属服过滤——否则「归属服与玩家所在服不一致」的流水会在**任何作用域**都取不到（静默缺行）。
     /// 作用域边界由档案作用域门承担（他服玩家的档案过不了门，根本走不到本腿）。
     /// </para>
@@ -438,7 +438,7 @@ public sealed class OnlinePlayerTimelineService
     /// <summary>
     /// 收集对局腿行（分组 Match）：该玩家作为成员的对局。
     /// <para>
-    /// 对局读取面按 (租户, App) 列表返回（无按玩家查询面），故此处全扫后按成员关系过滤——玩家的成员关系以
+    /// 对局读取面为全量列表返回（无按玩家查询面），故此处全扫后按成员关系过滤——玩家的成员关系以
     /// <c>OnlineMatch.FindMember</c> 为准，不从票据 / 分配记录推断。
     /// </para>
     /// </summary>
@@ -448,7 +448,7 @@ public sealed class OnlinePlayerTimelineService
     /// <returns>异步任务。</returns>
     private async Task CollectMatchRowsAsync(OnlineScope scope, List<OnlinePlayerTimelineEntry> rows, CancellationToken cancellationToken)
     {
-        var matches = await _matchStore.ListAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
+        var matches = await _matchStore.ListAsync(cancellationToken).ConfigureAwait(false);
         if (matches == null)
         {
             return;
@@ -484,7 +484,7 @@ public sealed class OnlinePlayerTimelineService
     /// <returns>异步任务。</returns>
     private async Task CollectPenaltyRowsAsync(OnlineScope scope, List<OnlinePlayerTimelineEntry> rows, CancellationToken cancellationToken)
     {
-        var punishments = await _socialGraphStore.ListPunishmentsByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var punishments = await _socialGraphStore.ListPunishmentsByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (punishments == null)
         {
             return;
@@ -544,7 +544,7 @@ public sealed class OnlinePlayerTimelineService
             return;
         }
 
-        var hits = await _configHitProbe.ListHitsAsync(scope.TenantId, scope.AppId, scope.ServerId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var hits = await _configHitProbe.ListHitsAsync(scope.ServerId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
         if (hits == null)
         {
             return;
@@ -804,20 +804,18 @@ public sealed class OnlinePlayerTimelineService
     }
 
     /// <summary>
-    /// 判断来源记录是否落在观测作用域内（三键全等）。
+    /// 判断来源记录是否落在观测作用域内（区服键全等）。
     /// </summary>
-    /// <param name="tenantId">记录租户标识。</param>
-    /// <param name="appId">记录 App 标识。</param>
     /// <param name="serverId">记录区服标识。</param>
     /// <param name="scope">观测作用域。</param>
     /// <returns>在作用域内返回 <c>true</c>。</returns>
-    private static bool IsInScope(long tenantId, long appId, long serverId, OnlineScope scope)
+    private static bool IsInScope(long serverId, OnlineScope scope)
     {
-        return tenantId == scope.TenantId && appId == scope.AppId && serverId == scope.ServerId;
+        return serverId == scope.ServerId;
     }
 
     /// <summary>
-    /// 校验作用域（三键 + 玩家主体位；玩家标识只取自作用域，不从查询体重复读取）。
+    /// 校验作用域（区服键 + 玩家主体位；玩家标识只取自作用域，不从查询体重复读取）。
     /// </summary>
     /// <typeparam name="TData">结果负载类型。</typeparam>
     /// <param name="scope">生效作用域。</param>
@@ -829,9 +827,9 @@ public sealed class OnlinePlayerTimelineService
             throw new ArgumentNullException(nameof(scope));
         }
 
-        if (scope.TenantId <= 0 || scope.AppId <= 0 || scope.ServerId <= 0)
+        if (scope.ServerId <= 0)
         {
-            return OnlineResult<TData>.Fail(OnlineErrorCode.ParameterInvalid, "玩家时间线查询必须携带完整作用域三键（TenantId / AppId / ServerId）");
+            return OnlineResult<TData>.Fail(OnlineErrorCode.ParameterInvalid, "玩家时间线查询必须携带作用域区服键（ServerId）");
         }
 
         if (scope.PlayerId <= 0)

@@ -50,8 +50,6 @@ namespace GameFrameX.Tests.Online
                 EventType = "online.session.created",
                 OccurredTime = 1760000000123,
                 SchemaVersion = 1,
-                TenantId = 1,
-                AppId = 10,
                 ServerId = 100,
                 PlayerId = 10001,
                 Source = "online-identity",
@@ -80,8 +78,6 @@ namespace GameFrameX.Tests.Online
             Assert.Equal("online-identity", envelope.Source);
             Assert.Equal("req-0001", envelope.CorrelationId);
             Assert.Equal(new byte[] { 1, 2, 3 }, envelope.Payload.ToArray());
-            Assert.Equal("1", envelope.Attributes[OnlineEventEnvelopeMapper.TenantAttributeKey]);
-            Assert.Equal("10", envelope.Attributes[OnlineEventEnvelopeMapper.AppAttributeKey]);
             Assert.Equal("100", envelope.Attributes[OnlineEventEnvelopeMapper.ServerAttributeKey]);
             Assert.Equal("10001", envelope.Attributes[OnlineEventEnvelopeMapper.PlayerAttributeKey]);
         }
@@ -103,8 +99,6 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(original.EventType, roundTripped.EventType);
             Assert.Equal(original.OccurredTime, roundTripped.OccurredTime);
             Assert.Equal(original.SchemaVersion, roundTripped.SchemaVersion);
-            Assert.Equal(original.TenantId, roundTripped.TenantId);
-            Assert.Equal(original.AppId, roundTripped.AppId);
             Assert.Equal(original.ServerId, roundTripped.ServerId);
             Assert.Equal(original.PlayerId, roundTripped.PlayerId);
             Assert.Equal(original.Source, roundTripped.Source);
@@ -126,8 +120,6 @@ namespace GameFrameX.Tests.Online
 
             // Assert
             Assert.Equal("evt-0002", onlineEvent.EventId);
-            Assert.Equal(0, onlineEvent.TenantId);
-            Assert.Equal(0, onlineEvent.AppId);
             Assert.Equal(0, onlineEvent.ServerId);
             Assert.Equal(0, onlineEvent.PlayerId);
         }

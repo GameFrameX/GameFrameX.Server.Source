@@ -29,7 +29,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -43,8 +42,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 都会重新打开两个 Actor 同时推进同一对局的竞态窗口。
 /// </para>
 /// <para>
-/// 天花板（ponytail）：单锁全串行，对局基数上万后 Tick 扫描会成为热点；
-/// 升级路径是按 (TenantId, AppId) 分片加锁并保留同样的 CAS 语义，调用方无感。
+/// 升级路径是按区服分片加锁并保留同样的 CAS 语义，调用方无感。
 /// </para>
 /// </summary>
 public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
@@ -52,7 +50,7 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>对局表：键 = (TenantId, AppId, MatchId)。</summary>
+    /// <summary>对局表：键 = MatchId。</summary>
     private readonly Dictionary<string, OnlineMatch> _matches = new();
 
     /// <summary>
@@ -74,7 +72,7 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(match.TenantId, match.AppId, match.MatchId);
+            var key = match.MatchId ?? string.Empty;
             if (_matches.ContainsKey(key))
             {
                 return Task.FromResult<OnlineMatch>(null);
@@ -88,21 +86,19 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     }
 
     /// <summary>
-    /// 在全局锁内按作用域与对局标识查找对局并返回副本。
+    /// 在全局锁内按对局标识查找对局并返回副本。
     /// </summary>
     /// <remarks>
-    /// Finds the match by scope and match id under the global lock and returns a copy.
+    /// Finds the match by match id under the global lock and returns a copy.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="matchId">对局标识 / The match id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>对局副本；不存在或标识为空返回 null / The match copy; null when not found or the id is empty</returns>
-    public Task<OnlineMatch> FindAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatch> FindAsync(string matchId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            return Task.FromResult(FindInternal(tenantId, appId, matchId));
+            return Task.FromResult(FindInternal(matchId));
         }
     }
 
@@ -125,7 +121,7 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(match.TenantId, match.AppId, match.MatchId);
+            var key = match.MatchId ?? string.Empty;
             if (!_matches.TryGetValue(key, out var current))
             {
                 return Task.FromResult<OnlineMatch>(null);
@@ -149,16 +145,14 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     /// <remarks>
     /// Deletes the match (actor release) under the global lock: only a Closed match can be deleted; every other case is refused with false.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="matchId">对局标识 / The match id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>删除成功返回 true；不存在或未关闭返回 false / True when deleted; false when not found or not closed</returns>
-    public Task<bool> DeleteAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+    public Task<bool> DeleteAsync(string matchId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            var key = BuildKey(tenantId, appId, matchId);
+            var key = matchId ?? string.Empty;
             if (!_matches.TryGetValue(key, out var current))
             {
                 return Task.FromResult(false);
@@ -175,26 +169,21 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     }
 
     /// <summary>
-    /// 在全局锁内列出作用域内全部对局的副本（Tick 扫描与可观测性用）。
+    /// 在全局锁内列出全部对局的副本（Tick 扫描与可观测性用）。
     /// </summary>
     /// <remarks>
-    /// Lists copies of every match in the scope under the global lock (for tick scanning and observability).
+    /// Lists copies of every match under the global lock (for tick scanning and observability).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>对局副本列表 / The list of match copies</returns>
-    public Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatch>> ListAsync(CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineMatch>();
         lock (_syncRoot)
         {
             foreach (var pair in _matches)
             {
-                if (pair.Value.TenantId == tenantId && pair.Value.AppId == appId)
-                {
-                    result.Add(pair.Value.Copy());
-                }
+                result.Add(pair.Value.Copy());
             }
         }
 
@@ -202,17 +191,15 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     }
 
     /// <summary>
-    /// 在全局锁内统计作用域 (TenantId, AppId, ServerId) 内存活对局的按状态分组计数（Closed 不计入；表内扫描不产出实体副本；键按状态枚举值升序）。
+    /// 在全局锁内统计作用域 (ServerId) 内存活对局的按状态分组计数（Closed 不计入；表内扫描不产出实体副本；键按状态枚举值升序）。
     /// </summary>
     /// <remarks>
     /// Counts live matches grouped by state under the global lock (excluding Closed), without producing entity copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="serverId">区服标识 / The server id</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>状态 → 对局数（不含 Closed）/ State to match count (Closed excluded)</returns>
-    public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long serverId, CancellationToken cancellationToken = default)
     {
         var counts = new SortedDictionary<OnlineMatchState, int>();
         lock (_syncRoot)
@@ -220,7 +207,7 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
             foreach (var pair in _matches)
             {
                 var match = pair.Value;
-                if (match.TenantId == tenantId && match.AppId == appId && match.ServerId == serverId && match.State != OnlineMatchState.Closed)
+                if (match.ServerId == serverId && match.State != OnlineMatchState.Closed)
                 {
                     counts.TryGetValue(match.State, out var current);
                     counts[match.State] = current + 1;
@@ -234,34 +221,15 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     /// <summary>
     /// 按标识查找并返回副本（须在锁内调用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <returns>对局副本；不存在返回 null。</returns>
-    private OnlineMatch FindInternal(long tenantId, long appId, string matchId)
+    private OnlineMatch FindInternal(string matchId)
     {
         if (string.IsNullOrEmpty(matchId))
         {
             return null;
         }
 
-        return _matches.TryGetValue(BuildKey(tenantId, appId, matchId), out var match) ? match.Copy() : null;
-    }
-
-    /// <summary>
-    /// 构造作用域隔离键。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="matchId">对局标识。</param>
-    /// <returns>复合键。</returns>
-    private static string BuildKey(long tenantId, long appId, string matchId)
-    {
-        return string.Concat(
-            tenantId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            appId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            matchId ?? string.Empty);
+        return _matches.TryGetValue(matchId, out var match) ? match.Copy() : null;
     }
 }

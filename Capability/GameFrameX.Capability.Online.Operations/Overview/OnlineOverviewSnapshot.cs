@@ -41,7 +41,7 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// 维护约束（红线）：
 /// ① **运行态快照而非权威状态**——数值由运行态存储现场聚合，随时会变，消费方不得缓存后当作权威状态使用；
 /// ② 数据源唯一 = Online 玩家侧存储；**管理员连接不计入任何计数**（管理员在线链路不是玩家在线数据源）；
-/// ③ 所有计数按作用域三键 (TenantId, AppId, ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
+/// ③ 所有计数按作用域区服键 (ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
 /// </para>
 /// <para>
 /// 口径定义见 <see cref="OnlineOverviewService"/> 类文档——各计数的统计边界集中在那里，本类型只承载结果。
@@ -49,16 +49,6 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// </summary>
 public sealed class OnlineOverviewSnapshot
 {
-    /// <summary>
-    /// 获取或设置租户标识（本快照的作用域归属）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（本快照的作用域归属）。
-    /// </summary>
-    public long AppId { get; set; }
-
     /// <summary>
     /// 获取或设置区服标识（本快照的作用域归属）。
     /// </summary>

@@ -121,9 +121,8 @@ public class OnlineCapabilityConfigSectionTests
         Assert.Empty(section.Disable);
     }
 
-    /// <summary>
-    /// 双闸并入配置段：EnableRuntime / EnableAdminApi / EnableRoles / UseGameDbStores 在 "Online" 节点内绑定，
-    /// 与平铺的作用域字段（OnlineTenantId / OnlineAppId）并存互不干扰；未配置的过滤表保持 null。
+    /// 双闸并入配置段：EnableRuntime / EnableAdminApi / EnableRoles / UseGameDbStores 在 "Online" 节点内绑定；
+    /// 老 JSON 遗留的废键（OnlineTenantId / OnlineAppId）仅被忽略不炸；未配置的过滤表保持 null。
     /// </summary>
     [Fact]
     public void Deserialize_SectionGatesAndFlatScopeFields_Coexist()
@@ -150,8 +149,6 @@ public class OnlineCapabilityConfigSectionTests
 
         Assert.NotNull(settings);
         var setting = Assert.Single(settings);
-        Assert.Equal(1, setting.OnlineTenantId);
-        Assert.Equal(1, setting.OnlineAppId);
         Assert.NotNull(setting.Online);
         Assert.True(setting.Online.EnableRuntime);
         Assert.True(setting.Online.EnableAdminApi);

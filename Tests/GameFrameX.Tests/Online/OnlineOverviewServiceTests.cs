@@ -45,11 +45,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineOverviewServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = OnlineOverviewTimelineTestHarness.TenantId;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = OnlineOverviewTimelineTestHarness.AppId;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = OnlineOverviewTimelineTestHarness.ServerId;
@@ -97,8 +92,6 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.True(outcome.IsSuccess);
             var snapshot = outcome.Data;
-            Assert.Equal(TenantId, snapshot.TenantId);
-            Assert.Equal(AppId, snapshot.AppId);
             Assert.Equal(ServerId, snapshot.ServerId);
             Assert.True(snapshot.ObservedTime > 0);
 
@@ -141,7 +134,7 @@ namespace GameFrameX.Tests.Online
             await harness.EnqueueAsync(OtherServerId, 1005, mode: 5, region: 5);
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var queued = await harness.TicketStore.ListQueuedAsync(TenantId, AppId);
+            var queued = await harness.TicketStore.ListQueuedAsync();
 
             // Act
             var outcome = await harness.CreateOverviewService().ReviewAsync(OnlineOverviewTimelineTestHarness.CreateScope(), now);
@@ -229,14 +222,11 @@ namespace GameFrameX.Tests.Online
             var service = new OnlineOverviewTimelineTestHarness().CreateOverviewService();
 
             // Act
-            var missingServer = await service.ReviewAsync(new OnlineScope(TenantId, AppId, 0));
-            var missingTenant = await service.ReviewAsync(new OnlineScope(0, AppId, ServerId));
+            var missingServer = await service.ReviewAsync(new OnlineScope(0));
 
             // Assert
             Assert.False(missingServer.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, missingServer.Code);
-            Assert.False(missingTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, missingTenant.Code);
             await Assert.ThrowsAsync<ArgumentNullException>(() => service.ReviewAsync(null));
         }
 

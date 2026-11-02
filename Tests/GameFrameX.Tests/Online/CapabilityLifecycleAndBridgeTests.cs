@@ -142,7 +142,7 @@ public sealed class CapabilityLifecycleAndBridgeTests
     {
         return new CapabilityCompositionOptions(default, log)
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+            HostOptions = new CapabilityHostOptions { ServerId = 1, },
             Filter = new CapabilityAssemblyFilter(enabledIds),
         };
     }

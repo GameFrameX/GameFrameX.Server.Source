@@ -31,7 +31,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件信封（事件契约：EventId/EventType/OccurredAt/SchemaVersion +
-/// TenantId/AppId/ServerId/PlayerId + Source/CorrelationId/Payload）。
+/// ServerId/PlayerId + Source/CorrelationId/Payload；单键化 D4 后无租户位/App 位）。
 /// <para>
 /// 维护约束：事件代表已经发生的事实，不作为当前状态的唯一存储（状态由 Actor 持有）；
 /// <c>EventId</c> 全局唯一（消费端去重键）；<c>CorrelationId</c> 贯穿业务链路；
@@ -61,16 +61,6 @@ public sealed class OnlineEvent
     /// 获取或设置载荷结构版本（不小于 1；结构演进时递增）。
     /// </summary>
     public int SchemaVersion { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（Online 作用域字段）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（Online 作用域字段）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（Online 作用域字段）。

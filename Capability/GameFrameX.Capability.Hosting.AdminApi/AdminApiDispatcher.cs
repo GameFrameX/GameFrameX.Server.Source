@@ -167,13 +167,13 @@ public sealed class AdminApiDispatcher
 
         if (!_scopeAdapter.TryReadClaimedScope(request, out var claimedScope))
         {
-            return WriteFail(_errorCodes.ScopeMissing, "Scope triple (TenantId/AppId/ServerId) missing or invalid in request body.", requestId);
+            return WriteFail(_errorCodes.ScopeMissing, "Scope key (ServerId) missing or invalid in request body.", requestId);
         }
 
         var deniedCode = _scopeAdapter.ValidateClaimed(claimedScope, _authorizedScope);
         if (deniedCode != null)
         {
-            return WriteFail(deniedCode, "Scope denied for tenant " + claimedScope.TenantId + ", app " + claimedScope.AppId + ", server " + claimedScope.ServerId + ".", requestId);
+            return WriteFail(deniedCode, "Scope denied for server " + claimedScope.ServerId + ".", requestId);
         }
 
         if (registration.WrapIdempotency && _idempotencyAdapter != null)

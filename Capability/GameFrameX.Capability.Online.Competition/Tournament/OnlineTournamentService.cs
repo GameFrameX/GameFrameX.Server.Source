@@ -53,7 +53,7 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 /// <c>tournament-{TournamentId}-{PlayerId}</c>，重复触发命中回放返回首次结果，不重复发奖；
 /// (5) **逐玩家失败隔离**——单玩家发放失败只计入回执明细，不阻塞其余玩家；仅当无失败玩家才把赛事推进到
 /// 结算完成态（部分发奖不得标记完成）；
-/// (6) 跨 App / 跨租户读写与「赛事不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
+/// (6) 作用域校验失败与「赛事不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
 /// </para>
 /// <para>
 /// 运行时边界：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
@@ -63,7 +63,7 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 public sealed class OnlineTournamentService
 {
     /// <summary>
-    /// 赛事奖励发放使用的区服位（恒为 0）：赛事与榜单同为 (TenantId, AppId) 作用域，**没有归属服**。
+    /// 赛事奖励发放使用的区服位（恒为 0）：赛事与榜单同为全局域数据，**没有归属服**。
     /// 若改取调用方作用域的区服，同一赛事从不同区服触发结算会落到不同的幂等绑定键上，重试将不再回放首次结果
     /// 而重复发奖。
     /// </summary>
@@ -97,9 +97,9 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 创建赛事（同作用域同标识赛事已存在时拒绝；关联榜单必须已存在；奖励规则区间必须互不重叠）。
+    /// 创建赛事（同标识赛事已存在时拒绝；关联榜单必须已存在；奖励规则区间必须互不重叠）。
     /// </summary>
-    /// <param name="scope">生效作用域（赛事归属取其 TenantId / AppId）。</param>
+    /// <param name="scope">生效作用域。</param>
     /// <param name="request">创建请求。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -150,8 +150,6 @@ public sealed class OnlineTournamentService
         var tournament = new OnlineTournament
         {
             TournamentId = request.TournamentId,
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             LeaderboardId = request.LeaderboardId,
             StartTime = request.StartTime,
             EndTime = request.EndTime,
@@ -167,14 +165,14 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournament>.Fail(OnlineErrorCode.ParameterInvalid, "赛事标识已存在");
         }
 
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentCreated(created.TenantId, created.AppId, created.TournamentId, created.LeaderboardId, created.StartTime, created.EndTime, created.Eligibility == null ? 0 : created.Eligibility.MinLeaderboardRank, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentCreated(created.TournamentId, created.LeaderboardId, created.StartTime, created.EndTime, created.Eligibility == null ? 0 : created.Eligibility.MinLeaderboardRank, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournament>.Ok(created);
     }
 
     /// <summary>
     /// 开始赛事（<see cref="OnlineTournamentState.Scheduled"/> → <see cref="OnlineTournamentState.Active"/>；**开始即关闭报名窗口**）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -196,7 +194,7 @@ public sealed class OnlineTournamentService
         tournament.State = OnlineTournamentState.Active;
         tournament.StartedTime = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentStarted(tournament.TenantId, tournament.AppId, tournament.TournamentId, tournament.LeaderboardId, tournament.StartTime, tournament.EndTime, tournament.StartedTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentStarted(tournament.TournamentId, tournament.LeaderboardId, tournament.StartTime, tournament.EndTime, tournament.StartedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournament>.Ok(tournament);
     }
 
@@ -209,7 +207,7 @@ public sealed class OnlineTournamentService
     /// 重复报名返回既有登记并置 <see cref="OnlineTournamentRegistrationOutcome.IsReplay"/>，不新增登记、不重发事件。
     /// </para>
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="playerId">报名玩家标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
@@ -270,8 +268,6 @@ public sealed class OnlineTournamentService
         var registration = new OnlineTournamentRegistration
         {
             TournamentId = tournament.TournamentId,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
             PlayerId = playerId,
             RegisteredTime = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             RankAtRegistration = rank,
@@ -284,7 +280,7 @@ public sealed class OnlineTournamentService
 
         if (!isReplay)
         {
-            await PublishAsync(OnlineTournamentEvents.CreateTournamentRegistered(tournament.TenantId, tournament.AppId, tournament.TournamentId, stored.PlayerId, stored.RegisteredTime, stored.RankAtRegistration, stored.ScoreAtRegistration), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineTournamentEvents.CreateTournamentRegistered(tournament.TournamentId, stored.PlayerId, stored.RegisteredTime, stored.RankAtRegistration, stored.ScoreAtRegistration), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineTournamentRegistrationOutcome>.Ok(new OnlineTournamentRegistrationOutcome
@@ -304,7 +300,7 @@ public sealed class OnlineTournamentService
     /// 在参赛者集合内重新编号 1..N，使赛事名次是赛事内部的事实。**本流程不修改关联榜单**（只读）。
     /// </para>
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -330,7 +326,7 @@ public sealed class OnlineTournamentService
         }
 
         var entries = await _leaderboardService.ListOrderedEntriesForSeasonAsync(boardResult.Data, cancellationToken).ConfigureAwait(false);
-        var registrations = await _tournamentStore.ListRegistrationsAsync(tournament.TenantId, tournament.AppId, tournament.TournamentId, cancellationToken).ConfigureAwait(false);
+        var registrations = await _tournamentStore.ListRegistrationsAsync(tournament.TournamentId, cancellationToken).ConfigureAwait(false);
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var standings = BuildStandings(tournament, entries, registrations, now);
@@ -339,14 +335,14 @@ public sealed class OnlineTournamentService
         tournament.State = OnlineTournamentState.Ended;
         tournament.EndedTime = now;
         await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentEnded(tournament.TenantId, tournament.AppId, tournament.TournamentId, tournament.LeaderboardId, standings.Entries == null ? 0 : standings.Entries.Count, standings.FrozenTime, tournament.EndedTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentEnded(tournament.TournamentId, tournament.LeaderboardId, standings.Entries == null ? 0 : standings.Entries.Count, standings.FrozenTime, tournament.EndedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournamentStandings>.Ok(standings);
     }
 
     /// <summary>
     /// 查询赛事冻结成绩（结果查询；冻结后不随关联榜单变化）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>冻结成绩；失败返回对应错误码。</returns>
@@ -358,7 +354,7 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournamentStandings>.Fail(tournamentResult.Code, tournamentResult.Message);
         }
 
-        var standings = await _tournamentStore.FindStandingsAsync(scope.TenantId, scope.AppId, tournamentResult.Data.TournamentId, cancellationToken).ConfigureAwait(false);
+        var standings = await _tournamentStore.FindStandingsAsync(tournamentResult.Data.TournamentId, cancellationToken).ConfigureAwait(false);
         if (standings == null)
         {
             return OnlineResult<OnlineTournamentStandings>.Fail(OnlineErrorCode.ResourceNotFound, "赛事尚未结束，无冻结成绩");
@@ -370,7 +366,7 @@ public sealed class OnlineTournamentService
     /// <summary>
     /// 查询玩家报名登记（结果查询半边：报名事实与报名时刻冻结的资格判定输入）。
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -383,7 +379,7 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournamentRegistration>.Fail(tournamentResult.Code, tournamentResult.Message);
         }
 
-        var registration = await _tournamentStore.FindRegistrationAsync(scope.TenantId, scope.AppId, tournamentResult.Data.TournamentId, playerId, cancellationToken).ConfigureAwait(false);
+        var registration = await _tournamentStore.FindRegistrationAsync(tournamentResult.Data.TournamentId, playerId, cancellationToken).ConfigureAwait(false);
         if (registration == null)
         {
             return OnlineResult<OnlineTournamentRegistration>.Fail(OnlineErrorCode.ResourceNotFound, "该玩家未报名本赛事");
@@ -401,7 +397,7 @@ public sealed class OnlineTournamentService
     /// （同款装配依赖：默认 <c>ReplayError</c> 下失败键在保留期内原样回放）。
     /// </para>
     /// </summary>
-    /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
+    /// <param name="scope">生效作用域（不存在同构拒绝）。</param>
     /// <param name="tournamentId">赛事标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -421,7 +417,7 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournamentSettlementOutcome>.Fail(OnlineErrorCode.StateNotReady, "赛事尚未结束，不能结算：" + tournament.State);
         }
 
-        var standings = await _tournamentStore.FindStandingsAsync(scope.TenantId, scope.AppId, tournament.TournamentId, cancellationToken).ConfigureAwait(false);
+        var standings = await _tournamentStore.FindStandingsAsync(tournament.TournamentId, cancellationToken).ConfigureAwait(false);
         if (standings == null)
         {
             return OnlineResult<OnlineTournamentSettlementOutcome>.Fail(OnlineErrorCode.StateNotReady, "赛事冻结成绩缺失，拒绝结算");
@@ -440,7 +436,7 @@ public sealed class OnlineTournamentService
             tournament.State = OnlineTournamentState.Settled;
             tournament.SettledTime = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineTournamentEvents.CreateTournamentSettled(tournament.TenantId, tournament.AppId, tournament.TournamentId, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count, tournament.SettledTime), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineTournamentEvents.CreateTournamentSettled(tournament.TournamentId, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count, tournament.SettledTime), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineTournamentSettlementOutcome>.Ok(outcome);
@@ -449,7 +445,7 @@ public sealed class OnlineTournamentService
     /// <summary>
     /// 按冻结成绩逐条目结算奖励（跳过无效视图与名次未命中规则的条目；发放经 <see cref="SettlePlayerAsync"/> 幂等执行）。
     /// </summary>
-    /// <param name="tournament">赛事定义（提供作用域与奖励规则）。</param>
+    /// <param name="tournament">赛事定义（提供奖励规则）。</param>
     /// <param name="standings">结算依据的冻结成绩。</param>
     /// <param name="outcome">累计回执。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -481,7 +477,7 @@ public sealed class OnlineTournamentService
     /// <summary>
     /// 结算单玩家：经统一资产入口发放（幂等键确定性派生，重试回放首次结果）；失败逐玩家隔离。
     /// </summary>
-    /// <param name="tournament">赛事定义（提供作用域与结算标识）。</param>
+    /// <param name="tournament">赛事定义（提供结算标识）。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="rewards">奖励变更行。</param>
     /// <param name="outcome">累计回执。</param>
@@ -490,7 +486,7 @@ public sealed class OnlineTournamentService
     private async Task SettlePlayerAsync(OnlineTournament tournament, long playerId, IReadOnlyList<OnlineAssetChangeLine> rewards, OnlineTournamentSettlementOutcome outcome, CancellationToken cancellationToken)
     {
         var businessOrderId = BuildBusinessOrderId(tournament.TournamentId, playerId);
-        var playerScope = new OnlineScope(tournament.TenantId, tournament.AppId, TournamentScopeServerId, playerId);
+        var playerScope = new OnlineScope(TournamentScopeServerId, playerId);
         var request = new OnlineGrantRequest(
             playerScope,
             OnlineAssetChangeSource.MatchReward,
@@ -526,7 +522,7 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 按作用域解析赛事定义（跨作用域与不存在同构返回失败 ResourceNotFound）。
+    /// 按标识解析赛事定义（不存在同构返回失败 ResourceNotFound）。
     /// </summary>
     /// <param name="scope">生效作用域。</param>
     /// <param name="tournamentId">赛事标识。</param>
@@ -544,7 +540,7 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournament>.Fail(OnlineErrorCode.ParameterInvalid, "赛事标识不能为空");
         }
 
-        var tournament = await _tournamentStore.FindAsync(scope.TenantId, scope.AppId, tournamentId, cancellationToken).ConfigureAwait(false);
+        var tournament = await _tournamentStore.FindAsync(tournamentId, cancellationToken).ConfigureAwait(false);
         if (tournament == null)
         {
             return OnlineResult<OnlineTournament>.Fail(OnlineErrorCode.ResourceNotFound, "赛事不存在");
@@ -566,8 +562,6 @@ public sealed class OnlineTournamentService
         var standings = new OnlineTournamentStandings
         {
             TournamentId = tournament.TournamentId,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
             LeaderboardId = tournament.LeaderboardId,
             FrozenTime = frozenTime,
             Entries = new List<OnlineLeaderboardEntryView>(),

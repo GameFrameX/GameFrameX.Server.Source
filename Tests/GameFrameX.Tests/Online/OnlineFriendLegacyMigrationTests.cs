@@ -106,7 +106,7 @@ public sealed class OnlineFriendLegacyMigrationTests
         var section = JsonDocument.Parse("{\"TenantId\":9,\"AppId\":4,\"ServerId\":1001" + settings + "}").RootElement.Clone();
         var options = new CapabilityCompositionOptions(section, new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, },
+            HostOptions = new CapabilityHostOptions { ServerId = ServerId, },
             Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social" }),
         };
         options.Override<IOnlinePlayerDirectory>(new OnlineCapabilityTestHarness.EmptyPlayerDirectory());
@@ -131,7 +131,7 @@ public sealed class OnlineFriendLegacyMigrationTests
     /// <returns>玩家作用域。</returns>
     private static OnlineScope PlayerScope(long playerId)
     {
-        return new OnlineScope(TenantId, AppId, ServerId, playerId);
+        return new OnlineScope(ServerId, playerId);
     }
 
     /// <summary>
@@ -182,7 +182,7 @@ public sealed class OnlineFriendLegacyMigrationTests
             {
                 var friends = runtime.Host.Services.GetService<OnlineFriendService>();
 
-                var (established, pending, failed) = await OnlineFriendLegacyMigration.MigrateAsync(friends, TenantId, AppId, ServerId);
+                var (established, pending, failed) = await OnlineFriendLegacyMigration.MigrateAsync(friends, ServerId);
 
                 Assert.Equal(1, established);
                 Assert.Equal(1, pending);
@@ -215,8 +215,8 @@ public sealed class OnlineFriendLegacyMigrationTests
             {
                 var friends = runtime.Host.Services.GetService<OnlineFriendService>();
 
-                await OnlineFriendLegacyMigration.MigrateAsync(friends, TenantId, AppId, ServerId);
-                var (established, pending, failed) = await OnlineFriendLegacyMigration.MigrateAsync(friends, TenantId, AppId, ServerId);
+                await OnlineFriendLegacyMigration.MigrateAsync(friends, ServerId);
+                var (established, pending, failed) = await OnlineFriendLegacyMigration.MigrateAsync(friends, ServerId);
 
                 Assert.Equal(1, established);
                 Assert.Equal(1, pending);

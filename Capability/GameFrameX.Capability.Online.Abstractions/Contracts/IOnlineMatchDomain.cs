@@ -82,12 +82,10 @@ public interface IOnlineMatchDomain
     /// <summary>
     /// 按分配标识解析数值对局标识与成员表（通知推送方消费；幂等）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="assignmentId">分配标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>分配解析视图。</returns>
-    Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default);
+    Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 会话中介断线通知（C204）：物理连接断开时按「票据 → 分配登记 → 运行时成员表」定位玩家当前对局，

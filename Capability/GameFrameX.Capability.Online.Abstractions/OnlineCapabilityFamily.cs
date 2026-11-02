@@ -43,8 +43,8 @@ namespace GameFrameX.Capability.Online.Abstractions;
 /// 族基建收敛在族脊柱包内）。族标识 <c>online</c>，配置段 <c>Online</c>，部署程序集前缀
 /// <c>GameFrameX.Capability.Online</c>。
 /// <para>
-/// 维护约束（族基建预置，语句级迁移自旧组合根 <c>BuildScannedRuntime</c>）：授权作用域（三元组取自
-/// 族配置段 <c>TenantId</c>/<c>AppId</c>/<c>ServerId</c>，缺失或非法 = 装配期 fail-fast——作用域是
+/// 维护约束（族基建预置，语句级迁移自旧组合根 <c>BuildScannedRuntime</c>）：授权作用域（单键化 D4 后
+/// 区服键取自族配置段 <c>ServerId</c>，缺失或非法 = 装配期 fail-fast——作用域是
 /// 数据隔离根边界，无默认值可回落）、Online 事件出口（<see cref="IOnlineEventPublisher"/> 委托机制
 /// 事件总线）、幂等（<see cref="OnlineIdempotencyService"/>，InMemory 协调器 + 失败重放策略 ReExecute）、
 /// 统一审计（<see cref="OnlineAuditService"/> 具型 + <see cref="IOnlineAuditReader"/> 读面，同源单例）。
@@ -94,11 +94,9 @@ public sealed class OnlineCapabilityFamily : ICapabilityFamily
             throw new ArgumentNullException(nameof(context));
         }
 
-        // 授权作用域：三元组取自族配置段；缺失 / 非正数 = 装配期 fail-fast（无默认值可回落）。
-        var tenantId = ReadScopeKey(context.ConfigurationSection, "TenantId");
-        var appId = ReadScopeKey(context.ConfigurationSection, "AppId");
+        // 授权作用域：区服键取自族配置段；缺失 / 非正数 = 装配期 fail-fast（无默认值可回落）。
         var serverId = ReadScopeKey(context.ConfigurationSection, "ServerId");
-        var scope = new OnlineScope(tenantId, appId, serverId);
+        var scope = new OnlineScope(serverId);
         context.AddService(scope);
 
         // 事件出口：业务发布面委托机制事件总线（主题 = 事件类型字符串，Activate 开始前拒绝发布）。

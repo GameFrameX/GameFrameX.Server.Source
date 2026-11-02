@@ -57,14 +57,12 @@ public static class OnlineLeaderboardEvents
     /// <summary>
     /// 构造榜单创建事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识（可空；载荷落空字符串）。</param>
     /// <param name="sortOrder">排序方向名。</param>
     /// <param name="scoreUpdatePolicy">累计策略名。</param>
     /// <param name="createdTime">创建时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateLeaderboardCreated(long tenantId, long appId, string leaderboardId, string sortOrder, string scoreUpdatePolicy, long createdTime)
+    public static OnlineEvent CreateLeaderboardCreated(string leaderboardId, string sortOrder, string scoreUpdatePolicy, long createdTime)
     {
         var payload = new LeaderboardCreatedPayload
         {
@@ -86,8 +84,6 @@ public static class OnlineLeaderboardEvents
             EventType = LeaderboardCreated,
             OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -100,8 +96,6 @@ public static class OnlineLeaderboardEvents
     /// <summary>
     /// 构造榜上分数更新事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leaderboardId">榜单标识（可空；载荷落空字符串）。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="oldScore">变更前分数。</param>
@@ -109,7 +103,7 @@ public static class OnlineLeaderboardEvents
     /// <param name="sourceMatchResultId">来源结算结果标识（追溯键，兼作 CorrelationId）。</param>
     /// <param name="updatedTime">变更时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateScoreUpdated(long tenantId, long appId, string leaderboardId, long playerId, long oldScore, long newScore, string sourceMatchResultId, long updatedTime)
+    public static OnlineEvent CreateScoreUpdated(string leaderboardId, long playerId, long oldScore, long newScore, string sourceMatchResultId, long updatedTime)
     {
         var payload = new ScoreUpdatedPayload
         {
@@ -137,8 +131,6 @@ public static class OnlineLeaderboardEvents
             EventType = ScoreUpdated,
             OccurredTime = updatedTime > 0 ? updatedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,

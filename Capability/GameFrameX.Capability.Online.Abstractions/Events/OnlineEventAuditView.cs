@@ -59,16 +59,6 @@ public sealed class OnlineEventAuditView
     public int SchemaVersion { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置区服标识。
     /// </summary>
     public long ServerId { get; set; }

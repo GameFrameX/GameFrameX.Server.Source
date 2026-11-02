@@ -48,11 +48,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlinePlayerTimelineServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = OnlineOverviewTimelineTestHarness.TenantId;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = OnlineOverviewTimelineTestHarness.AppId;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = OnlineOverviewTimelineTestHarness.ServerId;
@@ -351,7 +346,7 @@ namespace GameFrameX.Tests.Online
             var scope = OnlineOverviewTimelineTestHarness.CreateScope(playerId: alice.Player.Id);
 
             var probe = new OnlineOverviewTimelineTestHarness.FakeConfigHitProbe();
-            probe.Add(TenantId, AppId, ServerId, alice.Player.Id, new OnlineConfigHitRecord
+            probe.Add(ServerId, alice.Player.Id, new OnlineConfigHitRecord
             {
                 EventId = "config:local",
                 EventType = OnlinePlayerTimelineEventTypes.ConfigHit,
@@ -360,7 +355,7 @@ namespace GameFrameX.Tests.Online
                 CorrelationId = "cfg-local",
                 PayloadSummary = "命中活动 A",
             });
-            probe.Add(TenantId, AppId, ServerId, alice.Player.Id, new OnlineConfigHitRecord
+            probe.Add(ServerId, alice.Player.Id, new OnlineConfigHitRecord
             {
                 EventId = "config:season",
                 EventType = OnlinePlayerTimelineEventTypes.ConfigHit,
@@ -369,7 +364,7 @@ namespace GameFrameX.Tests.Online
                 CorrelationId = "cfg-season",
                 PayloadSummary = "命中赛季 B",
             });
-            probe.Add(TenantId, AppId, ServerId, alice.Player.Id, new OnlineConfigHitRecord
+            probe.Add(ServerId, alice.Player.Id, new OnlineConfigHitRecord
             {
                 EventId = string.Empty,
                 EventType = OnlinePlayerTimelineEventTypes.ConfigHit,
@@ -378,7 +373,7 @@ namespace GameFrameX.Tests.Online
                 CorrelationId = "cfg-anonymous",
                 PayloadSummary = "命中活动 C（探针未给行标识）",
             });
-            probe.Add(TenantId, AppId, ServerId, alice.Player.Id, new OnlineConfigHitRecord
+            probe.Add(ServerId, alice.Player.Id, new OnlineConfigHitRecord
             {
                 EventId = string.Empty,
                 EventType = OnlinePlayerTimelineEventTypes.ConfigHit,
@@ -387,7 +382,7 @@ namespace GameFrameX.Tests.Online
                 CorrelationId = string.Empty,
                 PayloadSummary = "不可定位的命中",
             });
-            probe.Add(TenantId, AppId, OtherServerId, alice.Player.Id, new OnlineConfigHitRecord
+            probe.Add(OtherServerId, alice.Player.Id, new OnlineConfigHitRecord
             {
                 EventId = "config:foreign-server",
                 EventType = OnlinePlayerTimelineEventTypes.ConfigHit,
@@ -489,7 +484,7 @@ namespace GameFrameX.Tests.Online
             await harness.PunishAsync(dave.Player.Id, "他服处罚");
 
             // 前置事实：该玩家在处罚读取面确实有记录（处罚没有区服维度，扣掉作用域门就会泄露存在性）
-            var punishments = await harness.SocialGraphStore.ListPunishmentsByPlayerAsync(TenantId, AppId, dave.Player.Id);
+            var punishments = await harness.SocialGraphStore.ListPunishmentsByPlayerAsync(dave.Player.Id);
             Assert.NotEmpty(punishments);
 
             var service = harness.CreateTimelineService();
@@ -525,7 +520,7 @@ namespace GameFrameX.Tests.Online
 
             // Act
             var noPlayer = await service.QueryAsync(OnlineOverviewTimelineTestHarness.CreateScope());
-            var noServer = await service.QueryAsync(new OnlineScope(TenantId, AppId, 0, alice.Player.Id));
+            var noServer = await service.QueryAsync(new OnlineScope(0, alice.Player.Id));
             var tooMany = await service.QueryAsync(scope, new OnlinePlayerTimelineQuery { PageSize = 201 });
             var badCursor = await service.QueryAsync(scope, new OnlinePlayerTimelineQuery { Cursor = "not-a-cursor" });
             var emptyEventId = await service.QueryAsync(scope, new OnlinePlayerTimelineQuery { Cursor = "1800000000|" });

@@ -43,15 +43,7 @@ public sealed class OnlineGroupInvite
     /// </summary>
     public string InviteId { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置所属群组标识（邀请集合内冗余承载，便于事件载荷自解释，不参与唯一键）。
@@ -97,8 +89,6 @@ public sealed class OnlineGroupInvite
         return new OnlineGroupInvite
         {
             InviteId = InviteId,
-            TenantId = TenantId,
-            AppId = AppId,
             GroupId = GroupId,
             InviterId = InviterId,
             InviteeId = InviteeId,

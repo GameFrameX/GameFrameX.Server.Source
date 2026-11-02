@@ -30,24 +30,15 @@
 namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
-/// 玩家云存储条目（玩家 + App 作用域的 KV 实体；区服不参与隔离——换服数据随身）。
+/// 玩家云存储条目（玩家作用域的 KV 实体；区服不参与隔离——换服数据随身）。
 /// <para>
-/// 维护约束：键 = (TenantId, AppId, PlayerId, Collection, Key)，跨作用域读写结构性不可达；
+/// 维护约束：键 = (PlayerId, Collection, Key)，跨作用域读写结构性不可达；
 /// <see cref="Version"/> 为乐观锁版本（创建为 1，每次写递增，CAS 失败映射 6xxx）；
 /// 删除为软删（<see cref="DeletedAtTime"/>，读取与列举即不可见）；<see cref="ExpiresAtTime"/> 到期后由清理任务软删。
 /// </para>
 /// </summary>
 public sealed class OnlinePlayerStorageEntry
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

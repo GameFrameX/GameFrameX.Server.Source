@@ -72,7 +72,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             throw new ArgumentNullException(nameof(entry));
         }
 
-        var key = BuildDirectionKey("blk", entry.TenantId, entry.AppId, entry.OwnerId, entry.BlockedPlayerId);
+        var key = BuildDirectionKey("blk", entry.OwnerId, entry.BlockedPlayerId);
         lock (_syncRoot)
         {
             OnlineBlockEntry existing;
@@ -94,15 +94,13 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Looks up the block record by direction key in the in-memory block table; returns a defensive copy on hit and null on miss.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">屏蔽发起人 / Block owner</param>
     /// <param name="blockedPlayerId">被屏蔽玩家 / Blocked player</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>屏蔽记录副本；不存在返回 null / Copy of the block entry; null when absent</returns>
-    public Task<OnlineBlockEntry> FindBlockAsync(long tenantId, long appId, long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default)
+    public Task<OnlineBlockEntry> FindBlockAsync(long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default)
     {
-        var key = BuildDirectionKey("blk", tenantId, appId, ownerId, blockedPlayerId);
+        var key = BuildDirectionKey("blk", ownerId, blockedPlayerId);
         lock (_syncRoot)
         {
             OnlineBlockEntry found;
@@ -121,15 +119,13 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Removes the block record by direction key from the in-memory block table and reports whether a record was actually deleted; a missing record is not an error (idempotent).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">屏蔽发起人 / Block owner</param>
     /// <param name="blockedPlayerId">被屏蔽玩家 / Blocked player</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>实际删除了记录返回 true；原本不存在返回 false / true if a record was actually removed; false if it did not exist</returns>
-    public Task<bool> RemoveBlockAsync(long tenantId, long appId, long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default)
+    public Task<bool> RemoveBlockAsync(long ownerId, long blockedPlayerId, CancellationToken cancellationToken = default)
     {
-        var key = BuildDirectionKey("blk", tenantId, appId, ownerId, blockedPlayerId);
+        var key = BuildDirectionKey("blk", ownerId, blockedPlayerId);
         lock (_syncRoot)
         {
             return Task.FromResult(_blocksByDirection.Remove(key));
@@ -142,16 +138,14 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Checks both direction keys of the in-memory block table inside a single critical section to decide whether either player has blocked the other (the sole atomic criterion for adjudication).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="leftPlayerId">一侧玩家标识 / One player of the pair</param>
     /// <param name="rightPlayerId">另一侧玩家标识 / The other player of the pair</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>任一方向存在屏蔽返回 true / true if a block exists in either direction</returns>
-    public Task<bool> IsBlockedEitherWayAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
+    public Task<bool> IsBlockedEitherWayAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
     {
-        var forwardKey = BuildDirectionKey("blk", tenantId, appId, leftPlayerId, rightPlayerId);
-        var backwardKey = BuildDirectionKey("blk", tenantId, appId, rightPlayerId, leftPlayerId);
+        var forwardKey = BuildDirectionKey("blk", leftPlayerId, rightPlayerId);
+        var backwardKey = BuildDirectionKey("blk", rightPlayerId, leftPlayerId);
         lock (_syncRoot)
         {
             // 两个方向必须同临界区判定：拆开会让并发屏蔽挤进两次查询之间，产生放行窗口。
@@ -165,12 +159,10 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Linearly scans the whole in-memory block table to list every block initiated by the given owner and returns a list of defensive copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">屏蔽发起人 / Block owner</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>屏蔽记录副本列表（无记录时为空列表） / List of block entry copies (empty when none)</returns>
-    public Task<IReadOnlyList<OnlineBlockEntry>> ListBlocksAsync(long tenantId, long appId, long ownerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineBlockEntry>> ListBlocksAsync(long ownerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineBlockEntry>();
         lock (_syncRoot)
@@ -178,7 +170,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             foreach (var pair in _blocksByDirection)
             {
                 var entry = pair.Value;
-                if (entry.TenantId == tenantId && entry.AppId == appId && entry.OwnerId == ownerId)
+                if (entry.OwnerId == ownerId)
                 {
                     result.Add(entry.Copy());
                 }
@@ -205,7 +197,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             throw new ArgumentNullException(nameof(entry));
         }
 
-        var key = BuildDirectionKey("mut", entry.TenantId, entry.AppId, entry.OwnerId, entry.MutedPlayerId);
+        var key = BuildDirectionKey("mut", entry.OwnerId, entry.MutedPlayerId);
         lock (_syncRoot)
         {
             OnlineMuteEntry existing;
@@ -227,15 +219,13 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Looks up the mute record by direction key in the in-memory mute table; returns a defensive copy on hit and null on miss.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">静音发起人 / Mute owner</param>
     /// <param name="mutedPlayerId">被静音玩家 / Muted player</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>静音记录副本；不存在返回 null / Copy of the mute entry; null when absent</returns>
-    public Task<OnlineMuteEntry> FindMuteAsync(long tenantId, long appId, long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default)
+    public Task<OnlineMuteEntry> FindMuteAsync(long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default)
     {
-        var key = BuildDirectionKey("mut", tenantId, appId, ownerId, mutedPlayerId);
+        var key = BuildDirectionKey("mut", ownerId, mutedPlayerId);
         lock (_syncRoot)
         {
             OnlineMuteEntry found;
@@ -254,15 +244,13 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Removes the mute record by direction key from the in-memory mute table and reports whether a record was actually deleted; a missing record is not an error (idempotent).
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">静音发起人 / Mute owner</param>
     /// <param name="mutedPlayerId">被静音玩家 / Muted player</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>实际删除了记录返回 true；原本不存在返回 false / true if a record was actually removed; false if it did not exist</returns>
-    public Task<bool> RemoveMuteAsync(long tenantId, long appId, long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default)
+    public Task<bool> RemoveMuteAsync(long ownerId, long mutedPlayerId, CancellationToken cancellationToken = default)
     {
-        var key = BuildDirectionKey("mut", tenantId, appId, ownerId, mutedPlayerId);
+        var key = BuildDirectionKey("mut", ownerId, mutedPlayerId);
         lock (_syncRoot)
         {
             return Task.FromResult(_mutesByDirection.Remove(key));
@@ -275,12 +263,10 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Linearly scans the whole in-memory mute table to list every mute initiated by the given owner and returns a list of defensive copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="ownerId">静音发起人 / Mute owner</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>静音记录副本列表（无记录时为空列表） / List of mute entry copies (empty when none)</returns>
-    public Task<IReadOnlyList<OnlineMuteEntry>> ListMutesAsync(long tenantId, long appId, long ownerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMuteEntry>> ListMutesAsync(long ownerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineMuteEntry>();
         lock (_syncRoot)
@@ -288,7 +274,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             foreach (var pair in _mutesByDirection)
             {
                 var entry = pair.Value;
-                if (entry.TenantId == tenantId && entry.AppId == appId && entry.OwnerId == ownerId)
+                if (entry.OwnerId == ownerId)
                 {
                     result.Add(entry.Copy());
                 }
@@ -315,7 +301,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             throw new ArgumentNullException(nameof(punishment));
         }
 
-        var key = BuildPunishmentKey(punishment.TenantId, punishment.AppId, punishment.PunishmentId);
+        var key = BuildPunishmentKey(punishment.PunishmentId);
         lock (_syncRoot)
         {
             OnlinePunishment existing;
@@ -337,14 +323,12 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Looks up the punishment by (scope, punishment identifier) key in the in-memory punishment table; returns a defensive copy on hit and null on miss.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="punishmentId">处罚标识 / Punishment identifier</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>处罚副本；不存在返回 null / Copy of the punishment; null when absent</returns>
-    public Task<OnlinePunishment> FindPunishmentAsync(long tenantId, long appId, string punishmentId, CancellationToken cancellationToken = default)
+    public Task<OnlinePunishment> FindPunishmentAsync(string punishmentId, CancellationToken cancellationToken = default)
     {
-        var key = BuildPunishmentKey(tenantId, appId, punishmentId);
+        var key = BuildPunishmentKey(punishmentId);
         lock (_syncRoot)
         {
             OnlinePunishment found;
@@ -375,7 +359,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             throw new ArgumentNullException(nameof(punishment));
         }
 
-        var key = BuildPunishmentKey(punishment.TenantId, punishment.AppId, punishment.PunishmentId);
+        var key = BuildPunishmentKey(punishment.PunishmentId);
         lock (_syncRoot)
         {
             OnlinePunishment current;
@@ -404,12 +388,10 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Linearly scans the whole in-memory punishment table inside a single critical section, filters the player's punishments that are genuinely in effect at the given moment (not revoked, already effective, not yet expired), and returns a list of defensive copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="query">生效处罚查询载荷（玩家标识与判定时刻） / Active punishment query payload (player id and judgment moment)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>生效中的处罚副本列表（已撤销、未到生效时刻、已失效的均不返回） / List of copies of the punishments in effect (revoked, not-yet-effective, and expired ones are excluded)</returns>
-    public Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, ActivePunishmentQuery query, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(ActivePunishmentQuery query, CancellationToken cancellationToken = default)
     {
         var playerId = query.PlayerId;
         var nowUnixMilliseconds = query.NowUnixMilliseconds;
@@ -420,7 +402,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             foreach (var pair in _punishmentsById)
             {
                 var punishment = pair.Value;
-                if (punishment.TenantId != tenantId || punishment.AppId != appId || punishment.PlayerId != playerId)
+                if (punishment.PlayerId != playerId)
                 {
                     continue;
                 }
@@ -441,12 +423,10 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// <remarks>
     /// Linearly scans the whole in-memory punishment table to list every punishment of the given player (including revoked and expired ones) and returns a list of defensive copies.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / Tenant identifier</param>
-    /// <param name="appId">App 标识 / App identifier</param>
     /// <param name="playerId">被处罚玩家 / Punished player</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>处罚副本列表（无记录时为空列表） / List of punishment copies (empty when none)</returns>
-    public Task<IReadOnlyList<OnlinePunishment>> ListPunishmentsByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePunishment>> ListPunishmentsByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlinePunishment>();
         lock (_syncRoot)
@@ -454,7 +434,7 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
             foreach (var pair in _punishmentsById)
             {
                 var punishment = pair.Value;
-                if (punishment.TenantId == tenantId && punishment.AppId == appId && punishment.PlayerId == playerId)
+                if (punishment.PlayerId == playerId)
                 {
                     result.Add(punishment.Copy());
                 }
@@ -468,25 +448,21 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// 构造方向性记录索引键（作用域 + 归属玩家 + 目标玩家）。
     /// </summary>
     /// <param name="prefix">记录类别前缀（屏蔽 / 静音）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="ownerId">归属玩家。</param>
     /// <param name="targetPlayerId">目标玩家。</param>
     /// <returns>索引键。</returns>
-    private static string BuildDirectionKey(string prefix, long tenantId, long appId, long ownerId, long targetPlayerId)
+    private static string BuildDirectionKey(string prefix, long ownerId, long targetPlayerId)
     {
-        return prefix + ":" + tenantId + ":" + appId + ":" + ownerId + ":" + targetPlayerId;
+        return prefix + ":" + ownerId + ":" + targetPlayerId;
     }
 
     /// <summary>
     /// 构造处罚索引键（作用域 + 处罚标识）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="punishmentId">处罚标识。</param>
     /// <returns>索引键。</returns>
-    private static string BuildPunishmentKey(long tenantId, long appId, string punishmentId)
+    private static string BuildPunishmentKey(string punishmentId)
     {
-        return "pun:" + tenantId + ":" + appId + ":" + (punishmentId ?? string.Empty);
+        return "pun:" + (punishmentId ?? string.Empty);
     }
 }

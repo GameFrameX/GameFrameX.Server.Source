@@ -57,17 +57,7 @@ public sealed class OnlineMatchResult
     public string MatchId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
-    /// 获取或设置区服标识（作用域隔离键）。
+    /// 获取或设置区服标识（作用域隔离键；结算结果归属区服快照）。
     /// </summary>
     public long ServerId { get; set; }
 
@@ -121,8 +111,6 @@ public sealed class OnlineMatchResult
         {
             MatchResultId = MatchResultId,
             MatchId = MatchId,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             Mode = Mode,
             Region = Region,

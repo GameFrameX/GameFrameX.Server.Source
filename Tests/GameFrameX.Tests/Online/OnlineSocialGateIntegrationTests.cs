@@ -48,11 +48,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineSocialGateIntegrationTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -218,7 +213,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var fixture = CreatePartyFixture(withGate: true);
             var party = await CreatePartyAsync(fixture.Party, PlayerOne);
-            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var invite = await fixture.Party.InviteAsync(CreatePlayerScope(PlayerOne), party.PartyId, PlayerTwo);
@@ -236,7 +231,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var fixture = CreatePartyFixture(withGate: true);
             var party = await CreatePartyAsync(fixture.Party, PlayerOne);
-            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var invite = await fixture.Party.InviteAsync(CreatePlayerScope(PlayerOne), party.PartyId, PlayerTwo);
@@ -258,7 +253,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo, 2, new List<long> { PlayerTwo });
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -278,7 +273,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture, PlayerTwo, 2, new List<long> { PlayerTwo });
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -306,19 +301,19 @@ namespace GameFrameX.Tests.Online
             Assert.True((await fixture.Decision.BlockAsync(CreatePlayerScope(PlayerOne), PlayerTwo)).IsSuccess);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Single(outcome.Data.AssignmentIds);
 
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, outcome.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(outcome.Data.AssignmentIds[0]);
             Assert.Equal(new List<long> { PlayerOne, PlayerFour, PlayerFive }, assignment.PlayerIds);
             Assert.Equal(new List<string> { anchorTicket.TicketId, healthyTicket.TicketId }, assignment.TicketIds);
             Assert.DoesNotContain(blockedTicket.TicketId, assignment.TicketIds);
 
             // 被跳过的票据整票留在队列里（既没被消费，也没被拆散）。
-            var stillQueued = await fixture.Store.FindAsync(TenantId, AppId, blockedTicket.TicketId);
+            var stillQueued = await fixture.Store.FindAsync(blockedTicket.TicketId);
             Assert.NotNull(stillQueued);
             Assert.Equal(OnlineMatchTicketState.Queued, stillQueued.State);
             Assert.Equal(new List<long> { PlayerTwo, PlayerThree }, stillQueued.PlayerIds);
@@ -341,20 +336,20 @@ namespace GameFrameX.Tests.Online
             var bannedTicket = await EnqueueAsync(fixture, PlayerTwo, 3, new List<long> { PlayerTwo, PlayerThree });
             await NextArrivalTickAsync();
             await EnqueueAsync(fixture, PlayerFour, 3, new List<long> { PlayerFour, PlayerFive });
-            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerTwo, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerTwo, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Single(outcome.Data.AssignmentIds);
 
-            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, outcome.Data.AssignmentIds[0]);
+            var assignment = await fixture.Store.FindAssignmentAsync(outcome.Data.AssignmentIds[0]);
             Assert.Equal(new List<long> { PlayerOne, PlayerFour, PlayerFive }, assignment.PlayerIds);
             Assert.DoesNotContain(bannedTicket.TicketId, assignment.TicketIds);
 
-            var stillQueued = await fixture.Store.FindAsync(TenantId, AppId, bannedTicket.TicketId);
+            var stillQueued = await fixture.Store.FindAsync(bannedTicket.TicketId);
             Assert.Equal(OnlineMatchTicketState.Queued, stillQueued.State);
         }
 
@@ -369,16 +364,16 @@ namespace GameFrameX.Tests.Online
             var bannedTicket = await EnqueueAsync(fixture, PlayerOne, 2, new List<long> { PlayerOne });
             await NextArrivalTickAsync();
             await EnqueueAsync(fixture, PlayerTwo, 2, new List<long> { PlayerTwo });
-            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
-            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var outcome = await fixture.Coordinator.RunOnceAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Empty(outcome.Data.AssignmentIds);
 
-            var stillQueued = await fixture.Store.FindAsync(TenantId, AppId, bannedTicket.TicketId);
+            var stillQueued = await fixture.Store.FindAsync(bannedTicket.TicketId);
             Assert.Equal(OnlineMatchTicketState.Queued, stillQueued.State);
         }
 
@@ -476,7 +471,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>

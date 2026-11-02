@@ -89,8 +89,6 @@ public sealed class FriendDomainBridgeTests
             // 作用域玩家位 = 会话 playerId（R2），请求体 / 授权提供者的玩家位均不可覆盖。
             Assert.NotNull(face.LastListFriendsScope);
             Assert.Equal(PlayerOne, face.LastListFriendsScope.PlayerId);
-            Assert.Equal(HotfixBridgeStubScopeProvider.TenantId, face.LastListFriendsScope.TenantId);
-            Assert.Equal(HotfixBridgeStubScopeProvider.AppId, face.LastListFriendsScope.AppId);
             Assert.Equal(HotfixBridgeStubScopeProvider.ServerId, face.LastListFriendsScope.ServerId);
         });
     }

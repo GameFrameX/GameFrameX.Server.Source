@@ -112,17 +112,15 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
     }
 
     /// <summary>
-    /// 在全局锁内按作用域与闭区间时间窗筛选事件，并按事件发生时刻升序排序返回。
+    /// 在全局锁内按闭区间时间窗筛选事件，并按事件发生时刻升序排序返回。
     /// </summary>
     /// <remarks>
-    /// Filters events by scope and inclusive time window under the global lock, returning them sorted ascending by occurred time.
+    /// Filters events by the inclusive time window under the global lock, returning them sorted ascending by occurred time.
     /// </remarks>
-    /// <param name="tenantId">租户标识 / The tenant id</param>
-    /// <param name="appId">App 标识 / The app id</param>
     /// <param name="query">时间窗查询载荷（闭区间）/ The time-range query payload (inclusive window)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>事件列表；无记录返回空列表 / The event list; an empty list when none match</returns>
-    public Task<List<OnlineEvent>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default)
+    public Task<List<OnlineEvent>> ListAsync(EventTimeRangeQuery query, CancellationToken cancellationToken = default)
     {
         var fromTime = query.FromTime;
         var toTime = query.ToTime;
@@ -131,7 +129,7 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
         {
             foreach (var stored in _events.Values)
             {
-                if (stored.TenantId != tenantId || stored.AppId != appId)
+                if (stored.OccurredTime < fromTime || stored.OccurredTime > toTime)
                 {
                     continue;
                 }

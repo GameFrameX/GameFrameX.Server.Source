@@ -76,24 +76,22 @@ public sealed class OnlineAssetReconciliationService
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Assets.ReconciliationRequiresPlayerScope), nameof(scope));
         }
 
-        var differences = await CollectDifferencesAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);
+        var differences = await CollectDifferencesAsync(scope.PlayerId, cancellationToken);
         return new OnlineAssetReconciliationReport(1, differences);
     }
 
     /// <summary>
-    /// 对 (租户, App) 下全部有资产活动的玩家对账（全量巡检入口）。
+    /// 对全部有资产活动的玩家对账（全量巡检入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>对账报告。</returns>
-    public async Task<OnlineAssetReconciliationReport> ReconcileAllAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public async Task<OnlineAssetReconciliationReport> ReconcileAllAsync(CancellationToken cancellationToken = default)
     {
-        var playerIds = await _assetStore.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+        var playerIds = await _assetStore.ListPlayerIdsAsync(cancellationToken);
         var differences = new List<OnlineAssetReconciliationReport.Difference>();
         foreach (var playerId in playerIds)
         {
-            var playerDifferences = await CollectDifferencesAsync(tenantId, appId, playerId, cancellationToken);
+            var playerDifferences = await CollectDifferencesAsync(playerId, cancellationToken);
             differences.AddRange(playerDifferences);
         }
 
@@ -103,17 +101,15 @@ public sealed class OnlineAssetReconciliationService
     /// <summary>
     /// 收集单玩家差异（账本累加 vs 快照，双向并集比对）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>差异列表。</returns>
-    private async Task<List<OnlineAssetReconciliationReport.Difference>> CollectDifferencesAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken)
+    private async Task<List<OnlineAssetReconciliationReport.Difference>> CollectDifferencesAsync(long playerId, CancellationToken cancellationToken)
     {
         var differences = new List<OnlineAssetReconciliationReport.Difference>();
-        var ledgerSums = await _assetStore.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
-        var wallets = await _assetStore.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
-        var stacks = await _assetStore.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+        var ledgerSums = await _assetStore.SumLedgerDeltasByAssetAsync(playerId, cancellationToken);
+        var wallets = await _assetStore.ListWalletAccountsAsync(playerId, cancellationToken);
+        var stacks = await _assetStore.ListInventoryStacksAsync(playerId, cancellationToken);
 
         var snapshotByAsset = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var wallet in wallets)

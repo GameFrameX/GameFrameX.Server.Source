@@ -120,7 +120,7 @@ public class OnlineAdminApiRateLimitTests
     /// <returns>HTTP 响应。</returns>
     private static Task<HttpResponseMessage> PostAsync()
     {
-        var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
+        var content = new StringContent("{\"ServerId\":1001}", Encoding.UTF8, "application/json");
         return SharedHttpClient.PostAsync(Url, content);
     }
 

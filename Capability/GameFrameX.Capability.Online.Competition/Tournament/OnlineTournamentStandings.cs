@@ -53,16 +53,6 @@ public sealed class OnlineTournamentStandings
     public string TournamentId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置成绩来源的榜单标识。
     /// </summary>
     public string LeaderboardId { get; set; }
@@ -98,8 +88,6 @@ public sealed class OnlineTournamentStandings
         return new OnlineTournamentStandings
         {
             TournamentId = TournamentId,
-            TenantId = TenantId,
-            AppId = AppId,
             LeaderboardId = LeaderboardId,
             FrozenTime = FrozenTime,
             Entries = entries,

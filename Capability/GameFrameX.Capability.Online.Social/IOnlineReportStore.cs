@@ -66,12 +66,10 @@ public interface IOnlineReportStore
     /// <summary>
     /// 按案件标识查找。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="reportId">案件标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>案件副本；不存在返回 null。</returns>
-    Task<OnlineReportCase> FindAsync(long tenantId, long appId, string reportId, CancellationToken cancellationToken = default);
+    Task<OnlineReportCase> FindAsync(string reportId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义改写案件状态与处置结果；未结案组合索引的维护必须与状态判定在同一临界区完成。
@@ -89,20 +87,16 @@ public interface IOnlineReportStore
     /// <summary>
     /// 列出某举报人提交的案件（玩家侧「我的举报」入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="reporterId">举报人。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>案件副本列表。</returns>
-    Task<IReadOnlyList<OnlineReportCase>> ListByReporterAsync(long tenantId, long appId, long reporterId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineReportCase>> ListByReporterAsync(long reporterId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内处于指定状态的案件（Admin 待办队列输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">案件状态。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>案件副本列表。</returns>
-    Task<IReadOnlyList<OnlineReportCase>> ListByStateAsync(long tenantId, long appId, OnlineReportState state, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineReportCase>> ListByStateAsync(OnlineReportState state, CancellationToken cancellationToken = default);
 }

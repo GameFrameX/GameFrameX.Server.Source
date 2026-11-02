@@ -56,7 +56,7 @@ public sealed class CapabilityHostingTests
     {
         return new CapabilityCompositionOptions(default, log)
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+            HostOptions = new CapabilityHostOptions { ServerId = 1, },
             Filter = new CapabilityAssemblyFilter(enabledIds, disabledIds),
         };
     }
@@ -246,9 +246,9 @@ public sealed class CapabilityHostingTests
         }
     }
 
-    /// <summary>
-    /// 宿主选项非法（作用域三元组非正）即组合失败。
-    /// </summary>
+        /// <summary>
+        /// 宿主选项非法（区服键非正）即组合失败。
+        /// </summary>
     [Fact]
     public void Compose_InvalidHostOptions_FailsFast()
     {
@@ -256,7 +256,7 @@ public sealed class CapabilityHostingTests
         try
         {
             var options = CreateOptions(new CollectingCapabilityAssemblyLog(), new[] { "mech-first", });
-            options.HostOptions = new CapabilityHostOptions { TenantId = 0, AppId = 1, ServerId = 1, };
+            options.HostOptions = new CapabilityHostOptions { ServerId = 0, };
 
             var exception = Assert.Throws<InvalidOperationException>(() => Compose(options));
 

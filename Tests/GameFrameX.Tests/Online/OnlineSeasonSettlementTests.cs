@@ -270,8 +270,6 @@ namespace GameFrameX.Tests.Online
             await harness.SeasonStore.CreateAsync(new OnlineSeason
             {
                 SeasonId = "s-orphan",
-                TenantId = OnlineSeasonTestHarness.TenantId,
-                AppId = OnlineSeasonTestHarness.AppId,
                 LeaderboardId = "board-orphan",
                 StartTime = OnlineSeasonTestHarness.Now,
                 EndTime = OnlineSeasonTestHarness.Now + 10000,

@@ -129,13 +129,11 @@ public static class OnlineSocialEvents
     /// <param name="requesterId">请求方。</param>
     /// <param name="addresseeId">被请求方。</param>
     /// <param name="state">关系状态名。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本类型的 <c>Friendship*</c> 常量）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateFriendshipChanged(string friendshipId, long requesterId, long addresseeId, string state, long tenantId, long appId, long serverId, string action, string correlationId = null)
+    public static OnlineEvent CreateFriendshipChanged(string friendshipId, long requesterId, long addresseeId, string state, long serverId, string action, string correlationId = null)
     {
         var payload = new FriendshipChangedPayload
         {
@@ -159,8 +157,6 @@ public static class OnlineSocialEvents
             EventType = FriendshipChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             // 关系是双边的，信封只放得下一个玩家位，取请求方（方向所有者）；
             // 双方标识都在载荷与审计字段中，消费端不得只看 PlayerId。
@@ -177,13 +173,11 @@ public static class OnlineSocialEvents
     /// </summary>
     /// <param name="ownerId">屏蔽发起人。</param>
     /// <param name="blockedPlayerId">被屏蔽玩家。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="BlockAdded"/> / <see cref="BlockRemoved"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateBlockChanged(long ownerId, long blockedPlayerId, long tenantId, long appId, long serverId, string action, string correlationId = null)
+    public static OnlineEvent CreateBlockChanged(long ownerId, long blockedPlayerId, long serverId, string action, string correlationId = null)
     {
         var payload = new BlockChangedPayload
         {
@@ -203,8 +197,6 @@ public static class OnlineSocialEvents
             EventType = BlockChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             // 屏蔽是单向私密事实：事件只投递给屏蔽发起人，不通知被屏蔽方（否则等于告知「你被谁屏蔽了」）。
             PlayerId = ownerId,
@@ -221,13 +213,11 @@ public static class OnlineSocialEvents
     /// <param name="ownerId">静音发起人。</param>
     /// <param name="mutedPlayerId">被静音玩家。</param>
     /// <param name="expiresAtTime">静音失效时刻（UTC 毫秒；0 表示永久）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="MuteAdded"/> / <see cref="MuteRemoved"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMuteChanged(long ownerId, long mutedPlayerId, long expiresAtTime, long tenantId, long appId, long serverId, string action, string correlationId = null)
+    public static OnlineEvent CreateMuteChanged(long ownerId, long mutedPlayerId, long expiresAtTime, long serverId, string action, string correlationId = null)
     {
         var payload = new MuteChangedPayload
         {
@@ -249,8 +239,6 @@ public static class OnlineSocialEvents
             EventType = MuteChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = ownerId,
             Source = Source,
@@ -270,11 +258,9 @@ public static class OnlineSocialEvents
     /// <param name="reason">举报原因名。</param>
     /// <param name="state">案件状态名（举报案件的全部变更都是状态迁移，故动作即迁移后的状态名，与 <paramref name="state"/> 同值）。</param>
     /// <param name="resolution">处置结果名。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateReportChanged(string reportId, long reporterId, long reportedPlayerId, string scene, string reason, string state, string resolution, long tenantId, long appId, string correlationId = null)
+    public static OnlineEvent CreateReportChanged(string reportId, long reporterId, long reportedPlayerId, string scene, string reason, string state, string resolution, string correlationId = null)
     {
         var payload = new ReportChangedPayload
         {
@@ -304,8 +290,6 @@ public static class OnlineSocialEvents
             EventType = ReportChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             // 举报是 App 级事实，事件面向 Admin 待办队列聚合，不按区服切分。
             PlayerId = reporterId,
@@ -324,12 +308,10 @@ public static class OnlineSocialEvents
     /// <param name="kind">处罚种类名。</param>
     /// <param name="effectiveAtTime">生效时刻（UTC 毫秒）。</param>
     /// <param name="expiresAtTime">失效时刻（UTC 毫秒；0 表示永久）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="PunishmentApplied"/> / <see cref="PunishmentRevoked"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreatePunishmentChanged(string punishmentId, long playerId, string kind, long effectiveAtTime, long expiresAtTime, long tenantId, long appId, string action, string correlationId = null)
+    public static OnlineEvent CreatePunishmentChanged(string punishmentId, long playerId, string kind, long effectiveAtTime, long expiresAtTime, string action, string correlationId = null)
     {
         var payload = new PunishmentChangedPayload
         {
@@ -355,8 +337,6 @@ public static class OnlineSocialEvents
             EventType = PunishmentChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,
@@ -374,12 +354,10 @@ public static class OnlineSocialEvents
     /// <param name="state">群组状态名。</param>
     /// <param name="memberCount">变更后成员数。</param>
     /// <param name="revision">变更后群记录版本号（消费端据此判断是否漏事件）。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="action">变更动作（取本类型的 <c>Group*</c> 常量）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateGroupChanged(string groupId, long ownerId, string state, int memberCount, int revision, long tenantId, long appId, string action, string correlationId = null)
+    public static OnlineEvent CreateGroupChanged(string groupId, long ownerId, string state, int memberCount, int revision, string action, string correlationId = null)
     {
         var payload = new GroupChangedPayload
         {
@@ -405,8 +383,6 @@ public static class OnlineSocialEvents
             EventType = GroupChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             // 群组是 App 级事实（跨区服成立），信封 PlayerId 取群主作为归属锚点。
             PlayerId = ownerId,

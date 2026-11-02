@@ -41,12 +41,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchQueueObserverTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -71,10 +65,10 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture.Tickets, PlayerTwo);
             var cancelled = await EnqueueAsync(fixture.Tickets, PlayerThree);
             await fixture.Tickets.CancelAsync(CreatePlayerScope(PlayerThree), cancelled.TicketId);
-            await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            await fixture.Coordinator.RunOnceAsync();
 
             // Act
-            var outcome = await fixture.Observer.ObserveAsync(TenantId, AppId);
+            var outcome = await fixture.Observer.ObserveAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -98,10 +92,10 @@ namespace GameFrameX.Tests.Online
             var fixture = CreateFixture();
             await EnqueueAsync(fixture.Tickets, PlayerOne);
             await EnqueueAsync(fixture.Tickets, PlayerTwo);
-            await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            await fixture.Coordinator.RunOnceAsync();
 
             // Act
-            var outcome = await fixture.Observer.ObserveAsync(TenantId, AppId);
+            var outcome = await fixture.Observer.ObserveAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -120,7 +114,7 @@ namespace GameFrameX.Tests.Online
             await EnqueueAsync(fixture.Tickets, PlayerTwo);
 
             // Act
-            var outcome = await fixture.Observer.ObserveAsync(TenantId, AppId);
+            var outcome = await fixture.Observer.ObserveAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -141,7 +135,7 @@ namespace GameFrameX.Tests.Online
             var fixture = CreateFixture();
 
             // Act
-            var outcome = await fixture.Observer.ObserveAsync(TenantId, AppId);
+            var outcome = await fixture.Observer.ObserveAsync();
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -196,7 +190,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
 
         /// <summary>

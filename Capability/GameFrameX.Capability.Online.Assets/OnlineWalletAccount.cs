@@ -33,22 +33,13 @@ namespace GameFrameX.Capability.Online.Assets;
 /// 玩家货币账户快照（Wallet = 货币账户和余额快照；余额可由账本重算校验）。
 /// <para>
 /// 维护约束：余额快照只经统一入口在玩家分片事务内与账本条目原子同步（唯一写入口）；
-/// 键 = (TenantId, AppId, PlayerId, CurrencyId)，区服不参与隔离（换服资产随身）；
+/// 键 = (PlayerId, CurrencyId)，区服不参与隔离（换服资产随身）；
 /// 余额下限 0；<see cref="Version"/> 为快照乐观锁版本，每次随账本追加递增。
 /// 对账以账本累加为事实源，快照漂移即差异告警。
 /// </para>
 /// </summary>
 public sealed class OnlineWalletAccount
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

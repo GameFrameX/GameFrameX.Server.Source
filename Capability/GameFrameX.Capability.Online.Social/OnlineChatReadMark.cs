@@ -40,15 +40,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// </summary>
 public sealed class OnlineChatReadMark
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
 
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
@@ -108,8 +100,6 @@ public sealed class OnlineChatReadMark
     {
         return new OnlineChatReadMark
         {
-            TenantId = TenantId,
-            AppId = AppId,
             PlayerId = PlayerId,
             ChannelId = ChannelId,
             LastReadMessageId = LastReadMessageId,

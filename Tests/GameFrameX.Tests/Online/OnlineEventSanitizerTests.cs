@@ -49,8 +49,6 @@ namespace GameFrameX.Tests.Online
                 EventType = "online.session.created",
                 OccurredTime = 1760000000789,
                 SchemaVersion = 1,
-                TenantId = 1,
-                AppId = 10,
                 ServerId = 100,
                 PlayerId = 10001,
                 Source = "online-identity",
@@ -129,8 +127,6 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.Equal("evt-0003", view.EventId);
             Assert.Equal("online.session.created", view.EventType);
-            Assert.Equal(1, view.TenantId);
-            Assert.Equal(10, view.AppId);
             Assert.Equal(100, view.ServerId);
             Assert.Equal(10001, view.PlayerId);
             Assert.Equal("req-0003", view.CorrelationId);

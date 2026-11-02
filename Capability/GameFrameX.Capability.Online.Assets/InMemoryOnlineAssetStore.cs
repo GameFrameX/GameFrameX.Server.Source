@@ -33,6 +33,7 @@ namespace GameFrameX.Capability.Online.Assets;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 
 /// <summary>
 /// 资产存储内存默认实现（单进程/测试默认实现；生产装配以持久化实现替换）。
@@ -49,67 +50,61 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <summary>分片锁注册表守卫锁。</summary>
     private readonly object _registryLock = new();
 
-    /// <summary>玩家分片锁注册表：键 = tenant:app:player。</summary>
+    /// <summary>玩家分片锁注册表：键 = 玩家标识。</summary>
     private readonly Dictionary<string, object> _playerLocks = new();
 
-    /// <summary>货币账户快照：键 = tenant:app:player:货币代码。</summary>
+    /// <summary>货币账户快照：键 = player:货币代码（<see cref="OnlineRowKey.WalletAccount"/>）。</summary>
     private readonly Dictionary<string, OnlineWalletAccount> _wallets = new();
 
-    /// <summary>道具库存快照：键 = tenant:app:player:道具标识。</summary>
+    /// <summary>道具库存快照：键 = player:道具标识（<see cref="OnlineRowKey.InventoryStack"/>）。</summary>
     private readonly Dictionary<string, OnlineInventoryStack> _inventories = new();
 
-    /// <summary>账本条目（按玩家归组，组内按账本序升序）：键 = tenant:app:player。</summary>
+    /// <summary>账本条目（按玩家归组，组内按账本序升序）：键 = 玩家标识（<see cref="OnlineRowKey.LedgerSequence"/>）。</summary>
     private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByPlayer = new();
 
     /// <summary>交易 → 账本条目反查索引（追加时维护）。</summary>
     private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByTransaction = new();
 
-    /// <summary>玩家维度账本序计数器：键 = tenant:app:player。</summary>
+    /// <summary>玩家维度账本序计数器：键 = 玩家标识（<see cref="OnlineRowKey.LedgerSequence"/>）。</summary>
     private readonly Dictionary<string, long> _sequenceByPlayer = new();
 
     /// <summary>查找货币账户快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="currencyId">货币代码。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照；未发生过变更返回 null。</returns>
-    public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+    public Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
-            _wallets.TryGetValue(BuildAssetKey(tenantId, appId, playerId, OnlineAssetKind.Currency, currencyId), out var account);
+            _wallets.TryGetValue(OnlineRowKey.WalletAccount(playerId, currencyId), out var account);
             return Task.FromResult(account);
         }
     }
 
     /// <summary>查找道具库存快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="itemId">道具标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照；未发生过变更返回 null。</returns>
-    public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+    public Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
-            _inventories.TryGetValue(BuildAssetKey(tenantId, appId, playerId, OnlineAssetKind.Item, itemId), out var stack);
+            _inventories.TryGetValue(OnlineRowKey.InventoryStack(playerId, itemId), out var stack);
             return Task.FromResult(stack);
         }
     }
 
     /// <summary>列举玩家全部货币账户快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照列表（按货币代码字典序）。</returns>
-    public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
-            var prefix = BuildPlayerPrefix(tenantId, appId, playerId);
+            var prefix = OnlineRowKey.LedgerSequence(playerId) + ":";
             var accounts = new List<OnlineWalletAccount>();
             foreach (var pair in _wallets)
             {
@@ -125,16 +120,14 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>列举玩家全部道具库存快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照列表（按道具标识字典序）。</returns>
-    public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
-            var prefix = BuildPlayerPrefix(tenantId, appId, playerId);
+            var prefix = OnlineRowKey.LedgerSequence(playerId) + ":";
             var stacks = new List<OnlineInventoryStack>();
             foreach (var pair in _inventories)
             {
@@ -160,7 +153,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
             throw new ArgumentNullException(nameof(batch));
         }
 
-        var playerLock = GetPlayerLock(batch.TenantId, batch.AppId, batch.PlayerId);
+        var playerLock = GetPlayerLock(batch.PlayerId);
         lock (playerLock)
         {
             // 校验 1：同批次同一 (类别, 资产标识) 只允许一行。
@@ -179,7 +172,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
             }
 
             // 落账：快照同步 + 账本追加 + 索引维护（分片锁内原子，中途不可见）。
-            CommitEntries(batch.TenantId, batch.AppId, batch.PlayerId, planned, occurredTime);
+            CommitEntries(batch.PlayerId, planned, occurredTime);
             return Task.FromResult(new OnlineAssetApplyResult(true, OnlineErrorCode.None, string.Empty, planned));
         }
     }
@@ -194,7 +187,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         var seenAssets = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in batch.Lines)
         {
-            if (!seenAssets.Add(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId)))
+            if (!seenAssets.Add(OnlineRowKey.AssetDedup(batch.PlayerId, line.AssetKind == OnlineAssetKind.Currency, line.AssetId)))
             {
                 return new OnlineAssetApplyResult(false, OnlineErrorCode.ParameterInvalid, "同一批次内资产重复：" + line.AssetId, Array.Empty<OnlineLedgerEntry>());
             }
@@ -236,26 +229,23 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <returns>变更前数量。</returns>
     private long ReadAmountBefore(OnlineAssetChangeBatch batch, OnlineAssetChangeLine line)
     {
-        var assetKey = BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId);
         if (line.AssetKind == OnlineAssetKind.Currency)
         {
-            return _wallets.TryGetValue(assetKey, out var wallet) ? wallet.Balance : 0;
+            return _wallets.TryGetValue(OnlineRowKey.WalletAccount(batch.PlayerId, line.AssetId), out var wallet) ? wallet.Balance : 0;
         }
 
-        return _inventories.TryGetValue(assetKey, out var stack) ? stack.Quantity : 0;
+        return _inventories.TryGetValue(OnlineRowKey.InventoryStack(batch.PlayerId, line.AssetId), out var stack) ? stack.Quantity : 0;
     }
 
     /// <summary>
     /// 落账：快照同步 + 账本追加 + 索引维护（分片锁内原子，中途不可见；必须在玩家分片锁内调用）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="planned">预演构造的账本条目。</param>
     /// <param name="occurredTime">落账时刻。</param>
-    private void CommitEntries(long tenantId, long appId, long playerId, List<OnlineLedgerEntry> planned, long occurredTime)
+    private void CommitEntries(long playerId, List<OnlineLedgerEntry> planned, long occurredTime)
     {
-        var playerKey = BuildPlayerKey(tenantId, appId, playerId);
+        var playerKey = OnlineRowKey.LedgerSequence(playerId);
         foreach (var entry in planned)
         {
             if (entry.AssetKind == OnlineAssetKind.Currency)
@@ -276,10 +266,10 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <param name="occurredTime">落账时刻。</param>
     private void UpsertWallet(OnlineLedgerEntry entry, long occurredTime)
     {
-        var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
+        var assetKey = OnlineRowKey.WalletAccount(entry.PlayerId, entry.AssetId);
         if (!_wallets.TryGetValue(assetKey, out var wallet))
         {
-            wallet = new OnlineWalletAccount { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0, };
+            wallet = new OnlineWalletAccount { PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0, };
             _wallets[assetKey] = wallet;
         }
 
@@ -293,10 +283,10 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <param name="occurredTime">落账时刻。</param>
     private void UpsertInventoryStack(OnlineLedgerEntry entry, long occurredTime)
     {
-        var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
+        var assetKey = OnlineRowKey.InventoryStack(entry.PlayerId, entry.AssetId);
         if (!_inventories.TryGetValue(assetKey, out var stack))
         {
-            stack = new OnlineInventoryStack { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0, };
+            stack = new OnlineInventoryStack { PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0, };
             _inventories[assetKey] = stack;
         }
 
@@ -332,14 +322,12 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <returns>账本条目列表（按序升序）。</returns>
     public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
     {
-        var tenantId = query.TenantId;
-        var appId = query.AppId;
         var playerId = query.PlayerId;
         var afterSequenceNumber = query.AfterSequenceNumber;
         var maxCount = query.MaxCount;
         lock (_registryLock)
         {
-            if (!_ledgerByPlayer.TryGetValue(BuildPlayerKey(tenantId, appId, playerId), out var ledger))
+            if (!_ledgerByPlayer.TryGetValue(OnlineRowKey.LedgerSequence(playerId), out var ledger))
             {
                 return Task.FromResult<IReadOnlyList<OnlineLedgerEntry>>(Array.Empty<OnlineLedgerEntry>());
             }
@@ -379,17 +367,15 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>聚合玩家账本带符号数额。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>各资产账本累加。</returns>
-    public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
             var sums = new Dictionary<string, long>();
-            if (_ledgerByPlayer.TryGetValue(BuildPlayerKey(tenantId, appId, playerId), out var ledger))
+            if (_ledgerByPlayer.TryGetValue(OnlineRowKey.LedgerSequence(playerId), out var ledger))
             {
                 foreach (var entry in ledger)
                 {
@@ -404,25 +390,16 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>列举发生过资产活动的玩家。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家标识列表（升序去重）。</returns>
-    public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default)
     {
         lock (_registryLock)
         {
-            var prefix = tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + appId.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":";
             var playerIds = new HashSet<long>();
             foreach (var pair in _ledgerByPlayer)
             {
-                if (!pair.Key.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var segments = pair.Key.Split(':');
-                if (segments.Length == 3 && long.TryParse(segments[2], out var playerId))
+                if (long.TryParse(pair.Key, System.Globalization.CultureInfo.InvariantCulture, out var playerId))
                 {
                     playerIds.Add(playerId);
                 }
@@ -445,21 +422,19 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     /// <returns>账本条目。</returns>
     private OnlineLedgerEntry BuildEntry(OnlineAssetChangeBatch batch, OnlineAssetChangeLine line, long amountBefore, long amountAfter, long occurredTime)
     {
-        var playerKey = BuildPlayerKey(batch.TenantId, batch.AppId, batch.PlayerId);
+        var playerKey = OnlineRowKey.LedgerSequence(batch.PlayerId);
         _sequenceByPlayer.TryGetValue(playerKey, out var sequence);
         sequence++;
         _sequenceByPlayer[playerKey] = sequence;
-        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, new OnlineLedgerHeader { TenantId = batch.TenantId, AppId = batch.AppId, PlayerId = batch.PlayerId, HomeServerId = batch.HomeServerId, InitiatingServerId = batch.InitiatingServerId, Source = batch.Source, Operation = batch.Operation, Reason = batch.Reason, BusinessOrderId = batch.BusinessOrderId, OperatorId = batch.OperatorId, }, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
+        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, new OnlineLedgerHeader { PlayerId = batch.PlayerId, HomeServerId = batch.HomeServerId, InitiatingServerId = batch.InitiatingServerId, Source = batch.Source, Operation = batch.Operation, Reason = batch.Reason, BusinessOrderId = batch.BusinessOrderId, OperatorId = batch.OperatorId, }, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
     }
 
     /// <summary>获取玩家分片锁（不存在则注册）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>分片锁对象。</returns>
-    private object GetPlayerLock(long tenantId, long appId, long playerId)
+    private object GetPlayerLock(long playerId)
     {
-        var playerKey = BuildPlayerKey(tenantId, appId, playerId);
+        var playerKey = OnlineRowKey.LedgerSequence(playerId);
         lock (_registryLock)
         {
             if (!_playerLocks.TryGetValue(playerKey, out var playerLock))
@@ -472,35 +447,4 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         }
     }
 
-    /// <summary>构造玩家键（tenant:app:player）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>玩家键。</returns>
-    private static string BuildPlayerKey(long tenantId, long appId, long playerId)
-    {
-        return tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + appId.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>构造玩家前缀键（tenant:app:player:）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>前缀键。</returns>
-    private static string BuildPlayerPrefix(long tenantId, long appId, long playerId)
-    {
-        return BuildPlayerKey(tenantId, appId, playerId) + ":";
-    }
-
-    /// <summary>构造资产键（tenant:app:player:类别:资产标识）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="assetKind">资产类别。</param>
-    /// <param name="assetId">资产标识。</param>
-    /// <returns>资产键。</returns>
-    private static string BuildAssetKey(long tenantId, long appId, long playerId, OnlineAssetKind assetKind, string assetId)
-    {
-        return BuildPlayerPrefix(tenantId, appId, playerId) + (assetKind == OnlineAssetKind.Currency ? "c" : "i") + ":" + assetId;
-    }
 }

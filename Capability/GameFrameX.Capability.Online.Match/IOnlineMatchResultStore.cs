@@ -46,12 +46,10 @@ public interface IOnlineMatchResultStore
     /// <summary>
     /// 按对局标识查找结算结果。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结果副本；未结算返回 null。</returns>
-    Task<OnlineMatchResult> FindByMatchAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchResult> FindByMatchAsync(string matchId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 落定结算结果（首次胜出：已存在则返回既有结果，不覆盖）。

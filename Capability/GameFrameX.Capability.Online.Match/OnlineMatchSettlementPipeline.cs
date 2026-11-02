@@ -129,7 +129,7 @@ public sealed class OnlineMatchSettlementPipeline
                 // 逐对局异常隔离（GFX-1116）：单对局结算异常不得中断同轮其他对局。
                 try
                 {
-                    await _settlementService.SettleAsync(actor.TenantId, actor.AppId, actor.MatchId, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+                    await _settlementService.SettleAsync(actor.MatchId, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {

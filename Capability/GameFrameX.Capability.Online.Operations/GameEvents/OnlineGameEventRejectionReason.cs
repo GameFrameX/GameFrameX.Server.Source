@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Online.Operations.GameEvents;
 
 /// <summary>
-/// 游戏事件基础校验的拒绝码（四类拒绝；**不是** <c>OnlineErrorCode</c>）。
+/// 游戏事件基础校验的拒绝码（**不是** <c>OnlineErrorCode</c>）。
 /// <para>
 /// 维护约束（红线）：拒绝码描述的是**脏事件本身**（投递方数据问题），不是业务判定结果，
 /// 因而不占用 23 个已冻结的 <c>OnlineErrorCode</c> 成员（对齐 <c>OnlineSocialDecision</c> /
@@ -51,6 +51,6 @@ public enum OnlineGameEventRejectionReason
     /// <summary>必需字段缺失（登记表声明的必需载荷字段未在载荷中提供）。</summary>
     MissingRequiredField = 3,
 
-    /// <summary>作用域非法（TenantId 或 AppId 非正数——无法归属的事件无法被任何下游消费）。</summary>
+    /// <summary>作用域非法（单键化后事件信封已无租户/App 位，基础校验不再产生该拒绝；值保留供历史死信兼容）。</summary>
     InvalidScope = 4,
 }

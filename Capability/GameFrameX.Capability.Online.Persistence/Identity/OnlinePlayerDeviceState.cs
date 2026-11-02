@@ -36,7 +36,7 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// 玩家设备持久化行（一级 store：Identity 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"gameAccountId:deviceIdentifier"，
-/// 与 InMemory <c>BuildDeviceKey</c> 同构）单列唯一索引承接二元组唯一性；行 Id 无自然主键，
+/// 与 InMemory 键同构，唯一构造点 <c>OnlineRowKey.PlayerDevice</c>）单列唯一索引承接二元组唯一性；行 Id 无自然主键，
 /// 由 <c>NextSequenceAsync</c> 分配。
 /// </para>
 /// </summary>

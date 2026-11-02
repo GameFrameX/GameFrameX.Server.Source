@@ -50,8 +50,6 @@ public static class OnlinePresenceEvents
     /// <summary>
     /// 构造在线状态变更事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="sessionId">关联会话标识。</param>
@@ -60,7 +58,7 @@ public static class OnlinePresenceEvents
     /// <param name="reason">变更原因描述。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(long tenantId, long appId, long serverId, long playerId, string sessionId, string fromState, string toState, string reason, string correlationId = null)
+    public static OnlineEvent Create(long serverId, long playerId, string sessionId, string fromState, string toState, string reason, string correlationId = null)
     {
         var payload = new PresenceEventPayload
         {
@@ -84,8 +82,6 @@ public static class OnlinePresenceEvents
             EventType = PresenceChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             PlayerId = playerId,
             Source = Source,

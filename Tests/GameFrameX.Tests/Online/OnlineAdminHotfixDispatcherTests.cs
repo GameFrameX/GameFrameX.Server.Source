@@ -60,8 +60,8 @@ namespace GameFrameX.Tests.Online;
 [Collection(HotfixManagerStaticStateCollection.Name)]
 public sealed class OnlineAdminHotfixDispatcherTests : IDisposable
 {
-    /// <summary>测试用作用域三元组（与组合产物授权作用域一致）。</summary>
-    private const string ScopeBody = "\"TenantId\":1,\"AppId\":1,\"ServerId\":1001";
+    /// <summary>测试用作用域区服键（与组合产物授权作用域一致）。</summary>
+    private const string ScopeBody = "\"ServerId\":1001";
 
     /// <summary>本实例创建的版本目录（Dispose 统一最佳努力清理）。</summary>
     private readonly List<string> _createdVersions = new List<string>();
@@ -76,8 +76,6 @@ public sealed class OnlineAdminHotfixDispatcherTests : IDisposable
         {
             HostOptions = new CapabilityHostOptions
             {
-                TenantId = OnlineCapabilityTestHarness.TenantId,
-                AppId = OnlineCapabilityTestHarness.AppId,
                 ServerId = OnlineCapabilityTestHarness.ServerId,
             },
         };

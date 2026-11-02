@@ -58,13 +58,11 @@ public static class OnlineHotfixEvents
     /// <summary>
     /// 构造版本清单登记事件。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="version">版本号。</param>
     /// <param name="registeredTime">登记时刻（UTC 毫秒）。</param>
     /// <param name="messageCount">协议消息契约行数（清单行集合为空时传 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateVersionRegistered(long tenantId, long appId, string version, long registeredTime, int messageCount)
+    public static OnlineEvent CreateVersionRegistered(string version, long registeredTime, int messageCount)
     {
         var payload = new VersionRegisteredPayload
         {
@@ -84,8 +82,6 @@ public static class OnlineHotfixEvents
             EventType = VersionRegistered,
             OccurredTime = registeredTime > 0 ? registeredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -98,13 +94,11 @@ public static class OnlineHotfixEvents
     /// <summary>
     /// 构造 Hotfix 回滚事件（切换成功后发布；兼容摘要为三类差异计数）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="previousVersion">回滚前活跃版本号。</param>
     /// <param name="targetVersion">回滚到的目标版本号。</param>
     /// <param name="compatibilitySummary">协议兼容报告摘要（Removed/Changed/Added 计数文本）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateRolledBack(long tenantId, long appId, string previousVersion, string targetVersion, string compatibilitySummary)
+    public static OnlineEvent CreateRolledBack(string previousVersion, string targetVersion, string compatibilitySummary)
     {
         var payload = new RolledBackPayload
         {
@@ -124,8 +118,6 @@ public static class OnlineHotfixEvents
             EventType = RolledBack,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,

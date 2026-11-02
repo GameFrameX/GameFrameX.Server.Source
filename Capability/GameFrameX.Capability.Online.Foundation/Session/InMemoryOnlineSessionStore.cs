@@ -114,20 +114,18 @@ public sealed class InMemoryOnlineSessionStore : IOnlineSessionStore
         }
     }
 
-    /// <summary>列出玩家在 (TenantId, AppId) 下的非终态会话。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>列出玩家的非终态会话。</summary>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>非终态会话列表。</returns>
-    public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlineSession>();
             foreach (var session in _sessions.Values)
             {
-                if (session.TenantId == tenantId && session.AppId == appId && session.PlayerId == playerId && !session.State.IsTerminal())
+                if (session.PlayerId == playerId && !session.State.IsTerminal())
                 {
                     result.Add(session);
                 }
@@ -157,20 +155,18 @@ public sealed class InMemoryOnlineSessionStore : IOnlineSessionStore
         }
     }
 
-    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内非终态会话的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
+    /// <summary>统计区服内非终态会话的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。</summary>
     /// <param name="serverId">区服标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>状态 → 会话数（只含非终态状态；无非终态会话时为空表）。</returns>
-    public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var counts = new SortedDictionary<OnlineSessionState, int>();
             foreach (var session in _sessions.Values)
             {
-                if (session.TenantId == tenantId && session.AppId == appId && session.ServerId == serverId && !session.State.IsTerminal())
+                if (session.ServerId == serverId && !session.State.IsTerminal())
                 {
                     counts.TryGetValue(session.State, out var current);
                     counts[session.State] = current + 1;

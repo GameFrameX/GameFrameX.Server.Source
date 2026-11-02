@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Operations.AdminApi;
 ///（旧 <c>ReloadHttpHandler</c> HTTP 通道已退役）。
 /// <para>
 /// 维护约束：四 action 直接映射 <see cref="OnlineHotfixRollbackService"/> 服务面；
-/// 作用域两键（TenantId/AppId）从 admin scope 锚定（清单是 App 级资产，ServerId 归一为 0，body 不携带作用域字段）；
+/// 清单是全局资产（单键化后无作用域锚定，body 不携带作用域字段）；
 /// dispatcher 幂等包裹 = <c>false</c>——服务自幂等（登记按版本判重 / 激活幂等 / 切换命令服务内幂等先行），
 /// 不做双层包裹（grant 族先例）。
 /// </para>
@@ -52,27 +52,24 @@ public static class OnlineAdminHotfixHandlers
     /// <param name="service">Hotfix 回滚受控服务（幂等基建缺席未装配时为 null，action 不可达）。</param>
     public static void RegisterHotfixActions(AdminActionRegistry registry, OnlineHotfixRollbackService service)
     {
-        registry.Register("register_hotfix_manifest", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RegisterHotfixManifestAsync(request, scope, cancellationToken, service)), false);
-        registry.Register("activate_hotfix_version", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => ActivateHotfixVersionAsync(request, scope, cancellationToken, service)), false);
-        registry.Register("check_hotfix_compatibility", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => CheckHotfixCompatibilityAsync(request, scope, cancellationToken, service)), false);
-        registry.Register("rollback_hotfix_version", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RollbackHotfixVersionAsync(request, scope, cancellationToken, service)), false);
+        registry.Register("register_hotfix_manifest", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RegisterHotfixManifestAsync(request, cancellationToken, service)), false);
+        registry.Register("activate_hotfix_version", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => ActivateHotfixVersionAsync(request, cancellationToken, service)), false);
+        registry.Register("check_hotfix_compatibility", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => CheckHotfixCompatibilityAsync(request, cancellationToken, service)), false);
+        registry.Register("rollback_hotfix_version", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RollbackHotfixVersionAsync(request, cancellationToken, service)), false);
     }
 
     /// <summary>
     /// register_hotfix_manifest：登记版本协议清单（发布流水线簿记；可携制品字段经获取器链先行落盘）。
     /// </summary>
     /// <param name="request">请求。</param>
-    /// <param name="scope">作用域（两键锚定：TenantId/AppId）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <param name="service">Hotfix 回滚受控服务。</param>
     /// <returns>登记回执。</returns>
-    private static async Task<object> RegisterHotfixManifestAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
+    private static async Task<object> RegisterHotfixManifestAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
     {
         var manifest = new OnlineHotfixProtocolManifest
         {
             Version = OnlineAdminApiContract.RequireString(request, "Version"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             Messages = ReadProtocolMessages(request),
             RegisteredTime = OnlineAdminApiContract.ReadOptionalInt64(request, "RegisteredTime") ?? OnlineAdminApiContract.NowSeconds() * 1000,
             ArtifactSourceUrl = OnlineAdminApiContract.ReadOptionalString(request, "ArtifactSourceUrl"),
@@ -90,14 +87,13 @@ public static class OnlineAdminHotfixHandlers
     /// activate_hotfix_version：激活已登记版本为活跃基线（装配面初始化入口）。
     /// </summary>
     /// <param name="request">请求。</param>
-    /// <param name="scope">作用域（两键锚定：TenantId/AppId）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <param name="service">Hotfix 回滚受控服务。</param>
     /// <returns>激活回执。</returns>
-    private static async Task<object> ActivateHotfixVersionAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
+    private static async Task<object> ActivateHotfixVersionAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
     {
         var version = OnlineAdminApiContract.RequireString(request, "Version");
-        OnlineAdminApiContract.Unwrap(await service.ActivateAsync(new OnlineScope(scope.TenantId, scope.AppId, 0), version, cancellationToken).ConfigureAwait(false));
+        OnlineAdminApiContract.Unwrap(await service.ActivateAsync(version, cancellationToken).ConfigureAwait(false));
         return new HotfixVersionActivateResponse
         {
             Version = version,
@@ -109,14 +105,13 @@ public static class OnlineAdminHotfixHandlers
     /// check_hotfix_compatibility：协议兼容只读预检（回滚演练 Runbook 面；不经幂等、不落审计、不触执行器）。
     /// </summary>
     /// <param name="request">请求。</param>
-    /// <param name="scope">作用域（两键锚定：TenantId/AppId）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <param name="service">Hotfix 回滚受控服务。</param>
     /// <returns>兼容检查报告。</returns>
-    private static async Task<object> CheckHotfixCompatibilityAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
+    private static async Task<object> CheckHotfixCompatibilityAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
     {
         var targetVersion = OnlineAdminApiContract.RequireString(request, "TargetVersion");
-        var report = OnlineAdminApiContract.Unwrap(await service.CheckProtocolCompatibilityAsync(new OnlineScope(scope.TenantId, scope.AppId, 0), targetVersion, cancellationToken).ConfigureAwait(false));
+        var report = OnlineAdminApiContract.Unwrap(await service.CheckProtocolCompatibilityAsync(targetVersion, cancellationToken).ConfigureAwait(false));
         return new HotfixCompatibilityCheckResponse
         {
             TargetVersion = targetVersion,
@@ -131,15 +126,13 @@ public static class OnlineAdminHotfixHandlers
     /// rollback_hotfix_version：热更版本受控切换命令（幂等先行 → 兼容闸 → 审计先行 → 执行器 → 切活跃 → 事件）。
     /// </summary>
     /// <param name="request">请求。</param>
-    /// <param name="scope">作用域（两键锚定：TenantId/AppId）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <param name="service">Hotfix 回滚受控服务。</param>
     /// <returns>切换回执。</returns>
-    private static async Task<object> RollbackHotfixVersionAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
+    private static async Task<object> RollbackHotfixVersionAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineHotfixRollbackService service)
     {
         var rollbackRequest = new OnlineHotfixRollbackRequest
         {
-            Scope = new OnlineScope(scope.TenantId, scope.AppId, 0),
             TargetVersion = OnlineAdminApiContract.RequireString(request, "TargetVersion"),
             OperatorId = OnlineAdminApiContract.RequireString(request, "OperatorId"),
             OperatorName = OnlineAdminApiContract.ReadOptionalString(request, "OperatorName"),
@@ -218,7 +211,7 @@ public static class OnlineAdminHotfixHandlers
         /// <summary>获取或设置版本号。</summary>
         public string Version { get; set; }
 
-        /// <summary>获取或设置是否新登记（同 (作用域, 版本号) 已存在为 false，幂等回执不覆盖）。</summary>
+        /// <summary>获取或设置是否新登记（同版本号已存在为 false，幂等回执不覆盖）。</summary>
         public bool IsNewRegistered { get; set; }
     }
 

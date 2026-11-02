@@ -289,11 +289,11 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证反预言：跨 App 作用域访问他 App 赛季的四种操作一律与「赛季不存在」同构返回 ResourceNotFound，
-        /// 既不泄露存在性也不产生副作用。
+        /// 验证赛季是全局域数据（单键化 D4：同键即同季）——跨区服作用域可操作同一赛季
+        ///（重复开赛按状态机拒绝、结束/快照/结算作用于同一季）；未知赛季仍与「不存在」同构拒绝。
         /// </summary>
         [Fact]
-        public async Task CrossApp_SeasonOperations_ShouldBeResourceNotFound()
+        public async Task CrossServer_Operations_ShouldShareGlobalSeason()
         {
             var harness = new OnlineSeasonTestHarness();
             await harness.CreateBoardAsync("board-x");
@@ -301,20 +301,23 @@ namespace GameFrameX.Tests.Online
             await harness.CreateSeasonAsync("s1", "board-x", OnlineSeasonTestHarness.Rule(1, 1, 100));
             await harness.StartSeasonAsync("s1");
 
-            var scope = harness.Scope(OnlineSeasonTestHarness.OtherAppId);
+            var scope = harness.Scope(OnlineSeasonTestHarness.OtherServerId);
             var start = await harness.SeasonService.StartAsync(scope, "s1", OnlineSeasonTestHarness.Now + 400);
             var end = await harness.SeasonService.EndAsync(scope, "s1", OnlineSeasonTestHarness.Now + 400);
             var snapshot = await harness.SeasonService.GetSnapshotAsync(scope, "s1");
-            var settle = await harness.SeasonService.SettleAsync(scope, "s1", OnlineSeasonTestHarness.Now + 400);
+            var settle = await harness.SeasonService.SettleAsync(scope, "s1", OnlineSeasonTestHarness.Now + 500);
+            var unknownSnapshot = await harness.SeasonService.GetSnapshotAsync(scope, "s-absent");
 
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, start.Code);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, end.Code);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, snapshot.Code);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, settle.Code);
+            // 同键即同季：已开赛的季再开赛按状态机拒绝（不是按作用域拒绝）；结束后的历史快照跨区服可读。
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, start.Code);
+            Assert.True(end.IsSuccess, end.Message);
+            Assert.True(snapshot.IsSuccess, snapshot.Message);
+            Assert.True(settle.IsSuccess, settle.Message);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, unknownSnapshot.Code);
 
-            // 本 App 赛季不受影响：仍在进行中，榜单未被误清。
-            Assert.Equal(OnlineSeasonState.Active, await harness.SeasonStateAsync("s1"));
-            Assert.Single(await harness.BoardEntriesAsync("board-x"));
+            // 全季生命周期经跨区服作用域正常推进：已结算、榜单随结算归档清空（成绩入历史快照）。
+            Assert.Equal(OnlineSeasonState.Settled, await harness.SeasonStateAsync("s1"));
+            Assert.Empty(await harness.BoardEntriesAsync("board-x"));
         }
 
         /// <summary>
@@ -390,7 +393,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
-            Assert.Null(await harness.SeasonStore.FindAsync(OnlineSeasonTestHarness.TenantId, OnlineSeasonTestHarness.AppId, "s1"));
+            Assert.Null(await harness.SeasonStore.FindAsync("s1"));
         }
 
         /// <summary>

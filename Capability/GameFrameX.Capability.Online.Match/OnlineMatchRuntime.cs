@@ -30,7 +30,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
@@ -47,7 +46,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 且单个 Actor 的失败不会让其他对局状态不一致。
 /// </para>
 /// <para>
-/// 登记表单实例约束（红线）：同一 (TenantId, AppId, MatchId) 至多一个 Actor 实例——
+/// 登记表单实例约束（红线）：同一 MatchId 至多一个 Actor 实例——
 /// 注册一律 GetOrAdd 收敛（并发装载/建局冲突时后到者复用在册实例），
 /// 保证同一对局的所有请求方与 Tick 快照共享同一引用，杜绝双实例写入冲突。
 /// </para>
@@ -75,7 +74,7 @@ public sealed class OnlineMatchRuntime
     private readonly Dictionary<int, IOnlineMatchGame> _games = new();
 
     /// <summary>
-    /// Actor 登记表：键 = (TenantId, AppId, MatchId)。
+    /// Actor 登记表：键 = MatchId。
     /// <para>
     /// 单实例不变量（红线）：同一键至多一个 Actor 实例。注册一律走 GetOrAdd——
     /// 并发装载/建局冲突时先到者胜出，后到者放弃本次构造的实例并复用在册实例；
@@ -180,8 +179,6 @@ public sealed class OnlineMatchRuntime
 
         var match = new OnlineMatch
         {
-            TenantId = assignment.TenantId,
-            AppId = assignment.AppId,
             ServerId = assignment.ServerId,
             MatchId = assignment.MatchId,
             AssignmentId = assignment.AssignmentId ?? string.Empty,
@@ -225,7 +222,7 @@ public sealed class OnlineMatchRuntime
         var actor = new OnlineMatchActor(persisted, game, _store, _eventPublisher, _options);
         // GetOrAdd 单实例收敛：并发解析可能已装载同键 Actor（本方落库后、注册前），
         // 此时放弃本次构造的实例、回执走复用路径，严禁盲写覆盖产生孤儿。
-        var registered = _actors.GetOrAdd(BuildKey(persisted.TenantId, persisted.AppId, persisted.MatchId), actor);
+        var registered = _actors.GetOrAdd(persisted.MatchId ?? string.Empty, actor);
 
         return OnlineResult<OnlineMatchSnapshot>.Ok(registered.GetSnapshot());
     }
@@ -233,25 +230,23 @@ public sealed class OnlineMatchRuntime
     /// <summary>
     /// 取得（必要时装载）指定对局的 Actor。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>对局 Actor；不存在或未注册玩法返回 null。</returns>
-    public async Task<OnlineMatchActor> ResolveActorAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+    public async Task<OnlineMatchActor> ResolveActorAsync(string matchId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(matchId))
         {
             return null;
         }
 
-        var key = BuildKey(tenantId, appId, matchId);
+        var key = matchId;
         if (_actors.TryGetValue(key, out var cached))
         {
             return cached;
         }
 
-        var match = await _store.FindAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+        var match = await _store.FindAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (match == null)
         {
             return null;
@@ -294,7 +289,7 @@ public sealed class OnlineMatchRuntime
                 continue;
             }
 
-            var key = BuildKey(actor.TenantId, actor.AppId, actor.MatchId);
+            var key = actor.MatchId;
 
             // 原子条件移除：仅当在册实例仍是本快照实例时摘除（并发 Tick / 重装载竞争下不误删他人）。
             if (_actors.TryRemove(new KeyValuePair<string, OnlineMatchActor>(key, actor)))
@@ -302,26 +297,10 @@ public sealed class OnlineMatchRuntime
                 Interlocked.Increment(ref _releasedActorCount);
             }
 
-            await _store.DeleteAsync(actor.TenantId, actor.AppId, actor.MatchId, cancellationToken).ConfigureAwait(false);
+            await _store.DeleteAsync(actor.MatchId, cancellationToken).ConfigureAwait(false);
         }
 
         return results;
     }
 
-    /// <summary>
-    /// 构造作用域隔离键。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="matchId">对局标识。</param>
-    /// <returns>复合键。</returns>
-    private static string BuildKey(long tenantId, long appId, string matchId)
-    {
-        return string.Concat(
-            tenantId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            appId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            matchId ?? string.Empty);
-    }
 }

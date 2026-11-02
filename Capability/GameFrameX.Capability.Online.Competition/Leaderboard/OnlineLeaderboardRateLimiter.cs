@@ -35,7 +35,7 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 /// <summary>
 /// 排行榜提交限流器（防刷校验的高频半边：高频提交被拒、正常玩家不受影响）。
 /// <para>
-/// 维护约束（天花板）：滑动窗口计数，按 (TenantId, AppId, PlayerId) 分桶——阈值与窗口由
+/// 维护约束（天花板）：滑动窗口计数，按 PlayerId 分桶——阈值与窗口由
 /// <see cref="OnlineLeaderboardOptions"/> 覆盖；只在幂等 Execute 分支计数（重放不烧配额）。
 /// 形态对齐 <c>OnlineMatchRateLimiter</c> / <c>OnlineChatRateLimiter</c>（滑动窗口，不新增依赖）；
 /// 桶在窗口过期后整桶重置，进程重启即清零——限流是速率保护不是配额，可接受；多实例共享存储归运行时装配。
@@ -46,7 +46,7 @@ public sealed class OnlineLeaderboardRateLimiter
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>窗口计数桶：键 = (TenantId, AppId, PlayerId)。</summary>
+    /// <summary>窗口计数桶：键 = PlayerId。</summary>
     private readonly Dictionary<string, Window> _windows = new();
 
     /// <summary>上一次全量清扫时刻（UTC 毫秒）。</summary>
@@ -80,15 +80,13 @@ public sealed class OnlineLeaderboardRateLimiter
     /// <remarks>
     /// Tries to acquire one submission slot for the player within the sliding window.
     /// </remarks>
-    /// <param name="tenantId">租户 ID / The tenant id</param>
-    /// <param name="appId">应用 ID / The app id</param>
     /// <param name="playerId">玩家 ID / The player id</param>
     /// <param name="nowUnixMilliseconds">当前 Unix 毫秒时间戳（0 表示取当前时间）/ The current Unix time in milliseconds (0 for now)</param>
     /// <returns>窗口未满获取成功返回 <c>true</c>；已满返回 <c>false</c> / <c>true</c> if acquired within the window; <c>false</c> when the window is full</returns>
-    public bool TryAcquire(long tenantId, long appId, long playerId, long nowUnixMilliseconds = 0)
+    public bool TryAcquire(long playerId, long nowUnixMilliseconds = 0)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var key = tenantId + ":" + appId + ":" + playerId;
+        var key = playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         lock (_syncRoot)
         {

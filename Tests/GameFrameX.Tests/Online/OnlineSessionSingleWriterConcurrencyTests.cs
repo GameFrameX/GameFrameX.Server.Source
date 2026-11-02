@@ -46,12 +46,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineSessionSingleWriterConcurrencyTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -72,7 +66,7 @@ namespace GameFrameX.Tests.Online
                 var writeGate = new OnlineSessionWriteGate();
                 var sessions = new OnlineSessionManager(store, recorder, writeGate);
                 var tokens = new OnlineSessionTokenService(store, recorder, sessions, writeGate);
-                var scope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
+                var scope = new OnlineScope(ServerId, PlayerId);
 
                 var issued = await tokens.IssueSessionAsync(scope, 3600, OnlineMultiDevicePolicy.Coexist, null);
                 Assert.True(issued.IsSuccess);
@@ -117,7 +111,7 @@ namespace GameFrameX.Tests.Online
 
 
             /// <summary>并发计数（本桩不承载该路径，返回空字典）。</summary>
-            public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult<IReadOnlyDictionary<OnlineSessionState, int>>(new Dictionary<OnlineSessionState, int>());
             }
@@ -168,15 +162,15 @@ namespace GameFrameX.Tests.Online
                 }
             }
 
-            /// <summary>列出玩家在 (TenantId, AppId) 下的非终态会话（返回副本）。</summary>
-            public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            /// <summary>列出玩家的非终态会话（返回副本）。</summary>
+            public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
             {
                 lock (_syncRoot)
                 {
                     var result = new List<OnlineSession>();
                     foreach (var session in _sessions.Values)
                     {
-                        if (session.TenantId == tenantId && session.AppId == appId && session.PlayerId == playerId && !session.State.IsTerminal())
+                        if (session.PlayerId == playerId && !session.State.IsTerminal())
                         {
                             result.Add(Clone(session));
                         }
@@ -227,8 +221,6 @@ namespace GameFrameX.Tests.Online
                 return new OnlineSession
                 {
                     Id = source.Id,
-                    TenantId = source.TenantId,
-                    AppId = source.AppId,
                     ServerId = source.ServerId,
                     GameAccountId = source.GameAccountId,
                     PlayerId = source.PlayerId,

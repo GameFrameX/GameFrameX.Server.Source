@@ -102,8 +102,6 @@ public class OnlineCapabilityComposeTests
         {
             HostOptions = new CapabilityHostOptions
             {
-                TenantId = OnlineCapabilityTestHarness.TenantId,
-                AppId = OnlineCapabilityTestHarness.AppId,
                 ServerId = OnlineCapabilityTestHarness.ServerId,
             },
         };
@@ -453,13 +451,14 @@ public class OnlineCapabilityComposeTests
     }
 
     /// <summary>
-    /// 族配置段作用域非法（缺 TenantId / TenantId=0）：族基建读取三元组即 fail-fast，消息带配置路径。
+    /// 族配置段作用域非法（缺 ServerId / ServerId=0）：族基建读取区服键即 fail-fast，消息带配置路径
+    ///（单键化 D4 后族段只读 ServerId；遗留 TenantId/AppId 键为废键，不参与校验）。
     /// </summary>
     /// <param name="familySectionJson">族配置段原文。</param>
     [Theory]
-    [InlineData("{\"AppId\":1,\"ServerId\":1001}")]
-    [InlineData("{\"TenantId\":0,\"AppId\":1,\"ServerId\":1001}")]
-    public void Compose_FamilySectionTenantInvalid_FailsFast(string familySectionJson)
+    [InlineData("{\"TenantId\":1,\"AppId\":1}")]
+    [InlineData("{\"TenantId\":1,\"AppId\":1,\"ServerId\":0}")]
+    public void Compose_FamilySectionServerKeyInvalid_FailsFast(string familySectionJson)
     {
         var options = CreateBareOptions(JsonDocument.Parse(familySectionJson).RootElement.Clone());
         options.Override<IOnlinePlayerDirectory>(new OnlineCapabilityTestHarness.EmptyPlayerDirectory());
@@ -467,7 +466,7 @@ public class OnlineCapabilityComposeTests
 
         var exception = Assert.Throws<InvalidOperationException>(() => CapabilityComposition.Compose(new OnlineCapabilityFamily(), options));
 
-        Assert.Contains("Online.TenantId", exception.Message);
+        Assert.Contains("Online.ServerId", exception.Message);
     }
 
     /// <summary>
@@ -477,7 +476,7 @@ public class OnlineCapabilityComposeTests
     public void Compose_HostOptionsInvalid_FailsFast()
     {
         var options = OnlineCapabilityTestHarness.CreateOptions();
-        options.HostOptions.TenantId = 0;
+        options.HostOptions.ServerId = 0;
 
         var exception = Assert.Throws<InvalidOperationException>(() => CapabilityComposition.Compose(new OnlineCapabilityFamily(), options));
 

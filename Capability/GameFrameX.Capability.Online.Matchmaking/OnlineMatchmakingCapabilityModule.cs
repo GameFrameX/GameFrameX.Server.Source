@@ -152,11 +152,11 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
 
         context.AddTickJob("matchmaker-run", async ct =>
         {
-            await _matchmaker.RunOnceAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _matchmaker.RunOnceAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("match-ticket-expiry-sweep", async ct =>
         {
-            await _matchTickets.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+            await _matchTickets.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
     }
 

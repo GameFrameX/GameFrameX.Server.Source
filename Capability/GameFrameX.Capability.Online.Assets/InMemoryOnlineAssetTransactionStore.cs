@@ -135,8 +135,6 @@ public sealed class InMemoryOnlineAssetTransactionStore : IOnlineAssetTransactio
             TransactionId = source.TransactionId,
             IdempotencyKey = source.IdempotencyKey,
             RequestDigest = source.RequestDigest,
-            TenantId = source.TenantId,
-            AppId = source.AppId,
             PlayerId = source.PlayerId,
             HomeServerId = source.HomeServerId,
             InitiatingServerId = source.InitiatingServerId,

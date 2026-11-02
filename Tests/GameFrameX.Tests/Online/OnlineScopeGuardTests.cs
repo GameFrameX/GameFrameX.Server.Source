@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineScopeGuard 作用域越界判定测试（跨租户/跨 App/跨服稳定拒绝 3xxx）。
+    /// OnlineScopeGuard 作用域越界判定测试（跨服 / 缺失稳定拒绝 3xxx）。
     /// </summary>
     public class OnlineScopeGuardTests
     {
@@ -45,8 +45,8 @@ namespace GameFrameX.Tests.Online
         public void Validate_WithMatchingScope_ShouldAccept()
         {
             // Arrange
-            var target = new OnlineScope(1, 10, 100, 10001);
-            var actual = new OnlineScope(1, 10, 100, 10001);
+            var target = new OnlineScope(100, 10001);
+            var actual = new OnlineScope(100, 10001);
 
             // Act
             var error = OnlineScopeGuard.Validate(target, actual);
@@ -56,48 +56,14 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证租户不一致映射跨租户拒绝码。
-        /// </summary>
-        [Fact]
-        public void Validate_WithDifferentTenant_ShouldReturnCrossTenantDenied()
-        {
-            // Arrange
-            var target = new OnlineScope(2, 10, 100);
-            var actual = new OnlineScope(1, 10, 100);
-
-            // Act
-            var error = OnlineScopeGuard.Validate(target, actual);
-
-            // Assert
-            Assert.Equal(OnlineErrorCode.CrossTenantDenied, error);
-        }
-
-        /// <summary>
-        /// 验证 App 不一致映射跨 App 拒绝码。
-        /// </summary>
-        [Fact]
-        public void Validate_WithDifferentApp_ShouldReturnCrossAppDenied()
-        {
-            // Arrange
-            var target = new OnlineScope(1, 11, 100);
-            var actual = new OnlineScope(1, 10, 100);
-
-            // Act
-            var error = OnlineScopeGuard.Validate(target, actual);
-
-            // Assert
-            Assert.Equal(OnlineErrorCode.CrossAppDenied, error);
-        }
-
-        /// <summary>
         /// 验证区服不一致映射区服作用域拒绝码。
         /// </summary>
         [Fact]
         public void Validate_WithDifferentServer_ShouldReturnServerScopeDenied()
         {
             // Arrange
-            var target = new OnlineScope(1, 10, 101);
-            var actual = new OnlineScope(1, 10, 100);
+            var target = new OnlineScope(101);
+            var actual = new OnlineScope(100);
 
             // Act
             var error = OnlineScopeGuard.Validate(target, actual);
@@ -107,24 +73,22 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证租户优先于 App/区服判定（多层不一致时按数据隔离根边界报告）。
+        /// 验证单键化后守卫只映射跨服（3004）与缺失（3005）两种拒绝；3002/3003 保留枚举位但不再产生。
         /// </summary>
         [Fact]
-        public void Validate_WithMultipleMismatches_ShouldReportTenantFirst()
+        public void Validate_WithAnyScopeMismatch_ShouldNeverProduceCrossTenantOrCrossApp()
         {
-            // Arrange
-            var target = new OnlineScope(2, 11, 101);
-            var actual = new OnlineScope(1, 10, 100);
-
-            // Act
-            var error = OnlineScopeGuard.Validate(target, actual);
+            // Arrange：玩家位差异不是越界（同区服不同主体合法）；区服位差异唯一越界源。
+            var sameServerDifferentPlayer = OnlineScopeGuard.Validate(new OnlineScope(100), new OnlineScope(100, 10001));
+            var crossServer = OnlineScopeGuard.Validate(new OnlineScope(101), new OnlineScope(100));
 
             // Assert
-            Assert.Equal(OnlineErrorCode.CrossTenantDenied, error);
+            Assert.Null(sameServerDifferentPlayer);
+            Assert.Equal(OnlineErrorCode.ServerScopeDenied, crossServer);
         }
 
         /// <summary>
-        /// 验证缺失任一作用域（null 或三元组不完整）映射作用域缺失码。
+        /// 验证缺失任一作用域（null 或区服位非正值）映射作用域缺失码。
         /// </summary>
         [Theory]
         [InlineData(true, false)]
@@ -132,8 +96,8 @@ namespace GameFrameX.Tests.Online
         public void Validate_WithMissingScope_ShouldReturnScopeMissing(bool targetNull, bool actualNull)
         {
             // Arrange
-            var target = targetNull ? null : new OnlineScope(1, 10, 100);
-            var actual = actualNull ? null : new OnlineScope(1, 10, 100);
+            var target = targetNull ? null : new OnlineScope(100);
+            var actual = actualNull ? null : new OnlineScope(100);
 
             // Act
             var error = OnlineScopeGuard.Validate(target, actual);

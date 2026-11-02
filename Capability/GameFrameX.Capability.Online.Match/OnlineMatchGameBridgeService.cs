@@ -155,7 +155,7 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         }
 
         var matchId = DeriveMatchId(scope.ServerId, roomId, round);
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");
@@ -222,7 +222,7 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         }
 
         var matchId = DeriveMatchId(scope.ServerId, roomId, round);
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             return Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");
@@ -287,13 +287,11 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
     /// <returns>对局 Actor 结果（失败携带错误码与描述）。</returns>
     private async Task<OnlineResult<OnlineMatchActor>> ResolveOrCreateActorAsync(OnlineScope scope, long roomId, string matchId, IReadOnlyList<long> playerIds, long now, CancellationToken cancellationToken)
     {
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
         if (actor == null)
         {
             var assignment = new OnlineMatchAssignment
             {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
                 ServerId = scope.ServerId,
                 MatchId = matchId,
                 AssignmentId = BuildAssignmentId(scope.ServerId, roomId),
@@ -314,7 +312,7 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
                 }
             }
 
-            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+            actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
             if (actor == null)
             {
                 return OnlineResult<OnlineMatchActor>.Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
@@ -459,14 +457,14 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
     }
 
     /// <summary>
-    /// 以既有作用域三元组派生玩家位作用域。
+    /// 以既有作用域派生玩家位作用域。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <returns>玩家级作用域。</returns>
     private static OnlineScope WithPlayer(OnlineScope scope, long playerId)
     {
-        return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, playerId);
+        return new OnlineScope(scope.ServerId, playerId);
     }
 
     /// <summary>

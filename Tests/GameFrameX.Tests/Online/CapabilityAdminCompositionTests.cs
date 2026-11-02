@@ -89,7 +89,7 @@ public class CapabilityAdminCompositionTests
         var port = FindFreeAdminPort();
         var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
         {
-            HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 },
+            HostOptions = new CapabilityHostOptions { ServerId = 1 },
             Filter = new CapabilityAssemblyFilter(enabledIds),
         };
         options.UseAdminApi(adminApiOptions =>
@@ -280,7 +280,7 @@ public class CapabilityAdminCompositionTests
         {
             var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 },
+                HostOptions = new CapabilityHostOptions { ServerId = 1 },
                 Filter = new CapabilityAssemblyFilter(new[] { "mech-first" }),
             };
             options.UseAdminApi(adminApiOptions =>
@@ -311,7 +311,7 @@ public class CapabilityAdminCompositionTests
         {
             var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
             {
-                HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 },
+                HostOptions = new CapabilityHostOptions { ServerId = 1 },
                 Filter = new CapabilityAssemblyFilter(new[] { "mech-first" }),
                 EnableRuntime = false,
             };

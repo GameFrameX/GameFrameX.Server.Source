@@ -60,23 +60,19 @@ public interface IOnlineFriendStore
     /// <summary>
     /// 按无向对查找关系（两个方向的入参都命中同一条记录）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="leftPlayerId">一侧玩家标识（无需预先规范化）。</param>
     /// <param name="rightPlayerId">另一侧玩家标识（无需预先规范化）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>关系副本；不存在返回 null。</returns>
-    Task<OnlineFriendship> FindAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default);
+    Task<OnlineFriendship> FindAsync(long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义改写关系状态（接受 / 拒绝 / 过期 / 删除 / 重新发起走此入口）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default);
+    Task<OnlineFriendship> UpdateStateAsync(FriendshipStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义改写关系状态，并在**同一临界区内**执行好友上限判定（接受路径的原子收口点）。
@@ -90,13 +86,11 @@ public interface IOnlineFriendStore
     /// 其余情形的 CAS 语义与 <see cref="UpdateStateAsync"/> 完全一致。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记）。</param>
     /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空。</returns>
-    Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default);
+    Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义把静止态关系重新发起为待答复请求（「删除后可重新添加」）。
@@ -106,30 +100,24 @@ public interface IOnlineFriendStore
     /// 有效期也必须重置。三项须在同一临界区内落到同一条记录，故不拆成「改状态 + 再改方向」两次写入。
     /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="renewal">重新发起载荷（关系定位 + 期望状态 + 发起人/被请求方 + 变更时刻与失效时刻）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default);
+    Task<OnlineFriendship> RenewRequestAsync(FriendshipRenewal renewal, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家的全部关系记录（任意状态；好友列表与待答复请求列表的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>关系副本列表。</returns>
-    Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出作用域内处于指定状态的全部关系（超期扫描的输入）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="state">关系状态。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>关系副本列表。</returns>
-    Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(OnlineFriendshipState state, CancellationToken cancellationToken = default);
 }

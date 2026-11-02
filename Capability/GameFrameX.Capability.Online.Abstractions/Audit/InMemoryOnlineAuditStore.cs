@@ -40,8 +40,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 /// 统一审计内存存储（单进程默认实现；生产持久化实现归运行时装配）。
 /// <para>
 /// 维护约束：「EventId 判重 + 落档」在 <see cref="_gate"/> 锁内**同一临界区**完成（幂等半边的
-/// 结构性保证）；作用域索引键为 (TenantId, AppId) 两键——审计是跨区服检索域，区服过滤随查询载荷下推；
-/// 每作用域维护按跨域检索全序（OccurredTime 倒序, EventId 序数升序）排列的有序索引，
+/// 结构性保证）；单键化（D4）后为单桶全序索引（无作用域分片键）——审计是跨区服检索域，区服过滤随查询载荷下推；
+/// 维护按跨域检索全序（OccurredTime 倒序, EventId 序数升序）排列的有序索引，
 /// <see cref="AppendAsync"/> 在同一临界区内同步插入（只插不删——记录只追加不淘汰，
 /// EventId 全局唯一保证键无重复）；出入参防御性拷贝（持久化行语义，调用方引用不得别名存储内部状态）。
 /// </para>
@@ -69,10 +69,11 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
     private readonly HashSet<string> _knownEventIds = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 作用域级有序索引（键 = "TenantId|AppId"；值 = 按跨域检索全序排列的落档记录，
-    /// 正序枚举即 (OccurredTime 倒序, EventId 序数升序)——检索与游标定位的唯一排序事实来源）。
+    /// 全序有序索引（按跨域检索全序排列的落档记录，
+    /// 正序枚举即 (OccurredTime 倒序, EventId 序数升序)——检索与游标定位的唯一排序事实来源；
+    /// 单键化 D4 后无作用域分片键，单桶承载全部落档记录）。
     /// </summary>
-    private readonly Dictionary<string, SortedList<OnlineAuditSortKey, OnlineAuditRecord>> _recordsByScope = new(StringComparer.Ordinal);
+    private readonly SortedList<OnlineAuditSortKey, OnlineAuditRecord> _records = new(OnlineAuditSortKeyComparer.Instance);
 
     /// <summary>
     /// 追加一条审计记录（锁内判重 + 落档 + 有序索引插入同一临界区）。
@@ -94,14 +95,7 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
                 return Task.FromResult(false);
             }
 
-            var scopeKey = BuildScopeKey(record.TenantId, record.AppId);
-            if (!_recordsByScope.TryGetValue(scopeKey, out var bucket))
-            {
-                bucket = new SortedList<OnlineAuditSortKey, OnlineAuditRecord>(OnlineAuditSortKeyComparer.Instance);
-                _recordsByScope[scopeKey] = bucket;
-            }
-
-            bucket.Add(new OnlineAuditSortKey(record.OccurredTime, record.EventId), CloneRecord(record));
+            _records.Add(new OnlineAuditSortKey(record.OccurredTime, record.EventId), CloneRecord(record));
             return Task.FromResult(true);
         }
     }
@@ -109,9 +103,9 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
     /// <summary>
     /// 按查询载荷检索审计页：索引上二分定位起点后有界扫描，过滤 + keyset 游标 + 全序 + 页大小全部在本实现内完成。
     /// </summary>
-    /// <param name="query">存储层查询载荷（作用域 / 过滤维度 / 已解码游标 / 页大小已由调用方校验）。</param>
+    /// <param name="query">存储层查询载荷（过滤维度 / 已解码游标 / 页大小已由调用方校验）。</param>
     /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
-    /// <returns>按全序排列、至多 PageSize 行的结果页（行集为防御性拷贝）；作用域外结构性不可见。</returns>
+    /// <returns>按全序排列、至多 PageSize 行的结果页（行集为防御性拷贝）。</returns>
     public Task<OnlineAuditStorePage> QueryAsync(OnlineAuditStoreQuery query, CancellationToken cancellationToken = default)
     {
         if (query == null)
@@ -124,17 +118,14 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
         var hasMore = false;
         lock (_gate)
         {
-            if (_recordsByScope.TryGetValue(BuildScopeKey(query.TenantId, query.AppId), out var bucket))
-            {
-                hasMore = CollectPageFromBucket(bucket, query, pageSize, records);
-            }
+            hasMore = CollectPageFromBucket(_records, query, pageSize, records);
         }
 
         return Task.FromResult(new OnlineAuditStorePage(records, hasMore));
     }
 
     /// <summary>
-    /// 在作用域索引上有界顺序扫描一页：游标起点定位后命中过滤即收，页满后再探到一行命中即判
+    /// 在全序索引上有界顺序扫描一页：游标起点定位后命中过滤即收，页满后再探到一行命中即判
     /// HasMore 并停止；OccurredTime 低于时间窗起点即提前终止（全序倒序保证其后更旧，其后无更多行）。
     /// 须在 <see cref="_gate"/> 临界区内调用（与追加共用同一索引快照）；收入页行的均为防御性拷贝。
     /// </summary>
@@ -172,17 +163,6 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// 构造作用域索引键（"TenantId|AppId"；审计是跨区服检索域，区服维度不进作用域键）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <returns>作用域索引键。</returns>
-    private static string BuildScopeKey(long tenantId, long appId)
-    {
-        return tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + appId.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -311,8 +291,6 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
             Domain = record.Domain,
             EventType = record.EventType,
             OccurredTime = record.OccurredTime,
-            TenantId = record.TenantId,
-            AppId = record.AppId,
             ServerId = record.ServerId,
             PlayerId = record.PlayerId,
             OperatorId = record.OperatorId,

@@ -44,12 +44,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineSessionTokenServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -89,7 +83,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out var _);
 
             // Act
-            var noPlayer = await service.IssueSessionAsync(new OnlineScope(TenantId, AppId, ServerId), 3600, OnlineMultiDevicePolicy.LatestWins, null);
+            var noPlayer = await service.IssueSessionAsync(new OnlineScope(ServerId), 3600, OnlineMultiDevicePolicy.LatestWins, null);
             var badTtl = await service.IssueSessionAsync(CreatePlayerScope(), 0, OnlineMultiDevicePolicy.LatestWins, null);
 
             // Assert
@@ -230,7 +224,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证跨租户/跨区服刷新被拒绝（作用域一致性）。
+        /// 验证跨区服刷新被拒绝（作用域一致性）。
         /// </summary>
         [Fact]
         public async Task RefreshAsync_ScopeMismatch_ShouldBeDenied()
@@ -241,12 +235,9 @@ namespace GameFrameX.Tests.Online
             var issued = await service.IssueSessionAsync(scope, 3600, OnlineMultiDevicePolicy.LatestWins, null);
 
             // Act
-            var crossTenant = await service.RefreshSessionTokenAsync(new OnlineScope(TenantId + 1, AppId, ServerId, PlayerId), issued.Data.Token);
-            var crossServer = await service.RefreshSessionTokenAsync(new OnlineScope(TenantId, AppId, ServerId + 1, PlayerId), issued.Data.Token);
+            var crossServer = await service.RefreshSessionTokenAsync(new OnlineScope(ServerId + 1, PlayerId), issued.Data.Token);
 
             // Assert
-            Assert.False(crossTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.CrossTenantDenied, crossTenant.Code);
             Assert.False(crossServer.IsSuccess);
             Assert.Equal(OnlineErrorCode.ServerScopeDenied, crossServer.Code);
         }
@@ -384,7 +375,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域实例。</returns>
         private static OnlineScope CreatePlayerScope()
         {
-            return new OnlineScope(TenantId, AppId, ServerId, PlayerId);
+            return new OnlineScope(ServerId, PlayerId);
         }
     }
 }

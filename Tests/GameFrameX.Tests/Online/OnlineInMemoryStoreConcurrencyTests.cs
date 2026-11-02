@@ -47,12 +47,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineInMemoryStoreConcurrencyTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
 
@@ -73,7 +67,7 @@ namespace GameFrameX.Tests.Online
             var sessionStore = new InMemoryOnlineSessionStore();
             var writeGate = new OnlineSessionWriteGate();
             var tokenService = new OnlineSessionTokenService(sessionStore, recorder, new OnlineSessionManager(sessionStore, recorder, writeGate), writeGate);
-            var scope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
+            var scope = new OnlineScope(ServerId, PlayerId);
             var issued = await tokenService.IssueSessionAsync(scope, 3600, OnlineMultiDevicePolicy.LatestWins, null);
             Assert.True(issued.IsSuccess);
 
@@ -111,7 +105,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var store = new InMemoryOnlinePlayerStorageStore();
             var service = new OnlinePlayerStorageService(store, new OnlinePlayerStorageOptions());
-            var scope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
+            var scope = new OnlineScope(ServerId, PlayerId);
 
             // Act
             var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(index => service.WriteAsync(scope, "settings", "volume", Encode("v" + index), 0, "sess-" + index)));
@@ -146,7 +140,7 @@ namespace GameFrameX.Tests.Online
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore(), new OnlineAuditService(new InMemoryOnlineAuditStore()));
 
             // Act
-            var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "concurrent-user" })));
+            var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.ResolveLoginAsync(new OnlineLoginRequest { ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "concurrent-user" })));
 
             // Assert：并发自动注册可能产生多账号（首建竞争），但每次解析必须自洽成功且玩家可见一致。
             var accountIds = new HashSet<long>();

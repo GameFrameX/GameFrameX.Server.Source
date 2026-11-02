@@ -17,10 +17,10 @@ namespace GameFrameX.Capability.Online.Persistence.Match;
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.DataBase;
 
@@ -51,15 +51,13 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
     /// </summary>
     private const string OutboxRowIdSequence = "row-id";
 
-    /// <summary>按作用域与对局标识查找结算结果副本。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
+    /// <summary>按对局标识查找结算结果副本。</summary>
     /// <param name="matchId">对局标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结果副本；未结算返回 null。</returns>
-    public async Task<OnlineMatchResult> FindByMatchAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+    public async Task<OnlineMatchResult> FindByMatchAsync(string matchId, CancellationToken cancellationToken = default)
     {
-        var state = await FindResultRowAsync(BuildResultKey(tenantId, appId, matchId), cancellationToken).ConfigureAwait(false);
+        var state = await FindResultRowAsync(OnlineRowKey.MatchResult(matchId), cancellationToken).ConfigureAwait(false);
         return state == null || state.Result == null ? null : state.Result.Copy();
     }
 
@@ -74,14 +72,12 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
             throw new ArgumentNullException(nameof(result));
         }
 
-        var uniqueKey = BuildResultKey(result.TenantId, result.AppId, result.MatchId);
+        var uniqueKey = OnlineRowKey.MatchResult(result.MatchId);
         var rowId = await GameDb.NextSequenceAsync<OnlineMatchResultRowState>(ResultRowIdSequence, cancellationToken).ConfigureAwait(false);
         var state = new OnlineMatchResultRowState
         {
             Id = rowId,
             UniqueKey = uniqueKey,
-            TenantId = result.TenantId,
-            AppId = result.AppId,
             MatchId = result.MatchId,
             Result = result.Copy(),
         };
@@ -219,8 +215,6 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
         stored.RowVersion = record.RowVersion + 1;
         row.Record = stored;
         row.MatchId = stored.MatchId;
-        row.TenantId = stored.TenantId;
-        row.AppId = stored.AppId;
         row.NextAttemptTimeUnixMilliseconds = stored.NextAttemptTimeUnixMilliseconds;
         row.ClaimExpiresAtUnixMilliseconds = stored.ClaimExpiresAtUnixMilliseconds;
         return await GameDb.UpdateIfRowVersionAsync(row.Id, expectedRowVersion, row, cancellationToken).ConfigureAwait(false);
@@ -277,8 +271,6 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
         {
             MatchResultId = result.MatchResultId,
             MatchId = result.MatchId,
-            TenantId = result.TenantId,
-            AppId = result.AppId,
             Result = result.Copy(),
             RowVersion = 1,
         };
@@ -312,8 +304,6 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
             Id = rowId,
             MatchResultId = record.MatchResultId,
             MatchId = record.MatchId,
-            TenantId = record.TenantId,
-            AppId = record.AppId,
             NextAttemptTimeUnixMilliseconds = record.NextAttemptTimeUnixMilliseconds,
             ClaimExpiresAtUnixMilliseconds = record.ClaimExpiresAtUnixMilliseconds,
             Record = record.Copy(),
@@ -351,18 +341,4 @@ public sealed class GameDbOnlineMatchSettlementStore : IOnlineMatchSettlementSto
         };
     }
 
-    /// <summary>构造结果作用域隔离键（与 InMemory 实现逐字节同构）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="matchId">对局标识。</param>
-    /// <returns>复合键。</returns>
-    private static string BuildResultKey(long tenantId, long appId, string matchId)
-    {
-        return string.Concat(
-            tenantId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            appId.ToString(CultureInfo.InvariantCulture),
-            ":",
-            matchId ?? string.Empty);
-    }
 }

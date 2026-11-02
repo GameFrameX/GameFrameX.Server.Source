@@ -35,12 +35,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchGameBridgeServiceTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
 
@@ -324,7 +318,7 @@ namespace GameFrameX.Tests.Online
                 Assert.True((await Bridge.SubmitGestureAsync(ScopeOf(PlayerOne), RoomId, 1, (int)OnlineRockPaperScissorsMove.Paper)).IsSuccess);
                 Assert.True((await Bridge.SubmitGestureAsync(ScopeOf(PlayerTwo), RoomId, 1, (int)OnlineRockPaperScissorsMove.Rock)).IsSuccess);
 
-                var settled = await Settlement.SettleAsync(TenantId, AppId, "rps-s100-r5001-g1", 2000000L);
+                var settled = await Settlement.SettleAsync("rps-s100-r5001-g1", 2000000L);
                 Assert.True(settled.IsSuccess, settled.Message);
             }
 
@@ -335,7 +329,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>作用域。</returns>
             public OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
     }

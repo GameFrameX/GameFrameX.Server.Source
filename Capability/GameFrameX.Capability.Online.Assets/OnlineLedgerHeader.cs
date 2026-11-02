@@ -31,25 +31,13 @@ namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
 /// 账本头载荷（<see cref="OnlineAssetChangeBatch"/> 与 <see cref="OnlineLedgerEntry"/> 共享的追溯头字段：
-/// 作用域（租户/App/玩家/归属服/发起服）+ 来源/操作/原因/业务单号/操作者——全字段追溯的公共半边）。
+/// 作用域（玩家/归属服/发起服）+ 来源/操作/原因/业务单号/操作者——全字段追溯的公共半边）。
 /// <para>
 /// 维护约束：头字段一经落账即为事实；新增追溯维度只改本载荷，不再加长实体构造器。
 /// </para>
 /// </summary>
 public sealed class OnlineLedgerHeader
 {
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    /// <remarks>Gets or sets the tenant id.</remarks>
-    public long TenantId { get; init; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    /// <remarks>Gets or sets the app id.</remarks>
-    public long AppId { get; init; }
-
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
@@ -107,8 +95,6 @@ public sealed class OnlineLedgerHeader
     {
         return new OnlineLedgerHeader
         {
-            TenantId = transaction.TenantId,
-            AppId = transaction.AppId,
             PlayerId = transaction.PlayerId,
             HomeServerId = transaction.HomeServerId,
             InitiatingServerId = transaction.InitiatingServerId,

@@ -30,8 +30,7 @@
 namespace GameFrameX.Capability.Online.Matchmaking;
 
 /// <summary>
-/// 匹配票据（冻结字段集：TicketId / PartyId / PlayerIds / AppId / Mode / Region /
-/// SkillRange / TeamSize / LatencyRequirement / CustomProperties / CreatedAt / ExpiresAt / Status）。
+/// 匹配票据（冻结字段集：TicketId / PartyId / PlayerIds / Mode / Region /
 /// <para>
 /// 维护约束（红线）：<see cref="PartyId"/> 非空时 <see cref="PlayerIds"/> 必须是**整队**成员——
 /// 队伍完整性要求一张票据要么整队成组、要么整队留队，禁止部分成员先走。
@@ -55,16 +54,6 @@ public sealed class OnlineMatchTicket
     /// 获取或设置票据携带的玩家集合（队伍票据为整队成员）。
     /// </summary>
     public List<long> PlayerIds { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识（作用域隔离键）。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识（作用域隔离键）。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
@@ -152,8 +141,6 @@ public sealed class OnlineMatchTicket
             TicketId = TicketId,
             PartyId = PartyId,
             PlayerIds = playerIds,
-            TenantId = TenantId,
-            AppId = AppId,
             ServerId = ServerId,
             Mode = Mode,
             Region = Region,

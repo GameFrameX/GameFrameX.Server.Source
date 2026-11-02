@@ -132,7 +132,7 @@ public sealed class OnlineFriendService
             return OnlineResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>.Ok(new List<OnlinePlayerDirectoryEntry>());
         }
 
-        var found = await _directory.SearchByNameAsync(scope.TenantId, scope.AppId, keyword.Trim(), _searchLimit, cancellationToken).ConfigureAwait(false);
+        var found = await _directory.SearchByNameAsync(keyword.Trim(), _searchLimit, cancellationToken).ConfigureAwait(false);
         var result = new List<OnlinePlayerDirectoryEntry>();
         foreach (var entry in found)
         {
@@ -180,7 +180,7 @@ public sealed class OnlineFriendService
         }
 
         var now = Now();
-        var existing = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var existing = await _store.FindAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return await ConvergeExistingAsync(existing, scope, correlationId, now, cancellationToken).ConfigureAwait(false);
@@ -199,8 +199,6 @@ public sealed class OnlineFriendService
         var prototype = new OnlineFriendship
         {
             FriendshipId = "frd-" + Guid.NewGuid().ToString("N"),
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ServerId = scope.ServerId,
             LowPlayerId = low,
             HighPlayerId = high,
@@ -224,8 +222,6 @@ public sealed class OnlineFriendService
             effective.RequesterId,
             effective.AddresseeId,
             effective.State.ToString(),
-            effective.TenantId,
-            effective.AppId,
             effective.ServerId,
             OnlineSocialEvents.FriendshipRequested,
             correlationId), cancellationToken).ConfigureAwait(false);
@@ -274,7 +270,7 @@ public sealed class OnlineFriendService
             return failure;
         }
 
-        var friendship = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var friendship = await _store.FindAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (friendship == null || !friendship.Contains(scope.PlayerId))
         {
             return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.ResourceNotFound, "好友关系不存在");
@@ -291,11 +287,11 @@ public sealed class OnlineFriendService
             return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "当前关系状态不允许删除：" + friendship.State);
         }
 
-        var removed = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = friendship.State, NewState = OnlineFriendshipState.Removed, NowUnixMilliseconds = Now(), Responded = false, }, cancellationToken).ConfigureAwait(false);
+        var removed = await _store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = friendship.State, NewState = OnlineFriendshipState.Removed, NowUnixMilliseconds = Now(), Responded = false, }, cancellationToken).ConfigureAwait(false);
         if (removed == null)
         {
             // CAS 失败 = 状态被并发改写；重读后按当前事实返回，不报错。
-            var current = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+            var current = await _store.FindAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
             if (current == null)
             {
                 return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.ResourceNotFound, "好友关系不存在");
@@ -309,8 +305,6 @@ public sealed class OnlineFriendService
             removed.RequesterId,
             removed.AddresseeId,
             removed.State.ToString(),
-            removed.TenantId,
-            removed.AppId,
             removed.ServerId,
             OnlineSocialEvents.FriendshipRemoved,
             correlationId), cancellationToken).ConfigureAwait(false);
@@ -331,7 +325,7 @@ public sealed class OnlineFriendService
             return failure;
         }
 
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         var friendIds = new List<long>();
         var establishedAtTimeByPlayer = new Dictionary<long, long>();
         CollectEstablishedFriends(all, scope.PlayerId, friendIds, establishedAtTimeByPlayer);
@@ -390,7 +384,7 @@ public sealed class OnlineFriendService
             return;
         }
 
-        var entries = await _directory.FindAsync(scope.TenantId, scope.AppId, friendIds, cancellationToken).ConfigureAwait(false);
+        var entries = await _directory.FindAsync(friendIds, cancellationToken).ConfigureAwait(false);
         foreach (var entry in entries)
         {
             names[entry.PlayerId] = entry.Name;
@@ -416,7 +410,7 @@ public sealed class OnlineFriendService
             var online = false;
             if (_presenceProbe != null)
             {
-                online = await _presenceProbe.IsOnlineAsync(scope.TenantId, scope.AppId, friendId, cancellationToken).ConfigureAwait(false);
+                online = await _presenceProbe.IsOnlineAsync(friendId, cancellationToken).ConfigureAwait(false);
             }
 
             string name;
@@ -455,7 +449,7 @@ public sealed class OnlineFriendService
             return failure;
         }
 
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         var result = new List<OnlineFriendship>();
         foreach (var friendship in all)
         {
@@ -487,7 +481,7 @@ public sealed class OnlineFriendService
             return failure;
         }
 
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlineFriendship>>.Ok(all);
     }
 
@@ -510,22 +504,20 @@ public sealed class OnlineFriendService
             return failure;
         }
 
-        var found = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        var found = await _store.FindAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineFriendship>.Ok(found);
     }
 
     /// <summary>
     /// 扫描并终结超期未答复的好友请求（置 <see cref="OnlineFriendshipState.Expired"/>，可重新发起）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次终结的请求数。</returns>
-    public async Task<OnlineResult<int>> SweepExpiredAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<int>> SweepExpiredAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var pending = await _store.ListByStateAsync(tenantId, appId, OnlineFriendshipState.Requested, cancellationToken).ConfigureAwait(false);
+        var pending = await _store.ListByStateAsync(OnlineFriendshipState.Requested, cancellationToken).ConfigureAwait(false);
         var affected = 0;
         foreach (var friendship in pending)
         {
@@ -534,7 +526,7 @@ public sealed class OnlineFriendService
                 continue;
             }
 
-            var expired = await _store.UpdateStateAsync(tenantId, appId, new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Expired, NowUnixMilliseconds = now, Responded = false, }, cancellationToken).ConfigureAwait(false);
+            var expired = await _store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Expired, NowUnixMilliseconds = now, Responded = false, }, cancellationToken).ConfigureAwait(false);
             if (expired != null)
             {
                 await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
@@ -542,8 +534,6 @@ public sealed class OnlineFriendService
                     expired.RequesterId,
                     expired.AddresseeId,
                     expired.State.ToString(),
-                    expired.TenantId,
-                    expired.AppId,
                     expired.ServerId,
                     OnlineSocialEvents.FriendshipExpired,
                     null), cancellationToken).ConfigureAwait(false);
@@ -593,7 +583,7 @@ public sealed class OnlineFriendService
     /// <returns>已建立的好友关系数。</returns>
     private async Task<int> CountEstablishedAsync(OnlineScope scope, long playerId, CancellationToken cancellationToken)
     {
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, playerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(playerId, cancellationToken).ConfigureAwait(false);
         var count = 0;
         foreach (var candidate in all)
         {
@@ -658,8 +648,6 @@ public sealed class OnlineFriendService
             // 「上限-1」而双双落库超限。拒绝仍落在**写侧**（关系建立的那一刻），而不是读取侧静默截断
             // （静默截断的危害见下：被截掉的好友在列表里凭空消失且无错误信号可申诉）。
             var outcome = await _store.UpdateStateWithFriendLimitAsync(
-                              scope.TenantId,
-                              scope.AppId,
                               new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, },
                               _friendLimit,
                               cancellationToken).ConfigureAwait(false);
@@ -672,7 +660,7 @@ public sealed class OnlineFriendService
         }
         else
         {
-            updated = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, }, cancellationToken).ConfigureAwait(false);
+            updated = await _store.UpdateStateAsync(new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, }, cancellationToken).ConfigureAwait(false);
         }
 
         if (updated == null)
@@ -693,8 +681,6 @@ public sealed class OnlineFriendService
             updated.RequesterId,
             updated.AddresseeId,
             updated.State.ToString(),
-            updated.TenantId,
-            updated.AppId,
             updated.ServerId,
             eventKind,
             correlationId), cancellationToken).ConfigureAwait(false);
@@ -710,7 +696,7 @@ public sealed class OnlineFriendService
     /// <returns>关系副本；不存在返回 null。</returns>
     private async Task<OnlineFriendship> FindByIdAsync(OnlineScope scope, string friendshipId, CancellationToken cancellationToken)
     {
-        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var all = await _store.ListByPlayerAsync(scope.PlayerId, cancellationToken).ConfigureAwait(false);
         foreach (var friendship in all)
         {
             if (string.Equals(friendship.FriendshipId, friendshipId, StringComparison.Ordinal))
@@ -753,8 +739,6 @@ public sealed class OnlineFriendService
         }
 
         var renewed = await _store.RenewRequestAsync(
-                          scope.TenantId,
-                          scope.AppId,
                           new FriendshipRenewal
                           {
                               FriendshipId = existing.FriendshipId,
@@ -769,7 +753,7 @@ public sealed class OnlineFriendService
         if (renewed == null)
         {
             // CAS 失败 = 并发发起/答复抢先；重读后返回当前事实，保证收敛。
-            var current = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+            var current = await _store.FindAsync(scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
             if (current == null)
             {
                 return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.DependencyUnavailable, "好友关系读取失败");
@@ -783,8 +767,6 @@ public sealed class OnlineFriendService
             renewed.RequesterId,
             renewed.AddresseeId,
             renewed.State.ToString(),
-            renewed.TenantId,
-            renewed.AppId,
             renewed.ServerId,
             OnlineSocialEvents.FriendshipRequested,
             correlationId), cancellationToken).ConfigureAwait(false);

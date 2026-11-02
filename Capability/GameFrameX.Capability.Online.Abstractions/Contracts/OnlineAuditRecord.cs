@@ -64,17 +64,7 @@ public sealed class OnlineAuditRecord
     public long OccurredTime { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
-    /// 获取或设置区服标识（0 表示 App 级操作）。
+    /// 获取或设置区服标识（0 表示全局级操作）。
     /// </summary>
     public long ServerId { get; set; }
 

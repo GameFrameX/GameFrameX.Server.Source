@@ -46,15 +46,6 @@ public sealed class OnlineSession
     /// </summary>
     public string Id { get; set; }
 
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（会话与 Token 的作用域含 Server 位）。

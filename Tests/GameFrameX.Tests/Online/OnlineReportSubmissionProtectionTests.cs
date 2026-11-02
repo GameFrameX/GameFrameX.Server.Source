@@ -14,8 +14,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public sealed class OnlineReportSubmissionProtectionTests
     {
-        private const long TenantId = 1;
-        private const long AppId = 2;
         private const long PlayerOne = 100;
         private const long PlayerTwo = 200;
 
@@ -52,7 +50,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.RateLimitExceeded, last.Code);
             Assert.Equal(5, recorder.Filter(OnlineSocialEvents.ReportChanged).Count);
 
-            var cases = await reportStore.ListByReporterAsync(TenantId, AppId, PlayerOne);
+            var cases = await reportStore.ListByReporterAsync(PlayerOne);
             Assert.Equal(5, cases.Count);
         }
 
@@ -86,7 +84,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>创建玩家作用域。</summary>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, 1, playerId);
+            return new OnlineScope(1, playerId);
         }
     }
 }

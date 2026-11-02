@@ -49,16 +49,6 @@ public sealed class OnlineChatMessage
     public string MessageId { get; set; }
 
     /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置 App 标识。
-    /// </summary>
-    public long AppId { get; set; }
-
-    /// <summary>
     /// 获取或设置所属频道标识。
     /// </summary>
     public string ChannelId { get; set; }
@@ -118,8 +108,6 @@ public sealed class OnlineChatMessage
         return new OnlineChatMessage
         {
             MessageId = MessageId,
-            TenantId = TenantId,
-            AppId = AppId,
             ChannelId = ChannelId,
             ChannelKind = ChannelKind,
             SenderId = SenderId,

@@ -49,7 +49,7 @@ public sealed class OnlineLoginResolution
     public OnlineGameAccount GameAccount { get; }
 
     /// <summary>
-    /// 获取本次登录选定的玩家档案（App/Server 归属明确）。
+    /// 获取本次登录选定的玩家档案（区服归属明确）。
     /// </summary>
     public OnlinePlayerProfile Player { get; }
 

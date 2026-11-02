@@ -47,11 +47,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchSettlementTests
     {
-        /// <summary>租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>App 标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>区服标识。</summary>
         private const long ServerId = 100;
@@ -77,7 +72,7 @@ namespace GameFrameX.Tests.Online
             var harness = new Harness();
             await harness.PlayToSettlingAsync();
 
-            var settled = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 100);
+            var settled = await harness.Settlement.SettleAsync(MatchId, Now + 100);
 
             Assert.True(settled.IsSuccess, settled.Message);
             Assert.False(settled.Data.IsReplay);
@@ -106,8 +101,8 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(2, dispatched.Data.SucceededCount);
             Assert.Empty(dispatched.Data.FailedPlayerIds);
 
-            var winnerWallet = await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId);
-            var loserWallet = await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId);
+            var winnerWallet = await harness.AssetStore.FindWalletAsync(PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId);
+            var loserWallet = await harness.AssetStore.FindWalletAsync(PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId);
             Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, winnerWallet.Balance);
             Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, loserWallet.Balance);
 
@@ -116,8 +111,8 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(replayed.IsSuccess, replayed.Message);
             Assert.Equal(2, replayed.Data.ReplayCount);
-            Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, (await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
-            Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, (await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
+            Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, (await harness.AssetStore.FindWalletAsync(PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
+            Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, (await harness.AssetStore.FindWalletAsync(PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
         }
 
         /// <summary>
@@ -130,7 +125,7 @@ namespace GameFrameX.Tests.Online
             await harness.StartRunningAsync();
             await harness.RunIdleToSettlingAsync();
 
-            var settled = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 200000);
+            var settled = await harness.Settlement.SettleAsync(MatchId, Now + 200000);
 
             Assert.True(settled.IsSuccess, settled.Message);
             Assert.False(settled.Data.IsReplay);
@@ -147,8 +142,8 @@ namespace GameFrameX.Tests.Online
             Assert.True(dispatched.IsSuccess, dispatched.Message);
             Assert.Equal(0, dispatched.Data.SucceededCount);
             Assert.Empty(dispatched.Data.FailedPlayerIds);
-            Assert.Null(await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId));
-            Assert.Null(await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId));
+            Assert.Null(await harness.AssetStore.FindWalletAsync(PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId));
+            Assert.Null(await harness.AssetStore.FindWalletAsync(PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId));
         }
 
         /// <summary>
@@ -160,8 +155,8 @@ namespace GameFrameX.Tests.Online
             var harness = new Harness();
             await harness.PlayToSettlingAsync();
 
-            var first = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 100);
-            var second = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 200);
+            var first = await harness.Settlement.SettleAsync(MatchId, Now + 100);
+            var second = await harness.Settlement.SettleAsync(MatchId, Now + 200);
 
             Assert.True(first.IsSuccess, first.Message);
             Assert.True(second.IsSuccess, second.Message);
@@ -180,28 +175,28 @@ namespace GameFrameX.Tests.Online
             var harness = new Harness();
             await harness.StartRunningAsync();
 
-            var settled = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 100);
+            var settled = await harness.Settlement.SettleAsync(MatchId, Now + 100);
 
             Assert.False(settled.IsSuccess);
             Assert.Equal(OnlineErrorCode.StateNotReady, settled.Code);
         }
 
         /// <summary>
-        /// 验证结算结果存储按 (租户, App, 对局) 唯一——并发提交只保留首份。
+        /// 验证结算结果存储按对局唯一——并发提交只保留首份。
         /// </summary>
         [Fact]
         public async Task ResultStore_ConcurrentCommit_ShouldKeepFirstResult()
         {
             var store = new InMemoryOnlineMatchSettlementStore();
-            var first = new OnlineMatchResult { MatchResultId = "mrs-first", MatchId = MatchId, TenantId = TenantId, AppId = AppId, Entries = new List<OnlineMatchResultEntry>() };
-            var second = new OnlineMatchResult { MatchResultId = "mrs-second", MatchId = MatchId, TenantId = TenantId, AppId = AppId, Entries = new List<OnlineMatchResultEntry>() };
+            var first = new OnlineMatchResult { MatchResultId = "mrs-first", MatchId = MatchId, Entries = new List<OnlineMatchResultEntry>() };
+            var second = new OnlineMatchResult { MatchResultId = "mrs-second", MatchId = MatchId, Entries = new List<OnlineMatchResultEntry>() };
 
             var committedFirst = await store.CommitAsync(first);
             var committedSecond = await store.CommitAsync(second);
 
             Assert.Equal("mrs-first", committedFirst.MatchResultId);
             Assert.Equal("mrs-first", committedSecond.MatchResultId);
-            Assert.Equal("mrs-first", (await store.FindByMatchAsync(TenantId, AppId, MatchId)).MatchResultId);
+            Assert.Equal("mrs-first", (await store.FindByMatchAsync(MatchId)).MatchResultId);
         }
 
         /// <summary>
@@ -215,8 +210,6 @@ namespace GameFrameX.Tests.Online
             {
                 MatchResultId = "mrs-empty",
                 MatchId = MatchId,
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 Entries = new List<OnlineMatchResultEntry>
                 {
@@ -228,7 +221,7 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(dispatched.IsSuccess, dispatched.Message);
             Assert.Equal(0, dispatched.Data.SucceededCount);
-            Assert.Null(await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId));
+            Assert.Null(await harness.AssetStore.FindWalletAsync(PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId));
         }
 
         /// <summary>
@@ -247,8 +240,6 @@ namespace GameFrameX.Tests.Online
                 Region = 1,
                 CreatedAtTime = Now,
                 TicketIds = new List<string>(),
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
             };
         }
@@ -354,7 +345,7 @@ namespace GameFrameX.Tests.Online
             {
                 var created = await Runtime.CreateFromAssignmentAsync(BuildAssignment(PlayerOne, PlayerTwo), Now);
                 Assert.True(created.IsSuccess, created.Message);
-                Actor = await Runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+                Actor = await Runtime.ResolveActorAsync(MatchId);
                 Assert.NotNull(Actor);
 
                 await Actor.SetReadyAsync(ScopeOf(PlayerOne), true, Now);
@@ -424,7 +415,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>作用域。</returns>
             private static OnlineScope ScopeOf(long playerId)
             {
-                return new OnlineScope(TenantId, AppId, ServerId, playerId);
+                return new OnlineScope(ServerId, playerId);
             }
         }
 

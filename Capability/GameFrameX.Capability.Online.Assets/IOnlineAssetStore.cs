@@ -47,38 +47,30 @@ using System.Threading.Tasks;
 public interface IOnlineAssetStore
 {
     /// <summary>查找货币账户快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="currencyId">货币代码。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照；从未发生过变更返回 null（视余额为 0）。</returns>
-    Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default);
+    Task<OnlineWalletAccount> FindWalletAsync(long playerId, string currencyId, CancellationToken cancellationToken = default);
 
     /// <summary>查找道具库存堆栈快照。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="itemId">道具标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照；从未发生过变更返回 null（视数量为 0）。</returns>
-    Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default);
+    Task<OnlineInventoryStack> FindInventoryAsync(long playerId, string itemId, CancellationToken cancellationToken = default);
 
     /// <summary>列举玩家全部货币账户快照（对账与 Admin 查询输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账户快照列表（按货币代码字典序）。</returns>
-    Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>列举玩家全部道具库存快照（对账与 Admin 查询输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>库存快照列表（按道具标识字典序）。</returns>
-    Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>原子应用变更批次（玩家分片事务：先全量校验下限 0，后统一追加账本并同步快照）。</summary>
     /// <param name="batch">变更批次（仅限本程序集统一入口构造）。</param>
@@ -99,17 +91,13 @@ public interface IOnlineAssetStore
     Task<IReadOnlyList<OnlineLedgerEntry>> FindLedgerEntriesByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default);
 
     /// <summary>聚合玩家账本带符号数额（对账的账本侧事实源；键 = 类别前缀 + 资产标识）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>各资产账本累加（键：<c>c:</c> 货币 / <c>i:</c> 道具 + 资产标识）。</returns>
-    Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long playerId, CancellationToken cancellationToken = default);
 
-    /// <summary>列举 (租户, App) 下发生过资产活动的玩家（全量对账的遍历输入）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
+    /// <summary>列举发生过资产活动的玩家（全量对账的遍历输入）。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>玩家标识列表（升序去重）。</returns>
-    Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<long>> ListPlayerIdsAsync(CancellationToken cancellationToken = default);
 }

@@ -42,12 +42,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlinePlayerStorageServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
-
         /// <summary>测试用玩家一标识。</summary>
         private const long PlayerOne = 1001;
 
@@ -55,7 +49,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 验证三向隔离：跨玩家/跨 App/跨租户读取一律同构 ResourceNotFound（防存在性探测）。
+        /// 验证跨玩家隔离：跨玩家读取同构 ResourceNotFound（防存在性探测）。
         /// </summary>
         [Fact]
         public async Task ReadAsync_CrossScope_ShouldReturnUniformNotFound()
@@ -68,18 +62,12 @@ namespace GameFrameX.Tests.Online
             // Act
             var own = await service.ReadAsync(scope, "settings", "volume");
             var crossPlayer = await service.ReadAsync(CreateScope(PlayerTwo), "settings", "volume");
-            var crossApp = await service.ReadAsync(new OnlineScope(TenantId, AppId + 1, 100, PlayerOne), "settings", "volume");
-            var crossTenant = await service.ReadAsync(new OnlineScope(TenantId + 1, AppId, 100, PlayerOne), "settings", "volume");
 
             // Assert
             Assert.True(own.IsSuccess);
             Assert.Equal("42", Decode(own.Data.Payload));
             Assert.False(crossPlayer.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, crossPlayer.Code);
-            Assert.False(crossApp.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossApp.Code);
-            Assert.False(crossTenant.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, crossTenant.Code);
         }
 
         /// <summary>
@@ -93,7 +81,7 @@ namespace GameFrameX.Tests.Online
             await service.WriteAsync(CreateScope(PlayerOne), "settings", "volume", Encode("42"), 0, "sess-1");
 
             // Act
-            var otherServer = await service.ReadAsync(new OnlineScope(TenantId, AppId, 200, PlayerOne), "settings", "volume");
+            var otherServer = await service.ReadAsync(new OnlineScope(200, PlayerOne), "settings", "volume");
 
             // Assert
             Assert.True(otherServer.IsSuccess);
@@ -273,7 +261,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService();
-            var scope = new OnlineScope(TenantId, AppId, 100);
+            var scope = new OnlineScope(100);
 
             // Act
             var outcome = await service.WriteAsync(scope, "settings", "volume", Encode("42"), 0, "sess-1");
@@ -300,7 +288,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域实例。</returns>
         private static OnlineScope CreateScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, 100, playerId);
+            return new OnlineScope(100, playerId);
         }
 
         /// <summary>

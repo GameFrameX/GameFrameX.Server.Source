@@ -143,8 +143,6 @@ public sealed class OnlineAdminSocialHandlers
         {
             OnlineAdminApiContract.Unwrap(await _punishments.ApplyAsync(new OnlinePunishmentRequest
             {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
                 PlayerId = playerScope.PlayerId,
                 Kind = OnlinePunishmentKind.Ban,
                 Reason = "match-isolation:" + reason,
@@ -154,11 +152,11 @@ public sealed class OnlineAdminSocialHandlers
         }
         else
         {
-            var active = OnlineAdminApiContract.Unwrap(await _punishments.ListActiveAsync(scope.TenantId, scope.AppId, playerScope.PlayerId, 0, cancellationToken).ConfigureAwait(false));
+            var active = OnlineAdminApiContract.Unwrap(await _punishments.ListActiveAsync(playerScope.PlayerId, 0, cancellationToken).ConfigureAwait(false));
             var ban = active.FirstOrDefault(punishment => punishment.Kind == OnlinePunishmentKind.Ban && !punishment.Revoked);
             if (ban != null)
             {
-                OnlineAdminApiContract.Unwrap(await _punishments.RevokeAsync(scope.TenantId, scope.AppId, ban.PunishmentId, adminId, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
+                OnlineAdminApiContract.Unwrap(await _punishments.RevokeAsync(ban.PunishmentId, adminId, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
             }
         }
 
@@ -176,7 +174,7 @@ public sealed class OnlineAdminSocialHandlers
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var reason = BuildPenaltyReason(request);
-        var sessions = await _sessionStore.ListActiveByPlayerAsync(scope.TenantId, scope.AppId, playerScope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var sessions = await _sessionStore.ListActiveByPlayerAsync(playerScope.PlayerId, cancellationToken).ConfigureAwait(false);
         foreach (var session in sessions)
         {
             await _tokens.KickAsync(new OnlineTokenKickRequest { Scope = playerScope, SessionId = session.Id, Reason = reason, }, cancellationToken).ConfigureAwait(false);
@@ -196,7 +194,7 @@ public sealed class OnlineAdminSocialHandlers
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var reason = BuildPenaltyReason(request);
-        var sessions = await _sessionStore.ListActiveByPlayerAsync(scope.TenantId, scope.AppId, playerScope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var sessions = await _sessionStore.ListActiveByPlayerAsync(playerScope.PlayerId, cancellationToken).ConfigureAwait(false);
         foreach (var session in sessions)
         {
             await _tokens.RevokeAsync(new OnlineTokenRevokeRequest { Scope = playerScope, SessionId = session.Id, Reason = reason, }, cancellationToken).ConfigureAwait(false);
@@ -218,8 +216,6 @@ public sealed class OnlineAdminSocialHandlers
         var adminId = request.ReadNullableInt64("PenaltyId") ?? 0;
         OnlineAdminApiContract.Unwrap(await _punishments.ApplyAsync(new OnlinePunishmentRequest
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             PlayerId = playerScope.PlayerId,
             Kind = OnlinePunishmentKind.Mute,
             Reason = BuildPenaltyReason(request),
@@ -264,7 +260,6 @@ public sealed class OnlineAdminSocialHandlers
             items.Add(new ReportCaseResponse
             {
                 CaseId = item.ReportId,
-                AppId = item.AppId,
                 ServerId = scope.ServerId,
                 ReporterPlayerId = item.ReporterId.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ReportedPlayerId = item.ReportedPlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -315,8 +310,6 @@ public sealed class OnlineAdminSocialHandlers
         var resolution = status.Value == OnlineReportState.Rejected ? OnlineReportResolution.NoViolation : OnlineReportResolution.None;
         OnlineAdminApiContract.Unwrap(await _socialDecisions.TransitionReportAsync(new OnlineReportTransition
         {
-            TenantId = scope.TenantId,
-            AppId = scope.AppId,
             ReportId = caseId,
             TargetState = status.Value,
             Resolution = resolution,
@@ -360,7 +353,7 @@ public sealed class OnlineAdminSocialHandlers
         var endTime = OnlineAdminApiContract.ReadOptionalInt64(request, "EndTime");
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
-        var page = await _chatAudit.QueryAsync(scope.TenantId, scope.AppId, new ChatAuditQuery
+        var page = await _chatAudit.QueryAsync(new ChatAuditQuery
         {
             ChannelKind = channelKind,
             ParticipantPlayerId = participantPlayerId,
@@ -410,17 +403,17 @@ public sealed class OnlineAdminSocialHandlers
         var cases = new List<OnlineReportCase>();
         if (status.HasValue)
         {
-            cases.AddRange(await _reportStore.ListByStateAsync(scope.TenantId, scope.AppId, status.Value, cancellationToken).ConfigureAwait(false));
+            cases.AddRange(await _reportStore.ListByStateAsync(status.Value, cancellationToken).ConfigureAwait(false));
         }
         else if (reporterPlayerId.HasValue)
         {
-            cases.AddRange(await _reportStore.ListByReporterAsync(scope.TenantId, scope.AppId, reporterPlayerId.Value, cancellationToken).ConfigureAwait(false));
+            cases.AddRange(await _reportStore.ListByReporterAsync(reporterPlayerId.Value, cancellationToken).ConfigureAwait(false));
         }
         else
         {
             foreach (OnlineReportState state in Enum.GetValues(typeof(OnlineReportState)))
             {
-                cases.AddRange(await _reportStore.ListByStateAsync(scope.TenantId, scope.AppId, state, cancellationToken).ConfigureAwait(false));
+                cases.AddRange(await _reportStore.ListByStateAsync(state, cancellationToken).ConfigureAwait(false));
             }
         }
 
@@ -589,8 +582,6 @@ public sealed class OnlineAdminSocialHandlers
         /// <summary>获取或设置案件标识。</summary>
         public string CaseId { get; set; }
 
-        /// <summary>获取或设置 App 标识。</summary>
-        public long AppId { get; set; }
 
         /// <summary>获取或设置区服标识。</summary>
         public long ServerId { get; set; }

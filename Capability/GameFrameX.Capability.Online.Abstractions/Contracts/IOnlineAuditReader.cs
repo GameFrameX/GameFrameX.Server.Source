@@ -27,7 +27,6 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
@@ -36,7 +35,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// 叶子域 admin handler 的域内审计查询（如 query_asset_audit）经本接口读统一审计面，
 /// 不引入对聚合域（Operations/Audit 实现体）的编译期依赖。
 /// <para>
-/// 维护约束：作用域只锚定 TenantId/AppId 两键（审计是跨区服检索域）；实现方 = <c>OnlineAuditService</c>
+/// 维护约束：检索无作用域锚定键（单键化 D4 后审计是跨区服检索域，区服走可选过滤）；
+/// 实现方 = <c>OnlineAuditService</c>
 ///（C294 起随族基建落在 Online.Abstractions.Audit，由 <c>OnlineCapabilityFamily</c> 预置到共享服务面）。
 /// </para>
 /// </summary>
@@ -44,19 +44,19 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// The unified audit read face (the narrowest contract through which leaf capability packages consume the
 /// aggregate audit domain — the same gate-lifting approach as C223, applied by C231): leaf-domain admin
 /// handlers query domain-scoped audit trails (e.g. query_asset_audit) through this interface without a
-/// compile-time dependency on the aggregate domain (the Operations/Audit implementation). The scope anchors
-/// on TenantId/AppId only (audit is a cross-server retrieval domain); the implementor is
+/// compile-time dependency on the aggregate domain (the Operations/Audit implementation). Queries carry
+/// no scope anchor (after single-key D4 audit is a cross-server retrieval domain; server is an optional
+/// filter); the implementor is
 /// <c>OnlineAuditService</c> (relocated into Online.Abstractions.Audit as family infrastructure by
 /// C294, pre-seeded onto the shared service face by <c>OnlineCapabilityFamily</c>).
 /// </remarks>
 public interface IOnlineAuditReader
 {
     /// <summary>
-    /// 按查询条件检索统一审计记录（游标分页；作用域只锚定 TenantId/AppId 两键）。
+    /// 按查询条件检索统一审计记录（游标分页；无作用域锚定键，区服/玩家走可选过滤）。
     /// </summary>
-    /// <param name="scope">授权作用域。</param>
     /// <param name="query">查询条件（可空 = 缺省全量首页）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>审计记录页（失败以 <see cref="OnlineResult{TData}"/> 错误码表达）。</returns>
-    Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineScope scope, OnlineAuditQuery query = null, CancellationToken cancellationToken = default);
+    Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineAuditQuery query = null, CancellationToken cancellationToken = default);
 }

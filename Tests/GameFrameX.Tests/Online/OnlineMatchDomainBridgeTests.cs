@@ -73,7 +73,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>玩家作用域。</returns>
         private static OnlineScope PlayerScope(long playerId)
         {
-            return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
+            return new OnlineScope(OnlineCapabilityTestHarness.ServerId, playerId);
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(0, status.Data.MatchId);
 
             var store = runtime.Host.Services.GetService<IOnlineMatchTicketStore>();
-            var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, playerId);
+            var ticket = await store.FindLatestByPlayerAsync(playerId);
             Assert.NotNull(ticket);
             Assert.Equal(OnlineMatchTicketState.Queued, ticket.State);
             Assert.True(string.IsNullOrEmpty(ticket.AssignmentId));
@@ -236,7 +236,7 @@ namespace GameFrameX.Tests.Online
                 foreach (var playerId in playerIds)
                 {
                     await EnqueueQueuedPlayerAsync(domain, runtime, playerId, 1, 1000);
-                    Assert.Empty(await store.ListAssignmentsAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId));
+                    Assert.Empty(await store.ListAssignmentsAsync());
                 }
 
                 foreach (var playerId in playerIds)
@@ -246,13 +246,13 @@ namespace GameFrameX.Tests.Online
                     Assert.True(status.Data.Queuing);
                     Assert.False(status.Data.Matched);
                     Assert.Equal(0, status.Data.MatchId);
-                    var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, playerId);
+                    var ticket = await store.FindLatestByPlayerAsync(playerId);
                     Assert.Equal(OnlineMatchTicketState.Queued, ticket.State);
                 }
 
                 await runtime.Host.Scheduler.TickAsync();
 
-                var assignments = await store.ListAssignmentsAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId);
+                var assignments = await store.ListAssignmentsAsync();
                 Assert.Equal(2, assignments.Count);
                 Assert.All(assignments, assignment => Assert.Equal(2, assignment.PlayerIds.Count));
                 var assignedPlayerIds = assignments.SelectMany(assignment => assignment.PlayerIds).ToArray();
@@ -293,13 +293,13 @@ namespace GameFrameX.Tests.Online
                 var cancelled = await domain.CancelAsync(PlayerScope(PlayerOne));
                 Assert.True(cancelled.IsSuccess, cancelled.Message);
                 Assert.True(cancelled.Data.Cancelled);
-                Assert.Empty(await store.ListAssignmentsAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId));
+                Assert.Empty(await store.ListAssignmentsAsync());
 
                 await runtime.Host.Scheduler.TickAsync();
 
-                var assignment = Assert.Single(await store.ListAssignmentsAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId));
+                var assignment = Assert.Single(await store.ListAssignmentsAsync());
                 Assert.Equal(new[] { PlayerTwo, PlayerThree }, assignment.PlayerIds.OrderBy(playerId => playerId).ToArray());
-                var cancelledTicket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, PlayerOne);
+                var cancelledTicket = await store.FindLatestByPlayerAsync(PlayerOne);
                 Assert.Equal(OnlineMatchTicketState.Cancelled, cancelledTicket.State);
                 Assert.True(string.IsNullOrEmpty(cancelledTicket.AssignmentId));
                 var cancelledStatus = await domain.GetStatusAsync(PlayerScope(PlayerOne));
@@ -352,7 +352,7 @@ namespace GameFrameX.Tests.Online
                 await runtime.Host.Scheduler.TickAsync();
 
                 var store = runtime.Host.Services.GetService<IOnlineMatchTicketStore>();
-                Assert.Empty(await store.ListAssignmentsAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId));
+                Assert.Empty(await store.ListAssignmentsAsync());
                 foreach (var playerId in new[] { PlayerOne, PlayerTwo, PlayerThree })
                 {
                     var status = await domain.GetStatusAsync(PlayerScope(playerId));
@@ -429,7 +429,7 @@ namespace GameFrameX.Tests.Online
 
                 await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
                 var later = DateTimeOffset.UtcNow.AddSeconds(400).ToUnixTimeMilliseconds();
-                await coordinator.RunOnceAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, later);
+                await coordinator.RunOnceAsync(later);
 
                 var status = await domain.GetStatusAsync(PlayerScope(PlayerOne));
                 Assert.False(status.Data.Queuing);
@@ -521,17 +521,17 @@ namespace GameFrameX.Tests.Online
                 var store = runtime.Host.Services.GetService<IOnlineMatchTicketStore>();
 
                 var matchId = await EnqueuePairAndMatchAsync(domain, runtime);
-                var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, PlayerOne);
+                var ticket = await store.FindLatestByPlayerAsync(PlayerOne);
                 Assert.NotNull(ticket);
                 Assert.False(string.IsNullOrEmpty(ticket.AssignmentId));
 
-                var resolved = await domain.ResolveAssignmentAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, ticket.AssignmentId);
+                var resolved = await domain.ResolveAssignmentAsync(ticket.AssignmentId);
                 Assert.True(resolved.IsSuccess, resolved.Message);
                 Assert.Equal(matchId, resolved.Data.MatchId);
                 Assert.Contains(PlayerOne, resolved.Data.PlayerIds);
                 Assert.Contains(PlayerTwo, resolved.Data.PlayerIds);
 
-                var again = await domain.ResolveAssignmentAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, ticket.AssignmentId);
+                var again = await domain.ResolveAssignmentAsync(ticket.AssignmentId);
                 Assert.Equal(resolved.Data.MatchId, again.Data.MatchId);
             });
         }
@@ -548,7 +548,7 @@ namespace GameFrameX.Tests.Online
 
                 await EnqueuePairAndMatchAsync(domain, runtime);
 
-                var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, PlayerTwo);
+                var ticket = await store.FindLatestByPlayerAsync(PlayerTwo);
                 Assert.NotNull(ticket);
                 Assert.Equal(OnlineMatchTicketState.Matched, ticket.State);
             });
@@ -617,7 +617,7 @@ namespace GameFrameX.Tests.Online
         {
             await WithStartedMatchDomainAsync(async (domain, runtime) =>
             {
-                var scope = new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId);
+                var scope = new OnlineScope(OnlineCapabilityTestHarness.ServerId);
                 var rejected = await domain.EnqueueAsync(scope, 1, 1000);
                 Assert.False(rejected.IsSuccess);
                 Assert.Equal(OnlineErrorCode.ParameterInvalid, rejected.Code);

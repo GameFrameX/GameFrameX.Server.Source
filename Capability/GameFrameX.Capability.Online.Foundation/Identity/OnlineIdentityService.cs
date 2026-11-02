@@ -84,7 +84,7 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 解析一次登录：命中身份或自动注册，选定 App/Server 归属玩家，校验设备状态。
+    /// 解析一次登录：命中身份或自动注册，选定区服归属玩家，校验设备状态。
     /// </summary>
     /// <param name="request">登录解析请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -96,8 +96,6 @@ public sealed class OnlineIdentityService
             throw new ArgumentNullException(nameof(request));
         }
 
-        var tenantId = request.TenantId;
-        var appId = request.AppId;
         var serverId = request.ServerId;
         var kind = request.Kind;
         var identifier = request.Identifier;
@@ -110,14 +108,14 @@ public sealed class OnlineIdentityService
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var identity = await _store.FindIdentityAsync(tenantId, appId, kind, identifier, cancellationToken);
+        var identity = await _store.FindIdentityAsync(kind, identifier, cancellationToken);
         OnlineGameAccount account;
         OnlinePlayerProfile player;
 
         if (identity == null)
         {
             // 新身份自动注册：账号 + 身份 + 首个玩家一次性建立（服务端生成，客户端不得拼接）。
-            (identity, account, player) = await RegisterIdentityAsync(tenantId, appId, serverId, kind, identifier, playerName, now, cancellationToken);
+            (identity, account, player) = await RegisterIdentityAsync(serverId, kind, identifier, playerName, now, cancellationToken);
         }
         else if (identity.UnboundAtTime > 0)
         {
@@ -130,7 +128,7 @@ public sealed class OnlineIdentityService
 
             account = accountResult.Data;
             identity = await ReviveUnboundIdentityAsync(identity, account, now, cancellationToken);
-            player = await ResolvePlayerAsync(account, tenantId, appId, serverId, playerName, now, cancellationToken);
+            player = await ResolvePlayerAsync(account, serverId, playerName, now, cancellationToken);
         }
         else
         {
@@ -141,7 +139,7 @@ public sealed class OnlineIdentityService
             }
 
             account = accountResult.Data;
-            player = await ResolvePlayerAsync(account, tenantId, appId, serverId, playerName, now, cancellationToken);
+            player = await ResolvePlayerAsync(account, serverId, playerName, now, cancellationToken);
         }
 
         // 设备识别与换绑策略校验：已失效设备（换绑后旧设备）按策略拒绝登录。
@@ -160,8 +158,6 @@ public sealed class OnlineIdentityService
     /// <summary>
     /// 新身份自动注册（红线）：账号、身份与首个玩家由服务端一次性生成并落库，客户端不得拼接身份关系。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
@@ -169,14 +165,12 @@ public sealed class OnlineIdentityService
     /// <param name="now">当前 Unix 毫秒时间。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>身份/账号/玩家三元组（均已写入存储）。</returns>
-    private async Task<(OnlineIdentity Identity, OnlineGameAccount Account, OnlinePlayerProfile Player)> RegisterIdentityAsync(long tenantId, long appId, long serverId, OnlineIdentityKind kind, string identifier, string playerName, long now, CancellationToken cancellationToken)
+    private async Task<(OnlineIdentity Identity, OnlineGameAccount Account, OnlinePlayerProfile Player)> RegisterIdentityAsync(long serverId, OnlineIdentityKind kind, string identifier, string playerName, long now, CancellationToken cancellationToken)
     {
         var accountId = await _store.NextAccountIdAsync(cancellationToken);
         var account = new OnlineGameAccount
         {
             Id = accountId,
-            TenantId = tenantId,
-            AppId = appId,
             Status = OnlineGameAccountStatus.Active,
             CreatedAtTime = now,
             UpdatedAtTime = now,
@@ -186,8 +180,6 @@ public sealed class OnlineIdentityService
         {
             Id = playerId,
             GameAccountId = accountId,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
             CreatedAtTime = now,
@@ -196,8 +188,6 @@ public sealed class OnlineIdentityService
         var identity = new OnlineIdentity
         {
             Id = "ident-" + Guid.NewGuid().ToString("N"),
-            TenantId = tenantId,
-            AppId = appId,
             Kind = kind,
             Identifier = identifier,
             GameAccountId = accountId,
@@ -273,19 +263,17 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 解析账号在指定 App/Server 下的归属玩家：命中既有玩家则复用，否则新建并落库。
+    /// 解析账号在指定区服下的归属玩家：命中既有玩家则复用，否则新建并落库。
     /// </summary>
     /// <param name="account">已解析的可登录账号。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="playerName">新建玩家显示名（可空，缺省按玩家标识生成）。</param>
     /// <param name="now">当前 Unix 毫秒时间。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>归属玩家实例。</returns>
-    private async Task<OnlinePlayerProfile> ResolvePlayerAsync(OnlineGameAccount account, long tenantId, long appId, long serverId, string playerName, long now, CancellationToken cancellationToken)
+    private async Task<OnlinePlayerProfile> ResolvePlayerAsync(OnlineGameAccount account, long serverId, string playerName, long now, CancellationToken cancellationToken)
     {
-        var players = await _store.ListPlayersAsync(account.Id, appId, serverId, cancellationToken);
+        var players = await _store.ListPlayersAsync(account.Id, serverId, cancellationToken);
         if (players.Count > 0)
         {
             return players[0];
@@ -296,8 +284,6 @@ public sealed class OnlineIdentityService
         {
             Id = playerId,
             GameAccountId = account.Id,
-            TenantId = tenantId,
-            AppId = appId,
             ServerId = serverId,
             Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
             CreatedAtTime = now,
@@ -348,15 +334,13 @@ public sealed class OnlineIdentityService
     /// 为账号绑定外源身份（显式操作）。三分支：全新身份唯一插入；绑定中身份同账号幂等放行、他账号拒绝；
     /// 已解绑身份归原账号——原账号重绑自己放行，跨账号改绑必须携带原账号签发的一次性授权票据。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="gameAccountId">目标游戏账号。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="rebindAuthorizationTicket">跨账号改绑授权票据秘密串（仅已解绑身份且原账号非本账号时必需）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>成功返回 true；失败返回段位化错误码（并发冲突 <see cref="OnlineErrorCode.VersionConflict"/>）。</returns>
-    public async Task<OnlineResult<bool>> BindIdentityAsync(long tenantId, long appId, long gameAccountId, OnlineIdentityKind kind, string identifier, string rebindAuthorizationTicket = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<bool>> BindIdentityAsync(long gameAccountId, OnlineIdentityKind kind, string identifier, string rebindAuthorizationTicket = null, CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(OnlineIdentityKind), kind) || string.IsNullOrEmpty(identifier))
         {
@@ -370,15 +354,13 @@ public sealed class OnlineIdentityService
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var existing = await _store.FindIdentityAsync(tenantId, appId, kind, identifier, cancellationToken);
+        var existing = await _store.FindIdentityAsync(kind, identifier, cancellationToken);
         if (existing == null)
         {
             // 全新身份：上游完成第三方凭据校验后直接绑定；唯一插入保证并发恰一胜者（败者零写入）。
             var identity = new OnlineIdentity
             {
                 Id = "ident-" + Guid.NewGuid().ToString("N"),
-                TenantId = tenantId,
-                AppId = appId,
                 Kind = kind,
                 Identifier = identifier,
                 GameAccountId = gameAccountId,
@@ -429,7 +411,7 @@ public sealed class OnlineIdentityService
             return OnlineResult<bool>.Fail(OnlineErrorCode.StateOperationForbidden, "原账号不可用，跨账号改绑须走客服或管理后台流程。");
         }
 
-        var authorizationResult = TryConsumeRebindAuthorization(rebindAuthorizationTicket, existing.TenantId, existing.AppId, existing.Kind, existing.Identifier, existing.GameAccountId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        var authorizationResult = TryConsumeRebindAuthorization(rebindAuthorizationTicket, existing.Kind, existing.Identifier, existing.GameAccountId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         if (!authorizationResult.IsSuccess)
         {
             return OnlineResult<bool>.Fail(authorizationResult.Code, authorizationResult.Message);
@@ -448,14 +430,12 @@ public sealed class OnlineIdentityService
     /// <summary>
     /// 签发已解绑身份跨账号改绑的一次性授权票据（由原账号已登录会话调用；短有效期、消费式单次）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="issuerGameAccountId">签发账号（原账号；身份须归属该账号，解绑前后均可）。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>授权票据（<see cref="OnlineIdentityRebindAuthorization.Code"/> 为秘密串，交由新账号持有方使用）；失败返回段位化错误码。</returns>
-    public async Task<OnlineResult<OnlineIdentityRebindAuthorization>> IssueIdentityRebindAuthorizationAsync(long tenantId, long appId, long issuerGameAccountId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineIdentityRebindAuthorization>> IssueIdentityRebindAuthorizationAsync(long issuerGameAccountId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
     {
         if (!Enum.IsDefined(typeof(OnlineIdentityKind), kind) || string.IsNullOrEmpty(identifier))
         {
@@ -473,7 +453,7 @@ public sealed class OnlineIdentityService
             return OnlineResult<OnlineIdentityRebindAuthorization>.Fail(OnlineErrorCode.StateOperationForbidden, "仅活跃账号可签发身份改绑授权。");
         }
 
-        var identity = await _store.FindIdentityAsync(tenantId, appId, kind, identifier, cancellationToken);
+        var identity = await _store.FindIdentityAsync(kind, identifier, cancellationToken);
         if (identity == null)
         {
             return OnlineResult<OnlineIdentityRebindAuthorization>.Fail(OnlineErrorCode.ResourceNotFound, "身份不存在。");
@@ -490,8 +470,6 @@ public sealed class OnlineIdentityService
         {
             Code = "rebind-" + Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
             TicketId = "rebind-auth-" + Guid.NewGuid().ToString("N"),
-            TenantId = tenantId,
-            AppId = appId,
             Kind = kind,
             Identifier = identifier,
             IssuerGameAccountId = issuerGameAccountId,
@@ -514,8 +492,6 @@ public sealed class OnlineIdentityService
         var rebound = new OnlineIdentity
         {
             Id = existing.Id,
-            TenantId = existing.TenantId,
-            AppId = existing.AppId,
             Kind = existing.Kind,
             Identifier = existing.Identifier,
             GameAccountId = gameAccountId,
@@ -527,17 +503,15 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 消费式校验改绑授权票据（验证即移除，无论后续改绑是否成功）：作用域四元组与签发账号必须与被改绑身份一致。
+    /// 消费式校验改绑授权票据（验证即移除，无论后续改绑是否成功）：作用域二元组与签发账号必须与被改绑身份一致。
     /// </summary>
     /// <param name="ticketCode">票据秘密串。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="issuerGameAccountId">原账号标识。</param>
     /// <param name="now">当前 Unix 毫秒时间。</param>
     /// <returns>校验通过返回票据实体；失败返回段位化错误码。</returns>
-    private OnlineResult<OnlineIdentityRebindAuthorization> TryConsumeRebindAuthorization(string ticketCode, long tenantId, long appId, OnlineIdentityKind kind, string identifier, long issuerGameAccountId, long now)
+    private OnlineResult<OnlineIdentityRebindAuthorization> TryConsumeRebindAuthorization(string ticketCode, OnlineIdentityKind kind, string identifier, long issuerGameAccountId, long now)
     {
         if (string.IsNullOrEmpty(ticketCode))
         {
@@ -549,7 +523,7 @@ public sealed class OnlineIdentityService
             return OnlineResult<OnlineIdentityRebindAuthorization>.Fail(OnlineErrorCode.StateOperationForbidden, "授权票据无效或已使用。");
         }
 
-        if (authorization.TenantId != tenantId || authorization.AppId != appId || authorization.Kind != kind || authorization.Identifier != identifier || authorization.IssuerGameAccountId != issuerGameAccountId)
+        if (authorization.Kind != kind || authorization.Identifier != identifier || authorization.IssuerGameAccountId != issuerGameAccountId)
         {
             return OnlineResult<OnlineIdentityRebindAuthorization>.Fail(OnlineErrorCode.StateOperationForbidden, "授权票据与被改绑身份不匹配。");
         }
@@ -593,8 +567,6 @@ public sealed class OnlineIdentityService
             EventId = "identity-rebind-" + Guid.NewGuid().ToString("N"),
             EventType = "online.identity.rebound",
             OccurredTime = now,
-            TenantId = original.TenantId,
-            AppId = original.AppId,
             ServerId = 0,
             PlayerId = 0,
             OperatorId = "game-account-" + original.GameAccountId,
@@ -617,15 +589,13 @@ public sealed class OnlineIdentityService
     /// <summary>
     /// 解绑外源身份（显式操作；账号必须保留至少一个绑定身份，否则拒绝）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
     /// <param name="kind">身份类型。</param>
     /// <param name="identifier">身份标识串。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>成功返回 true；失败返回段位化错误码。</returns>
-    public async Task<OnlineResult<bool>> UnbindIdentityAsync(long tenantId, long appId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<bool>> UnbindIdentityAsync(OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default)
     {
-        var identity = await _store.FindIdentityAsync(tenantId, appId, kind, identifier, cancellationToken);
+        var identity = await _store.FindIdentityAsync(kind, identifier, cancellationToken);
         if (identity == null || identity.UnboundAtTime > 0)
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "身份不存在或已解绑。");

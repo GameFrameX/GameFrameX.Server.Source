@@ -50,27 +50,21 @@ using {{Name}};
 // 已引用但被过滤排除 → 4003 CapabilityNotInstalled（载荷带已装清单）。
 // 增减能力 = 只增删 csproj ProjectReference（引用集即装配集，无按包装配代码）。
 
-// 授权作用域三元组（演示值）。接入配置管道时改走嵌套强类型段 "Online": { ... }（禁平铺键，
-// 能力族全局约定 2026-10-12）。
-const long tenantId = 1;
-const long appId = 1;
+// 授权作用域区服键（演示值；单键化 D4 后作用域只剩 ServerId）。接入配置管道时改走嵌套强类型段
+// "Online": { ... }（禁平铺键，能力族全局约定 2026-10-12）。
 const long serverId = 1;
 
-// 族配置段（演示值）：族脊柱包从段内读取授权作用域三元组（TenantId / AppId / ServerId，缺失或非正数
+// 族配置段（演示值）：族脊柱包从段内读取授权作用域区服键（ServerId，缺失或非正数
 // = 装配期 fail-fast）；机制只把其中的 Settings 子对象按字段绑定到各能力 Options（空 = 全部走包内默认参数，
 // 未知能力 Id / 未知字段 / 类型不符 = fail-fast）。接入配置管道后把 "Online" 段整段读成 JsonElement 传入；
 // 族级键（EnableRoles / Capabilities / Disable / UseGameDbStores 等）由宿主自行解析后落到 options（如 options.Filter）。
 var familyConfigurationSection = JsonSerializer.SerializeToElement(new
 {
-    TenantId = tenantId,
-    AppId = appId,
     ServerId = serverId,
     Settings = new { },
 });
 
 var options = new CapabilityCompositionOptions(familyConfigurationSection, new ConsoleCapabilityAssemblyLog());
-options.HostOptions.TenantId = tenantId;
-options.HostOptions.AppId = appId;
 options.HostOptions.ServerId = serverId;
 
 // 管理面：UseAdminApi 挂 admin 组装（action 注册 + 双向对账 + 元端点 list_capability_services /

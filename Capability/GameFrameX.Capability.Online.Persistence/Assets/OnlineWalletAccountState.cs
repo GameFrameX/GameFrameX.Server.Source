@@ -35,7 +35,8 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// <summary>
 /// 货币账户快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"tenant:app:player:货币代码"）
+/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"player:货币代码"，与 InMemory 键同构，
+/// 唯一构造点 <c>OnlineRowKey.WalletAccount</c>）
 /// 单列唯一索引；行 Id 由 <c>NextSequenceAsync</c> 分配。行版本唯一事实源 = 基类
 /// <c>RowVersion</c>（乐观锁专用字段，只承载并发控制语义、不承载业务含义）；
 /// 实体 <c>Version</c> 为派生视图（恒等式：实体 Version = 行 RowVersion + 1，首次落账建档即 1）。
@@ -46,20 +47,10 @@ using GameFrameX.Foundation.Orm.Attribute;
 public sealed class OnlineWalletAccountState : BaseCacheState
 {
     /// <summary>
-    /// 获取或设置物化复合键（"tenant:app:player:currencyId"；唯一索引列）。
+    /// 获取或设置物化复合键（"player:currencyId"；唯一索引列）。
     /// </summary>
     [EntityIndex("ux_online_wallet_unique_key", Unique = true)]
     public string UniqueKey { get; set; }
-
-    /// <summary>
-    /// 获取或设置租户标识。
-    /// </summary>
-    public long TenantId { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用标识。
-    /// </summary>
-    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。

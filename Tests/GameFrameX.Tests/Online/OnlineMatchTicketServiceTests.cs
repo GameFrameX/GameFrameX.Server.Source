@@ -42,11 +42,6 @@ namespace GameFrameX.Tests.Online
     /// </summary>
     public class OnlineMatchTicketServiceTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 10;
 
         /// <summary>测试用区服标识。</summary>
         private const long ServerId = 100;
@@ -95,7 +90,7 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.False(outcome.IsSuccess);
             Assert.Equal(OnlineErrorCode.DuplicateRequest, outcome.Code);
-            var queued = await store.ListQueuedAsync(TenantId, AppId);
+            var queued = await store.ListQueuedAsync();
             Assert.Single(queued);
         }
 
@@ -179,8 +174,6 @@ namespace GameFrameX.Tests.Online
                 MatchId = "match-fixed",
                 PlayerIds = new List<long> { PlayerOne },
                 TicketIds = new List<string> { enqueued.Data.TicketId },
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
             };
             var committed = await store.CommitMatchAsync(assignment, new List<string> { enqueued.Data.TicketId }, OnlineMatchTicketState.Queued);
@@ -245,12 +238,12 @@ namespace GameFrameX.Tests.Online
             var enqueued = await service.EnqueueAsync(CreatePlayerScope(PlayerOne), CreateEnqueueRequest(PlayerOne));
 
             // Act
-            var outcome = await service.SweepExpiredAsync(TenantId, AppId, enqueued.Data.ExpiresAtTime + 1);
+            var outcome = await service.SweepExpiredAsync(enqueued.Data.ExpiresAtTime + 1);
 
             // Assert
             Assert.True(outcome.IsSuccess);
             Assert.Equal(1, outcome.Data);
-            var expired = await store.FindAsync(TenantId, AppId, enqueued.Data.TicketId);
+            var expired = await store.FindAsync(enqueued.Data.TicketId);
             Assert.Equal(OnlineMatchTicketState.Expired, expired.State);
             Assert.Equal(OnlineMatchFailureReason.WaitTimeout, expired.FailureReason);
             Assert.Single(recorder.Filter(OnlineMatchEvents.TicketChanged));
@@ -266,7 +259,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _, out _, new OnlineMatchmakerOptions { TicketTimeToLiveSeconds = 1 });
             var scope = CreatePlayerScope(PlayerOne);
             var enqueued = await service.EnqueueAsync(scope, CreateEnqueueRequest(PlayerOne));
-            await service.SweepExpiredAsync(TenantId, AppId, enqueued.Data.ExpiresAtTime + 1);
+            await service.SweepExpiredAsync(enqueued.Data.ExpiresAtTime + 1);
 
             // Act
             var outcome = await service.EnqueueAsync(scope, CreateEnqueueRequest(PlayerOne));
@@ -309,7 +302,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, successCount);
             Assert.NotNull(rejected);
             Assert.Equal(OnlineErrorCode.DuplicateRequest, rejected.Code);
-            var queued = await store.ListQueuedAsync(TenantId, AppId);
+            var queued = await store.ListQueuedAsync();
             var ticket = Assert.Single(queued);
             var active = await service.GetActiveAsync(scope);
             Assert.NotNull(active.Data);
@@ -355,7 +348,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, successCount);
             Assert.NotNull(rejected);
             Assert.Equal(OnlineErrorCode.DuplicateRequest, rejected.Code);
-            var queued = await store.ListQueuedAsync(TenantId, AppId);
+            var queued = await store.ListQueuedAsync();
             var ticket = Assert.Single(queued);
             var sharedActive = await service.GetActiveAsync(CreatePlayerScope(sharedMember));
             Assert.NotNull(sharedActive.Data);
@@ -376,8 +369,6 @@ namespace GameFrameX.Tests.Online
                 TicketId = "tkt-conflict",
                 PartyId = string.Empty,
                 PlayerIds = new List<long> { PlayerOne },
-                TenantId = TenantId,
-                AppId = AppId,
                 ServerId = ServerId,
                 State = OnlineMatchTicketState.Queued,
                 CreatedAtTime = 1,
@@ -390,9 +381,9 @@ namespace GameFrameX.Tests.Online
             // Assert
             Assert.NotEqual(conflicting.TicketId, outcome.TicketId);
             Assert.Equal(enqueued.Data.TicketId, outcome.TicketId);
-            var all = await store.ListAllAsync(TenantId, AppId);
+            var all = await store.ListAllAsync();
             Assert.Single(all);
-            var active = await store.FindActiveByPlayerAsync(TenantId, AppId, PlayerOne);
+            var active = await store.FindActiveByPlayerAsync(PlayerOne);
             Assert.Equal(enqueued.Data.TicketId, active.TicketId);
         }
 
@@ -449,7 +440,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>作用域。</returns>
         private static OnlineScope CreatePlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(ServerId, playerId);
         }
     }
 }

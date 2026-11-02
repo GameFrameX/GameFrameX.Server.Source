@@ -40,7 +40,7 @@ public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
     /// <summary>全局读写锁。</summary>
     private readonly object _syncRoot = new();
 
-    /// <summary>列表项表：键 = (TenantId, AppId, ListingId)。</summary>
+    /// <summary>列表项表：键 = ListingId。</summary>
     private readonly Dictionary<string, OnlineMatchListing> _listings = new();
 
     /// <summary>保存列表项（深拷贝入库）。</summary>
@@ -55,7 +55,7 @@ public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
 
         lock (_syncRoot)
         {
-            _listings[BuildKey(listing.TenantId, listing.AppId, listing.ListingId)] = listing.Copy();
+            _listings[listing.ListingId] = listing.Copy();
         }
 
         return Task.CompletedTask;
@@ -75,7 +75,7 @@ public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
 
         lock (_syncRoot)
         {
-            var key = BuildKey(listing.TenantId, listing.AppId, listing.ListingId);
+            var key = listing.ListingId;
             if (!_listings.TryGetValue(key, out var existing) || existing.RowVersion != expectedRowVersion)
             {
                 return Task.FromResult(false);
@@ -89,49 +89,32 @@ public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
     }
 
     /// <summary>按标识查找列表项。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
     /// <param name="listingId">列表项标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>列表项副本；不存在返回 null。</returns>
-    public Task<OnlineMatchListing> FindAsync(long tenantId, long appId, string listingId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchListing> FindAsync(string listingId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
-            _listings.TryGetValue(BuildKey(tenantId, appId, listingId), out var listing);
+            _listings.TryGetValue(listingId, out var listing);
             return Task.FromResult(listing == null ? null : listing.Copy());
         }
     }
 
-    /// <summary>列出作用域内全部列表项。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
+    /// <summary>列出全部列表项。</summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>列表项副本列表。</returns>
-    public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
         {
             var result = new List<OnlineMatchListing>();
             foreach (var listing in _listings.Values)
             {
-                if (listing.TenantId == tenantId && listing.AppId == appId)
-                {
-                    result.Add(listing.Copy());
-                }
+                result.Add(listing.Copy());
             }
 
             return Task.FromResult<IReadOnlyList<OnlineMatchListing>>(result);
         }
-    }
-
-    /// <summary>构造存储键。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="listingId">列表项标识。</param>
-    /// <returns>复合键字符串。</returns>
-    private static string BuildKey(long tenantId, long appId, string listingId)
-    {
-        return tenantId + ":" + appId + ":" + listingId;
     }
 }
