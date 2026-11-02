@@ -190,14 +190,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证跨租户 / 跨应用 / 跨区服分别返回 3002 / 3003 / 3004。
+        /// 验证跨区服返回 3004（单键化 D4 后租户位 / App 位不复存在，跨租户 / 跨应用用例废止）。
         /// </summary>
         /// <param name="body">请求体。</param>
         /// <param name="expectedCode">期望业务码。</param>
         [Theory]
-        [InlineData("{\"TenantId\":2,\"AppId\":1,\"ServerId\":1001}", OnlineErrorCode.CrossTenantDenied)]
-        [InlineData("{\"TenantId\":1,\"AppId\":2,\"ServerId\":1001}", OnlineErrorCode.CrossAppDenied)]
-        [InlineData("{\"TenantId\":1,\"AppId\":1,\"ServerId\":2002}", OnlineErrorCode.ServerScopeDenied)]
+        [InlineData("{\"ServerId\":2002}", OnlineErrorCode.ServerScopeDenied)]
         public async Task Dispatch_ScopeMismatch_ShouldReturnGuardCode(string body, OnlineErrorCode expectedCode)
         {
             await WithDispatcherAsync(async dispatcher =>

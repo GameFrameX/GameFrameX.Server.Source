@@ -29,6 +29,9 @@
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj" />
+      <!-- 验收夹具玩法（RPS）经 OnlineMatchOptions.AddGame 注入（P4a 后能力包零具体玩法） -->
+      <ProjectReference Include="..\..\GameFrameX.Apps.Sample\GameFrameX.Apps.Sample.csproj" />
     </ItemGroup>
 
     <ItemGroup>
