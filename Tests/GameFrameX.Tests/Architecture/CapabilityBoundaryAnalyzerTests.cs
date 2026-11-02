@@ -303,6 +303,33 @@ public sealed class CapabilityBoundaryAnalyzerTests
     }
 
     [Theory]
+    [InlineData("ThirdParty.OnlineHost")]
+    [InlineData("GameFrameX.Launcher")]
+    public async Task Host_composition_overrides_allowed_for_executable_composition_hosts(string consumer)
+    {
+        // B1：可执行组合根（ConsoleApplication 输出，如 gfx-online 模板生成的宿主）是自身进程的组合入口，
+        // Override / Configure / SetAdminApiPlaneFactory 合法；同一程序集名以库输出编译仍被既有负样本拒绝。
+        var source = """
+            using GameFrameX.Capability.Hosting.Core;
+            public class CompositionEntry
+            {
+                public static void Main() { }
+
+                public void Run(CapabilityCompositionOptions options)
+                {
+                    options.Configure<FixtureOptions>(configured => { });
+                    options.Override<IFixtureContract>(resolver => null);
+                    options.SetAdminApiPlaneFactory(null);
+                }
+            }
+            public interface IFixtureContract { }
+            public sealed class FixtureOptions { }
+            """;
+        var compilation = Compile(consumer, source, ContractReferences, OutputKind.ConsoleApplication);
+        Assert.Empty(await Analyze(compilation, new CapabilityAssemblyBoundaryAnalyzer()));
+    }
+
+    [Theory]
     [InlineData("GameFrameX.Hotfix")]
     [InlineData("GameFrameX.Apps")]
     [InlineData("GameFrameX.Launcher")]
@@ -568,6 +595,14 @@ public sealed class CapabilityBoundaryAnalyzerTests
     {
         var compilation = CSharpCompilation.Create(name, new[] { CSharpSyntaxTree.ParseText(source, path: "Fixture.cs") },
             PlatformReferences.Concat(references), new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        AssertNoErrors(compilation);
+        return compilation;
+    }
+
+    private static CSharpCompilation Compile(string name, string source, MetadataReference[] references, OutputKind outputKind)
+    {
+        var compilation = CSharpCompilation.Create(name, new[] { CSharpSyntaxTree.ParseText(source, path: "Fixture.cs") },
+            PlatformReferences.Concat(references), new CSharpCompilationOptions(outputKind));
         AssertNoErrors(compilation);
         return compilation;
     }
