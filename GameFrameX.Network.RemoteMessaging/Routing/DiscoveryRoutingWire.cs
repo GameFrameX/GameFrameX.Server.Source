@@ -49,7 +49,6 @@ public static class DiscoveryRoutingWire
     private static IReadOnlyCollection<string> _hostedRoles;
     private static IRemoteRoleRouter _remoteRouter;
     private static int _initialized;
-    private static int _localDispatcherAttached;
     private static readonly object AttachLocalDispatcherLock = new();
 
     /// <summary>
@@ -139,7 +138,7 @@ public static class DiscoveryRoutingWire
             // 重复调用以最新 dispatcher 重建本地槽（远程链原样保留）：与 UnifiedMessageSenderHolder
             // 「重复调用覆盖为最新实例」同口径，保证本地信封复投与玩家级投递共用同一发送器。
             RoleRouterHolder.Initialize(new InProcessRoleRouter(_hostedRoles, dispatcher, _remoteRouter));
-            _localDispatcherAttached = 1;
+
         }
     }
 
@@ -152,7 +151,7 @@ public static class DiscoveryRoutingWire
     internal static void ResetForTest()
     {
         _initialized = 0;
-        _localDispatcherAttached = 0;
+
         _hostedRoles = null;
         _remoteRouter = null;
     }

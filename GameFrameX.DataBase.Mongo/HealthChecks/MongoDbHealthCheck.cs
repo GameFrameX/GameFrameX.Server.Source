@@ -90,6 +90,19 @@ public sealed class MongoDbHealthCheck : IHealthCheck
         _mongoClient = GetOrCreateSharedClient(connectionString);
     }
 
+
+    /// <summary>
+    /// 初始化 MongoDbHealthCheck 的新实例。
+    /// </summary>
+    /// <remarks>
+    /// Initializes a new instance of MongoDbHealthCheck.
+    /// </remarks>
+    /// <param name="mongoClient">MongoDB 客户端 / MongoDB client</param>
+    public MongoDbHealthCheck(IMongoClient mongoClient)
+    {
+        _mongoClient = mongoClient;
+    }
+
     /// <summary>
     /// 获取或创建进程内共享的健康检查客户端（双检锁；连接串变化时重建）。
     /// </summary>
@@ -116,19 +129,6 @@ public sealed class MongoDbHealthCheck : IHealthCheck
             _sharedHealthClientConnectionString = connectionString;
             return _sharedHealthClient;
         }
-    }
-
-
-    /// <summary>
-    /// 初始化 MongoDbHealthCheck 的新实例。
-    /// </summary>
-    /// <remarks>
-    /// Initializes a new instance of MongoDbHealthCheck.
-    /// </remarks>
-    /// <param name="mongoClient">MongoDB 客户端 / MongoDB client</param>
-    public MongoDbHealthCheck(IMongoClient mongoClient)
-    {
-        _mongoClient = mongoClient;
     }
 
     /// <summary>

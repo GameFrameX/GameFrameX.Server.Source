@@ -48,7 +48,7 @@ services:
     profiles:
       - postgres
     environment:
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: gameframex
     ports:
       - "127.0.0.1:35432:5432"
