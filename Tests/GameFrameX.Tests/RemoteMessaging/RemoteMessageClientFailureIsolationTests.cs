@@ -145,7 +145,6 @@ public sealed class RemoteMessageClientFailureIsolationTests
             adapter,
             new DefaultMessageCodec(new DefaultMessageCompressionRegistry(), 0, 512, 1024 * 1024, 1024 * 1024),
             new RequestResponseMatcher(),
-            new DefaultProtocolVersionNegotiator(),
             Array.Empty<IRemoteCallInterceptor>(),
             enableRetry ? retry : null,
             circuit,

@@ -34,10 +34,13 @@ namespace GameFrameX.Network.RemoteMessaging.Unified;
 /// <summary>
 /// 基于一致性哈希的服务实例选择器。支持虚拟节点，提供稳定的路由落点。
 /// 当实例下线时，仅影响部分 key 的重映射。
+/// 【冻结】随实例选择治理面一并冻结：保留现状供既有消费方使用，不再演进。
 /// </summary>
 /// <remarks>
 /// Consistent hash-based service instance selector. Supports virtual nodes for stable routing.
 /// When an instance goes offline, only a portion of keys are remapped.
+/// [Frozen] Frozen together with the instance-selection governance surface: kept as-is for existing
+/// consumers, no further evolution.
 /// </remarks>
 public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelector
 {

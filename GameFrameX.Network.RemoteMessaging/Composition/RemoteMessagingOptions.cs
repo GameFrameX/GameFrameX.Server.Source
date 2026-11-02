@@ -50,22 +50,29 @@ public sealed class RemoteMessagingOptions
     private const string EnvPrefix = "RemoteMessaging__";
 
     /// <summary>
-    /// 是否启用统一客户端（默认 true）。设为 false 可回退到旧实现。
+    /// 是否启用熔断器（默认 false，PassThrough 直通：不熔断、不做端点健康评估）。
+    /// 显式开启后装配真实现（DefaultCircuitBreaker + DefaultEndpointHealthEvaluator），属自托管进阶配置。
     /// </summary>
     /// <remarks>
-    /// Whether the unified client is enabled (default true). Set to false to fall back to the legacy implementation.
+    /// Whether the circuit breaker is enabled (default false, the pass-through posture: no circuit
+    /// breaking and no endpoint health evaluation). Opting in assembles the real implementations
+    /// (DefaultCircuitBreaker + DefaultEndpointHealthEvaluator) for advanced self-hosted setups.
     /// </remarks>
-    /// <value>是否启用统一客户端 / Whether the unified client is enabled</value>
-    public bool EnableUnifiedClient { get; set; } = true;
+    /// <value>是否启用熔断器 / Whether the circuit breaker is enabled</value>
+    public bool EnableCircuitBreaker { get; set; }
 
     /// <summary>
-    /// 是否启用重试（默认 true）。
+    /// 是否启用重试（默认 false，PassThrough 口径）。重试经 <c>WithRetry</c> 或环境变量显式开启，
+    /// 携带固定重试上限（<see cref="MaxRetryCount"/>）。
     /// </summary>
     /// <remarks>
-    /// Whether retry is enabled (default true).
+    /// Whether retry is enabled (default false, the pass-through posture). Retries are enabled
+    /// explicitly via <c>WithRetry</c> or the environment variable, carrying a fixed retry limit
+    /// (<see cref="MaxRetryCount"/>).
     /// </remarks>
     /// <value>是否启用重试 / Whether retry is enabled</value>
-    public bool EnableRetry { get; set; } = true;
+    public bool EnableRetry { get; set; }
+
 
     /// <summary>
     /// 默认超时毫秒数（默认 5000）。
@@ -209,8 +216,8 @@ public sealed class RemoteMessagingOptions
     {
         var options = new RemoteMessagingOptions
         {
-            EnableUnifiedClient = GetEnvBool("EnableUnifiedClient", true),
-            EnableRetry = GetEnvBool("EnableRetry", true),
+            EnableCircuitBreaker = GetEnvBool("EnableCircuitBreaker", false),
+            EnableRetry = GetEnvBool("EnableRetry", false),
             DefaultTimeoutMs = GetEnvInt("DefaultTimeoutMs", 5000),
             MaxRetryCount = GetEnvInt("MaxRetryCount", 2),
             RetryBaseDelayMs = GetEnvInt("RetryBaseDelayMs", 200),

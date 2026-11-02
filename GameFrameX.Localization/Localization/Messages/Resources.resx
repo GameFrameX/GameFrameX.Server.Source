@@ -2152,9 +2152,6 @@
     <value>SendOneWayAsync: service health score too low, Service: {0}, Score: {1}</value>
   </data>
 
-  <data name="RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible" xml:space="preserve">
-    <value>SendOneWayAsync: protocol version incompatible, MessageType: {0}</value>
-  </data>
 
   <data name="RemoteMessaging.FaultInjection.SimulatedConnectionDropLog" xml:space="preserve">
     <value>FaultInjection: simulated connection drop, Service: {0}</value>

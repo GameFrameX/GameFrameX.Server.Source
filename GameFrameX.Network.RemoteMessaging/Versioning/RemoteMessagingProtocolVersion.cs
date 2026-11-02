@@ -32,14 +32,14 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 /// <summary>
 /// RemoteMessaging 连接级协议版本的单一事实源。握手阶段交换此版本；Major 不一致显式拒绝。
 /// 演进规则：<see cref="Current"/> 的 Major 递增表示 wire 契约不兼容变更（禁止跨 Major 混布），
-/// Minor 递增表示向后兼容演进（protobuf 字段规则，见 <see cref="ProtocolVersionAttribute"/>）。
+/// Minor 递增表示向后兼容演进（protobuf 字段规则）。
 /// </summary>
 /// <remarks>
 /// The single source of truth for the connection-level RemoteMessaging protocol version. This version is
 /// exchanged during the connection handshake; differing majors are explicitly rejected. Evolution rules:
 /// incrementing <see cref="Current"/>'s major marks a breaking wire-contract change (cross-major mixed
 /// deployments are forbidden); incrementing the minor marks backward-compatible evolution (the protobuf
-/// field rules, see <see cref="ProtocolVersionAttribute"/>).
+/// field rules).
 /// </remarks>
 public static class RemoteMessagingProtocolVersion
 {

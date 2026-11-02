@@ -229,7 +229,6 @@ public sealed class RemoteMessageClientPumpTests
             adapter,
             new DefaultMessageCodec(new DefaultMessageCompressionRegistry(), 0, 512, 1024 * 1024, 1024 * 1024),
             new RequestResponseMatcher(),
-            new DefaultProtocolVersionNegotiator(),
             Array.Empty<IRemoteCallInterceptor>(),
             null,
             new AllowAllCircuitBreaker(),

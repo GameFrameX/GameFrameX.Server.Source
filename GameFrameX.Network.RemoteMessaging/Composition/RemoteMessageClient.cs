@@ -46,7 +46,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
     private readonly IEndpointHealthEvaluator _healthEvaluator;
     private readonly IRemoteCallInterceptor[] _interceptors;
     private readonly IMessageCodec _messageCodec;
-    private readonly IProtocolVersionNegotiator _protocolVersionNegotiator;
     private readonly IRequestResponseMatcher _requestResponseMatcher;
     private readonly IRetryPolicy _retryPolicy;
     private readonly ITransportProtocolAdapter _transportProtocolAdapter;
@@ -62,7 +61,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
     /// <param name="transportProtocolAdapter">传输协议适配器 / Transport protocol adapter</param>
     /// <param name="messageCodec">消息编解码器 / Message codec</param>
     /// <param name="requestResponseMatcher">请求-响应匹配器 / Request-response matcher</param>
-    /// <param name="protocolVersionNegotiator">协议版本协商器 / Protocol version negotiator</param>
+
     /// <param name="interceptors">远程调用拦截器数组 / Array of remote call interceptors</param>
     /// <param name="retryPolicy">重试策略（可为 null） / Retry policy (can be null)</param>
     /// <param name="circuitBreaker">熔断器 / Circuit breaker</param>
@@ -72,7 +71,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
         ITransportProtocolAdapter transportProtocolAdapter,
         IMessageCodec messageCodec,
         IRequestResponseMatcher requestResponseMatcher,
-        IProtocolVersionNegotiator protocolVersionNegotiator,
+
         IRemoteCallInterceptor[] interceptors,
         IRetryPolicy retryPolicy,
         ICircuitBreaker circuitBreaker,
@@ -82,7 +81,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
         _transportProtocolAdapter = transportProtocolAdapter;
         _messageCodec = messageCodec;
         _requestResponseMatcher = requestResponseMatcher ?? throw new ArgumentNullException(nameof(requestResponseMatcher));
-        _protocolVersionNegotiator = protocolVersionNegotiator;
+
         _interceptors = interceptors ?? Array.Empty<IRemoteCallInterceptor>();
         _retryPolicy = retryPolicy;
         _circuitBreaker = circuitBreaker;
@@ -412,16 +411,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
 
             // 连接级协议版本握手（每连接单飞一次）：拒绝抛 ProtocolVersionMismatchException，混布超时回落旧版本
             await EnsureHandshakeAsync(connection, targetKey);
-            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsMessageCompatible(requestMessage.GetType(), connection.NegotiatedRemoteVersion))
-            {
-                return (
-                           RemoteCallResult<TResponse>.Fail(
-                               RemoteStatusCode.ProtocolVersionIncompatible,
-                               $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
-                               stopwatch.ElapsedMilliseconds,
-                               context.TraceId),
-                           false);
-            }
             var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(context.TimeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 
@@ -651,8 +640,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
             if (response is GameFrameX.Network.RemoteMessaging.Versioning.RespProtocolVersionNegotiation handshakeResponse)
             {
                 var remote = new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion(handshakeResponse.Major, handshakeResponse.Minor);
-                if (!handshakeResponse.Accepted ||
-                    (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsConnectionCompatible(local, remote)))
+                if (!handshakeResponse.Accepted || remote.Major != local.Major)
                 {
                     // Localization: RemoteMessaging.Versioning.HandshakeRejected - 协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）。
                     throw new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException(
@@ -661,7 +649,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
                         remote);
                 }
 
-                connection.SetNegotiatedRemoteVersion(remote);
                 return;
             }
 
@@ -697,7 +684,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
                 serviceName,
                 _handshakeTimeoutMs,
                 GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy));
-            connection.SetNegotiatedRemoteVersion(GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy);
         }
         finally
         {
@@ -780,28 +766,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
         }
         public Stream Stream { get; }
 
-        /// <summary>
-        /// 获取握手协商出的远端协议版本（握手完成前为 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/> 占位；
-        /// <see cref="RemoteMessageClient"/> 保证消息级检查发生在握手之后）。
-        /// </summary>
-        /// <remarks>
-        /// Gets the remote protocol version negotiated by the handshake (the
-        /// <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/>
-        /// placeholder before the handshake completes; <see cref="RemoteMessageClient"/> guarantees the
-        /// message-level check runs after the handshake).
-        /// </remarks>
-        public GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion NegotiatedRemoteVersion { get; private set; } = GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy;
-
-        /// <summary>
-        /// 记录握手协商出的远端协议版本（仅握手流程调用）。
-        /// </summary>
-        /// <remarks>
-        /// Records the remote protocol version negotiated by the handshake (called by the handshake flow only).
-        /// </remarks>
-        public void SetNegotiatedRemoteVersion(GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion version)
-        {
-            NegotiatedRemoteVersion = version;
-        }
 
         /// <summary>
         /// 获取或启动本连接的单飞握手任务：首个调用者执行握手，并发调用者等待同一任务结果。
@@ -1005,12 +969,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
                 return;
             }
 
-            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsMessageCompatible(requestMessage.GetType(), connection.NegotiatedRemoteVersion))
-            {
-                // Localization: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible - SendOneWayAsync: 协议版本不兼容, MessageType: {0}
-                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayProtocolVersionIncompatible, requestMessage.GetType().Name));
-                return;
-            }
             var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(context.TimeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 

@@ -44,7 +44,6 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 /// </remarks>
 [ProtoContract]
 [MessageTypeHandler(ReservedMessageId)]
-[ProtocolVersion(1, 0)]
 public sealed class RespProtocolVersionNegotiation : MessageObject, IResponseMessage
 {
     /// <summary>

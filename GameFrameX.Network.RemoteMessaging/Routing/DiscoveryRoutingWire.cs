@@ -52,6 +52,21 @@ public static class DiscoveryRoutingWire
     private static int _localDispatcherAttached;
 
     /// <summary>
+    /// 路由缝是否已完成初始化（<see cref="Initialize"/> 成功执行后为 true）。
+    /// 组合门面（如 ServerLink）用它判断能否补装本地投递槽。
+    /// </summary>
+    /// <remarks>
+    /// Whether the routing seam has been initialized (true after <see cref="Initialize"/> completes
+    /// successfully). Composition facades (such as ServerLink) use it to decide whether the local
+    /// delivery slot can be attached.
+    /// </remarks>
+    /// <value>是否已初始化 / Whether the seam is initialized</value>
+    public static bool IsInitialized
+    {
+        get { return Volatile.Read(ref _initialized) == 1; }
+    }
+
+    /// <summary>
     /// 初始化路由缝：以发现层路由表装配跨 Role 路由器（case 2/3 真实转发器，替换占位）。
     /// </summary>
     /// <remarks>

@@ -31,9 +31,12 @@ namespace GameFrameX.Network.RemoteMessaging.Unified;
 
 /// <summary>
 /// 服务实例选择器接口。负责在同名多实例下进行一致性选路。
+/// 【冻结】实例选择治理面已冻结：保留现状供既有消费方使用，不再演进；新场景优先经玩家路由表寻址。
 /// </summary>
 /// <remarks>
 /// Server instance selector interface. Responsible for consistent routing among multiple instances with the same name.
+/// [Frozen] The instance-selection governance surface is frozen: it stays as-is for existing consumers
+/// and no longer evolves; new scenarios address through the player route table first.
 /// </remarks>
 public interface IServerInstanceSelector
 {
