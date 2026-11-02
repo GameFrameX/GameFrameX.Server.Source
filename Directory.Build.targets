@@ -4,7 +4,7 @@
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <DocumentationFile></DocumentationFile>
     </PropertyGroup>
-    <!-- GameFrameX.Architecture.Analyzers（架构约束 GFX0001–0018 + 代码风格 GFX0019/0020/0021）全仓统一注入。
+    <!-- GameFrameX.Architecture.Analyzers（架构约束 GFX0001–0018 + GFX0022 + 代码风格 GFX0019/0020/0021）全仓统一注入。
          排除分析器工程自身、源生成器工程、vendored PB 库、模板工程与自行引用分析器的测试工程；
          Proto 生成物不做工程级排除，改由 .editorconfig 按路径关闭规则。 -->
     <ItemGroup Condition="'$(MSBuildProjectName)' != 'GameFrameX.Architecture.Analyzers'
