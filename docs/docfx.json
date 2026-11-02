@@ -15,6 +15,7 @@
             "**/GameFrameX.Log.csproj",
             "**/GameFrameX.Setting.csproj",
             "**/GameFrameX.StartUp.csproj",
+            "**/GameFrameX.ServerLink.csproj",
             "**/GameFrameX.Utility.csproj",
             "**/GameFrameX.ServerManager.csproj",
             "**/GameFrameX.Launcher.csproj",

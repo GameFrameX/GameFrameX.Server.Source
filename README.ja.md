@@ -90,7 +90,7 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
 
 #### データベースと永続化
 
-- **デュアルデータベース Provider**: `DatabaseProvider` で `Mongo`（デフォルト）または `PostgreSql` を選択。両 Provider は同じ `GameFrameX.DataBase` 抽象レイヤーを共有
+- **データベース Provider の 3 分類**: PostgreSQL と MongoDB を完全検証のデュアルメインラインとして提供（条件付き書き込み、翻訳可能サブセットクエリ、トランザクション原子性が両 Provider でグリーンになることをリリースゲートとする）。加えて `DatabaseProvider` のデフォルトである SQLite がゼロ依存の導入 + テスト分類。いずれも同じ `GameFrameX.DataBase` 抽象レイヤーを共有
 - **MongoDB Provider**: 完全な MongoDB 統合。ヘルスステートマシン対応（Healthy → Degraded → Unhealthy → Recovering）
 - **PostgreSQL Provider**: Npgsql ベース。MongoDB Provider と同等のリトライ / リカバリ / 可用性 / ヘルスチェック能力を備える
 - **透過的永続化**: StateComponent の自動シリアライズ/デシリアライズ。定期的バッチ upsert 操作で永続化
@@ -109,7 +109,7 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
 ### 前提条件
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) のみをサポートします。.NET 8/9 はサポート対象外です。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（デフォルト Provider。`--DatabaseProvider=PostgreSql` で PostgreSQL も利用可能）
+- ゼロ依存起動に追加インストールは不要（SQLite は組込み、サンプル `Configs/app_config.json` のデフォルトも SQLite）。本番向け完全 Provider は MongoDB と PostgreSQL で、設定ファイルの選択 2 行を書き換えて選びます（[データベース Provider の 3 分類と境界](#データベース-provider-の-3-分類と境界) を参照。MongoDB / PostgreSQL Provider を選択した場合のみ、それぞれのデータベースのインストールが必要です）
 - Visual Studio 2022 または JetBrains Rider（推奨）
 
 ### インストール
@@ -120,39 +120,50 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
    cd GameFrameX.Server.Source
    ```
 
-2. **依存関係を復元**
-   ```bash
-   dotnet restore
-   ```
+2. **ビルドして出力ディレクトリに移動**
 
-3. **プロジェクトをビルド**
+   ランチャーは `Configs/` と `hotfix/` を作業ディレクトリ基準で解決するため、ビルド出力先から実行します（`quick_start-game.bat` もここにあります）:
    ```bash
    dotnet build
+   cp -r Configs bin/app_debug/Configs
+   cd bin/app_debug
    ```
 
-4. **MongoDB を起動**
-   ```bash
-   # ローカルインストール
-   mongod --dbpath /path/to/data
+3. **5 分でゼロ依存起動（SQLite）**
 
-   # または Docker を使用
+   データベースのインストールも Docker も不要——コマンド 1 つで全ロールを単一プロセスで起動します（サンプル設定は既に SQLite デフォルトなので、CLI 値と設定ファイルは一致します）:
+   ```bash
+   dotnet GameFrameX.Launcher.dll -- \
+       --AllInOne \
+       --DatabaseProvider=Sqlite \
+       --DataBaseUrl="Data Source=data/gameframex.db"
+   ```
+   - 起動ログに HTTP エントリと、解決された**データファイルの絶対パス**およびその読み書きチェックが出力されます。
+   - ヘルスチェック: `http://localhost:28080/health`（ライブネスプローブ: `/alive`）——サンプル設定は開発モードが有効なためこれらのエンドポイントがマッピングされます（本番では `HttpIsDevelopment` をオフにしてください。`ServiceDefaultsExtensions` のセキュリティ注記を参照）。
+   - データは作業ディレクトリ配下の `data/gameframex.db` に保存されます（Docker の `/app/data` ボリュームルートと一致）。プロセスを停止して再起動しても、アカウントと状態はそのまま残ります。
+   - 一時的なスクラッチデータベースを使いたい場合は `--DataBaseUrl="Data Source=:memory:"` を指定——起動ログは**何も永続化されない**（プロセス終了で全データ消失）旨を警告します。
+   - 単一プロセスを超えるスケールの前に [SQLite Provider の境界](#データベース-provider-の-3-分類と境界) を確認してください。
+
+4. **MongoDB / PostgreSQL で起動（完全 Provider）**
+   サンプル `Configs/app_config.json` のデフォルトはゼロ依存の SQLite 分類です。Provider の選択は設定ファイルの 2 行書き換えで行います（起動バリデーターは CLI 引数と設定ファイルの一致を要求するため、選択は設定ファイルが担います）:
+   ```bash
+   # 1. データベースを起動（MongoDB の例。PostgreSQL も同様）
    docker run -d -p 27017:27017 --name mongo mongo:8.2
+
+   # 2. 起動する全ロール分の Configs/app_config.json の選択を切り替え:
+   #    "DatabaseProvider": "Mongo",
+   #    "DataBaseUrl": "mongodb://127.0.0.1:27017"
+   #    （完成済みサンプル: Configs/app_config.mongo.json / app_config.postgres.json）
+
+   # 3. 実行
+   dotnet GameFrameX.Launcher.dll -- --ServerType=Game
    ```
 
-5. **サーバーを起動**
-   ```bash
-   dotnet run --project GameFrameX.Launcher -- \
-       --ServerType=Game \
-       --ServerId=1000 \
-       --OuterPort=29100 \
-       --HttpPort=28080 \
-       --DataBaseUrl=mongodb://127.0.0.1:27017 \
-       --DataBaseName=gameframex
-   ```
-
-6. **起動確認**
+5. **起動確認**
    - ヘルスチェック: `http://localhost:28080/health`（ライブネスプローブ: `/alive`）
    - コンソールログで起動成功を確認
+
+   **ゼロ JSON ゴールデンパス**: `Online.Settings` を一切書かずに起動しても、サンプルの RPS チェーン（マッチメイキング → 試合 → 決済 → 報酬付与 → ランキング）がそのまま動作します——`MatchSettledBoardId` はデフォルトボード `match-settled`（アセンブリ読み込み時に事前作成）へ投影されます。投影をオフにするには `online-competition.LeaderboardProjection.MatchSettledBoardId` を明示的に空にしてください。
 
 ---
 
@@ -212,10 +223,16 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 
 | 設定項目 | 説明 | デフォルト | 例 |
 |:--------|:-----|:----------|:---|
-| `DatabaseProvider` | データベース Provider | `Mongo` | `PostgreSql` |
+| `DatabaseProvider` | データベース Provider | `Sqlite` | `PostgreSql`、`Mongo` |
 | `DataBaseUrl` | データベース接続文字列 | なし | `mongodb://localhost:27017` |
 | `DataBaseName` | データベース名 | なし | `gameframex` |
 | `DataBasePassword` | データベースパスワード | なし | `your_password` |
+
+#### データベース Provider の 3 分類と境界
+
+- **3 分類の位置づけ**: `PostgreSql` と `Mongo` は完全検証のデュアルメインライン——条件付き書き込みプリミティブ、翻訳可能サブセットクエリ、トランザクション原子性などの全機能を両 Provider で二重実装・二重検証し、契約スイートのダブルグリーンがリリースゲートになります。`Sqlite` はゼロ依存の導入 + テスト分類（quickstart / demo ゴールデンパスのデフォルトの選択肢。組込みなのでデータベースの設置は不要）であり、本番トポロジは保証しません。
+- **データ移行ツールなし**: リポジトリは Mongo ↔ PostgreSQL のデータ移行実装を提供しません。Provider の切り替えは新規インストール / 新規サーバーの選定アクション（設定 2 行の変更）であり、既存の本番データベースの移行は各自で行ってください。
+- **デュアルメインラインの保守コスト**: 今後のデータベース機能は両 Provider で二重実装・二重検証が必要です（保守面は単一メインラインの約 ×1.5–2）。契約テストスイートは CI で PostgreSQL + MongoDB の両方で実行され、回帰はダブルグリーンゲートで担保されます。
 
 #### Actor 設定
 

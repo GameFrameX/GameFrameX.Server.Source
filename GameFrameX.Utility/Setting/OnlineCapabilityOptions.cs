@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 
+using System.Text.Json.Serialization;
 using System.Text.Json;
 
 namespace GameFrameX.Utility.Setting;
@@ -137,6 +138,7 @@ public sealed class OnlineCapabilityOptions
     /// fields / type mismatches fail fast at composition time). Unconfigured leaves the
     /// <see cref="JsonElement"/> default (<see cref="JsonValueKind.Undefined"/>, equivalent to an empty object).
     /// </remarks>
+    [JsonConverter(typeof(UndefinedSafeJsonElementConverter))]
     public JsonElement Settings { get; set; }
 
     /// <summary>

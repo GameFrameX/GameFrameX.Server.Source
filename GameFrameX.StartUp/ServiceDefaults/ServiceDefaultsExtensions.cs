@@ -36,7 +36,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
+
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
@@ -61,10 +61,18 @@ namespace GameFrameX.StartUp.ServiceDefaults
         /// </summary>
         private const string AlivenessEndpointPath = "/alive";
 
-        private static readonly object MongoHealthClientLock = new();
+        /// <summary>
+        /// MongoDB 健康检查类型的程序集限定名。StartUp 不直接引用 MongoDB.Driver，
+        /// 健康检查实例经 Provider 程序集反射解析（与 DbProviderResolver 的装配机制一致）。
+        /// </summary>
+        /// <remarks>
+        /// The assembly-qualified name of the MongoDB health check type. StartUp does not reference
+        /// MongoDB.Driver directly; the health check instance is resolved through the provider
+        /// assembly by reflection (the same assembly-resolution mechanism as DbProviderResolver).
+        /// </remarks>
+        private const string MongoHealthCheckTypeName = "GameFrameX.DataBase.Mongo.HealthChecks.MongoDbHealthCheck, GameFrameX.DataBase.Mongo";
+
         private static readonly TimeSpan MongoHealthCheckTimeout = TimeSpan.FromSeconds(3);
-        private static MongoClient _mongoHealthClient;
-        private static string _mongoHealthConnectionString;
 
         /// <summary>
         /// 为应用程序构建器添加默认服务，包括弹性、健康检查和OpenTelemetry
@@ -301,10 +309,14 @@ namespace GameFrameX.StartUp.ServiceDefaults
         }
 
         /// <summary>
-        /// 在配置了 MongoDB 连接串时添加数据库健康检查。
+        /// 在配置了 MongoDB 连接串时添加数据库健康检查。检查实例经 Provider 程序集反射解析
+        /// （StartUp 不引用 MongoDB.Driver）；Provider 程序集未加载时注册显式 Degraded 探针暴露配置错配。
         /// </summary>
         /// <remarks>
-        /// Adds MongoDB health check when the MongoDB connection string is configured.
+        /// Adds the MongoDB health check when the MongoDB connection string is configured. The check
+        /// instance is resolved through the provider assembly by reflection (StartUp does not reference
+        /// MongoDB.Driver); when the provider assembly is not loaded, an explicit degraded check is
+        /// registered so the misconfiguration surfaces instead of being silently skipped.
         /// </remarks>
         /// <param name="healthChecksBuilder">健康检查构建器 / Health checks builder</param>
         private static void AddMongoDbHealthCheckIfConfigured(IHealthChecksBuilder healthChecksBuilder)
@@ -316,6 +328,29 @@ namespace GameFrameX.StartUp.ServiceDefaults
                 return;
             }
 
+            IHealthCheck mongoHealthCheck;
+            try
+            {
+                mongoHealthCheck = CreateMongoDbHealthCheck(connectionString);
+            }
+            catch (Exception exception)
+            {
+                // 探针构造失败（如连接串非法被驱动拒绝）按 Degraded 暴露，不打断宿主启动：
+                // 与「Provider 程序集未加载 → Degraded」同一降级口径。
+                healthChecksBuilder.AddCheck("mongodb", () => HealthCheckResult.Degraded(
+                    "MongoDB health check could not be created from the configured connection string", exception),
+                    tags: new[] { "db", "ready", });
+                return;
+            }
+
+            if (mongoHealthCheck == null)
+            {
+                healthChecksBuilder.AddCheck("mongodb", () => HealthCheckResult.Degraded(
+                    "MongoDB connection string is configured but the GameFrameX.DataBase.Mongo provider assembly is not loaded"),
+                    tags: new[] { "db", "ready", });
+                return;
+            }
+
             healthChecksBuilder.AddCheck("mongodb", cancellationToken =>
             {
                 using (var timeoutCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
@@ -323,51 +358,34 @@ namespace GameFrameX.StartUp.ServiceDefaults
                     timeoutCancellationSource.CancelAfter(MongoHealthCheckTimeout);
                     try
                     {
-                        var mongoClient = GetOrCreateMongoHealthClient(connectionString);
-                        using (var databases = mongoClient.ListDatabaseNamesAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult())
-                        {
-                            if (databases.AnyAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult())
-                            {
-                                return HealthCheckResult.Healthy("MongoDB connection is healthy");
-                            }
-
-                            return HealthCheckResult.Degraded("MongoDB connection is degraded: no databases found");
-                        }
+                        return mongoHealthCheck.CheckHealthAsync(new HealthCheckContext(), timeoutCancellationSource.Token).GetAwaiter().GetResult();
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
-                        return HealthCheckResult.Degraded("MongoDB connection is temporarily unavailable", ex);
+                        return HealthCheckResult.Degraded("MongoDB connection is temporarily unavailable", exception);
                     }
                 }
             }, tags: new[] { "db", "ready", });
         }
 
         /// <summary>
-        /// 获取或创建用于健康检查的 MongoClient 实例。
+        /// 经 Provider 程序集解析 MongoDB 健康检查实例（连接串构造重载）。
         /// </summary>
         /// <remarks>
-        /// Gets or creates the MongoClient instance used by health checks.
+        /// Resolves the MongoDB health check instance (the connection-string constructor overload)
+        /// through the provider assembly.
         /// </remarks>
-        /// <param name="connectionString">MongoDB 连接字符串 / MongoDB connection string</param>
-        /// <returns>MongoDB 客户端实例 / MongoDB client instance</returns>
-        private static MongoClient GetOrCreateMongoHealthClient(string connectionString)
+        /// <param name="connectionString">MongoDB 连接串 / The MongoDB connection string</param>
+        /// <returns>健康检查实例；Provider 程序集不可用时为 null / The health check instance, or null when the provider assembly is unavailable</returns>
+        private static IHealthCheck CreateMongoDbHealthCheck(string connectionString)
         {
-            if (_mongoHealthClient != null && string.Equals(_mongoHealthConnectionString, connectionString, StringComparison.Ordinal))
+            var healthCheckType = Type.GetType(MongoHealthCheckTypeName, throwOnError: false);
+            if (healthCheckType == null)
             {
-                return _mongoHealthClient;
+                return null;
             }
 
-            lock (MongoHealthClientLock)
-            {
-                if (_mongoHealthClient != null && string.Equals(_mongoHealthConnectionString, connectionString, StringComparison.Ordinal))
-                {
-                    return _mongoHealthClient;
-                }
-
-                _mongoHealthClient = new MongoClient(connectionString);
-                _mongoHealthConnectionString = connectionString;
-                return _mongoHealthClient;
-            }
+            return Activator.CreateInstance(healthCheckType, connectionString) as IHealthCheck;
         }
 
         /// <summary>

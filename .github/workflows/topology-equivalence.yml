@@ -62,5 +62,5 @@ jobs:
       - name: Run Topology Equivalence Suite
         run: >
           dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
-          --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence|FullyQualifiedName~GameFrameX.Tests.Discovery|FullyQualifiedName~GameFrameX.Tests.DataBase.PostgreSqlDbServiceQueryTests"
+          --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence|FullyQualifiedName~GameFrameX.Tests.Discovery|FullyQualifiedName~GameFrameX.Tests.DataBase.PostgreSqlDbServiceQueryTests|FullyQualifiedName~GameFrameX.Tests.DataBase.DatabaseConditionalWritePrimitivesTests|FullyQualifiedName~GameFrameX.Tests.DataBase.DatabaseExecuteInTransactionAtomicityTests|FullyQualifiedName~GameFrameX.Tests.DataBase.SqlitePredicatePushdownTests|FullyQualifiedName~GameFrameX.Tests.DataBase.MongoDbServiceQueryTests"
           --logger GitHubActions

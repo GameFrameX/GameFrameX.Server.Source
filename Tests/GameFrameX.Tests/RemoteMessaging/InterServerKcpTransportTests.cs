@@ -232,6 +232,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
             .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithTimeoutMs(15000)
+            .WithRetry(2)
             .Build();
 
         for (var attempt = 1; attempt <= 3; attempt++)
@@ -263,7 +264,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
 
         // 腿一：仅配 tcp 键（现状部署形态）
         SetEnvironmentEndpoint(serviceName, "tcp", $"tcp://127.0.0.1:{_tcpPort}");
-        var tcpClient = new RemoteMessagingBuilder().WithRouteTable(_routeTable).WithTimeoutMs(15000).Build();
+        var tcpClient = new RemoteMessagingBuilder().WithRouteTable(_routeTable).WithTimeoutMs(15000).WithRetry(2).Build();
         foreach (var identity in identities)
         {
             var request = new ReqInnerFriendByAdd { PlayerId = IdentityBase + identity, SourcePlayerId = identity };
@@ -278,6 +279,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
             .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithTimeoutMs(15000)
+            .WithRetry(2)
             .Build();
         foreach (var (identity, tcpSuccess, tcpErrorCode) in observed)
         {

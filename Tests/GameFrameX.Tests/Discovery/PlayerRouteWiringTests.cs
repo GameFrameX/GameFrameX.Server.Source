@@ -140,7 +140,7 @@ public class PlayerRouteWiringTests
     }
 
     [Fact]
-    public async Task AttachLocalDispatcher_SecondCall_IsNoOpAndKeepsFirstDispatcher()
+    public async Task AttachLocalDispatcher_SecondCall_ReplacesWithNewestDispatcher()
     {
         var remoteRouter = new RecordingRemoteRouter();
         DiscoveryRoutingWire.SimulateInitializedForTest(new[] { "Game" }, remoteRouter);
@@ -153,8 +153,10 @@ public class PlayerRouteWiringTests
         var envelope = new MessageEnvelope("Game", new WiringTestMessage { PlayerId = 1001 });
         await RoleRouterHolder.Current.RouteAsync(envelope);
 
-        Assert.Single(first.Received);
-        Assert.Empty(second.Received);
+        // 与 UnifiedMessageSenderHolder「重复调用覆盖为最新实例」同口径：
+        // 本地信封复投槽取最新 dispatcher，保证与玩家级投递共用同一发送器。
+        Assert.Empty(first.Received);
+        Assert.Same(envelope, Assert.Single(second.Received));
     }
 
     [Fact]

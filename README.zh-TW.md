@@ -91,7 +91,7 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 
 #### 資料庫與持久化
 
-- **雙資料庫 Provider**：`DatabaseProvider` 可選 `Mongo`（預設）或 `PostgreSql`，兩者共用同一 `GameFrameX.DataBase` 抽象層
+- **資料庫 Provider 三檔**：`PostgreSql` 與 `Mongo` 為雙主線全驗證 Provider（條件寫、可翻譯子集查詢、事務原子性在兩家皆實作並驗證，作為發布門檻），`Sqlite` 為零依賴上手 + 測試檔（quickstart 預設），三者共用同一 `GameFrameX.DataBase` 抽象層
 - **MongoDB Provider**：完整的 MongoDB 整合，支援健康狀態機（Healthy → Degraded → Unhealthy → Recovering）
 - **PostgreSQL Provider**：基於 Npgsql，具備與 MongoDB Provider 同等的重試 / 復原 / 可用性 / 健康檢查能力
 - **透明持久化**：StateComponent 自動序列化/反序列化，透過定時批次 upsert 操作持久化
@@ -112,7 +112,7 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 ### 環境要求
 
 - 僅支援 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)，不支援 .NET 8/9。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（預設 Provider；亦可透過 `--DatabaseProvider=PostgreSql` 使用 PostgreSQL）
+- 零依賴啟動：無需安裝任何其他軟體（SQLite 為嵌入式，範例 `Configs/app_config.json` 即預設使用）。完整生產級 Provider 為 MongoDB 與 PostgreSQL——透過修改設定檔中的兩行選型即可選用（見[資料庫 Provider 三檔定位與邊界](#資料庫-provider-三檔定位與邊界)）
 - Visual Studio 2022 或 JetBrains Rider（推薦）
 
 ### 安裝
@@ -123,39 +123,50 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
    cd GameFrameX.Server.Source
    ```
 
-2. **還原相依套件**
-   ```bash
-   dotnet restore
-   ```
+2. **建置並進入輸出目錄**
 
-3. **建置專案**
+   啟動器以工作目錄為基準解析 `Configs/` 與 `hotfix/`，因此請在建置輸出目錄中執行（`quick_start-game.bat` 也位於此）：
    ```bash
    dotnet build
+   cp -r Configs bin/app_debug/Configs
+   cd bin/app_debug
    ```
 
-4. **啟動 MongoDB**
-   ```bash
-   # 本地安裝方式
-   mongod --dbpath /path/to/data
+3. **五分鐘零依賴啟動（SQLite）**
 
-   # 或使用 Docker
+   無需安裝資料庫、無需 Docker——單一命令以單一程序啟動全部角色（範例設定檔已預設 SQLite，因此 CLI 參數與檔案內容一致）：
+   ```bash
+   dotnet GameFrameX.Launcher.dll -- \
+       --AllInOne \
+       --DatabaseProvider=Sqlite \
+       --DataBaseUrl="Data Source=data/gameframex.db"
+   ```
+   - 啟動日誌會印出 HTTP 入口與資料檔的**絕對路徑**及其讀寫檢查結果。
+   - 健康檢查：`http://localhost:28080/health`（存活探針：`/alive`）——範例設定檔開啟了開發模式才映射這些端點（生產環境請關閉 `HttpIsDevelopment`；詳見 `ServiceDefaultsExtensions` 中的安全說明）。
+   - 資料落地於工作目錄下的 `data/gameframex.db`（與 Docker `/app/data` 卷冊根目錄對齊）。停止並重啟程序——帳號與狀態仍然存在。
+   - 想要拋棄式的暫存資料庫？改用 `--DataBaseUrl="Data Source=:memory:"`——啟動日誌會警告**不會持久化任何資料**（程序結束即全部丟失）。
+   - 要將其擴展到單一程序之外之前，請先閱讀 [SQLite Provider 邊界](#資料庫-provider-三檔定位與邊界)。
+
+4. **改用 MongoDB / PostgreSQL 啟動（完整 Provider）**
+   範例 `Configs/app_config.json` 預設為零依賴的 SQLite 檔；Provider 選型是兩行的設定檔修改（啟動驗證器要求 CLI 參數與設定檔一致，因此設定檔是選型載體）：
+   ```bash
+   # 1. 啟動資料庫（此處以 MongoDB 為例；PostgreSQL 方式相同）
    docker run -d -p 27017:27017 --name mongo mongo:8.2
+
+   # 2. 修改 Configs/app_config.json 中每個要啟動的角色的選型：
+   #    "DatabaseProvider": "Mongo",
+   #    "DataBaseUrl": "mongodb://127.0.0.1:27017"
+   #    （現成範例：Configs/app_config.mongo.json / app_config.postgres.json）
+
+   # 3. 執行
+   dotnet GameFrameX.Launcher.dll -- --ServerType=Game
    ```
 
-5. **執行伺服器**
-   ```bash
-   dotnet run --project GameFrameX.Launcher -- \
-       --ServerType=Game \
-       --ServerId=1000 \
-       --OuterPort=29100 \
-       --HttpPort=28080 \
-       --DataBaseUrl=mongodb://127.0.0.1:27017 \
-       --DataBaseName=gameframex
-   ```
-
-6. **驗證啟動**
+5. **驗證啟動**
    - 健康檢查：`http://localhost:28080/health`（存活探針：`/alive`）
    - 檢視控制檯日誌確認啟動成功
+
+   **零 JSON 黃金路徑**：不撰寫任何 `Online.Settings` 即可啟動伺服器，範例 RPS 鏈路（配對 → 對局 → 結算 → 發獎 → 排行榜）開箱即用——`MatchSettledBoardId` 會投影到預設排行榜 `match-settled`（組件裝配期間預先建立）。若要關閉投影，請在 `Online.Settings` 下將 `online-competition.LeaderboardProjection.MatchSettledBoardId` 明確留空。
 
 ---
 
@@ -210,10 +221,16 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
-| `DatabaseProvider` | 資料庫 Provider | `Mongo` | `PostgreSql` |
+| `DatabaseProvider` | 資料庫 Provider | `Sqlite` | `Mongo`、`PostgreSql` |
 | `DataBaseUrl` | 資料庫連線字串 | 無 | `mongodb://localhost:27017` |
 | `DataBaseName` | 資料庫名稱 | 無 | `gameframex` |
 | `DataBasePassword` | 資料庫密碼 | 無 | `your_password` |
+
+#### 資料庫 Provider 三檔定位與邊界
+
+- **三檔定位**：`PostgreSql` 與 `Mongo` 為雙主線全驗證檔——條件寫原語、可翻譯子集查詢、事務原子性等全部特性在兩家 Provider 雙實作雙驗證，契約套件雙綠是發布門檻；`Sqlite` 為零依賴上手 + 測試檔（quickstart / demo 黃金路徑的預設載體，嵌入式、無需安裝任何資料庫），不承諾生產拓撲。
+- **無資料遷移工具**：倉庫不提供 Mongo ↔ PostgreSQL 的資料搬遷實作。切換 Provider 是新裝/新服的選型動作（改兩行設定）；既有生產庫換型需自行完成資料搬遷。
+- **雙主線維護成本**：後續每個資料庫特性都要在兩家 Provider 雙實作、雙驗證（維護面約為單主線的 ×1.5–2）；契約測試套件在 CI 中於 PostgreSQL + MongoDB 雙跑，回歸由雙綠門檻兜底。
 
 #### Actor 配置
 
@@ -740,7 +757,7 @@ dotnet test --logger "console;verbosity=detailed"
 ├─────────────────────────────────────────────────────────────────┤
 │                       資料庫層                                    │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │             MongoDB (default) / PostgreSQL              │    │
+│  │        PostgreSQL / MongoDB (mainlines) + SQLite        │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```

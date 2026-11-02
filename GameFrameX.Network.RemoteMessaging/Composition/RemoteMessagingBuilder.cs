@@ -78,13 +78,14 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 设置重试策略。
+    /// 设置重试策略（固定重试上限）。默认不重试（PassThrough 口径）；调用本方法显式开启。
     /// </summary>
     /// <remarks>
-    /// Configures the retry policy.
+    /// Configures the retry policy (a fixed retry limit). Retries are disabled by default (the
+    /// pass-through posture); calling this method opts in explicitly.
     /// </remarks>
     /// <param name="maxRetryCount">最大重试次数 / The maximum number of retry attempts</param>
-    /// <param name="baseDelayMs">基础延迟毫秒 / The base delay in milliseconds between retries</param>
+    /// <param name="baseDelayMs">基础延迟毫秒数 / The base delay in milliseconds between retries</param>
     /// <returns>构建器实例 / The builder instance</returns>
     public RemoteMessagingBuilder WithRetry(int maxRetryCount, int baseDelayMs = 200)
     {
@@ -95,16 +96,18 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 设置熔断器参数。
+    /// 设置熔断器参数并显式启用真实现（默认 PassThrough 直通，不熔断、不做端点健康评估）。
     /// </summary>
     /// <remarks>
-    /// Configures the circuit breaker parameters.
+    /// Configures the circuit breaker parameters and opts in to the real implementation (the default
+    /// is the pass-through posture: no circuit breaking and no endpoint health evaluation).
     /// </remarks>
     /// <param name="failureThreshold">连续失败阈值 / The consecutive failure threshold that triggers the circuit breaker</param>
     /// <param name="openDurationMs">熔断开启持续时间毫秒 / The duration in milliseconds the circuit breaker stays open</param>
     /// <returns>构建器实例 / The builder instance</returns>
     public RemoteMessagingBuilder WithCircuitBreaker(int failureThreshold = 5, int openDurationMs = 30000)
     {
+        _options.EnableCircuitBreaker = true;
         _options.CircuitBreakerFailureThreshold = failureThreshold;
         _options.CircuitBreakerOpenDurationMs = openDurationMs;
         return this;
@@ -320,27 +323,28 @@ public sealed class RemoteMessagingBuilder
             _options.MaxPacketSize,
             _options.MaxDecompressedSize);
         var requestResponseMatcher = new RequestResponseMatcher();
-        var protocolVersionNegotiator = new DefaultProtocolVersionNegotiator();
 
+        // 最小观测常开：调用计数/时延/错误计数（Metrics）+ 标准 OTel span（Trace，无监听器时零成本）。
+        // 详细观测面板归运营台，本包只保留最小计数。
+        var metrics = new DiagnosticsRemoteCallMetrics();
         var interceptors = new List<IRemoteCallInterceptor>
         {
             new LoggingRemoteCallInterceptor(),
+            new MetricsRemoteCallInterceptor(metrics),
+            new TraceRemoteCallInterceptor(),
         };
 
+        if (_options.EnableFaultInjection)
+        {
+            interceptors.Add(new FaultInjectionRemoteCallInterceptor());
+        }
+
+        // 韧性默认 PassThrough（不熔断、不做端点健康评估）；显式 WithCircuitBreaker 才装配真实现（自托管进阶场景）
         ICircuitBreaker circuitBreaker;
         IEndpointHealthEvaluator healthEvaluator;
 
-        if (_options.EnableUnifiedClient)
+        if (_options.EnableCircuitBreaker)
         {
-            var metrics = new DiagnosticsRemoteCallMetrics();
-            interceptors.Add(new MetricsRemoteCallInterceptor(metrics));
-            interceptors.Add(new TraceRemoteCallInterceptor());
-
-            if (_options.EnableFaultInjection)
-            {
-                interceptors.Add(new FaultInjectionRemoteCallInterceptor());
-            }
-
             circuitBreaker = new DefaultCircuitBreaker(
                 _options.CircuitBreakerFailureThreshold,
                 _options.CircuitBreakerOpenDurationMs);
@@ -352,7 +356,8 @@ public sealed class RemoteMessagingBuilder
             healthEvaluator = new PassThroughEndpointHealthEvaluator();
         }
 
-        var retryPolicy = _options.EnableUnifiedClient && _options.EnableRetry
+        // 重试默认关闭（PassThrough 口径）；WithRetry 显式开启并携带固定重试上限
+        var retryPolicy = _options.EnableRetry
                               ? new DefaultRetryPolicy(_options.MaxRetryCount, _options.RetryBaseDelayMs)
                               : null;
 
@@ -360,7 +365,6 @@ public sealed class RemoteMessagingBuilder
             transportProtocolAdapter,
             messageCodec,
             requestResponseMatcher,
-            protocolVersionNegotiator,
             interceptors.ToArray(),
             retryPolicy,
             circuitBreaker,

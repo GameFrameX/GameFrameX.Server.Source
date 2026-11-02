@@ -41,9 +41,55 @@ namespace GameFrameX.DataBase.Mongo.HealthChecks;
 /// </remarks>
 public sealed class MongoDbHealthCheck : IHealthCheck
 {
+    /// <summary>
+    /// 共享健康检查客户端的创建锁。
+    /// </summary>
+    /// <remarks>
+    /// The creation lock for the shared health check client.
+    /// </remarks>
+    private static readonly object SharedClientLock = new();
+
+    /// <summary>
+    /// 进程内共享的健康检查客户端（按连接串复用，避免每次探测重建连接池）。
+    /// </summary>
+    /// <remarks>
+    /// The process-wide shared health check client (reused per connection string so each probe does not rebuild a connection pool).
+    /// </remarks>
+    private static IMongoClient _sharedHealthClient;
+
+    /// <summary>
+    /// 共享客户端当前对应的连接串。
+    /// </summary>
+    /// <remarks>
+    /// The connection string the shared client currently belongs to.
+    /// </remarks>
+    private static string _sharedHealthClientConnectionString;
+
     private const int ConsecutiveFailureThreshold = 5;
     private readonly IMongoClient _mongoClient;
     private int _consecutiveFailures;
+
+    /// <summary>
+    /// 按连接串初始化 MongoDbHealthCheck（客户端在进程内按连接串共享缓存）。
+    /// 供宿主在未直接引用 MongoDB.Driver 时经 Provider 程序集反射装配健康检查。
+    /// </summary>
+    /// <remarks>
+    /// Initializes a new instance of MongoDbHealthCheck from a connection string (the underlying
+    /// client is cached and shared per connection string within the process). Hosts that do not
+    /// reference MongoDB.Driver directly resolve this constructor through the provider assembly.
+    /// </remarks>
+    /// <param name="connectionString">MongoDB 连接串 / The MongoDB connection string</param>
+    /// <exception cref="ArgumentException">当 connectionString 为空白时抛出 / Thrown when connectionString is blank</exception>
+    public MongoDbHealthCheck(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new ArgumentException("The MongoDB connection string must not be blank.", nameof(connectionString));
+        }
+
+        _mongoClient = GetOrCreateSharedClient(connectionString);
+    }
+
 
     /// <summary>
     /// 初始化 MongoDbHealthCheck 的新实例。
@@ -55,6 +101,34 @@ public sealed class MongoDbHealthCheck : IHealthCheck
     public MongoDbHealthCheck(IMongoClient mongoClient)
     {
         _mongoClient = mongoClient;
+    }
+
+    /// <summary>
+    /// 获取或创建进程内共享的健康检查客户端（双检锁；连接串变化时重建）。
+    /// </summary>
+    /// <remarks>
+    /// Gets or creates the process-wide shared health check client (double-checked lock; rebuilt when the connection string changes).
+    /// </remarks>
+    /// <param name="connectionString">MongoDB 连接串 / The MongoDB connection string</param>
+    /// <returns>共享客户端实例 / The shared client instance</returns>
+    private static IMongoClient GetOrCreateSharedClient(string connectionString)
+    {
+        if (_sharedHealthClient != null && string.Equals(_sharedHealthClientConnectionString, connectionString, StringComparison.Ordinal))
+        {
+            return _sharedHealthClient;
+        }
+
+        lock (SharedClientLock)
+        {
+            if (_sharedHealthClient != null && string.Equals(_sharedHealthClientConnectionString, connectionString, StringComparison.Ordinal))
+            {
+                return _sharedHealthClient;
+            }
+
+            _sharedHealthClient = new MongoClient(connectionString);
+            _sharedHealthClientConnectionString = connectionString;
+            return _sharedHealthClient;
+        }
     }
 
     /// <summary>

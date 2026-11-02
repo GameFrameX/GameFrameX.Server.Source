@@ -88,6 +88,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         var client = new RemoteMessagingBuilder()
             .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
+            .WithRetry(2)
             .Build();
 
         for (var attempt = 1; attempt <= 3; attempt++)
@@ -119,6 +120,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         var client = new RemoteMessagingBuilder()
             .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
+            .WithRetry(2)
             .Build();
 
         var request = new ReqInnerFriendByAdd { PlayerId = IdentityBase + 1, SourcePlayerId = 42 };
@@ -167,29 +169,6 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         Assert.True(_businessMessages.TryGetValue("legacy", out var legacyCount) && legacyCount >= 1, "business message must reach the legacy server after fallback");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  ④ 消息级标注消费：标注 major 2 的消息对 major 1 对端拒绝发送
-    // ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task MessageAnnotation_MajorBeyondRemote_IsRejectedBeforeSending()
-    {
-        const string serviceName = "C252Annotation";
-        SetEnvironmentEndpoint(serviceName, $"tcp://127.0.0.1:{_v1Port}");
-
-        var client = new RemoteMessagingBuilder()
-            .WithRouteTable(_routeTable)
-            .WithTimeoutMs(15000)
-            .Build();
-
-        var request = new AnnotatedMajor2Message { PlayerId = IdentityBase + 1 };
-        var result = await client.CallWithResultAsync<RespInnerFriendByAdd>(serviceName, request);
-
-        // 协商远端为 (1,0)：标注 (2,0) 的消息必须在发送前被拒绝，且不进入服务端业务面
-        Assert.Equal(RemoteStatusCode.ProtocolVersionIncompatible, result.StatusCode);
-        Assert.Null(result.Response);
-        Assert.False(_businessMessages.TryGetValue("v1", out var v1Count) && v1Count > 0, "annotated business message must not be sent to the major-1 peer");
-    }
 
     /// <summary>
     /// 启动一条 TCP 接收面：握手短路行为可注入（null = 旧节点不回）；业务消息按身份回写并计数。
@@ -288,24 +267,6 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         }
     }
 
-    /// <summary>
-    /// 标注 (2,0) 的测试业务消息：对 major 1 对端必须拒绝发送。
-    /// </summary>
-    /// <remarks>
-    /// A test business message annotated (2,0): sending it to a major-1 peer must be rejected.
-    /// </remarks>
-    [ProtoContract]
-    [ProtocolVersion(2, 0)]
-    private sealed class AnnotatedMajor2Message : GameFrameX.Network.Messages.MessageObject, GameFrameX.Network.Abstractions.IRequestMessage
-    {
-        [ProtoMember(1)]
-        public long PlayerId { get; set; }
-
-        public override void Clear()
-        {
-            PlayerId = 0;
-        }
-    }
 
     /// <summary>
     /// 与生产 <c>ProtocolVersionNegotiationServer</c> 同宽限语义：拒绝包先送达，再关闭会话。

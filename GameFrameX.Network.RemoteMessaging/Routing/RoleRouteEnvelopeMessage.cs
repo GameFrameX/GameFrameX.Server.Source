@@ -29,7 +29,7 @@
 
 
 using GameFrameX.Network.RemoteMessaging.Unified;
-using GameFrameX.Network.RemoteMessaging.Versioning;
+
 using ProtoBuf;
 
 namespace GameFrameX.Network.RemoteMessaging.Routing;
@@ -48,7 +48,6 @@ namespace GameFrameX.Network.RemoteMessaging.Routing;
 /// </remarks>
 [ProtoContract]
 [MessageTypeHandler(ReservedMessageId)]
-[ProtocolVersion(1, 0)]
 public sealed class RoleRouteEnvelopeMessage : MessageObject
 {
     /// <summary>

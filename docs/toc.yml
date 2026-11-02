@@ -1,5 +1,7 @@
 - name: API Reference
   href: api/
+- name: 服务器间链路（ServerLink / RemoteMessaging）
+  href: remote-messaging.md
 - name: 文档主页
   href: https://gameframex.doc.alianblank.com
 - name: 框架主页

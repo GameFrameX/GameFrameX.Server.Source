@@ -31,9 +31,13 @@ namespace GameFrameX.Network.RemoteMessaging.Unified;
 
 /// <summary>
 /// 消息治理策略配置。每类消息都应有对应的策略。
+/// 【冻结】治理策略面已冻结：保留现状供既有消费方使用，不再演进；新诉求经 <c>IUnifiedMessageSender</c> 的玩家级投递选项表达。
 /// </summary>
 /// <remarks>
 /// Message governance policy configuration. Each message type should have a corresponding policy.
+/// [Frozen] The governance policy surface is frozen: it stays as-is for existing consumers and no
+/// longer evolves; new needs are expressed through the player-level delivery options of
+/// <c>IUnifiedMessageSender</c>.
 /// </remarks>
 public sealed class MessageGovernancePolicy
 {

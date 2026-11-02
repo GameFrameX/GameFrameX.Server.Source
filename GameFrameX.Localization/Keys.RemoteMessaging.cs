@@ -277,16 +277,6 @@ public static partial class Keys
             public const string SendOneWayHealthScoreLow = "RemoteMessaging.Client.SendOneWayHealthScoreLow";
 
             /// <summary>
-            /// SendOneWayAsync: 协议版本不兼容, MessageType: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible
-            /// 用途: 单向发送时协议版本不兼容而放弃发送的警告日志
-            /// 参数: {0} - 请求消息类型名
-            /// </remarks>
-            public const string SendOneWayProtocolVersionIncompatible = "RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible";
-
-            /// <summary>
             /// 拦截器 OnExceptionAsync 失败
             /// </summary>
             /// <remarks>
