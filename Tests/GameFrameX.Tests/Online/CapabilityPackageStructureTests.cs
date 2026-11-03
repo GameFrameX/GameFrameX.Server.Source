@@ -58,7 +58,8 @@ namespace GameFrameX.Tests.Online
             ["GameFrameX.Capability.Online.Operations"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.Abstractions" },
             ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
+            ["GameFrameX.Capability.Online.ServerLifecycle"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Abstractions" },
+            ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Online.ServerLifecycle", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
         };
 
         /// <summary>
@@ -75,6 +76,7 @@ namespace GameFrameX.Tests.Online
             ("GameFrameX.Capability.Online.Match", "online-match", GameFrameX.Capability.Online.Match.OnlineMatchCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Competition", "online-competition", GameFrameX.Capability.Online.Competition.OnlineCompetitionCapabilityModule.ManifestInstance),
             ("GameFrameX.Capability.Online.Operations", "online-operations", GameFrameX.Capability.Online.Operations.OnlineOperationsCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.ServerLifecycle", "online-server-lifecycle", GameFrameX.Capability.Online.ServerLifecycle.OnlineServerLifecycleCapabilityModule.ManifestInstance),
         };
 
         /// <summary>
