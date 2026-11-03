@@ -44,7 +44,7 @@ public sealed class OnlineServerMergeStepReport
     /// <summary>
     /// 步骤名（参与者名 + 动作）。
     /// </summary>
-    public string Step { get; set; } = string.Empty;
+    public string Step { get; set; }
 
     /// <summary>
     /// 受影响行数 / 条目数。

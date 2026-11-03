@@ -136,7 +136,7 @@ public sealed class GameDbOnlineServerMergeStore : IOnlineServerMergeStore
         }
 
         var state = await FindStateAsync(planId, cancellationToken).ConfigureAwait(false);
-        return HasPayload(state?.DryRunReportJson) ? DeserializeReport(state.DryRunReportJson) : null;
+        return state != null && HasPayload(state.DryRunReportJson) ? DeserializeReport(state.DryRunReportJson) : null;
     }
 
     /// <inheritdoc />
@@ -148,7 +148,7 @@ public sealed class GameDbOnlineServerMergeStore : IOnlineServerMergeStore
         }
 
         var state = await FindStateAsync(planId, cancellationToken).ConfigureAwait(false);
-        return HasPayload(state?.ExecutedReportJson) ? DeserializeReport(state.ExecutedReportJson) : null;
+        return state != null && HasPayload(state.ExecutedReportJson) ? DeserializeReport(state.ExecutedReportJson) : null;
     }
 
     /// <inheritdoc />

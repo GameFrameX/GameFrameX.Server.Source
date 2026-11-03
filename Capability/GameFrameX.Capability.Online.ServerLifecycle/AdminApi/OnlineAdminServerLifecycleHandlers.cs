@@ -56,17 +56,17 @@ public static class OnlineAdminServerLifecycleHandlers
             throw new ArgumentNullException(nameof(registry));
         }
 
-        registry.Register("register_server_open", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RegisterServerOpenAsync(request, scope, cancellationToken, calendar)), true);
-        registry.Register("query_server_calendar", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => QueryServerCalendarAsync(request, scope, cancellationToken, calendar)), false);
-        registry.Register("plan_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => PlanServerMergeAsync(request, scope, cancellationToken, mergeService)), true);
-        registry.Register("dry_run_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => DryRunServerMergeAsync(request, scope, cancellationToken, mergeService)), true);
-        registry.Register("execute_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => ExecuteServerMergeAsync(request, scope, cancellationToken, mergeService)), true);
+        registry.Register("register_server_open", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => RegisterServerOpenAsync(request, cancellationToken, calendar)), true);
+        registry.Register("query_server_calendar", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => QueryServerCalendarAsync(request, cancellationToken, calendar)), false);
+        registry.Register("plan_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => PlanServerMergeAsync(request, cancellationToken, mergeService)), true);
+        registry.Register("dry_run_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => DryRunServerMergeAsync(request, cancellationToken, mergeService)), true);
+        registry.Register("execute_server_merge", OnlineAdminApiAdapters.Wrap((request, scope, cancellationToken) => ExecuteServerMergeAsync(request, cancellationToken, mergeService)), true);
     }
 
     /// <summary>
     /// register_server_open：登记开服锚点（幂等；首次登记发布 ServerOpened 能力事件）。
     /// </summary>
-    private static async Task<object> RegisterServerOpenAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineServerLifecycleService calendar)
+    private static async Task<object> RegisterServerOpenAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineServerLifecycleService calendar)
     {
         var serverId = RequireInt64(request, "ServerId");
         var openedAt = request.ReadNullableInt64("OpenedAtUnixMilliseconds") ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -82,7 +82,7 @@ public static class OnlineAdminServerLifecycleHandlers
     /// <summary>
     /// query_server_calendar：开服锚点 + 当前开服天数。
     /// </summary>
-    private static async Task<object> QueryServerCalendarAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineServerLifecycleService calendar)
+    private static async Task<object> QueryServerCalendarAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineServerLifecycleService calendar)
     {
         var serverId = RequireInt64(request, "ServerId");
         var now = request.ReadNullableInt64("NowUnixMilliseconds") ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -100,7 +100,7 @@ public static class OnlineAdminServerLifecycleHandlers
     /// <summary>
     /// plan_server_merge：登记归并计划（幂等；仅计划不执行）。
     /// </summary>
-    private static async Task<object> PlanServerMergeAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
+    private static async Task<object> PlanServerMergeAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
     {
         var (targetServerId, sourceServerIds) = ReadMergeRequest(request);
         var outcome = await mergeService.PlanAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);
@@ -110,7 +110,7 @@ public static class OnlineAdminServerLifecycleHandlers
     /// <summary>
     /// dry_run_server_merge：dry-run 预演（零写入；报告留存为执行前置）。
     /// </summary>
-    private static async Task<object> DryRunServerMergeAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
+    private static async Task<object> DryRunServerMergeAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
     {
         var (targetServerId, sourceServerIds) = ReadMergeRequest(request);
         var report = await mergeService.DryRunAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);
@@ -120,7 +120,7 @@ public static class OnlineAdminServerLifecycleHandlers
     /// <summary>
     /// execute_server_merge：真实执行归并（幂等；无 dry-run 报告时拒绝）。
     /// </summary>
-    private static async Task<object> ExecuteServerMergeAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
+    private static async Task<object> ExecuteServerMergeAsync(AdminApiRequest request, CancellationToken cancellationToken, OnlineServerMergeService mergeService)
     {
         var (targetServerId, sourceServerIds) = ReadMergeRequest(request);
         var outcome = await mergeService.ExecuteAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);

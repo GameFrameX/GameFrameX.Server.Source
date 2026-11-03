@@ -68,55 +68,13 @@ public static class OnlineServerMergeCli
             throw new ArgumentNullException(nameof(output));
         }
 
-        long targetServerId = 0;
-        var sourceServerIds = new List<long>();
-        var execute = false;
-        foreach (var arg in args ?? Array.Empty<string>())
+        var options = await ParseArgumentsAsync(args, output).ConfigureAwait(false);
+        if (options == null)
         {
-            if (arg == "--execute")
-            {
-                execute = true;
-                continue;
-            }
-
-            var separatorIndex = arg.IndexOf('=');
-            if (separatorIndex <= 0)
-            {
-                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
-                return 2;
-            }
-
-            var name = arg.Substring(0, separatorIndex);
-            var value = arg.Substring(separatorIndex + 1);
-            if (name == "--target")
-            {
-                if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out targetServerId))
-                {
-                    await output.WriteLineAsync("ERROR: invalid --target value '" + value + "'.").ConfigureAwait(false);
-                    return 2;
-                }
-            }
-            else if (name == "--sources")
-            {
-                foreach (var segment in value.Split(','))
-                {
-                    if (!long.TryParse(segment.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var sourceServerId))
-                    {
-                        await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "'.").ConfigureAwait(false);
-                        return 2;
-                    }
-
-                    sourceServerIds.Add(sourceServerId);
-                }
-            }
-            else
-            {
-                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
-                return 2;
-            }
+            return 2;
         }
 
-        if (targetServerId <= 0 || sourceServerIds.Count == 0)
+        if (options.TargetServerId <= 0 || options.SourceServerIds.Count == 0)
         {
             await output.WriteLineAsync("ERROR: --target and --sources are required. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
             return 2;
@@ -126,15 +84,15 @@ public static class OnlineServerMergeCli
         bool alreadyExecuted = false;
         try
         {
-            if (execute)
+            if (options.Execute)
             {
-                var outcome = await mergeService.ExecuteAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);
+                var outcome = await mergeService.ExecuteAsync(options.TargetServerId, options.SourceServerIds, cancellationToken).ConfigureAwait(false);
                 report = outcome.Report;
                 alreadyExecuted = outcome.AlreadyExecuted;
             }
             else
             {
-                report = await mergeService.DryRunAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);
+                report = await mergeService.DryRunAsync(options.TargetServerId, options.SourceServerIds, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception exception) when (exception is ArgumentException || exception is InvalidOperationException || exception is OperationCanceledException || exception is OnlineServiceException)
@@ -142,6 +100,7 @@ public static class OnlineServerMergeCli
             await output.WriteLineAsync("ERROR: " + exception.Message).ConfigureAwait(false);
             return 3;
         }
+
 
         var document = JsonSerializer.Serialize(new CliReport
         {
@@ -156,6 +115,74 @@ public static class OnlineServerMergeCli
         }, new JsonSerializerOptions { WriteIndented = true });
         await output.WriteLineAsync(document).ConfigureAwait(false);
         return 0;
+    }
+
+    /// <summary>
+    /// 解析 CLI 参数（--target/--sources/--execute）；非法参数输出错误并返回 null。
+    /// </summary>
+    private static async Task<OnlineServerMergeCliOptions> ParseArgumentsAsync(string[] args, TextWriter output)
+    {
+        var options = new OnlineServerMergeCliOptions();
+        foreach (var arg in args ?? Array.Empty<string>())
+        {
+            if (arg == "--execute")
+            {
+                options.Execute = true;
+                continue;
+            }
+
+            var separatorIndex = arg.IndexOf('=');
+            if (separatorIndex <= 0)
+            {
+                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
+                return null;
+            }
+
+            var name = arg.Substring(0, separatorIndex);
+            var value = arg.Substring(separatorIndex + 1);
+            if (name == "--target")
+            {
+                if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var targetServerId))
+                {
+                    await output.WriteLineAsync("ERROR: invalid --target value '" + value + "'.").ConfigureAwait(false);
+                    return null;
+                }
+
+                options.TargetServerId = targetServerId;
+            }
+            else if (name == "--sources")
+            {
+                foreach (var segment in value.Split(','))
+                {
+                    if (!long.TryParse(segment.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var sourceServerId))
+                    {
+                        await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "'.").ConfigureAwait(false);
+                        return null;
+                    }
+
+                    options.SourceServerIds.Add(sourceServerId);
+                }
+            }
+            else
+            {
+                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
+                return null;
+            }
+        }
+
+        return options;
+    }
+
+    /// <summary>
+    /// CLI 参数解析结果（target/sources/execute）。
+    /// </summary>
+    private sealed class OnlineServerMergeCliOptions
+    {
+        public long TargetServerId { get; set; }
+
+        public List<long> SourceServerIds { get; } = new List<long>();
+
+        public bool Execute { get; set; }
     }
 
     /// <summary>

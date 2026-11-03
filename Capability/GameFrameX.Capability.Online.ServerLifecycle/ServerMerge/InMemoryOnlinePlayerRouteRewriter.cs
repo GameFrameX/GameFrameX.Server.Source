@@ -89,22 +89,13 @@ public sealed class InMemoryOnlinePlayerRouteRewriter : IOnlinePlayerRouteRewrit
         long affected = 0;
         lock (_lock)
         {
-            foreach (var pair in _routesByPlayer)
-            {
-                if (sourceSet.Contains(pair.Value))
-                {
-                    affected++;
-                }
-            }
+            affected = _routesByPlayer.Values.Count(sourceSet.Contains);
 
             if (!dryRun && affected > 0)
             {
-                foreach (var playerId in _routesByPlayer.Keys.ToList())
+                foreach (var playerId in _routesByPlayer.Keys.ToList().Where(playerId => sourceSet.Contains(_routesByPlayer[playerId])))
                 {
-                    if (sourceSet.Contains(_routesByPlayer[playerId]))
-                    {
-                        _routesByPlayer[playerId] = targetServerId;
-                    }
+                    _routesByPlayer[playerId] = targetServerId;
                 }
             }
         }

@@ -32,6 +32,7 @@ namespace GameFrameX.Capability.Online.ServerLifecycle.ServerMerge;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
@@ -105,12 +106,9 @@ public sealed class OnlineServerMergeService
 
         lock (_participants)
         {
-            foreach (var participant in participants)
+            foreach (var participant in participants.Where(participant => participant != null))
             {
-                if (participant != null)
-                {
-                    _participants.Add(participant);
-                }
+                _participants.Add(participant);
             }
         }
     }
