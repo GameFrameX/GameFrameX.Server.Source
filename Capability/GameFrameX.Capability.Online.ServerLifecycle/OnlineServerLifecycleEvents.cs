@@ -108,7 +108,8 @@ public static class OnlineServerLifecycleEvents
         };
         return new OnlineEvent
         {
-            EventId = "evt-" + Guid.NewGuid().ToString("N"),
+            // EventId 为计划派生稳定值（非随机 GUID）：发布失败重试补发时订阅方可据此幂等去重。
+            EventId = "evt-merge-" + payload.PlanId,
             EventType = ServerMerged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,

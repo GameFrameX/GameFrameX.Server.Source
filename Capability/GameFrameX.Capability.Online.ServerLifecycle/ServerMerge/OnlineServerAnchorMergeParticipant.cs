@@ -33,9 +33,15 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 内置参与者：开服锚点合服标记（源服锚点 <c>MergedIntoServerId</c> 置目标服；幂等）。
+/// <para>
+/// 前置全量校验（dry-run 与真实执行共用）：任一源服锚点未登记或已合入其他目标即整体拒绝
+/// （<see cref="OnlineErrorCode.StateOperationForbidden"/>）——dry-run 即暴露执行期失败，
+/// 真实执行不会出现部分源服已标记的半途状态。
+/// </para>
 /// </summary>
 public sealed class OnlineServerAnchorMergeParticipant : IServerMergeParticipant
 {
@@ -67,7 +73,17 @@ public sealed class OnlineServerAnchorMergeParticipant : IServerMergeParticipant
         foreach (var sourceServerId in context.Plan.SourceServerIds)
         {
             var anchor = await _calendarStore.FindAsync(sourceServerId, cancellationToken).ConfigureAwait(false);
-            if (anchor == null || anchor.MergedIntoServerId == 0 || anchor.MergedIntoServerId != context.Plan.TargetServerId)
+            if (anchor == null)
+            {
+                throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden, "Server anchor not registered: " + sourceServerId + "; register the open anchor before merging.");
+            }
+
+            if (anchor.MergedIntoServerId != 0 && anchor.MergedIntoServerId != context.Plan.TargetServerId)
+            {
+                throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden, "Server " + sourceServerId + " already merged into " + anchor.MergedIntoServerId + "; cannot retarget to " + context.Plan.TargetServerId + ".");
+            }
+
+            if (anchor.MergedIntoServerId != context.Plan.TargetServerId)
             {
                 affected++;
             }

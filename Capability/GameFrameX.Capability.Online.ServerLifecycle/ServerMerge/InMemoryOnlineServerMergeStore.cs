@@ -59,6 +59,11 @@ public sealed class InMemoryOnlineServerMergeStore : IOnlineServerMergeStore
     /// </summary>
     private readonly Dictionary<string, OnlineServerMergeReport> _executedReports = new();
 
+    /// <summary>
+    /// 合服完成事件已发布标记表（键 = PlanId；at-least-once 补发记账）。
+    /// </summary>
+    private readonly HashSet<string> _mergedEventPublishedPlanIds = new();
+
     /// <inheritdoc />
     public Task<(OnlineServerMergePlan Plan, bool Planned)> TryPlanAsync(OnlineServerMergePlan plan, CancellationToken cancellationToken = default)
     {
@@ -161,6 +166,35 @@ public sealed class InMemoryOnlineServerMergeStore : IOnlineServerMergeStore
         lock (_lock)
         {
             _executedReports[planId] = report;
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<bool> IsMergedEventPublishedAsync(string planId, CancellationToken cancellationToken = default)
+    {
+        if (planId == null)
+        {
+            throw new ArgumentNullException(nameof(planId));
+        }
+
+        lock (_lock)
+        {
+            return Task.FromResult(_mergedEventPublishedPlanIds.Contains(planId));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task MarkMergedEventPublishedAsync(string planId, CancellationToken cancellationToken = default)
+    {
+        if (planId == null)
+        {
+            throw new ArgumentNullException(nameof(planId));
+        }
+
+        lock (_lock)
+        {
+            _mergedEventPublishedPlanIds.Add(planId);
             return Task.CompletedTask;
         }
     }

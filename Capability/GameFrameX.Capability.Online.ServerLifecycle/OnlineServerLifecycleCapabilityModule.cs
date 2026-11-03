@@ -46,7 +46,20 @@ using GameFrameX.Capability.Online.ServerLifecycle.ServerMerge;
 /// 开服锚点 store、归并计划 store、PlayerRoute 重指向端口、区服域行键重写端口、榜单封档端口、
 /// 在途对局强制结算端口均以懒默认描述符注册（族 / 宿主覆盖恒胜出：发现层 / 持久化层 / 榜单域 /
 /// 对局域部署绑定直接覆盖默认空实现）；合服参与者 = 内置五步 + 玩法侧经
-/// <c>AddService&lt;IServerMergeParticipant&gt;(name, instance)</c> 追加（named 注册按名聚合，执行序 = 注册序）。
+/// <c>AddService&lt;IServerMergeParticipant&gt;(name, instance)</c> 追加，<see cref="ActivateAsync"/>
+/// 期枚举聚合进本模块装配的合服服务（<c>GetServices</c> 仅 Activate 期可用；执行序 = 注册序，
+/// admin 面 handler 与运行面消费方持同一服务实例，聚合对两面同时生效）。
+/// </para>
+/// <para>
+/// 边界如实声明：<see cref="RegisterAdminActions"/> 在组合期（先于 Activate）被调用且签名只传入动作注册表，
+/// 模块此时拿不到宿主最终服务表——直接以宿主 / 族覆盖注册 <c>OnlineServerMergeService</c>
+/// 只对经服务解析的运行面消费方生效，admin 面五 action 固定绑定本模块装配的默认实例；
+/// 玩法扩展请走上述命名参与者注册（对两面同时生效），不要覆盖合服服务类型。
+/// </para>
+/// <para>
+/// 运维约束：开服锚点缺省存储为进程内实现（重启即失）——需要跨进程 / 重启保留锚点的部署应绑定
+/// 持久化实现（如 Online.Persistence 包的 GameDbOnlineServerCalendarStore）；锚点前置校验会使
+/// 未登记锚点的合服 dry-run 直接失败。
 /// </para>
 /// </summary>
 public sealed class OnlineServerLifecycleCapabilityModule : ICapabilityModule, IAdminActionContributor
@@ -113,18 +126,20 @@ public sealed class OnlineServerLifecycleCapabilityModule : ICapabilityModule, I
             new OnlinePlayerRouteMergeParticipant(context.GetService<IOnlinePlayerRouteRewriter>()),
             new OnlineServerRowKeyRewriteParticipant(context.GetService<IOnlineServerMergeRowRewriter>(), options.Merge.RowRewriteBatchSize),
         };
-        // 玩法侧扩展：直接以宿主 / 族覆盖注册 OnlineServerMergeService（携带追加的参与者集合）——
-        // 服务共享协议：覆盖恒胜出，模块默认装配的内置五步参与者即缺省形态。
+        // 玩法侧扩展走命名参与者注册（Activate 期聚合，见 ActivateAsync）；本默认实例为 admin 面绑定形态。
         var mergeService = new OnlineServerMergeService(context.GetService<IOnlineServerMergeStore>(), participants, options.Merge, eventPublisher);
         _mergeService = mergeService;
         context.AddService(mergeService);
     }
 
     /// <summary>
-    /// 激活期无动作（锚点登记由部署 / admin 驱动，不预建）。
+    /// 激活期聚合玩法侧命名注册的 <see cref="IServerMergeParticipant"/>（锚点登记由部署 / admin 驱动，不预建）。
     /// </summary>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
+        // 玩法参与者扩展点：named 注册只能 Activate 期枚举（Register 期 GetServices 不可用），
+        // 聚合进模块默认合服服务——admin 面 handler 持同一实例，聚合对两面同时生效。
+        _mergeService.AttachParticipants(context.Services.GetServices<IServerMergeParticipant>());
         return Task.CompletedTask;
     }
 

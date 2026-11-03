@@ -88,4 +88,20 @@ public interface IOnlineServerMergeStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
     Task MarkExecutedAsync(string planId, OnlineServerMergeReport report, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 合服完成事件是否已发布（at-least-once 补发记账：发布失败后重试回放时据此补发）。
+    /// </summary>
+    /// <param name="planId">计划标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>已发布返回 true；未发布或计划不存在返回 false。</returns>
+    Task<bool> IsMergedEventPublishedAsync(string planId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 记账合服完成事件已发布（幂等：重复记账 = no-op）。
+    /// </summary>
+    /// <param name="planId">计划标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    Task MarkMergedEventPublishedAsync(string planId, CancellationToken cancellationToken = default);
 }

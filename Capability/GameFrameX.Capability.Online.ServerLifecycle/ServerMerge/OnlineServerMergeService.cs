@@ -90,6 +90,32 @@ public sealed class OnlineServerMergeService
     }
 
     /// <summary>
+    /// 追加玩法侧合服参与者（内置五步之后、按追加顺序执行；Activate 期由能力模块聚合命名注册后调用）。
+    /// </summary>
+    /// <param name="participants">追加的参与者集合（null 或空集合 = 无操作）。</param>
+    /// <remarks>
+    /// 仅约定在宿主 Activate 完成前调用（合服执行开始前聚合完毕）；实例方法线程安全（内部加锁）。
+    /// </remarks>
+    public void AttachParticipants(IEnumerable<IServerMergeParticipant> participants)
+    {
+        if (participants == null)
+        {
+            return;
+        }
+
+        lock (_participants)
+        {
+            foreach (var participant in participants)
+            {
+                if (participant != null)
+                {
+                    _participants.Add(participant);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// 登记归并计划（幂等：等价集合重复登记返回既有计划）。
     /// </summary>
     /// <param name="targetServerId">目标区服标识。</param>
@@ -121,6 +147,11 @@ public sealed class OnlineServerMergeService
 
     /// <summary>
     /// 真实执行归并（幂等：已执行计划返回既有报告回放且不再触发任何写入）。
+    /// <para>
+    /// 事件投递语义（at-least-once）：落定后发布 <c>online.server.merged</c> 并在存储记账发布状态；
+    /// 发布失败时合服实际已完成，重试走幂等回放并补发未发布事件（<c>EventId</c> 为计划派生稳定值，
+    /// 订阅方可据此去重）。
+    /// </para>
     /// </summary>
     /// <param name="targetServerId">目标区服标识。</param>
     /// <param name="sourceServerIds">源区服标识集合。</param>
@@ -134,6 +165,7 @@ public sealed class OnlineServerMergeService
         var executed = await _mergeStore.FindExecutedReportAsync(planId, cancellationToken).ConfigureAwait(false);
         if (executed != null)
         {
+            await PublishMergedEventIfNeededAsync(plan, planId, cancellationToken).ConfigureAwait(false);
             return (executed, true);
         }
 
@@ -149,12 +181,27 @@ public sealed class OnlineServerMergeService
         var report = await RunParticipantsAsync(plan, false, cancellationToken).ConfigureAwait(false);
         await _mergeStore.MarkExecutedAsync(planId, report, cancellationToken).ConfigureAwait(false);
 
-        if (_eventPublisher != null)
-        {
-            await _eventPublisher.PublishAsync(OnlineServerLifecycleEvents.CreateServerMerged(plan.TargetServerId, plan.SourceServerIds, planId), cancellationToken).ConfigureAwait(false);
-        }
+        await PublishMergedEventIfNeededAsync(plan, planId, cancellationToken).ConfigureAwait(false);
 
         return (report, false);
+    }
+
+    /// <summary>
+    /// 补发未发布的合服完成事件并记账（无发布器或已发布 = 无操作；发布失败异常上抛，重试回放时再补发）。
+    /// </summary>
+    /// <param name="plan">归并计划。</param>
+    /// <param name="planId">计划标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task PublishMergedEventIfNeededAsync(OnlineServerMergePlan plan, string planId, CancellationToken cancellationToken)
+    {
+        if (_eventPublisher == null || await _mergeStore.IsMergedEventPublishedAsync(planId, cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        await _eventPublisher.PublishAsync(OnlineServerLifecycleEvents.CreateServerMerged(plan.TargetServerId, plan.SourceServerIds, planId), cancellationToken).ConfigureAwait(false);
+        await _mergeStore.MarkMergedEventPublishedAsync(planId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -168,7 +215,13 @@ public sealed class OnlineServerMergeService
     {
         var context = new OnlineServerMergeContext(plan, dryRun, OnlineRowKey.RowKeySchemaVersion);
         var steps = new List<OnlineServerMergeStepReport>();
-        foreach (var participant in _participants)
+        IServerMergeParticipant[] participantsSnapshot;
+        lock (_participants)
+        {
+            participantsSnapshot = _participants.ToArray();
+        }
+
+        foreach (var participant in participantsSnapshot)
         {
             steps.Add(await participant.MergeAsync(context, cancellationToken).ConfigureAwait(false));
         }

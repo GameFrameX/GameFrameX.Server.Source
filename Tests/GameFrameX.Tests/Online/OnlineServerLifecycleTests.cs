@@ -189,9 +189,76 @@ public sealed class OnlineServerLifecycleTests
     [Fact]
     public async Task MergeReport_CarriesRowKeySchemaVersionSnapshot()
     {
-        var service = BuildMergeService(new InMemoryOnlineServerMergeStore());
+        var calendarStore = new InMemoryOnlineServerCalendarStore();
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 1000 });
+        var service = BuildMergeService(new InMemoryOnlineServerMergeStore(), calendarStore);
         var report = await service.DryRunAsync(3, new long[] { 1 });
         Assert.Equal(OnlineRowKey.RowKeySchemaVersion, report.RowKeySchemaVersion);
+    }
+
+    [Fact]
+    public async Task DryRun_UnregisteredSourceAnchor_IsRefusedUpfront()
+    {
+        // 前置全量校验：dry-run 即暴露执行期失败（未登记锚点不再被静默计入 affected）。
+        var service = BuildMergeService(new InMemoryOnlineServerMergeStore());
+        var exception = await Assert.ThrowsAsync<OnlineServiceException>(() => service.DryRunAsync(3, new long[] { 1 }));
+        Assert.Equal(OnlineErrorCode.StateOperationForbidden, exception.Code);
+    }
+
+    [Fact]
+    public async Task DryRun_SourceAnchorMergedElsewhere_IsRefusedUpfront()
+    {
+        var calendarStore = new InMemoryOnlineServerCalendarStore();
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 1000 });
+        await calendarStore.MarkMergedAsync(1, 9);
+        var service = BuildMergeService(new InMemoryOnlineServerMergeStore(), calendarStore);
+
+        var exception = await Assert.ThrowsAsync<OnlineServiceException>(() => service.DryRunAsync(3, new long[] { 1 }));
+        Assert.Equal(OnlineErrorCode.StateOperationForbidden, exception.Code);
+    }
+
+    [Fact]
+    public async Task AttachParticipants_GameplayParticipants_AppendAfterBuiltInSteps()
+    {
+        var calendarStore = new InMemoryOnlineServerCalendarStore();
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 1000 });
+        var service = BuildMergeService(new InMemoryOnlineServerMergeStore(), calendarStore);
+
+        service.AttachParticipants(new List<IServerMergeParticipant> { new RecordingParticipant("gameplay-migration") });
+
+        var dryRun = await service.DryRunAsync(3, new long[] { 1 });
+        Assert.Equal(1, dryRun.Steps.Single(step => step.Step == "gameplay-migration").AffectedCount);
+        // 内置五步仍在，玩法参与者追加其后。
+        Assert.Equal(6, dryRun.Steps.Count);
+    }
+
+    [Fact]
+    public async Task Execute_PublishFailureAfterMarkExecuted_ReplayRepublishesWithStableEventId()
+    {
+        var calendarStore = new InMemoryOnlineServerCalendarStore();
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 1000 });
+        var publisher = new FailingOnceEventPublisher();
+        var mergeStore = new InMemoryOnlineServerMergeStore();
+        var service = new OnlineServerMergeService(mergeStore, new List<IServerMergeParticipant>(), new OnlineServerMergeOptions(), publisher);
+
+        await service.DryRunAsync(3, new long[] { 1 });
+
+        // 第一次执行：参与者与落定成功，事件发布失败——合服实际已完成。
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ExecuteAsync(3, new long[] { 1 }));
+        Assert.NotNull(await mergeStore.FindExecutedReportAsync("merge-3-1"));
+        Assert.False(await mergeStore.IsMergedEventPublishedAsync("merge-3-1"));
+
+        // 重试：幂等回放 + 补发未发布事件；EventId 为计划派生稳定值（订阅方可去重）。
+        var replay = await service.ExecuteAsync(3, new long[] { 1 });
+        Assert.True(replay.AlreadyExecuted);
+        Assert.True(await mergeStore.IsMergedEventPublishedAsync("merge-3-1"));
+        var mergedEvent = Assert.Single(publisher.PublishedEvents);
+        Assert.Equal(OnlineServerLifecycleEvents.ServerMerged, mergedEvent.EventType);
+        Assert.Equal("evt-merge-merge-3-1", mergedEvent.EventId);
+
+        // 已发布后再次回放：不重复发布。
+        await service.ExecuteAsync(3, new long[] { 1 });
+        Assert.Single(publisher.PublishedEvents);
     }
 
     internal static OnlineServerMergeService BuildMergeService(IOnlineServerMergeStore mergeStore, IOnlineServerCalendarStore calendarStore = null, IOnlinePlayerRouteRewriter routeRewriter = null)
@@ -207,6 +274,51 @@ public sealed class OnlineServerLifecycleTests
             new OnlineServerRowKeyRewriteParticipant(new NullOnlineServerMergeRowRewriter(), 500),
         };
         return new OnlineServerMergeService(mergeStore, participants);
+    }
+
+    /// <summary>
+    /// 记录执行次数的玩法参与者夹具。
+    /// </summary>
+    private sealed class RecordingParticipant : IServerMergeParticipant
+    {
+        private readonly string _step;
+
+        public RecordingParticipant(string step)
+        {
+            _step = step;
+        }
+
+        public string Name
+        {
+            get { return _step; }
+        }
+
+        public Task<OnlineServerMergeStepReport> MergeAsync(OnlineServerMergeContext context, System.Threading.CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new OnlineServerMergeStepReport(_step, 1));
+        }
+    }
+
+    /// <summary>
+    /// 首次发布抛异常的事件发布器（补发语义回归载体：发布失败后重试回放须补发）。
+    /// </summary>
+    private sealed class FailingOnceEventPublisher : IOnlineEventPublisher
+    {
+        private bool _failedOnce;
+
+        public List<OnlineEvent> PublishedEvents { get; } = new();
+
+        public Task PublishAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default)
+        {
+            if (!_failedOnce)
+            {
+                _failedOnce = true;
+                throw new InvalidOperationException("publish failure simulation");
+            }
+
+            PublishedEvents.Add(onlineEvent);
+            return Task.CompletedTask;
+        }
     }
 
     /// <summary>
