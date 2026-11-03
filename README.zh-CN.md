@@ -212,12 +212,12 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `WssPort` | WSS TLS 端口（`0` 表示不启用；要求 `IsEnableWebSocket=true`） | `0` | `8444` |
 | `WssCertFilePath` | WSS 证书路径（PFX 或 PEM），`WssPort > 0` 时必填 | 无 | `/certs/wss/fullchain.pem` |
 | `WssCertificateKeyPath` | WSS PEM 独立私钥路径，`.pem` / `.crt` 证书必填 | 无 | `/certs/wss/privkey.pem` |
-| `WssCertificatePassword` | WSS PFX 或 PEM 加密私钥密码（可选） | 无 |  |
+| `WssCertificatePassword` | WSS PFX 或 PEM 加密私钥密码（仅限加密 PKCS#8 格式） | 无 |  |
 | `IsEnableHttp` | 是否启用 HTTP 服务 | `true` | `true` |
 | `HttpPort` | HTTP 服务端口 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服务端口 | 无 | `443` |
 | `HttpsCertPath` | HTTPS 证书路径（PFX 或 PEM），`HttpsPort > 0` 时必填 | 无 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私钥密码（可选） | 无 | |
+| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私钥密码（仅限加密 PKCS#8 格式） | 无 | |
 | `HttpsCertificateKeyPath` | HTTPS PEM 独立私钥路径，`.pem` / `.crt` 证书必填 | 无 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 签名密钥（HMAC-SHA256），开启签名校验后必填；为空时一律拒绝（fail-closed） | 无 | `a-strong-secret` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
@@ -249,7 +249,7 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 }
 ```
 
-证书路径以 `.pem` 或 `.crt` 结尾（不区分大小写）时必须提供独立私钥路径，其他扩展名按 PFX 加载。加密 PEM 私钥使用 `HttpsCertPassword` / `WssCertificatePassword`，未加密私钥可留空密码。存量 PFX 配置无需修改，仍使用对应密码字段，不需要私钥路径。路径或文件缺失、证书或私钥无效、密码错误均在启动期立即失败。客户端必须信任证书，并使用证书覆盖的主机名访问。
+证书路径以 `.pem` 或 `.crt` 结尾（不区分大小写）时必须提供独立私钥路径，其他扩展名按 PFX 加载。加密 PEM 私钥（RFC 7468 加密 PKCS#8，`BEGIN ENCRYPTED PRIVATE KEY`）使用 `HttpsCertPassword` / `WssCertificatePassword`；传统 OpenSSL 加密私钥（Proc-Type/DEK-Info 头）会被拒绝，请先用 `openssl pkcs8 -topk8` 转换。未加密私钥可留空密码。存量 PFX 配置无需修改，仍使用对应密码字段，不需要私钥路径。路径或文件缺失、证书或私钥无效、密码错误均在启动期立即失败。客户端必须信任证书，并使用证书覆盖的主机名访问。
 
 #### 数据库配置
 

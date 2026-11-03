@@ -211,12 +211,12 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `WssPort` | WSS TLS 埠（`0` 表示不啟用；要求 `IsEnableWebSocket=true`） | `0` | `8444` |
 | `WssCertFilePath` | WSS 憑證路徑（PFX 或 PEM），`WssPort > 0` 時必填 | 無 | `/certs/wss/fullchain.pem` |
 | `WssCertificateKeyPath` | WSS PEM 獨立私鑰路徑，`.pem` / `.crt` 憑證必填 | 無 | `/certs/wss/privkey.pem` |
-| `WssCertificatePassword` | WSS PFX 或 PEM 加密私鑰密碼（可選） | 無 |  |
+| `WssCertificatePassword` | WSS PFX 或 PEM 加密私鑰密碼（僅限加密 PKCS#8 格式） | 無 |  |
 | `IsEnableHttp` | 是否啟用 HTTP 服務 | `true` | `true` |
 | `HttpPort` | HTTP 服務埠 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服務埠 | 無 | `443` |
 | `HttpsCertPath` | HTTPS 憑證路徑（PFX 或 PEM），`HttpsPort > 0` 時必填 | 無 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私鑰密碼（可選） | 無 | |
+| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私鑰密碼（僅限加密 PKCS#8 格式） | 無 | |
 | `HttpsCertificateKeyPath` | HTTPS PEM 獨立私鑰路徑，`.pem` / `.crt` 憑證必填 | 無 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 簽章密鑰（HMAC-SHA256），開啟簽章校驗後必填；為空時一律拒絕（fail-closed） | 無 | `a-strong-secret` |
 | `HttpUrl` | API 介面根路徑 | `/game/api/` | `/game/api/` |
@@ -243,7 +243,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 }
 ```
 
-憑證路徑以 `.pem` 或 `.crt` 結尾（不區分大小寫）時必須提供獨立私鑰路徑，其他副檔名以 PFX 載入。加密 PEM 私鑰使用 `HttpsCertPassword` / `WssCertificatePassword`，未加密私鑰可留空密碼。既有 PFX 設定無需修改，仍使用對應密碼欄位，不需要私鑰路徑。路徑或檔案缺失、憑證或私鑰無效、密碼錯誤均會在啟動時立即失敗。用戶端必須信任憑證，並使用憑證涵蓋的主機名稱存取。
+憑證路徑以 `.pem` 或 `.crt` 結尾（不區分大小寫）時必須提供獨立私鑰路徑，其他副檔名以 PFX 載入。加密 PEM 私鑰（RFC 7468 加密 PKCS#8，`BEGIN ENCRYPTED PRIVATE KEY`）使用 `HttpsCertPassword` / `WssCertificatePassword`；傳統 OpenSSL 加密私鑰（Proc-Type/DEK-Info 標頭）會被拒絕，請先用 `openssl pkcs8 -topk8` 轉換。未加密私鑰可留空密碼。既有 PFX 設定無需修改，仍使用對應密碼欄位，不需要私鑰路徑。路徑或檔案缺失、憑證或私鑰無效、密碼錯誤均會在啟動時立即失敗。用戶端必須信任憑證，並使用憑證涵蓋的主機名稱存取。
 
 #### 資料庫配置
 

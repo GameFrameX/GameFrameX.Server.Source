@@ -64,6 +64,10 @@ internal sealed class TestServerCertificateFiles : IDisposable
     /// <remarks>Encrypted private key path.</remarks>
     internal string EncryptedKeyPath => Path.Combine(_directory, "encrypted-key.pem");
 
+    /// <summary>传统 OpenSSL 加密格式私钥路径（Proc-Type/DEK-Info 头）。</summary>
+    /// <remarks>Legacy OpenSSL encrypted private key path (Proc-Type/DEK-Info headers).</remarks>
+    internal string TraditionalEncryptedKeyPath => Path.Combine(_directory, "traditional-encrypted-key.pem");
+
     /// <summary>不含私钥的 PFX 路径。</summary>
     /// <remarks>PFX path without a private key.</remarks>
     internal string PublicCertificatePath => Path.Combine(_directory, "public.pfx");
@@ -88,6 +92,9 @@ internal sealed class TestServerCertificateFiles : IDisposable
                 File.WriteAllText(KeyPath, privateKey.ExportPkcs8PrivateKeyPem());
                 File.WriteAllText(EncryptedKeyPath, privateKey.ExportEncryptedPkcs8PrivateKeyPem(Password,
                     new PbeParameters(PbeEncryptionAlgorithm.Aes256Cbc, HashAlgorithmName.SHA256, 1000)));
+                // 传统 OpenSSL 加密格式：识别只依赖文件头，内容无需真实可解密。
+                File.WriteAllText(TraditionalEncryptedKeyPath,
+                    "-----BEGIN RSA PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\nDEK-Info: DES-EDE3-CBC,0123456789ABCDEF\n\ndHVzdA==\n-----END RSA PRIVATE KEY-----\n");
                 using (var publicCertificate = X509CertificateLoader.LoadCertificate(certificate.RawData))
                 {
                     File.WriteAllBytes(PublicCertificatePath, publicCertificate.Export(X509ContentType.Pfx, Password));

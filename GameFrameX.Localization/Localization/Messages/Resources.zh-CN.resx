@@ -2408,6 +2408,9 @@
   <data name="StartUp.Certificates.LoadFailed" xml:space="preserve">
     <value>{0} 证书加载失败（证书或私钥损坏、密码错误或私钥不匹配）：{1}。</value>
   </data>
+  <data name="StartUp.Certificates.TraditionalEncryptedKeyUnsupported" xml:space="preserve">
+    <value>{0} 私钥使用了传统 OpenSSL 加密格式（Proc-Type/DEK-Info 头），不受支持；请先使用 openssl pkcs8 -topk8 转换为加密 PKCS#8 格式：{1}。</value>
+  </data>
   <data name="StartUp.WebSocketServer.SecureListenerConfigured" xml:space="preserve">
     <value>已配置 WSS TLS 监听，端口：{0}。</value>
   </data>

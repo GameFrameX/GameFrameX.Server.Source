@@ -79,23 +79,59 @@ internal static class ServerCertificateLoader
             throw new InvalidOperationException(LocalizationService.GetString(CertificateKeys.KeyFileNotFound, protocol, keyPath));
         }
 
+        // 私钥文本只读取一次：传统加密格式识别在 try 外完成，避免其专属错误被 LoadFailed 双重包装掩盖。
+        var pemKeyText = isPem ? File.ReadAllText(keyPath) : null;
+        if (isPem && !IsPkcs8EncryptedKey(pemKeyText) && IsTraditionalOpenSslEncryptedKey(pemKeyText))
+        {
+            // .NET 仅支持 RFC 7468 加密 PKCS#8（BEGIN ENCRYPTED PRIVATE KEY）；
+            // 传统 OpenSSL 加密私钥（Proc-Type/DEK-Info 头）交给 CreateFromPemFile 只会得到误导性加载失败，
+            // 这里明确拒绝并给出转换指引。
+            throw new InvalidOperationException(LocalizationService.GetString(CertificateKeys.TraditionalEncryptedKeyUnsupported, protocol, keyPath));
+        }
+
+        X509Certificate2 loadedCertificate;
         try
         {
-            var certificate = isPem
-                ? LoadPemCertificate(certificatePath, keyPath, password)
+            loadedCertificate = isPem
+                ? LoadPemCertificate(certificatePath, keyPath, password, pemKeyText)
                 : X509CertificateLoader.LoadPkcs12FromFile(certificatePath, password, X509KeyStorageFlags.DefaultKeySet, Pkcs12LoaderLimits.Defaults);
-            if (!certificate.HasPrivateKey)
-            {
-                certificate.Dispose();
-                throw new InvalidOperationException(LocalizationService.GetString(CertificateKeys.PrivateKeyMissing, protocol, certificatePath));
-            }
-
-            return certificate;
         }
         catch (Exception exception)
         {
             throw new InvalidOperationException(LocalizationService.GetString(CertificateKeys.LoadFailed, protocol, certificatePath), exception);
         }
+
+        // 私钥校验放在 try/catch 之外：PrivateKeyMissing 是独立的配置结论，
+        // 被 LoadFailed 包装会让该消息不可达且误导排障方向。
+        if (!loadedCertificate.HasPrivateKey)
+        {
+            loadedCertificate.Dispose();
+            throw new InvalidOperationException(LocalizationService.GetString(CertificateKeys.PrivateKeyMissing, protocol, certificatePath));
+        }
+
+        return loadedCertificate;
+    }
+
+    /// <summary>
+    /// 判断私钥文本是否为 RFC 7468 加密 PKCS#8 格式。
+    /// </summary>
+    /// <remarks>Determines whether the key text is an RFC 7468 encrypted PKCS#8 PEM.</remarks>
+    /// <param name="keyText">私钥文件文本 / Private key file text</param>
+    /// <returns>是加密 PKCS#8 返回 true / Returns true for encrypted PKCS#8</returns>
+    private static bool IsPkcs8EncryptedKey(string keyText)
+    {
+        return keyText.Contains("-----BEGIN ENCRYPTED PRIVATE KEY-----", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 判断私钥文本是否为传统 OpenSSL 加密格式（Proc-Type/DEK-Info 头）。
+    /// </summary>
+    /// <remarks>Determines whether the key text uses the legacy OpenSSL encrypted format (Proc-Type/DEK-Info headers).</remarks>
+    /// <param name="keyText">私钥文件文本 / Private key file text</param>
+    /// <returns>是传统加密格式返回 true / Returns true for the legacy encrypted format</returns>
+    private static bool IsTraditionalOpenSslEncryptedKey(string keyText)
+    {
+        return keyText.Contains("Proc-Type:", StringComparison.Ordinal) || keyText.Contains("DEK-Info:", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -105,12 +141,12 @@ internal static class ServerCertificateLoader
     /// <param name="certificatePath">PEM 证书路径 / PEM certificate path</param>
     /// <param name="keyPath">PEM 私钥路径 / PEM private key path</param>
     /// <param name="password">加密私钥密码 / Encrypted private key password</param>
+    /// <param name="keyText">已读取的私钥文件文本 / The already-read private key file text</param>
     /// <returns>重载后的证书 / Reloaded certificate</returns>
-    private static X509Certificate2 LoadPemCertificate(string certificatePath, string keyPath, string password)
+    private static X509Certificate2 LoadPemCertificate(string certificatePath, string keyPath, string password, string keyText)
     {
         // 根据私钥头识别是否加密，允许未加密私钥使用空密码或已有密码配置。
-        var encrypted = File.ReadAllText(keyPath).Contains("-----BEGIN ENCRYPTED PRIVATE KEY-----", StringComparison.Ordinal);
-        using (var certificate = encrypted
+        using (var certificate = IsPkcs8EncryptedKey(keyText)
             ? X509Certificate2.CreateFromEncryptedPemFile(certificatePath, password.AsSpan(), keyPath)
             : X509Certificate2.CreateFromPemFile(certificatePath, keyPath))
         {

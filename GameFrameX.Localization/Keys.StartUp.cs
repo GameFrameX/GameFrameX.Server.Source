@@ -106,6 +106,17 @@ public static partial class Keys
             /// </remarks>
             public const string LoadFailed = "StartUp.Certificates.LoadFailed";
 
+            /// <summary>
+            /// {0} 私钥使用了传统 OpenSSL 加密格式（Proc-Type/DEK-Info 头），不受支持，请先用 openssl pkcs8 -topk8 转换为加密 PKCS#8 格式：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} private key uses the legacy OpenSSL encrypted format (Proc-Type/DEK-Info headers), which is not supported;
+            /// convert it to encrypted PKCS#8 with openssl pkcs8 -topk8 first: {1}.
+            /// 键名: StartUp.Certificates.TraditionalEncryptedKeyUnsupported
+            /// 参数: {0} - 协议名称，{1} - 私钥文件路径
+            /// </remarks>
+            public const string TraditionalEncryptedKeyUnsupported = "StartUp.Certificates.TraditionalEncryptedKeyUnsupported";
+
         }
 
         /// <summary>

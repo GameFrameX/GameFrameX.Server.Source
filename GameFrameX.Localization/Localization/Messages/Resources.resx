@@ -2412,6 +2412,9 @@
   <data name="StartUp.Certificates.LoadFailed" xml:space="preserve">
     <value>{0} certificate failed to load (invalid certificate or key, incorrect password, or mismatched private key): {1}.</value>
   </data>
+  <data name="StartUp.Certificates.TraditionalEncryptedKeyUnsupported" xml:space="preserve">
+    <value>{0} private key uses the legacy OpenSSL encrypted format (Proc-Type/DEK-Info headers), which is not supported; convert it to encrypted PKCS#8 with openssl pkcs8 -topk8 first: {1}.</value>
+  </data>
   <data name="StartUp.WebSocketServer.SecureListenerConfigured" xml:space="preserve">
     <value>WSS TLS listener configured on port {0}.</value>
   </data>

@@ -162,8 +162,8 @@ public class WssCertificateLoadTests : IDisposable
         Assert.NotNull(exception.InnerException);
     }
 
-    /// <summary>损坏证书或不含私钥的 PFX 必须阻断启动。</summary>
-    /// <remarks>Corrupted certificates and PFX without private keys must fail startup.</remarks>
+    /// <summary>损坏证书或不含私钥的 PFX 必须阻断启动，且各自保留专属错误语义。</summary>
+    /// <remarks>Corrupted certificates and PFX without private keys must fail startup with their specific error semantics.</remarks>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -178,7 +178,35 @@ public class WssCertificateLoadTests : IDisposable
         var setting = new AppSetting { WssPort = 8443, WssCertFilePath = path, WssCertificatePassword = TestServerCertificateFiles.Password };
         var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadWssCertificate(setting));
         Assert.Contains(path, exception.Message);
-        Assert.NotNull(exception.InnerException);
+        if (publicOnly)
+        {
+            // 无私钥属独立配置结论：直接抛 PrivateKeyMissing，不被 LoadFailed 包装（无底层异常）。
+            Assert.Null(exception.InnerException);
+        }
+        else
+        {
+            // 加载失败保留底层异常便于排障。
+            Assert.NotNull(exception.InnerException);
+        }
+    }
+
+    /// <summary>传统 OpenSSL 加密私钥必须被明确拒绝并给出转换指引。</summary>
+    /// <remarks>Legacy OpenSSL encrypted keys must be rejected with a conversion hint.</remarks>
+    [Fact]
+    public void LoadWssCertificate_ShouldThrow_WhenPemKeyUsesTraditionalOpenSslEncryption()
+    {
+        var setting = new AppSetting
+        {
+            WssPort = 8443,
+            WssCertFilePath = Files.PemPath,
+            WssCertificateKeyPath = Files.TraditionalEncryptedKeyPath,
+            WssCertificatePassword = TestServerCertificateFiles.Password,
+        };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadWssCertificate(setting));
+        // 传统格式专属错误在加载前抛出：不被 LoadFailed 包装，且给出 openssl pkcs8 转换指引（命令文本不随语言变化）。
+        Assert.Contains(Files.TraditionalEncryptedKeyPath, exception.Message);
+        Assert.Contains("openssl pkcs8 -topk8", exception.Message);
+        Assert.Null(exception.InnerException);
     }
 
     /// <summary>HTTPS 配置完整也不得替代缺失的 WSS 配置。</summary>

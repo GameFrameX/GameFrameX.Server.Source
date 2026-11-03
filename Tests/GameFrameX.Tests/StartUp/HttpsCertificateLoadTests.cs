@@ -178,7 +178,35 @@ public class HttpsCertificateLoadTests : IDisposable
         var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = path, HttpsCertPassword = TestServerCertificateFiles.Password };
         var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
         Assert.Contains(path, exception.Message);
-        Assert.NotNull(exception.InnerException);
+        if (publicOnly)
+        {
+            // 无私钥属独立配置结论：直接抛 PrivateKeyMissing，不被 LoadFailed 包装（无底层异常）。
+            Assert.Null(exception.InnerException);
+        }
+        else
+        {
+            // 加载失败保留底层异常便于排障。
+            Assert.NotNull(exception.InnerException);
+        }
+    }
+
+    /// <summary>传统 OpenSSL 加密私钥必须被明确拒绝并给出转换指引。</summary>
+    /// <remarks>Legacy OpenSSL encrypted keys must be rejected with a conversion hint.</remarks>
+    [Fact]
+    public void LoadHttpsCertificate_ShouldThrow_WhenPemKeyUsesTraditionalOpenSslEncryption()
+    {
+        var setting = new AppSetting
+        {
+            HttpsPort = 8443,
+            HttpsCertPath = Files.PemPath,
+            HttpsCertificateKeyPath = Files.TraditionalEncryptedKeyPath,
+            HttpsCertPassword = TestServerCertificateFiles.Password,
+        };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        // 传统格式专属错误在加载前抛出：不被 LoadFailed 包装，且给出 openssl pkcs8 转换指引（命令文本不随语言变化）。
+        Assert.Contains(Files.TraditionalEncryptedKeyPath, exception.Message);
+        Assert.Contains("openssl pkcs8 -topk8", exception.Message);
+        Assert.Null(exception.InnerException);
     }
 
     /// <summary>验证身份与可用私钥。</summary>

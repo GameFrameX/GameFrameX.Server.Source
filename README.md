@@ -245,12 +245,12 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `WssPort` | WSS TLS port (`0` disables WSS; requires `IsEnableWebSocket=true`) | `0` | `8444` |
 | `WssCertFilePath` | WSS certificate path (PFX or PEM), required when `WssPort > 0` | None | `/certs/wss/fullchain.pem` |
 | `WssCertificateKeyPath` | Separate WSS PEM private key path, required for `.pem` / `.crt` | None | `/certs/wss/privkey.pem` |
-| `WssCertificatePassword` | WSS PFX or encrypted PEM private key password (optional) | None |  |
+| `WssCertificatePassword` | WSS PFX or encrypted PEM private key password (encrypted PKCS#8 only) | None |  |
 | `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
 | `HttpPort`          | HTTP service port                         | `8080`       | `28080`      |
 | `HttpsPort`         | HTTPS service port (real TLS listener; certificate required) | None | `443` |
 | `HttpsCertPath` | HTTPS certificate path (PFX or PEM), required when `HttpsPort > 0` | None | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS PFX or encrypted PEM private key password (optional) | None | |
+| `HttpsCertPassword` | HTTPS PFX or encrypted PEM private key password (encrypted PKCS#8 only) | None | |
 | `HttpsCertificateKeyPath` | Separate HTTPS PEM private key path, required for `.pem` / `.crt` | None | `/certs/https/privkey.pem` |
 | `HttpSignSecret`    | HMAC-SHA256 secret for HTTP signature validation (required once signing is enabled; blank = fail-closed) | None | `a-strong-secret` |
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
@@ -282,7 +282,7 @@ The server can load certificates directly without an nginx proxy. With `IsEnable
 }
 ```
 
-Certificate paths ending in `.pem` or `.crt` (case-insensitive) require a separate private key path; other extensions use PFX. For encrypted PEM keys, supply `HttpsCertPassword` / `WssCertificatePassword`; leave the password empty for unencrypted keys. Existing PFX configurations need no changes and use the same password fields, without key paths. Missing paths or files, invalid certificates or keys, and incorrect passwords fail startup. Clients must trust the certificate and use a hostname covered by it.
+Certificate paths ending in `.pem` or `.crt` (case-insensitive) require a separate private key path; other extensions use PFX. For encrypted PEM keys (RFC 7468 encrypted PKCS#8, `BEGIN ENCRYPTED PRIVATE KEY`), supply `HttpsCertPassword` / `WssCertificatePassword`; legacy OpenSSL encrypted keys (Proc-Type/DEK-Info headers) are rejected — convert them first with `openssl pkcs8 -topk8`. Leave the password empty for unencrypted keys. Existing PFX configurations need no changes and use the same password fields, without key paths. Missing paths or files, invalid certificates or keys, and incorrect passwords fail startup. Clients must trust the certificate and use a hostname covered by it.
 
 #### Database Configuration
 

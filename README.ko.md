@@ -209,12 +209,12 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `WssPort` | WSS TLS 포트 (`0`은 비활성화, `IsEnableWebSocket=true` 필요) | `0` | `8444` |
 | `WssCertFilePath` | WSS 인증서 경로(PFX 또는 PEM), `WssPort > 0`이면 필수 | 없음 | `/certs/wss/fullchain.pem` |
 | `WssCertificateKeyPath` | WSS PEM의 별도 개인 키 경로, `.pem` / `.crt` 인증서에 필수 | 없음 | `/certs/wss/privkey.pem` |
-| `WssCertificatePassword` | WSS PFX 또는 암호화된 PEM 개인 키 비밀번호(선택) | 없음 |  |
+| `WssCertificatePassword` | WSS PFX 또는 암호화된 PEM 개인 키 비밀번호(암호화 PKCS#8 형식만 지원) | 없음 |  |
 | `IsEnableHttp` | HTTP 서비스 활성화 | `true` | `true` |
 | `HttpPort` | HTTP 서비스 포트 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 서비스 포트 | 없음 | `443` |
 | `HttpsCertPath` | HTTPS 인증서 경로(PFX 또는 PEM), `HttpsPort > 0`이면 필수 | 없음 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS PFX 또는 암호화된 PEM 개인 키 비밀번호(선택) | 없음 | |
+| `HttpsCertPassword` | HTTPS PFX 또는 암호화된 PEM 개인 키 비밀번호(암호화 PKCS#8 형식만 지원) | 없음 | |
 | `HttpsCertificateKeyPath` | HTTPS PEM의 별도 개인 키 경로, `.pem` / `.crt` 인증서에 필수 | 없음 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 서명 시크릿(HMAC-SHA256), 서명 검증 활성화 시 필수. 비어 있으면 모두 거부(fail-closed) | 없음 | `a-strong-secret` |
 | `HttpUrl` | API 루트 경로 | `/game/api/` | `/game/api/` |
@@ -241,7 +241,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 }
 ```
 
-인증서 경로가 `.pem` 또는 `.crt`로 끝나면(대소문자 구분 없음) 별도 개인 키 경로가 필요하며, 나머지 확장자는 PFX로 로드합니다. 암호화된 PEM 키에는 `HttpsCertPassword` / `WssCertificatePassword`를 지정하고, 암호화되지 않은 키는 비밀번호를 비워 둘 수 있습니다. 기존 PFX 설정은 변경할 필요 없이 같은 비밀번호 필드를 사용하며 개인 키 경로는 필요하지 않습니다. 경로나 파일 누락, 잘못된 인증서나 키, 틀린 비밀번호는 시작 단계에서 즉시 오류를 발생시킵니다. 클라이언트는 인증서를 신뢰하고 인증서에 포함된 호스트 이름으로 접속해야 합니다.
+인증서 경로가 `.pem` 또는 `.crt`로 끝나면(대소문자 구분 없음) 별도 개인 키 경로가 필요하며, 나머지 확장자는 PFX로 로드합니다. 암호화된 PEM 키(RFC 7468 암호화 PKCS#8, `BEGIN ENCRYPTED PRIVATE KEY`)에는 `HttpsCertPassword` / `WssCertificatePassword`를 지정합니다. 기존 OpenSSL 암호화 개인 키(Proc-Type/DEK-Info 헤더)는 거부되므로 먼저 `openssl pkcs8 -topk8`로 변환하세요. 암호화되지 않은 키는 비밀번호를 비워 둘 수 있습니다. 기존 PFX 설정은 변경할 필요 없이 같은 비밀번호 필드를 사용하며 개인 키 경로는 필요하지 않습니다. 경로나 파일 누락, 잘못된 인증서나 키, 틀린 비밀번호는 시작 단계에서 즉시 오류를 발생시킵니다. 클라이언트는 인증서를 신뢰하고 인증서에 포함된 호스트 이름으로 접속해야 합니다.
 
 #### 데이터베이스 설정
 

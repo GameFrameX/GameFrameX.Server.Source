@@ -208,12 +208,12 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `WssPort` | WSS TLS ポート（`0` は無効、`IsEnableWebSocket=true` が必要） | `0` | `8444` |
 | `WssCertFilePath` | WSS 証明書パス（PFX または PEM）、`WssPort > 0` の場合は必須 | なし | `/certs/wss/fullchain.pem` |
 | `WssCertificateKeyPath` | WSS PEM の独立した秘密鍵パス、`.pem` / `.crt` 証明書では必須 | なし | `/certs/wss/privkey.pem` |
-| `WssCertificatePassword` | WSS PFX または暗号化 PEM 秘密鍵のパスワード（任意） | なし |  |
+| `WssCertificatePassword` | WSS PFX または暗号化 PEM 秘密鍵のパスワード（暗号化 PKCS#8 形式のみ） | なし |  |
 | `IsEnableHttp` | HTTP サービスを有効化 | `true` | `true` |
 | `HttpPort` | HTTP サービスポート | `8080` | `28080` |
 | `HttpsPort` | HTTPS サービスポート | なし | `443` |
 | `HttpsCertPath` | HTTPS 証明書パス（PFX または PEM）、`HttpsPort > 0` の場合は必須 | なし | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS PFX または暗号化 PEM 秘密鍵のパスワード（任意） | なし | |
+| `HttpsCertPassword` | HTTPS PFX または暗号化 PEM 秘密鍵のパスワード（暗号化 PKCS#8 形式のみ） | なし | |
 | `HttpsCertificateKeyPath` | HTTPS PEM の独立した秘密鍵パス、`.pem` / `.crt` 証明書では必須 | なし | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 署名シークレット（HMAC-SHA256）、署名検証有効時は必須。空の場合はすべて拒否（fail-closed） | なし | `a-strong-secret` |
 | `HttpUrl` | API ルートパス | `/game/api/` | `/game/api/` |
@@ -245,7 +245,7 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 }
 ```
 
-証明書パスの拡張子が `.pem` または `.crt`（大文字と小文字を区別しない）の場合、独立した秘密鍵パスが必須です。それ以外は PFX として読み込みます。暗号化 PEM 秘密鍵には `HttpsCertPassword` / `WssCertificatePassword` を指定し、暗号化されていない鍵ではパスワードを空にできます。既存の PFX 設定は変更不要で、同じパスワード項目を使用し、秘密鍵パスは不要です。パスやファイルの欠落、無効な証明書や鍵、誤ったパスワードは起動時に即座にエラーとなります。クライアントは証明書を信頼し、証明書に含まれるホスト名で接続する必要があります。
+証明書パスの拡張子が `.pem` または `.crt`（大文字と小文字を区別しない）の場合、独立した秘密鍵パスが必須です。それ以外は PFX として読み込みます。暗号化 PEM 秘密鍵（RFC 7468 暗号化 PKCS#8、`BEGIN ENCRYPTED PRIVATE KEY`）には `HttpsCertPassword` / `WssCertificatePassword` を指定します。従来の OpenSSL 暗号化秘密鍵（Proc-Type/DEK-Info ヘッダー）は拒否されるため、先に `openssl pkcs8 -topk8` で変換してください。暗号化されていない鍵ではパスワードを空にできます。既存の PFX 設定は変更不要で、同じパスワード項目を使用し、秘密鍵パスは不要です。パスやファイルの欠落、無効な証明書や鍵、誤ったパスワードは起動時に即座にエラーとなります。クライアントは証明書を信頼し、証明書に含まれるホスト名で接続する必要があります。
 
 #### データベース設定
 
