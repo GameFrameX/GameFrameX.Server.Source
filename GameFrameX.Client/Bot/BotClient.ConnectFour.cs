@@ -87,8 +87,6 @@ public sealed partial class BotClient
 
     private ConnectFourStage _connectFourStage;
     private long _connectFourRoomId;
-    private RoomInfo _connectFourRoomInfo;
-    private ConnectFourGameInfo _connectFourGameInfo;
     private int _connectFourSubmittedRound = -1;
     private int _connectFourSubmittedMoveCount = -1;
     private int _connectFourLoggedFinishedRound;
@@ -144,7 +142,6 @@ public sealed partial class BotClient
         lock (_connectFourGate)
         {
             _connectFourRoomId = room.RoomId;
-            _connectFourRoomInfo = room;
             _connectFourStage = ConnectFourStage.WaitJoin;
             _connectFourNoProgressCount = 0;
         }
@@ -175,7 +172,6 @@ public sealed partial class BotClient
 
         lock (_connectFourGate)
         {
-            _connectFourRoomInfo = msg.Room;
             _connectFourStage = msg.Room.Status == RoomStatus.Playing ? ConnectFourStage.Playing : ConnectFourStage.WaitStart;
             _connectFourNoProgressCount = 0;
         }
@@ -197,7 +193,6 @@ public sealed partial class BotClient
         {
             lock (_connectFourGate)
             {
-                _connectFourRoomInfo = msg.Room;
                 _connectFourStage = ConnectFourStage.Playing;
                 _connectFourNoProgressCount = 0;
             }
@@ -205,12 +200,6 @@ public sealed partial class BotClient
             // Localization: Client.Bot.ConnectFourGameStarted - 机器人-{0}四子棋场景-对局开始，房间ID:{1}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.ConnectFourGameStarted, m_BotName, _connectFourRoomId));
             SendToTransport(new ReqConnectFourGameInfo { RoomId = _connectFourRoomId });
-            return;
-        }
-
-        lock (_connectFourGate)
-        {
-            _connectFourRoomInfo = msg.Room;
         }
     }
 
@@ -252,7 +241,6 @@ public sealed partial class BotClient
 
         lock (_connectFourGate)
         {
-            _connectFourGameInfo = gameInfo;
             _connectFourNoProgressCount = 0;
         }
 
