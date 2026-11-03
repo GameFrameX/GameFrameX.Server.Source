@@ -125,58 +125,81 @@ public static class OnlineServerMergeCli
         var options = new OnlineServerMergeCliOptions();
         foreach (var arg in args ?? Array.Empty<string>())
         {
-            if (arg == "--execute")
+            if (!await ParseArgumentAsync(arg, options, output).ConfigureAwait(false))
             {
-                options.Execute = true;
-                continue;
-            }
-
-            var separatorIndex = arg.IndexOf('=');
-            if (separatorIndex <= 0)
-            {
-                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
-                return null;
-            }
-
-            var name = arg.Substring(0, separatorIndex);
-            var value = arg.Substring(separatorIndex + 1);
-            if (name == "--target")
-            {
-                if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var targetServerId))
-                {
-                    await output.WriteLineAsync("ERROR: invalid --target value '" + value + "'.").ConfigureAwait(false);
-                    return null;
-                }
-
-                options.TargetServerId = targetServerId;
-            }
-            else if (name == "--sources")
-            {
-                foreach (var segment in value.Split(','))
-                {
-                    if (!long.TryParse(segment.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var sourceServerId))
-                    {
-                        await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "'.").ConfigureAwait(false);
-                        return null;
-                    }
-
-                    if (sourceServerId <= 0)
-                    {
-                        await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "' (server ids must be positive).").ConfigureAwait(false);
-                        return null;
-                    }
-
-                    options.SourceServerIds.Add(sourceServerId);
-                }
-            }
-            else
-            {
-                await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
                 return null;
             }
         }
 
         return options;
+    }
+
+    /// <summary>
+    /// 解析单个 CLI 参数；非法参数输出错误并返回 false。
+    /// </summary>
+    private static async Task<bool> ParseArgumentAsync(string arg, OnlineServerMergeCliOptions options, TextWriter output)
+    {
+        if (arg == "--execute")
+        {
+            options.Execute = true;
+            return true;
+        }
+
+        var separatorIndex = arg.IndexOf('=');
+        if (separatorIndex <= 0)
+        {
+            await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
+            return false;
+        }
+
+        var name = arg.Substring(0, separatorIndex);
+        var value = arg.Substring(separatorIndex + 1);
+        if (name == "--target")
+        {
+            if (!long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var targetServerId))
+            {
+                await output.WriteLineAsync("ERROR: invalid --target value '" + value + "'.").ConfigureAwait(false);
+                return false;
+            }
+
+            options.TargetServerId = targetServerId;
+        }
+        else if (name == "--sources")
+        {
+            return await ParseSourceServerIdsAsync(value, options, output).ConfigureAwait(false);
+        }
+        else
+        {
+            await output.WriteLineAsync("ERROR: unknown argument '" + arg + "'. Usage: --target=<serverId> --sources=<id1,id2,...> [--execute]").ConfigureAwait(false);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 依次解析并追加源服标识；非法分段输出错误并返回 false。
+    /// </summary>
+    private static async Task<bool> ParseSourceServerIdsAsync(string value, OnlineServerMergeCliOptions options, TextWriter output)
+    {
+        foreach (var segment in value.Split(','))
+        {
+            if (!long.TryParse(segment.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var sourceServerId))
+            {
+                await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "'.").ConfigureAwait(false);
+                return false;
+            }
+
+            if (sourceServerId <= 0)
+            {
+                await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "' (server ids must be positive).").ConfigureAwait(false);
+                return false;
+            }
+
+            options.SourceServerIds.Add(sourceServerId);
+        }
+
+        return true;
     }
 
     /// <summary>
