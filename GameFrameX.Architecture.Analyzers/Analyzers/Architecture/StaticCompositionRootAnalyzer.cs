@@ -93,84 +93,133 @@ public sealed class StaticCompositionRootAnalyzer : DiagnosticAnalyzer
                 return;
             }
 
-            var mechanismAssemblyName = MechanismAssemblyName;
-
-            compilationContext.RegisterSymbolAction(symbolContext =>
-            {
-                var type = (INamedTypeSymbol)symbolContext.Symbol;
-                if (!type.IsStatic || type.TypeKind == TypeKind.Error || type.IsImplicitlyDeclared)
-                {
-                    return;
-                }
-
-                var assemblyName = type.ContainingAssembly.Identity.Name;
-                if (assemblyName == mechanismAssemblyName || ArchitectureSymbolFacts.ShouldIgnoreAssembly(assemblyName))
-                {
-                    return;
-                }
-
-                foreach (var member in type.GetMembers())
-                {
-                    var memberType = member switch
-                    {
-                        IFieldSymbol field => field.Type,
-                        IPropertySymbol property => property.Type,
-                        _ => null,
-                    };
-
-                    if (memberType == null)
-                    {
-                        continue;
-                    }
-
-                    if (SymbolEqualityComparer.Default.Equals(memberType, runtimeType))
-                    {
-                        symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, member.Locations[0], type.Name, assemblyName, "static member holding CapabilityRuntime"));
-                        return;
-                    }
-
-                    if (SymbolEqualityComparer.Default.Equals(memberType, hostType))
-                    {
-                        symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, member.Locations[0], type.Name, assemblyName, "static member holding CapabilityHost"));
-                        return;
-                    }
-                }
-            }, SymbolKind.NamedType);
+            RegisterStaticAssemblyStateAnalysis(compilationContext, runtimeType, hostType);
 
             if (compositionType == null)
             {
                 return;
             }
 
-            compilationContext.RegisterOperationAction(operationContext =>
-            {
-                var invocation = (Microsoft.CodeAnalysis.Operations.IInvocationOperation)operationContext.Operation;
-                var targetMethod = invocation.TargetMethod;
-                if (targetMethod == null || !string.Equals(targetMethod.Name, "Compose", System.StringComparison.Ordinal))
-                {
-                    return;
-                }
-
-                var containingType = targetMethod.ContainingType;
-                if (containingType == null || !SymbolEqualityComparer.Default.Equals(containingType, compositionType))
-                {
-                    return;
-                }
-
-                var callerType = operationContext.ContainingSymbol?.ContainingType;
-                if (callerType == null || !callerType.IsStatic || callerType.TypeKind == TypeKind.Error)
-                {
-                    return;
-                }
-
-                var assemblyName = callerType.ContainingAssembly.Identity.Name;
-                if (assemblyName == mechanismAssemblyName || ArchitectureSymbolFacts.ShouldIgnoreAssembly(assemblyName))
-                {
-                    return;
-                }
-
-                operationContext.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), callerType.Name, assemblyName, "static entry invoking CapabilityComposition.Compose"));
-            }, OperationKind.Invocation);
+            RegisterComposeEntryAnalysis(compilationContext, compositionType);
         });
+    }
+
+    /// <summary>
+    /// 注册装配状态面分析：非豁免程序集的静态类若声明 <c>CapabilityRuntime</c>/<c>CapabilityHost</c>
+    /// 类型的静态字段或属性（含私有），按首个命中成员上报 GFX0022。
+    /// </summary>
+    private static void RegisterStaticAssemblyStateAnalysis(CompilationStartAnalysisContext compilationContext, INamedTypeSymbol runtimeType, INamedTypeSymbol hostType)
+    {
+        compilationContext.RegisterSymbolAction(symbolContext =>
+        {
+            var type = (INamedTypeSymbol)symbolContext.Symbol;
+            if (!IsReportableStaticType(type, out var assemblyName))
+            {
+                return;
+            }
+
+            ReportStaticAssemblyStateMembers(symbolContext, type, assemblyName, runtimeType, hostType);
+        }, SymbolKind.NamedType);
+    }
+
+    /// <summary>静态类候选判定：非误差/非隐式声明，且所在程序集不在机制与测试豁免集合内。</summary>
+    private static bool IsReportableStaticType(INamedTypeSymbol type, out string assemblyName)
+    {
+        assemblyName = null;
+        if (!type.IsStatic || type.TypeKind == TypeKind.Error || type.IsImplicitlyDeclared)
+        {
+            return false;
+        }
+
+        assemblyName = type.ContainingAssembly.Identity.Name;
+        return assemblyName != MechanismAssemblyName && !ArchitectureSymbolFacts.ShouldIgnoreAssembly(assemblyName);
+    }
+
+    /// <summary>逐成员检查装配状态：首个命中 CapabilityRuntime/CapabilityHost 的字段或属性上报后停止。</summary>
+    private static void ReportStaticAssemblyStateMembers(SymbolAnalysisContext symbolContext, INamedTypeSymbol type, string assemblyName, INamedTypeSymbol runtimeType, INamedTypeSymbol hostType)
+    {
+        foreach (var member in type.GetMembers())
+        {
+            var memberType = GetDeclaredMemberType(member);
+            if (memberType == null)
+            {
+                continue;
+            }
+
+            var reason = DescribeAssemblyStateMemberType(memberType, runtimeType, hostType);
+            if (reason != null)
+            {
+                symbolContext.ReportDiagnostic(Diagnostic.Create(Rule, member.Locations[0], type.Name, assemblyName, reason));
+                return;
+            }
+        }
+    }
+
+    /// <summary>提取字段/属性声明类型；其余成员种类返回 null。</summary>
+    private static ITypeSymbol GetDeclaredMemberType(ISymbol member)
+    {
+        return member switch
+        {
+            IFieldSymbol field => field.Type,
+            IPropertySymbol property => property.Type,
+            _ => null,
+        };
+    }
+
+    /// <summary>命中机制装配状态类型时给出诊断 reason 文案，否则返回 null。</summary>
+    private static string DescribeAssemblyStateMemberType(ITypeSymbol memberType, INamedTypeSymbol runtimeType, INamedTypeSymbol hostType)
+    {
+        if (SymbolEqualityComparer.Default.Equals(memberType, runtimeType))
+        {
+            return "static member holding CapabilityRuntime";
+        }
+
+        if (SymbolEqualityComparer.Default.Equals(memberType, hostType))
+        {
+            return "static member holding CapabilityHost";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 注册组合入口面分析：非豁免程序集的静态类成员方法内调用 <c>CapabilityComposition.Compose</c>（两个重载均算）
+    /// 时按调用点上报 GFX0022。
+    /// </summary>
+    private static void RegisterComposeEntryAnalysis(CompilationStartAnalysisContext compilationContext, INamedTypeSymbol compositionType)
+    {
+        compilationContext.RegisterOperationAction(operationContext =>
+        {
+            var invocation = (Microsoft.CodeAnalysis.Operations.IInvocationOperation)operationContext.Operation;
+            if (!IsCapabilityCompositionEntryPoint(invocation.TargetMethod, compositionType))
+            {
+                return;
+            }
+
+            var callerType = operationContext.ContainingSymbol?.ContainingType;
+            if (callerType == null || !callerType.IsStatic || callerType.TypeKind == TypeKind.Error)
+            {
+                return;
+            }
+
+            var assemblyName = callerType.ContainingAssembly.Identity.Name;
+            if (assemblyName == MechanismAssemblyName || ArchitectureSymbolFacts.ShouldIgnoreAssembly(assemblyName))
+            {
+                return;
+            }
+
+            operationContext.ReportDiagnostic(Diagnostic.Create(Rule, invocation.Syntax.GetLocation(), callerType.Name, assemblyName, "static entry invoking CapabilityComposition.Compose"));
+        }, OperationKind.Invocation);
+    }
+
+    /// <summary>目标方法判定：名为 Compose 且声明于 CapabilityComposition 类型（两个重载均命中）。</summary>
+    private static bool IsCapabilityCompositionEntryPoint(IMethodSymbol targetMethod, INamedTypeSymbol compositionType)
+    {
+        if (targetMethod == null || !string.Equals(targetMethod.Name, "Compose", System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return SymbolEqualityComparer.Default.Equals(targetMethod.ContainingType, compositionType);
     }
 }
