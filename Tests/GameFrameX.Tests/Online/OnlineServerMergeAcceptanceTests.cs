@@ -36,13 +36,17 @@ using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.ServerLifecycle;
+using GameFrameX.Capability.Online.ServerLifecycle.Cli;
 using GameFrameX.Capability.Online.ServerLifecycle.ServerMerge;
+using GameFrameX.DataBase;
 using Xunit;
 
 /// <summary>
 /// N3 合服演练（acceptance 可重跑）：双服构造数据 → 开服锚点 → dry-run 报告（零写入）→ 真实执行 →
-/// 路由重指向 / 锚点归并断言 → 重跑幂等回放 → 全局域零操作断言；并覆盖 CLI 入口 dry-run 出口。
+/// 路由重指向 / 锚点归并断言 → 重跑幂等回放 → 全局域零操作断言；并覆盖 CLI 入口 dry-run 出口与
+/// Program.Main 双进程语义（登记 → 预演 → 跨进程执行）。
 /// </summary>
+[Collection("GameDbStaticStateCollection")]
 public sealed class OnlineServerMergeAcceptanceTests
 {
     [Fact]
@@ -120,6 +124,9 @@ public sealed class OnlineServerMergeAcceptanceTests
     public async Task ServerMergeCli_DryRunMode_PrintsJsonReport()
     {
         var calendarStore = new InMemoryOnlineServerCalendarStore();
+        // 锚点前置校验：dry-run 也要求源服 / 目标服锚点已登记（未登记即预演失败）。
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 864000000L });
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 3, OpenedAtUnixMilliseconds = 864000000L });
         var routeRewriter = new InMemoryOnlinePlayerRouteRewriter();
         routeRewriter.RegisterRoute(101, 1);
         var mergeService = new OnlineServerMergeService(
@@ -156,6 +163,66 @@ public sealed class OnlineServerMergeAcceptanceTests
 
             Assert.Equal(3, exitCode);
             Assert.Contains("dry-run", output.ToString());
+        }
+    }
+
+    [Fact]
+    public async Task ProgramMain_UnsupportedProvider_ExitCodeTwo()
+    {
+        var previousProvider = Environment.GetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER");
+        var previousConnection = Environment.GetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING");
+        try
+        {
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER", "postgres");
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING", null);
+
+            var exitCode = await Program.Main(new[] { "--target=3", "--sources=1" });
+
+            Assert.Equal(2, exitCode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER", previousProvider);
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING", previousConnection);
+        }
+    }
+
+    [Fact]
+    public async Task ProgramMain_SqliteMode_DryRunThenExecuteAcrossSeparateRuns()
+    {
+        // 审查验收（PR #974 意见 #4）：一次运行登记锚点 + dry-run 留存报告，另一次全新装配 --execute 成功——
+        // 计划 / 报告 / 锚点均持久化，dry-run 先行门禁凭跨运行可回读的报告放行。
+        var databaseFilePath = Path.Combine(Path.GetTempPath(), "c472-server-merge-cli-" + Guid.NewGuid().ToString("N") + ".db");
+        var previousProvider = Environment.GetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER");
+        var previousConnection = Environment.GetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING");
+        try
+        {
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER", "sqlite");
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING", "Data Source=" + databaseFilePath);
+
+            var dryRunExitCode = await Program.Main(new[] { "--register-open=1,3", "--target=3", "--sources=1" });
+            Assert.Equal(0, dryRunExitCode);
+
+            var executeExitCode = await Program.Main(new[] { "--target=3", "--sources=1", "--execute" });
+            Assert.Equal(0, executeExitCode);
+
+            // 幂等：执行后的再次 dry-run 报告源服行数为 0（归属列已重写 / 锚点已标记）。
+            var replayExitCode = await Program.Main(new[] { "--target=3", "--sources=1" });
+            Assert.Equal(0, replayExitCode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_PROVIDER", previousProvider);
+            Environment.SetEnvironmentVariable("SERVER_MERGE_DB_CONNECTION_STRING", previousConnection);
+            GameDb.ResetForTesting();
+            try
+            {
+                File.Delete(databaseFilePath);
+            }
+            catch (IOException)
+            {
+                // 临时库清理失败不影响断言结论。
+            }
         }
     }
 

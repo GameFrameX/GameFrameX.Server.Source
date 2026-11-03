@@ -42,8 +42,9 @@ using System.Threading.Tasks;
 /// 合服行键重写 CLI 运行器（自托管入口；AdminApi action 为另一入口，双入口共用同一合服服务原语）。
 /// </summary>
 /// <remarks>
-/// 用法：<c>--target &lt;serverId&gt; --sources &lt;id1,id2,...&gt; [--execute]</c>——缺省 dry-run 预演
-/// （零写入，输出 JSON 报告）；<c>--execute</c> 真实执行（受 dry-run 先行门禁约束，幂等可重入）。
+/// 用法：<c>--target=&lt;serverId&gt; --sources=&lt;id1,id2,...&gt; [--execute]</c>（名字与值以等号分隔）——缺省 dry-run 预演
+/// （零写入，输出 JSON 报告）；<c>--execute</c> 真实执行（受 dry-run 先行门禁约束，幂等可重入；
+/// 计划存储持久化时跨进程有效，进程内存储时报告随进程丢失）。
 /// </remarks>
 public static class OnlineServerMergeCli
 {
@@ -136,7 +137,7 @@ public static class OnlineServerMergeCli
                 report = await mergeService.DryRunAsync(targetServerId, sourceServerIds, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception exception) when (exception is InvalidOperationException || exception is OperationCanceledException || exception is OnlineServiceException)
+        catch (Exception exception) when (exception is ArgumentException || exception is InvalidOperationException || exception is OperationCanceledException || exception is OnlineServiceException)
         {
             await output.WriteLineAsync("ERROR: " + exception.Message).ConfigureAwait(false);
             return 3;
