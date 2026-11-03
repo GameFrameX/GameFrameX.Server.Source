@@ -261,6 +261,52 @@ public sealed class OnlineServerLifecycleTests
         Assert.Single(publisher.PublishedEvents);
     }
 
+    [Fact]
+    public async Task MergeAsync_TargetServerAlreadyMerged_RejectedInDryRun()
+    {
+        var calendarStore = new InMemoryOnlineServerCalendarStore();
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 1, OpenedAtUnixMilliseconds = 1000 });
+        await calendarStore.TryRegisterAsync(new OnlineServerAnchor { ServerId = 2, OpenedAtUnixMilliseconds = 2000 });
+        await calendarStore.MarkMergedAsync(1, 3);
+
+        // 服 1 已合入服 3（退役），不可再作为目标服；dry-run 即拒绝。
+        var participant = new OnlineServerAnchorMergeParticipant(calendarStore);
+        var exception = await Assert.ThrowsAsync<OnlineServiceException>(() => participant.MergeAsync(new OnlineServerMergeContext(OnlineServerMergePlan.Create(1, new long[] { 2 }, 1), true, 1), CancellationToken.None));
+        Assert.Equal(OnlineErrorCode.StateOperationForbidden, exception.Code);
+    }
+
+    [Fact]
+    public async Task MergeAsync_RowRewriteSkippedRows_ThrowsAndRefusesToSettle()
+    {
+        var rewriter = new SkippingRowRewriterStub();
+        var participant = new OnlineServerRowKeyRewriteParticipant(rewriter, 500);
+
+        // dry-run 只计数不拒绝；真实执行 skipped > 0 时抛异常，计划不落定。
+        var dryRunReport = await participant.MergeAsync(new OnlineServerMergeContext(OnlineServerMergePlan.Create(3, new long[] { 1 }, 1), true, 1), CancellationToken.None);
+        Assert.Equal(0, dryRunReport.AffectedCount);
+
+        var exception = await Assert.ThrowsAsync<OnlineServiceException>(() => participant.MergeAsync(new OnlineServerMergeContext(OnlineServerMergePlan.Create(3, new long[] { 1 }, 1), false, 1), CancellationToken.None));
+        Assert.Equal(OnlineErrorCode.StateOperationForbidden, exception.Code);
+    }
+
+    /// <summary>
+    /// 恒定返回 skipped 明细的重写端口桩（CAS 重试耗尽场景回归载体）。
+    /// </summary>
+    private sealed class SkippingRowRewriterStub : IOnlineServerMergeRowRewriter
+    {
+        public Task<IReadOnlyDictionary<string, long>> RewriteServerDomainRowsAsync(IReadOnlyList<long> sourceServerIds, long targetServerId, bool dryRun, int batchSize, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<string, long> counts = new Dictionary<string, long> { { "player-scope-skipped", 2 } };
+            return Task.FromResult(counts);
+        }
+
+        public Task<IReadOnlyDictionary<string, long>> CountServerDomainRowsAsync(IReadOnlyList<long> sourceServerIds, CancellationToken cancellationToken)
+        {
+            IReadOnlyDictionary<string, long> counts = new Dictionary<string, long> { { "player-scope", 2 } };
+            return Task.FromResult(counts);
+        }
+    }
+
     internal static OnlineServerMergeService BuildMergeService(IOnlineServerMergeStore mergeStore, IOnlineServerCalendarStore calendarStore = null, IOnlinePlayerRouteRewriter routeRewriter = null)
     {
         calendarStore ??= new InMemoryOnlineServerCalendarStore();

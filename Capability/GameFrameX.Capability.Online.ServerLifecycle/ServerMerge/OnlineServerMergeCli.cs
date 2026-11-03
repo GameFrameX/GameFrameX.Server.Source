@@ -160,6 +160,12 @@ public static class OnlineServerMergeCli
                         return null;
                     }
 
+                    if (sourceServerId <= 0)
+                    {
+                        await output.WriteLineAsync("ERROR: invalid --sources segment '" + segment + "' (server ids must be positive).").ConfigureAwait(false);
+                        return null;
+                    }
+
                     options.SourceServerIds.Add(sourceServerId);
                 }
             }
