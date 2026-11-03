@@ -35,7 +35,6 @@ using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Foundation.Session;
 using GameFrameX.Capability.Online.Social.AdminApi;
 
@@ -50,7 +49,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// fail-fast）；<see cref="IOnlineSocialPresenceProbe"/> 在线探针经 <c>GetService</c> 解析（必选
 /// online-foundation 提供）；跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 +
 /// 好友 / 裁决 / 处罚 / 通知 / 聊天 / 群组服务 + <see cref="IOnlineSocialGate"/> 裁决面 + 聊天审计投影）注册回共享面；
-/// 两个过期清扫滴答 job（通知 + 好友请求）经族基建 <see cref="OnlineScope"/> 锚定租户 / App。
+/// 两个过期清扫滴答 job（通知 + 好友请求）为全存储终态扫描，不锚定作用域。
 /// </para>
 /// <para>
 /// <c>ActivateAsync</c>：发布 <see cref="IOnlineFriendDomain"/> 好友域桥契约面（<see cref="OnlineFriendDomainFace"/>
@@ -68,8 +67,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// <c>Register</c> self-assembles the domain — the six stores go through lazy-default registration plus
 /// <c>GetService</c> resolution (family / host overrides always win); the player directory is declared as a host
 /// extension point via <c>RequireHostService</c>; the presence probe resolves through the required online-foundation
-/// dependency; outward products are registered back into the shared face; two expiry-sweep tick jobs anchor their
-/// tenant / app on the family <see cref="OnlineScope"/> infrastructure. <c>ActivateAsync</c> publishes the
+/// dependency; outward products are registered back into the shared face; two expiry-sweep tick jobs scan the
+/// full stores without scope anchoring. <c>ActivateAsync</c> publishes the
 /// <see cref="IOnlineFriendDomain"/> bridge face and injects channel-membership probes into the chat service by
 /// enumerating the extension point.
 /// The chat moderation extension point is declared with the default allow-all strategy, replaced atomically by the
@@ -140,11 +139,6 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineSocialOptions _options;
 
     /// <summary>
-    /// 族基建作用域（Register 期解析）。
-    /// </summary>
-    private OnlineScope _scope;
-
-    /// <summary>
     /// 获取在线社交能力的静态清单（单例实例）。
     /// </summary>
     /// <remarks>
@@ -157,13 +151,13 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     }
 
     /// <summary>
-    /// 注册社交能力：解析作用域、会话存储与会话令牌服务；为聊天、好友、群组、通知、举报与社交关系注册内存默认存储；
+    /// 注册社交能力：解析会话存储与会话令牌服务；为聊天、好友、群组、通知、举报与社交关系注册内存默认存储；
     /// 要求宿主提供玩家目录并装配好友服务，装配社交决策、处罚、通知、聊天审计投影服务；
     /// 以默认放行策略声明聊天审核钩子并构造聊天服务（成员资格探针激活期注入）；群组服务以命名 <c>group</c> 注册为频道成员资格探针；
     /// 将社交决策服务注册为社交门控，并注册通知与好友请求的过期清理 tick 任务。
     /// </summary>
     /// <remarks>
-    /// Resolves scope, session store and session token service, registers in-memory default stores for chat, friends, groups, notifications, reports and the social graph,
+    /// Resolves the session store and session token service, registers in-memory default stores for chat, friends, groups, notifications, reports and the social graph,
     /// requires the host player directory and builds friend, decision, punishment, notification and chat audit services, declares the chat moderation hook with an allow-all default
     /// and builds the chat service (membership probes injected at activation), registers the group service as the named <c>group</c> membership probe,
     /// exposes the decision service as the social gate and adds notification and friend request expiry sweep tick jobs.
@@ -173,7 +167,6 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     {
         _options = context.GetOptions<OnlineSocialOptions>();
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
-        _scope = context.GetService<OnlineScope>();
         _sessionStore = context.GetService<IOnlineSessionStore>();
         _tokens = context.GetService<OnlineSessionTokenService>();
 
