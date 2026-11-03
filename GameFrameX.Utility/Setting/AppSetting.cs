@@ -93,12 +93,12 @@ public class AppSetting
     }
 
     /// <summary>
-    /// 将对象序列化为JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS 证书密码）已脱敏，
+    /// 将对象序列化为JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS / WSS 证书密码）已脱敏，
     /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
     /// Serializes the object to a JSON string with credential fields (database password, HTTP signature secret,
-    /// inter-node auth secret, HTTPS certificate password) masked; the output is safe for logging.
+    /// inter-node auth secret, HTTPS / WSS certificate passwords) masked; the output is safe for logging.
     /// </remarks>
     /// <returns>JSON字符串（凭据已脱敏）/ JSON string (credentials masked)</returns>
     public override string ToString()
@@ -107,12 +107,12 @@ public class AppSetting
     }
 
     /// <summary>
-    /// 将对象序列化为格式化的JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS 证书密码）已脱敏，
+    /// 将对象序列化为格式化的JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS / WSS 证书密码）已脱敏，
     /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
     /// Serializes the object to a formatted JSON string with credential fields (database password, HTTP signature secret,
-    /// inter-node auth secret, HTTPS certificate password) masked; the output is safe for logging.
+    /// inter-node auth secret, HTTPS / WSS certificate passwords) masked; the output is safe for logging.
     /// </remarks>
     /// <returns>格式化的JSON字符串（凭据已脱敏）/ Formatted JSON string (credentials masked)</returns>
     public string ToFormatString()
@@ -127,15 +127,15 @@ public class AppSetting
 
     /// <summary>
     /// 创建用于序列化输出的脱敏浅拷贝：<see cref="DataBasePassword"/>、<see cref="HttpSignSecret"/>、
-    /// <see cref="InterNodeAuthSecret"/>、<see cref="HttpsCertPassword"/> 四个凭据字段的非空值替换为
+    /// <see cref="InterNodeAuthSecret"/>、<see cref="HttpsCertPassword"/>、<see cref="WssCertificatePassword"/> 等凭据字段的非空值替换为
     /// <see cref="SensitiveValueMask"/>（null 与空串原样保留，用于区分"未配置"）。
     /// <para>安全约定：后续在 <see cref="AppSetting"/> 新增凭据类字段时，必须同步加入本方法的掩码清单，
     /// 否则其明文将随启动/停止日志输出。</para>
     /// </summary>
     /// <remarks>
-    /// Creates a masked shallow copy for serialization output: non-empty values of the four credential fields
+    /// Creates a masked shallow copy for serialization output: non-empty values of the credential fields
     /// (<see cref="DataBasePassword"/>, <see cref="HttpSignSecret"/>, <see cref="InterNodeAuthSecret"/>,
-    /// <see cref="HttpsCertPassword"/>) are replaced with <see cref="SensitiveValueMask"/> (null and empty strings
+    /// <see cref="HttpsCertPassword"/>, <see cref="WssCertificatePassword"/>) are replaced with <see cref="SensitiveValueMask"/> (null and empty strings
     /// are kept as-is to distinguish "not configured").
     /// Convention: any new credential-like field added to <see cref="AppSetting"/> must be added to this mask list,
     /// otherwise its plaintext would leak through startup/shutdown logs.
@@ -148,6 +148,7 @@ public class AppSetting
         maskedClone.HttpSignSecret = MaskSensitiveValue(HttpSignSecret);
         maskedClone.InterNodeAuthSecret = MaskSensitiveValue(InterNodeAuthSecret);
         maskedClone.HttpsCertPassword = MaskSensitiveValue(HttpsCertPassword);
+        maskedClone.WssCertificatePassword = MaskSensitiveValue(WssCertificatePassword);
         return maskedClone;
     }
 
@@ -631,27 +632,35 @@ public class AppSetting
     public ushort HttpsPort { get; set; }
 
     /// <summary>
-    /// HTTPS 证书文件路径（PFX 格式）。
+    /// HTTPS 证书文件路径（PFX 或 PEM 格式）。
     /// <para>HttpsPort 大于 0 时必填；启动期校验，路径为空 / 文件缺失 / 加载失败均 fail fast。</para>
     /// </summary>
     /// <remarks>
-    /// HTTPS certificate file path (PFX format).
+    /// HTTPS certificate file path (PFX or PEM format).
     /// Required when HttpsPort is greater than 0; validated at startup — empty path, missing file
     /// or load failure all fail fast.
     /// </remarks>
-    [Option(nameof(HttpsCertPath), DefaultValue = "", Description = "HTTPS 证书文件路径(PFX格式),HttpsPort>0 时必填")]
+    [Option(nameof(HttpsCertPath), DefaultValue = "", Description = "HTTPS 证书文件路径(PFX或PEM格式),HttpsPort>0 时必填")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HttpsCertPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// HTTPS 证书文件密码（PFX 格式，可为空）。
+    /// HTTPS PFX 或 PEM 加密私钥密码（可为空）。
     /// </summary>
     /// <remarks>
-    /// HTTPS certificate file password (PFX format, may be empty).
+    /// HTTPS PFX or encrypted PEM private key password (may be empty).
     /// </remarks>
     [Option(nameof(HttpsCertPassword), DefaultValue = "", Description = "HTTPS 证书文件密码,可为空")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HttpsCertPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTPS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填。
+    /// </summary>
+    /// <remarks>HTTPS PEM private key path, required for .pem or .crt certificates.</remarks>
+    [Option(nameof(HttpsCertificateKeyPath), DefaultValue = "", Description = "HTTPS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string HttpsCertificateKeyPath { get; set; } = string.Empty;
 
     /// <summary>
     /// HTTP 请求体最大字节数。
@@ -838,14 +847,30 @@ public class AppSetting
     public ushort WssPort { get; set; }
 
     /// <summary>
-    /// Wss使用的证书路径
+    /// WSS 证书路径（PFX 或 PEM），WssPort 大于 0 时必填
     /// </summary>
     /// <remarks>
-    /// Certificate file path for WSS.
+    /// WSS certificate file path (PFX or PEM), required when WssPort is greater than 0.
     /// </remarks>
     [Option(nameof(WssCertFilePath), Description = "Wss 使用的证书路径")]
     [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string WssCertFilePath { get; set; }
+
+    /// <summary>
+    /// WSS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填。
+    /// </summary>
+    /// <remarks>WSS PEM private key path, required for .pem or .crt certificates.</remarks>
+    [Option(nameof(WssCertificateKeyPath), DefaultValue = "", Description = "WSS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public string WssCertificateKeyPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// WSS PFX 或 PEM 加密私钥密码，可为空。
+    /// </summary>
+    /// <remarks>WSS PFX or encrypted PEM private key password, may be empty.</remarks>
+    [Option(nameof(WssCertificatePassword), DefaultValue = "", Description = "WSS PFX 或 PEM 加密私钥密码，可为空")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public string WssCertificatePassword { get; set; } = string.Empty;
 
     /// <summary>
     /// 数据库地址

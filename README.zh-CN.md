@@ -209,11 +209,16 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `InterNodeAuthSecret` | 节点间 RPC 鉴权共享密钥（协议握手帧 HMAC；空 = 不启用）。集群内所有节点必须配置一致 | 无 | `s3cr3t` |
 | `IsEnableWebSocket` | 是否启用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 端口 | `8889` | `29300` |
+| `WssPort` | WSS TLS 端口（`0` 表示不启用；要求 `IsEnableWebSocket=true`） | `0` | `8444` |
+| `WssCertFilePath` | WSS 证书路径（PFX 或 PEM），`WssPort > 0` 时必填 | 无 | `/certs/wss/fullchain.pem` |
+| `WssCertificateKeyPath` | WSS PEM 独立私钥路径，`.pem` / `.crt` 证书必填 | 无 | `/certs/wss/privkey.pem` |
+| `WssCertificatePassword` | WSS PFX 或 PEM 加密私钥密码（可选） | 无 |  |
 | `IsEnableHttp` | 是否启用 HTTP 服务 | `true` | `true` |
 | `HttpPort` | HTTP 服务端口 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服务端口 | 无 | `443` |
-| `HttpsCertPath` | HTTPS 证书文件路径（PFX），`HttpsPort > 0` 时必填 | 无 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS 证书密码（可选） | 无 | |
+| `HttpsCertPath` | HTTPS 证书路径（PFX 或 PEM），`HttpsPort > 0` 时必填 | 无 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私钥密码（可选） | 无 | |
+| `HttpsCertificateKeyPath` | HTTPS PEM 独立私钥路径，`.pem` / `.crt` 证书必填 | 无 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 签名密钥（HMAC-SHA256），开启签名校验后必填；为空时一律拒绝（fail-closed） | 无 | `a-strong-secret` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 开发模式（启用 Swagger） | `false` | `true` |
@@ -222,6 +227,29 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `OnlineAdminApiPrefix` | Online 管理 API 路由前缀 | `online/admin` | `online/admin` |
 | `OnlineTenantId` | Online Runtime 授权租户 ID（作用域三元组） | `0` | `1` |
 | `OnlineAppId` | Online Runtime 授权应用 ID（作用域三元组） | `0` | `1` |
+
+#### 无 nginx 直连 HTTPS / WSS
+
+服务器可直接装载证书，无需 nginx 代理。设置 `IsEnableHttp=true` 后配置 `HttpsPort` 与 `HttpsCertPath`；设置 `IsEnableWebSocket=true` 后配置 `WssPort` 与 `WssCertFilePath`。HTTPS 与 WSS 证书配置相互独立，WSS 不回落到 HTTPS 配置。明文 `HttpPort` 与 `WsPort` 监听继续可用。省略 `WssPort` 或设为 `0` 时，WebSocket 行为保持不变。
+
+```json
+{
+  "IsEnableHttp": true,
+  "HttpPort": 8080,
+  "HttpsPort": 8443,
+  "HttpsCertPath": "/certs/https/fullchain.pem",
+  "HttpsCertificateKeyPath": "/certs/https/privkey.pem",
+  "HttpsCertPassword": "",
+  "IsEnableWebSocket": true,
+  "WsPort": 8889,
+  "WssPort": 8444,
+  "WssCertFilePath": "/certs/wss/fullchain.pem",
+  "WssCertificateKeyPath": "/certs/wss/privkey.pem",
+  "WssCertificatePassword": ""
+}
+```
+
+证书路径以 `.pem` 或 `.crt` 结尾（不区分大小写）时必须提供独立私钥路径，其他扩展名按 PFX 加载。加密 PEM 私钥使用 `HttpsCertPassword` / `WssCertificatePassword`，未加密私钥可留空密码。存量 PFX 配置无需修改，仍使用对应密码字段，不需要私钥路径。路径或文件缺失、证书或私钥无效、密码错误均在启动期立即失败。客户端必须信任证书，并使用证书覆盖的主机名访问。
 
 #### 数据库配置
 

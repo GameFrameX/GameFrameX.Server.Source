@@ -41,6 +41,74 @@ public static partial class Keys
     public static class StartUp
     {
         /// <summary>
+        /// 启动期 TLS 证书错误消息。
+        /// </summary>
+        /// <remarks>TLS certificate error messages used during startup.</remarks>
+        public static class Certificates
+        {
+            /// <summary>
+            /// 已启用 {0}，但证书路径配置 {1} 为空。
+            /// </summary>
+            /// <remarks>
+            /// {0} is enabled but certificate path setting {1} is empty.
+            /// 键名: StartUp.Certificates.PathMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string PathMissing = "StartUp.Certificates.PathMissing";
+
+            /// <summary>
+            /// {0} 证书文件不存在：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate file does not exist: {1}.
+            /// 键名: StartUp.Certificates.FileNotFound
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string FileNotFound = "StartUp.Certificates.FileNotFound";
+
+            /// <summary>
+            /// {0} PEM 证书必须配置独立私钥路径 {1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} PEM certificate requires a separate private key path in {1}.
+            /// 键名: StartUp.Certificates.KeyPathMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string KeyPathMissing = "StartUp.Certificates.KeyPathMissing";
+
+            /// <summary>
+            /// {0} PEM 私钥文件不存在：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} PEM private key file does not exist: {1}.
+            /// 键名: StartUp.Certificates.KeyFileNotFound
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string KeyFileNotFound = "StartUp.Certificates.KeyFileNotFound";
+
+            /// <summary>
+            /// {0} 证书不包含私钥：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate has no private key: {1}.
+            /// 键名: StartUp.Certificates.PrivateKeyMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string PrivateKeyMissing = "StartUp.Certificates.PrivateKeyMissing";
+
+            /// <summary>
+            /// {0} 证书加载失败（证书或私钥损坏、密码错误或私钥不匹配）：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate failed to load (invalid certificate or key, incorrect password, or mismatched private key): {1}.
+            /// 键名: StartUp.Certificates.LoadFailed
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string LoadFailed = "StartUp.Certificates.LoadFailed";
+
+        }
+
+        /// <summary>
         /// 服务器类型:{0} 停止! 终止原因：{1} 配置信息: {2}
         /// </summary>
         /// <remarks>
@@ -431,6 +499,16 @@ public static partial class Keys
         public static class WebSocketServer
         {
             /// <summary>
+            /// 已配置 WSS TLS 监听，端口：{0}。
+            /// </summary>
+            /// <remarks>
+            /// WSS TLS listener configured on port {0}.
+            /// 键名: StartUp.WebSocketServer.SecureListenerConfigured
+            /// 参数: {0} - WSS 端口
+            /// </remarks>
+            public const string SecureListenerConfigured = "StartUp.WebSocketServer.SecureListenerConfigured";
+
+            /// <summary>
             /// 启动WebSocket服务器 类型: {0}, 端口: {1}
             /// </summary>
             /// <remarks>
@@ -588,36 +666,6 @@ public static partial class Keys
             /// 用途: 当HTTP地址不以/结束时抛出异常
             /// </remarks>
             public const string AddressMustEndWithSlash = "StartUp.HttpExceptions.AddressMustEndWithSlash";
-
-            /// <summary>
-            /// HTTPS port [{0}] is configured but HttpsCertPath (PFX file path) is missing
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpExceptions.HttpsCertPathMissing
-            /// 用途: 配置了 HTTPS 端口但未配置证书路径时抛出异常
-            /// 参数: {0} - HTTPS 端口
-            /// </remarks>
-            public const string HttpsCertPathMissing = "StartUp.HttpExceptions.HttpsCertPathMissing";
-
-            /// <summary>
-            /// HTTPS certificate file not found: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpExceptions.HttpsCertFileNotFound
-            /// 用途: HTTPS 证书文件不存在时抛出异常
-            /// 参数: {0} - 证书文件路径
-            /// </remarks>
-            public const string HttpsCertFileNotFound = "StartUp.HttpExceptions.HttpsCertFileNotFound";
-
-            /// <summary>
-            /// HTTPS certificate failed to load (wrong password or corrupted file): {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpExceptions.HttpsCertLoadFailed
-            /// 用途: HTTPS 证书加载失败时抛出异常
-            /// 参数: {0} - 证书文件路径
-            /// </remarks>
-            public const string HttpsCertLoadFailed = "StartUp.HttpExceptions.HttpsCertLoadFailed";
         }
 
         /// <summary>

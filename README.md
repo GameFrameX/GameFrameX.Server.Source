@@ -242,11 +242,16 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `InterNodeAuthSecret` | Inter-node RPC auth shared secret (HMAC on the protocol handshake; empty = disabled). All cluster nodes must share it | `` | `s3cr3t` |
 | `IsEnableWebSocket` | Enable WebSocket                          | `false`      | `true`       |
 | `WsPort`            | WebSocket port                            | `8889`       | `29300`      |
+| `WssPort` | WSS TLS port (`0` disables WSS; requires `IsEnableWebSocket=true`) | `0` | `8444` |
+| `WssCertFilePath` | WSS certificate path (PFX or PEM), required when `WssPort > 0` | None | `/certs/wss/fullchain.pem` |
+| `WssCertificateKeyPath` | Separate WSS PEM private key path, required for `.pem` / `.crt` | None | `/certs/wss/privkey.pem` |
+| `WssCertificatePassword` | WSS PFX or encrypted PEM private key password (optional) | None |  |
 | `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
 | `HttpPort`          | HTTP service port                         | `8080`       | `28080`      |
 | `HttpsPort`         | HTTPS service port (real TLS listener; certificate required) | None | `443` |
-| `HttpsCertPath`     | HTTPS certificate file path (PFX), required when `HttpsPort > 0` | None | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS certificate password (optional)     | None         | ``           |
+| `HttpsCertPath` | HTTPS certificate path (PFX or PEM), required when `HttpsPort > 0` | None | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS PFX or encrypted PEM private key password (optional) | None | |
+| `HttpsCertificateKeyPath` | Separate HTTPS PEM private key path, required for `.pem` / `.crt` | None | `/certs/https/privkey.pem` |
 | `HttpSignSecret`    | HMAC-SHA256 secret for HTTP signature validation (required once signing is enabled; blank = fail-closed) | None | `a-strong-secret` |
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
@@ -255,6 +260,29 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `OnlineAdminApiPrefix` | Online admin API route prefix          | `online/admin` | `online/admin` |
 | `OnlineTenantId`    | Online runtime authorized tenant id (scope triple) | `0` | `1` |
 | `OnlineAppId`       | Online runtime authorized app id (scope triple)    | `0` | `1` |
+
+#### Direct HTTPS / WSS without nginx
+
+The server can load certificates directly without an nginx proxy. With `IsEnableHttp=true`, configure `HttpsPort` and `HttpsCertPath`; with `IsEnableWebSocket=true`, configure `WssPort` and `WssCertFilePath`. HTTPS and WSS certificate settings are independent: WSS never falls back to HTTPS. The plaintext `HttpPort` and `WsPort` listeners remain available. If `WssPort` is omitted or `0`, WebSocket behavior is unchanged.
+
+```json
+{
+  "IsEnableHttp": true,
+  "HttpPort": 8080,
+  "HttpsPort": 8443,
+  "HttpsCertPath": "/certs/https/fullchain.pem",
+  "HttpsCertificateKeyPath": "/certs/https/privkey.pem",
+  "HttpsCertPassword": "",
+  "IsEnableWebSocket": true,
+  "WsPort": 8889,
+  "WssPort": 8444,
+  "WssCertFilePath": "/certs/wss/fullchain.pem",
+  "WssCertificateKeyPath": "/certs/wss/privkey.pem",
+  "WssCertificatePassword": ""
+}
+```
+
+Certificate paths ending in `.pem` or `.crt` (case-insensitive) require a separate private key path; other extensions use PFX. For encrypted PEM keys, supply `HttpsCertPassword` / `WssCertificatePassword`; leave the password empty for unencrypted keys. Existing PFX configurations need no changes and use the same password fields, without key paths. Missing paths or files, invalid certificates or keys, and incorrect passwords fail startup. Clients must trust the certificate and use a hostname covered by it.
 
 #### Database Configuration
 

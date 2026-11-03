@@ -29,6 +29,8 @@
 
 
 using System.Runtime.CompilerServices;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network;
@@ -121,6 +123,10 @@ public abstract partial class AppStartUpBase
             await _gameServer.StopAsync();
             _gameServer = null;
         }
+
+        // 所有 WebSocket 连接停止后再释放 TLS 证书。
+        _wssCertificate?.Dispose();
+        _wssCertificate = null;
 
         // HTTP 宿主最后停：此刻同 Role 的能力族（Actor/业务服务）与 socket 宿主均已停止，满足「HTTP 停机晚于其它服务」的顺序约束
         await StopHttpServerAsync();
@@ -420,6 +426,12 @@ public abstract partial class AppStartUpBase
     private IHost _gameServer;
 
     /// <summary>
+    /// WSS 监听持有的证书，停机后释放。
+    /// </summary>
+    /// <remarks>Certificate owned by the WSS listener and released after shutdown.</remarks>
+    private X509Certificate2 _wssCertificate;
+
+    /// <summary>
     /// 启动 TCP 服务器。
     /// </summary>
     /// <remarks>
@@ -434,23 +446,32 @@ public abstract partial class AppStartUpBase
     private async Task StartServerCoreAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
     {
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
-        ConfigureTcpServer(multipleServerHostBuilder);
-        ConfigureKcpServer(multipleServerHostBuilder);
-        ConfigureInnerKcpServer(multipleServerHostBuilder);
-        ConfigureWebSocketServer(multipleServerHostBuilder);
+        try
+        {
+            ConfigureTcpServer(multipleServerHostBuilder);
+            ConfigureKcpServer(multipleServerHostBuilder);
+            ConfigureInnerKcpServer(multipleServerHostBuilder);
+            ConfigureWebSocketServer(multipleServerHostBuilder);
 
-        // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
-        await StartHttpServerAsync(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+            // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+            await StartHttpServerAsync(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
 
-        // 配置日志
-        ConfigureHostLogging(multipleServerHostBuilder, minimumLevelLogLevel);
-        // 配置监控和跟踪
-        multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing); });
+            // 配置日志
+            ConfigureHostLogging(multipleServerHostBuilder, minimumLevelLogLevel);
+            // 配置监控和跟踪
+            multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing); });
 
-        // 构建并启动服务器
-        _gameServer = multipleServerHostBuilder.Build();
+            // 构建并启动服务器
+            _gameServer = multipleServerHostBuilder.Build();
 
-        await _gameServer.StartAsync();
+            await _gameServer.StartAsync();
+        }
+        catch when (_wssCertificate != null)
+        {
+            // WSS 启动中断时停止已启动的监听，保证预加载证书不泄漏。
+            await StopServerAsync();
+            throw;
+        }
     }
 
     /// <summary>
@@ -756,7 +777,7 @@ public abstract partial class AppStartUpBase
     /// </summary>
     /// <remarks>Configure the WebSocket server. Extracted from <see cref="StartServerCoreAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
-    private void ConfigureWebSocketServer(MultipleServerHostBuilder multipleServerHostBuilder)
+    internal void ConfigureWebSocketServer(MultipleServerHostBuilder multipleServerHostBuilder)
     {
         if (!Setting.IsEnableWebSocket)
         {
@@ -765,11 +786,23 @@ public abstract partial class AppStartUpBase
             return;
         }
 
-        // 检查WebSocket端口是否可用
-        if (Setting.WsPort is > 0 and < ushort.MaxValue && NetHelper.PortIsAvailable(Setting.WsPort))
+        // WSS 配置独立预加载，证书错误必须在任何 WebSocket 监听开始前暴露。
+        _wssCertificate = Setting.WssPort > 0 ? LoadWssCertificate(Setting) : null;
+        if (_wssCertificate != null)
         {
-            // Localization: StartUp.WebSocketServer.StartingServer - 启动WebSocket服务器 类型: {0}, 端口: {1}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartingServer, ServerType, Setting.WsPort));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.SecureListenerConfigured, Setting.WssPort));
+        }
+
+        var enablePlainListener = Setting.WsPort is > 0 and < ushort.MaxValue && NetHelper.PortIsAvailable(Setting.WsPort);
+
+        // 检查明文端口，保持存量端口不可用时的日志与跳过行为。
+        if (enablePlainListener || _wssCertificate != null)
+        {
+            if (enablePlainListener)
+            {
+                // Localization: StartUp.WebSocketServer.StartingServer - 启动WebSocket服务器 类型: {0}, 端口: {1}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartingServer, ServerType, Setting.WsPort));
+            }
 
             // 配置并启动WebSocket服务器
             multipleServerHostBuilder.AddWebSocketServer(builder =>
@@ -781,24 +814,56 @@ public abstract partial class AppStartUpBase
                     {
                         serviceCollection.Configure<ServerOptions>(options =>
                         {
-                            var listenOptions = new ListenOptions
+                            if (enablePlainListener)
                             {
-                                Ip = "Any",
-                                Port = Setting.WsPort,
-                            };
-                            options.AddListener(listenOptions);
+                                options.AddListener(new ListenOptions { Ip = "Any", Port = Setting.WsPort });
+                            }
+
+                            if (_wssCertificate != null)
+                            {
+                                // SuperSocket 根据 AuthenticationOptions 装配 SslStreamInitializer。
+                                options.AddListener(new ListenOptions
+                                {
+                                    Ip = "Any",
+                                    Port = Setting.WssPort,
+                                    // EnabledSslProtocols 必须显式设置：StreamInitializersFactory 以其非 None 作为启用 TLS 的判定，
+                                    // 只赋 ServerCertificate 时该监听仍是明文 TCP（wss 握手将超时）。
+                                    AuthenticationOptions = new ServerAuthenticationOptions
+                                    {
+                                        ServerCertificate = _wssCertificate,
+                                        EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                                    },
+                                });
+                            }
                         });
                     });
             });
-            // Localization: StartUp.WebSocketServer.StartupComplete - 启动WebSocket服务器完成 类型: {0}, 端口: {1}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupComplete, ServerType, Setting.WsPort));
+            if (enablePlainListener)
+            {
+                // Localization: StartUp.WebSocketServer.StartupComplete - 启动WebSocket服务器完成 类型: {0}, 端口: {1}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupComplete, ServerType, Setting.WsPort));
+            }
         }
-        else
+
+        if (!enablePlainListener)
         {
             // Localization: StartUp.WebSocketServer.StartupFailed - 启动WebSocket服务器失败 类型: {0}, 端口: {1}, 原因: 端口无效或被占用
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupFailed, ServerType, Setting.WsPort));
             LogPortOccupationDetails("WebSocket", Setting.WsPort);
         }
+    }
+
+    /// <summary>
+    /// 加载独立于 HTTPS 配置的 WSS 证书。
+    /// </summary>
+    /// <remarks>Loads the WSS certificate independently of HTTPS configuration.</remarks>
+    /// <param name="setting">应用配置 / Application setting</param>
+    /// <returns>包含私钥的证书 / Certificate with its private key</returns>
+    /// <exception cref="InvalidOperationException">证书配置或加载失败 / Certificate configuration or loading failed</exception>
+    internal static X509Certificate2 LoadWssCertificate(AppSetting setting)
+    {
+        return ServerCertificateLoader.Load("WSS", setting.WssCertFilePath, setting.WssCertificateKeyPath,
+            setting.WssCertificatePassword, nameof(setting.WssCertFilePath), nameof(setting.WssCertificateKeyPath));
     }
 
     /// <summary>

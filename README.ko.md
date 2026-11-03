@@ -206,14 +206,42 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `InterNodeAuthSecret` | 노드 간 RPC 인증 공유 시크릿(프로토콜 핸드셰이크 HMAC. 비어 있으면 비활성). 클러스터 내 모든 노드가 동일값을 설정해야 함 | 없음 | `s3cr3t` |
 | `IsEnableWebSocket` | WebSocket 활성화 | `false` | `true` |
 | `WsPort` | WebSocket 포트 | `8889` | `29300` |
+| `WssPort` | WSS TLS 포트 (`0`은 비활성화, `IsEnableWebSocket=true` 필요) | `0` | `8444` |
+| `WssCertFilePath` | WSS 인증서 경로(PFX 또는 PEM), `WssPort > 0`이면 필수 | 없음 | `/certs/wss/fullchain.pem` |
+| `WssCertificateKeyPath` | WSS PEM의 별도 개인 키 경로, `.pem` / `.crt` 인증서에 필수 | 없음 | `/certs/wss/privkey.pem` |
+| `WssCertificatePassword` | WSS PFX 또는 암호화된 PEM 개인 키 비밀번호(선택) | 없음 |  |
 | `IsEnableHttp` | HTTP 서비스 활성화 | `true` | `true` |
 | `HttpPort` | HTTP 서비스 포트 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 서비스 포트 | 없음 | `443` |
-| `HttpsCertPath` | HTTPS 인증서 파일 경로(PFX), `HttpsPort > 0`이면 필수 | 없음 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS 인증서 비밀번호(선택) | 없음 | |
+| `HttpsCertPath` | HTTPS 인증서 경로(PFX 또는 PEM), `HttpsPort > 0`이면 필수 | 없음 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS PFX 또는 암호화된 PEM 개인 키 비밀번호(선택) | 없음 | |
+| `HttpsCertificateKeyPath` | HTTPS PEM의 별도 개인 키 경로, `.pem` / `.crt` 인증서에 필수 | 없음 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 서명 시크릿(HMAC-SHA256), 서명 검증 활성화 시 필수. 비어 있으면 모두 거부(fail-closed) | 없음 | `a-strong-secret` |
 | `HttpUrl` | API 루트 경로 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 개발 모드(Swagger 활성화) | `false` | `true` |
+
+#### nginx 없이 HTTPS / WSS 직접 연결
+
+서버는 nginx 프록시 없이 인증서를 직접 로드할 수 있습니다. `IsEnableHttp=true`에서 `HttpsPort`와 `HttpsCertPath`를, `IsEnableWebSocket=true`에서 `WssPort`와 `WssCertFilePath`를 설정합니다. HTTPS와 WSS 인증서 설정은 독립적이며 WSS는 HTTPS 설정을 대신 사용하지 않습니다. 평문 `HttpPort` 및 `WsPort` 리스너도 계속 사용할 수 있습니다. `WssPort`를 생략하거나 `0`으로 설정하면 기존 WebSocket 동작이 유지됩니다.
+
+```json
+{
+  "IsEnableHttp": true,
+  "HttpPort": 8080,
+  "HttpsPort": 8443,
+  "HttpsCertPath": "/certs/https/fullchain.pem",
+  "HttpsCertificateKeyPath": "/certs/https/privkey.pem",
+  "HttpsCertPassword": "",
+  "IsEnableWebSocket": true,
+  "WsPort": 8889,
+  "WssPort": 8444,
+  "WssCertFilePath": "/certs/wss/fullchain.pem",
+  "WssCertificateKeyPath": "/certs/wss/privkey.pem",
+  "WssCertificatePassword": ""
+}
+```
+
+인증서 경로가 `.pem` 또는 `.crt`로 끝나면(대소문자 구분 없음) 별도 개인 키 경로가 필요하며, 나머지 확장자는 PFX로 로드합니다. 암호화된 PEM 키에는 `HttpsCertPassword` / `WssCertificatePassword`를 지정하고, 암호화되지 않은 키는 비밀번호를 비워 둘 수 있습니다. 기존 PFX 설정은 변경할 필요 없이 같은 비밀번호 필드를 사용하며 개인 키 경로는 필요하지 않습니다. 경로나 파일 누락, 잘못된 인증서나 키, 틀린 비밀번호는 시작 단계에서 즉시 오류를 발생시킵니다. 클라이언트는 인증서를 신뢰하고 인증서에 포함된 호스트 이름으로 접속해야 합니다.
 
 #### 데이터베이스 설정
 
