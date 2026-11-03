@@ -208,14 +208,42 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `InterNodeAuthSecret` | 節點間 RPC 鑑權共享密鑰（協議握手幀 HMAC；空 = 不啟用）。叢集內所有節點必須配置一致 | 無 | `s3cr3t` |
 | `IsEnableWebSocket` | 是否啟用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 埠 | `8889` | `29300` |
+| `WssPort` | WSS TLS 埠（`0` 表示不啟用；要求 `IsEnableWebSocket=true`） | `0` | `8444` |
+| `WssCertFilePath` | WSS 憑證路徑（PFX 或 PEM），`WssPort > 0` 時必填 | 無 | `/certs/wss/fullchain.pem` |
+| `WssCertificateKeyPath` | WSS PEM 獨立私鑰路徑，`.pem` / `.crt` 憑證必填 | 無 | `/certs/wss/privkey.pem` |
+| `WssCertificatePassword` | WSS PFX 或 PEM 加密私鑰密碼（僅限加密 PKCS#8 格式） | 無 |  |
 | `IsEnableHttp` | 是否啟用 HTTP 服務 | `true` | `true` |
 | `HttpPort` | HTTP 服務埠 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服務埠 | 無 | `443` |
-| `HttpsCertPath` | HTTPS 憑證檔案路徑（PFX），`HttpsPort > 0` 時必填 | 無 | `/path/cert.pfx` |
-| `HttpsCertPassword` | HTTPS 憑證密碼（可選） | 無 | |
+| `HttpsCertPath` | HTTPS 憑證路徑（PFX 或 PEM），`HttpsPort > 0` 時必填 | 無 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS PFX 或 PEM 加密私鑰密碼（僅限加密 PKCS#8 格式） | 無 | |
+| `HttpsCertificateKeyPath` | HTTPS PEM 獨立私鑰路徑，`.pem` / `.crt` 憑證必填 | 無 | `/certs/https/privkey.pem` |
 | `HttpSignSecret` | HTTP 簽章密鑰（HMAC-SHA256），開啟簽章校驗後必填；為空時一律拒絕（fail-closed） | 無 | `a-strong-secret` |
 | `HttpUrl` | API 介面根路徑 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 開發模式（啟用 Swagger） | `false` | `true` |
+
+#### 無 nginx 直連 HTTPS / WSS
+
+伺服器可直接載入憑證，無需 nginx 代理。設定 `IsEnableHttp=true` 後配置 `HttpsPort` 與 `HttpsCertPath`；設定 `IsEnableWebSocket=true` 後配置 `WssPort` 與 `WssCertFilePath`。HTTPS 與 WSS 憑證設定相互獨立，WSS 不會回退至 HTTPS 設定。明文 `HttpPort` 與 `WsPort` 監聽繼續可用。省略 `WssPort` 或設為 `0` 時，WebSocket 行為維持不變。
+
+```json
+{
+  "IsEnableHttp": true,
+  "HttpPort": 8080,
+  "HttpsPort": 8443,
+  "HttpsCertPath": "/certs/https/fullchain.pem",
+  "HttpsCertificateKeyPath": "/certs/https/privkey.pem",
+  "HttpsCertPassword": "",
+  "IsEnableWebSocket": true,
+  "WsPort": 8889,
+  "WssPort": 8444,
+  "WssCertFilePath": "/certs/wss/fullchain.pem",
+  "WssCertificateKeyPath": "/certs/wss/privkey.pem",
+  "WssCertificatePassword": ""
+}
+```
+
+憑證路徑以 `.pem` 或 `.crt` 結尾（不區分大小寫）時必須提供獨立私鑰路徑，其他副檔名以 PFX 載入。加密 PEM 私鑰（RFC 7468 加密 PKCS#8，`BEGIN ENCRYPTED PRIVATE KEY`）使用 `HttpsCertPassword` / `WssCertificatePassword`；傳統 OpenSSL 加密私鑰（Proc-Type/DEK-Info 標頭）會被拒絕，請先用 `openssl pkcs8 -topk8` 轉換。未加密私鑰可留空密碼。既有 PFX 設定無需修改，仍使用對應密碼欄位，不需要私鑰路徑。路徑或檔案缺失、憑證或私鑰無效、密碼錯誤均會在啟動時立即失敗。用戶端必須信任憑證，並使用憑證涵蓋的主機名稱存取。
 
 #### 資料庫配置
 

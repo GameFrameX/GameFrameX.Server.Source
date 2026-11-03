@@ -124,6 +124,9 @@ public class AppSettingTests
         Assert.Equal(string.Empty, appSetting.HttpSignSecret);
         Assert.Equal(string.Empty, appSetting.HttpsCertPath);
         Assert.Equal(string.Empty, appSetting.HttpsCertPassword);
+        Assert.Equal(string.Empty, appSetting.HttpsCertificateKeyPath);
+        Assert.Equal(string.Empty, appSetting.WssCertificateKeyPath);
+        Assert.Equal(string.Empty, appSetting.WssCertificatePassword);
     }
 
     /// <summary>
@@ -196,6 +199,9 @@ public class AppSettingTests
         appSetting.HttpsPort = 443;
         appSetting.HttpsCertPath = "/path/to/https-cert.pfx";
         appSetting.HttpsCertPassword = "cert-password";
+        appSetting.HttpsCertificateKeyPath = "/path/to/https-key.pem";
+        appSetting.WssCertificateKeyPath = "/path/to/wss-key.pem";
+        appSetting.WssCertificatePassword = "wss-password";
         appSetting.MetricsPort = 9091;
         appSetting.WsPort = 8081;
         appSetting.WssPort = 8443;
@@ -212,6 +218,9 @@ public class AppSettingTests
         Assert.Equal((ushort)443, appSetting.HttpsPort);
         Assert.Equal("/path/to/https-cert.pfx", appSetting.HttpsCertPath);
         Assert.Equal("cert-password", appSetting.HttpsCertPassword);
+        Assert.Equal("/path/to/https-key.pem", appSetting.HttpsCertificateKeyPath);
+        Assert.Equal("/path/to/wss-key.pem", appSetting.WssCertificateKeyPath);
+        Assert.Equal("wss-password", appSetting.WssCertificatePassword);
         Assert.Equal((ushort)9091, appSetting.MetricsPort);
         Assert.Equal((ushort)8081, appSetting.WsPort);
         Assert.Equal((ushort)8443, appSetting.WssPort);
@@ -298,6 +307,7 @@ public class AppSettingTests
         appSetting.HttpSignSecret = "http-sign-secret-plain";
         appSetting.InterNodeAuthSecret = "inter-node-auth-secret-plain";
         appSetting.HttpsCertPassword = "https-cert-password-plain";
+        appSetting.WssCertificatePassword = "wss-certificate-password-plain";
 
         // Act
         var json = appSetting.ToString();
@@ -308,10 +318,13 @@ public class AppSettingTests
         Assert.DoesNotContain("http-sign-secret-plain", json);
         Assert.DoesNotContain("inter-node-auth-secret-plain", json);
         Assert.DoesNotContain("https-cert-password-plain", json);
+        Assert.DoesNotContain("wss-certificate-password-plain", json);
+        Assert.Contains($"\"{nameof(AppSetting.WssCertificatePassword)}\":\"***\"", json);
         Assert.DoesNotContain("db-password-plain", formattedJson);
         Assert.DoesNotContain("http-sign-secret-plain", formattedJson);
         Assert.DoesNotContain("inter-node-auth-secret-plain", formattedJson);
         Assert.DoesNotContain("https-cert-password-plain", formattedJson);
+        Assert.DoesNotContain("wss-certificate-password-plain", formattedJson);
 
         // 已配置的字段以掩码出现，保留"已配置"的运维可见性
         Assert.Contains("\"***\"", json);
@@ -325,7 +338,7 @@ public class AppSettingTests
     public void ToString_WithUnsetCredentialFields_ShouldKeepEmptyValues()
     {
         // Arrange：默认构造——DataBasePassword 为 null（JsonHelper 跳过 null 属性），
-        // InterNodeAuthSecret/HttpSignSecret/HttpsCertPassword 为空串（保留输出空值）
+        // InterNodeAuthSecret/HttpSignSecret/HttpsCertPassword/WssCertificatePassword 为空串（保留输出空值）
         var appSetting = new AppSetting();
 
         // Act
@@ -333,6 +346,7 @@ public class AppSettingTests
 
         // Assert：空串凭据字段保留空值输出（紧凑 JSON 无空格分隔），未配置不误报为已配置（不出现掩码）
         Assert.Contains($"\"{nameof(AppSetting.InterNodeAuthSecret)}\":\"\"", json);
+        Assert.Contains($"\"{nameof(AppSetting.WssCertificatePassword)}\":\"\"", json);
         Assert.DoesNotContain("***", json);
     }
 
@@ -345,6 +359,7 @@ public class AppSettingTests
         // Arrange
         var appSetting = new AppSetting();
         appSetting.DataBasePassword = "db-password-plain";
+        appSetting.WssCertificatePassword = "wss-password-plain";
 
         // Act
         appSetting.ToString();
@@ -352,5 +367,6 @@ public class AppSettingTests
 
         // Assert
         Assert.Equal("db-password-plain", appSetting.DataBasePassword);
+        Assert.Equal("wss-password-plain", appSetting.WssCertificatePassword);
     }
 }

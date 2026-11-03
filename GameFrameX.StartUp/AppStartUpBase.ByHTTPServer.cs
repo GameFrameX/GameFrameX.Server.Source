@@ -333,41 +333,16 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 加载 HTTPS 证书（PFX），供 <see cref="AppSetting.HttpsPort"/> 监听使用；任一配置错误在 Kestrel 监听前 fail-fast。
+    /// 加载 HTTPS 的 PFX 或 PEM 证书，在 Kestrel 监听前校验证书配置。
     /// </summary>
-    /// <remarks>
-    /// Loads the HTTPS certificate (PFX) for the <see cref="AppSetting.HttpsPort"/> listener; any configuration error
-    /// fails fast before Kestrel starts listening.
-    /// 调用前提：<paramref name="setting"/> 的 <c>HttpsPort</c> 大于 0。
-    /// </remarks>
+    /// <remarks>Loads the HTTPS PFX or PEM certificate and validates configuration before Kestrel listens.</remarks>
     /// <param name="setting">应用配置 / Application setting</param>
-    /// <returns>已加载的证书 / The loaded certificate</returns>
-    /// <exception cref="InvalidOperationException">证书路径为空 / The certificate path is empty</exception>
-    /// <exception cref="InvalidOperationException">证书文件不存在 / The certificate file does not exist</exception>
-    /// <exception cref="InvalidOperationException">证书加载失败（密码错误或文件损坏）/ The certificate failed to load (wrong password or corrupted file)</exception>
+    /// <returns>包含私钥的证书 / Certificate with its private key</returns>
+    /// <exception cref="InvalidOperationException">证书配置或加载失败 / Certificate configuration or loading failed</exception>
     internal static X509Certificate2 LoadHttpsCertificate(AppSetting setting)
     {
-        if (setting.HttpsCertPath.IsNullOrWhiteSpace())
-        {
-            // Localization: StartUp.HttpExceptions.HttpsCertPathMissing - 已配置 HTTPS 端口 [{0}]，但 HttpsCertPath 未配置（PFX 文件路径），无法启用 HTTPS 监听
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertPathMissing, setting.HttpsPort));
-        }
-
-        if (!File.Exists(setting.HttpsCertPath))
-        {
-            // Localization: StartUp.HttpExceptions.HttpsCertFileNotFound - HTTPS 证书文件不存在: {0}
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertFileNotFound, setting.HttpsCertPath));
-        }
-
-        try
-        {
-            return X509CertificateLoader.LoadPkcs12FromFile(setting.HttpsCertPath, setting.HttpsCertPassword, X509KeyStorageFlags.DefaultKeySet, Pkcs12LoaderLimits.Defaults);
-        }
-        catch (Exception e)
-        {
-            // Localization: StartUp.HttpExceptions.HttpsCertLoadFailed - HTTPS 证书加载失败（密码错误或文件损坏）: {0}
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertLoadFailed, setting.HttpsCertPath), e);
-        }
+        return ServerCertificateLoader.Load("HTTPS", setting.HttpsCertPath, setting.HttpsCertificateKeyPath,
+            setting.HttpsCertPassword, nameof(setting.HttpsCertPath), nameof(setting.HttpsCertificateKeyPath));
     }
 
     /// <summary>

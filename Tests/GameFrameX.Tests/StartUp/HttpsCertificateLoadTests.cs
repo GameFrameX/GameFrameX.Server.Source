@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using GameFrameX.StartUp;
 using GameFrameX.Utility.Setting;
@@ -35,78 +34,190 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// HTTPS 证书加载 fail-fast 校验测试（HttpsPort>0 时 Kestrel HTTPS 真监听的前置校验）。
+/// HTTPS 证书启动期加载与失败矩阵。
 /// </summary>
-/// <remarks>
-/// Tests for the HTTPS certificate fail-fast validation (prerequisite check of the real
-/// Kestrel HTTPS listening when HttpsPort &gt; 0).
-/// </remarks>
+/// <remarks>Startup loading and failure matrix for HTTPS certificates.</remarks>
 public class HttpsCertificateLoadTests : IDisposable
 {
-    private readonly string _pfxPath;
+    private TestServerCertificateFiles _files;
 
-    public HttpsCertificateLoadTests()
-    {
-        _pfxPath = Path.Combine(Path.GetTempPath(), $"gfx911-{Guid.NewGuid():N}.pfx");
-        using (var rsa = RSA.Create(2048))
-        {
-            var request = new CertificateRequest("CN=gameframex-https-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            using (var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1)))
-            {
-                File.WriteAllBytes(_pfxPath, certificate.Export(X509ContentType.Pfx, "test-password"));
-            }
-        }
-    }
+    // 路径校验用例不依赖证书生成，仅在需要真实证书时创建临时文件。
+    private TestServerCertificateFiles Files => _files ??= new TestServerCertificateFiles();
 
+    /// <summary>清理临时证书文件。</summary>
+    /// <remarks>Cleans up temporary certificate files.</remarks>
     public void Dispose()
     {
-        if (File.Exists(_pfxPath))
-        {
-            File.Delete(_pfxPath);
-        }
+        _files?.Dispose();
     }
 
-    [Fact]
-    public void LoadHttpsCertificate_ShouldThrow_WhenCertPathIsMissing()
+    /// <summary>空白证书路径必须阻断启动。</summary>
+    /// <remarks>Blank certificate paths must fail startup.</remarks>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void LoadHttpsCertificate_ShouldThrow_WhenCertificatePathIsMissing(string path)
     {
-        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = string.Empty };
-
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = path };
         var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
-
         Assert.Contains("HttpsCertPath", exception.Message);
     }
 
+    /// <summary>不存在的证书路径必须阻断启动。</summary>
+    /// <remarks>Missing certificate files must fail startup.</remarks>
     [Fact]
-    public void LoadHttpsCertificate_ShouldThrow_WhenCertFileDoesNotExist()
+    public void LoadHttpsCertificate_ShouldThrow_WhenCertificateFileDoesNotExist()
     {
-        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = "/nonexistent/path/cert.pfx" };
-
+        var path = Path.Combine(Path.GetTempPath(), $"gfx987-{Guid.NewGuid():N}.missing");
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = path };
         var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
-
-        Assert.Contains("/nonexistent/path/cert.pfx", exception.Message);
+        Assert.Contains(path, exception.Message);
     }
 
+    /// <summary>PFX 密码错误必须阻断启动并保留底层异常。</summary>
+    /// <remarks>Incorrect PFX passwords must fail startup and retain the underlying exception.</remarks>
     [Fact]
     public void LoadHttpsCertificate_ShouldThrow_WhenPasswordIsWrong()
     {
-        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = _pfxPath, HttpsCertPassword = "wrong-password" };
-
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = Files.CertificatePath, HttpsCertPassword = "wrong-password" };
         var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
-
-        Assert.Contains(_pfxPath, exception.Message);
+        Assert.Contains(Files.CertificatePath, exception.Message);
         Assert.NotNull(exception.InnerException);
     }
 
+    /// <summary>有效 PFX 应保留证书身份与私钥。</summary>
+    /// <remarks>Valid PFX must retain the certificate identity and private key.</remarks>
     [Fact]
     public void LoadHttpsCertificate_ShouldReturnCertificate_WhenPfxIsValid()
     {
-        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = _pfxPath, HttpsCertPassword = "test-password" };
-
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = Files.CertificatePath, HttpsCertPassword = TestServerCertificateFiles.Password };
         using (var certificate = AppStartUpBase.LoadHttpsCertificate(setting))
         {
-            Assert.NotNull(certificate);
-            Assert.Equal("CN=gameframex-https-test", certificate.Subject);
-            Assert.True(certificate.HasPrivateKey);
+            AssertCertificate(certificate);
+        }
+    }
+
+    /// <summary>PEM 支持两种扩展名以及加密与未加密私钥。</summary>
+    /// <remarks>PEM supports both extensions with encrypted and unencrypted private keys.</remarks>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void LoadHttpsCertificate_ShouldReturnCertificate_WhenPemIsValid(bool encrypted, bool useCrtExtension)
+    {
+        var setting = new AppSetting
+        {
+            HttpsPort = 8443,
+            HttpsCertPath = useCrtExtension ? Files.CrtPath : Files.PemPath,
+            HttpsCertificateKeyPath = encrypted ? Files.EncryptedKeyPath : Files.KeyPath,
+            HttpsCertPassword = encrypted ? TestServerCertificateFiles.Password : string.Empty,
+        };
+        using (var certificate = AppStartUpBase.LoadHttpsCertificate(setting))
+        {
+            AssertCertificate(certificate);
+        }
+    }
+
+    /// <summary>PEM 必须显式配置独立私钥路径。</summary>
+    /// <remarks>PEM requires an explicitly configured separate private key path.</remarks>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void LoadHttpsCertificate_ShouldThrow_WhenPemKeyPathIsMissing(string keyPath)
+    {
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = Files.PemPath, HttpsCertificateKeyPath = keyPath };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        Assert.Contains("HttpsCertificateKeyPath", exception.Message);
+    }
+
+    /// <summary>私钥文件不存在时必须阻断启动。</summary>
+    /// <remarks>Missing private key files must fail startup.</remarks>
+    [Fact]
+    public void LoadHttpsCertificate_ShouldThrow_WhenPemKeyFileDoesNotExist()
+    {
+        var keyPath = Files.KeyPath + ".missing";
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = Files.PemPath, HttpsCertificateKeyPath = keyPath };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        Assert.Contains(keyPath, exception.Message);
+    }
+
+    /// <summary>加密私钥密码错误或缺失时必须阻断启动。</summary>
+    /// <remarks>Incorrect or missing encrypted private key passwords must fail startup.</remarks>
+    [Theory]
+    [InlineData("wrong-password")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void LoadHttpsCertificate_ShouldThrow_WhenPemKeyPasswordIsWrong(string password)
+    {
+        var setting = new AppSetting
+        {
+            HttpsPort = 8443, HttpsCertPath = Files.PemPath,
+            HttpsCertificateKeyPath = Files.EncryptedKeyPath, HttpsCertPassword = password,
+        };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        Assert.Contains(Files.PemPath, exception.Message);
+        Assert.NotNull(exception.InnerException);
+    }
+
+    /// <summary>损坏证书或不含私钥的 PFX 必须阻断启动。</summary>
+    /// <remarks>Corrupted certificates and PFX without private keys must fail startup.</remarks>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadHttpsCertificate_ShouldThrow_WhenCertificateIsUnusable(bool publicOnly)
+    {
+        var path = publicOnly ? Files.PublicCertificatePath : Files.CertificatePath;
+        if (!publicOnly)
+        {
+            File.WriteAllText(path, "invalid-certificate");
+        }
+
+        var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = path, HttpsCertPassword = TestServerCertificateFiles.Password };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        Assert.Contains(path, exception.Message);
+        if (publicOnly)
+        {
+            // 无私钥属独立配置结论：直接抛 PrivateKeyMissing，不被 LoadFailed 包装（无底层异常）。
+            Assert.Null(exception.InnerException);
+        }
+        else
+        {
+            // 加载失败保留底层异常便于排障。
+            Assert.NotNull(exception.InnerException);
+        }
+    }
+
+    /// <summary>传统 OpenSSL 加密私钥必须被明确拒绝并给出转换指引。</summary>
+    /// <remarks>Legacy OpenSSL encrypted keys must be rejected with a conversion hint.</remarks>
+    [Fact]
+    public void LoadHttpsCertificate_ShouldThrow_WhenPemKeyUsesTraditionalOpenSslEncryption()
+    {
+        var setting = new AppSetting
+        {
+            HttpsPort = 8443,
+            HttpsCertPath = Files.PemPath,
+            HttpsCertificateKeyPath = Files.TraditionalEncryptedKeyPath,
+            HttpsCertPassword = TestServerCertificateFiles.Password,
+        };
+        var exception = Assert.Throws<InvalidOperationException>(() => AppStartUpBase.LoadHttpsCertificate(setting));
+        // 传统格式专属错误在加载前抛出：不被 LoadFailed 包装，且给出 openssl pkcs8 转换指引（命令文本不随语言变化）。
+        Assert.Contains(Files.TraditionalEncryptedKeyPath, exception.Message);
+        Assert.Contains("openssl pkcs8 -topk8", exception.Message);
+        Assert.Null(exception.InnerException);
+    }
+
+    /// <summary>验证身份与可用私钥。</summary>
+    /// <remarks>Checks certificate identity and private key availability.</remarks>
+    private static void AssertCertificate(X509Certificate2 certificate)
+    {
+        Assert.Equal("CN=localhost", certificate.Subject);
+        Assert.True(certificate.HasPrivateKey);
+        using (var privateKey = certificate.GetRSAPrivateKey())
+        {
+            Assert.NotNull(privateKey);
         }
     }
 }
