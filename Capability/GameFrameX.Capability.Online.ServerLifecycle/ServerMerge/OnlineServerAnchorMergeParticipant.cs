@@ -38,7 +38,7 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 /// <summary>
 /// 内置参与者：开服锚点合服标记（源服锚点 <c>MergedIntoServerId</c> 置目标服；幂等）。
 /// <para>
-/// 前置全量校验（dry-run 与真实执行共用）：任一源服锚点未登记或已合入其他目标即整体拒绝
+/// 前置全量校验（dry-run 与真实执行共用）：目标服锚点已合入其他服（已退役）、任一源服锚点未登记或已合入其他目标即整体拒绝
 /// （<see cref="OnlineErrorCode.StateOperationForbidden"/>）——dry-run 即暴露执行期失败，
 /// 真实执行不会出现部分源服已标记的半途状态。
 /// </para>
@@ -70,6 +70,12 @@ public sealed class OnlineServerAnchorMergeParticipant : IServerMergeParticipant
     {
         var details = new Dictionary<string, long>();
         long affected = 0;
+
+        var targetAnchor = await _calendarStore.FindAsync(context.Plan.TargetServerId, cancellationToken).ConfigureAwait(false);
+        if (targetAnchor != null && targetAnchor.MergedIntoServerId != 0)
+        {
+            throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden, "Target server " + context.Plan.TargetServerId + " already merged into " + targetAnchor.MergedIntoServerId + "; cannot merge into a retired server.");
+        }
         foreach (var sourceServerId in context.Plan.SourceServerIds)
         {
             var anchor = await _calendarStore.FindAsync(sourceServerId, cancellationToken).ConfigureAwait(false);

@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Online.ServerLifecycle.ServerMerge;
 
 using System;
-using System.Collections.Generic;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -76,15 +76,23 @@ public sealed class OnlineServerRowKeyRewriteParticipant : IServerMergeParticipa
     {
         var counts = await _rewriter.RewriteServerDomainRowsAsync(context.Plan.SourceServerIds, context.Plan.TargetServerId, context.DryRun, _batchSize, cancellationToken).ConfigureAwait(false);
         long affected = 0;
+        long skipped = 0;
         foreach (var pair in counts)
         {
             // skipped 明细是运营对账信息（CAS 失配超限跳过），不计入受影响行数。
             if (pair.Key.EndsWith("-skipped", StringComparison.Ordinal))
             {
+                skipped += pair.Value;
                 continue;
             }
 
             affected += pair.Value;
+        }
+
+        if (!context.DryRun && skipped > 0)
+        {
+            // 拒绝落定：滞留行留在源服，重试按 HomeServerId == 源服 过滤只补写滞留行。
+            throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden, "Row key rewrite skipped " + skipped + " row(s) after CAS retry exhaustion; the merge is not settled. Retry the execute to rewrite the remaining rows.");
         }
 
         return new OnlineServerMergeStepReport("row-key-rewrite:server-domain", affected, counts);
