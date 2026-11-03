@@ -79,7 +79,7 @@ public sealed class GameDbOnlineServerMergeRowRewriterTests
     {
         await WithSqliteFacadeAsync(async () =>
         {
-            await GameDb.SaveOneAsync(new OnlineLedgerEntryState
+            await AddLedgerAsync(new OnlineLedgerEntryState
             {
                 EntryId = "led-1",
                 PlayerId = 11,
@@ -90,7 +90,7 @@ public sealed class GameDbOnlineServerMergeRowRewriterTests
                 AmountAfter = 10,
                 SequenceNumber = 1,
             });
-            await GameDb.SaveOneAsync(new OnlineAssetTransactionRowState
+            await AddTransactionAsync(new OnlineAssetTransactionRowState
             {
                 TransactionId = "txn-1",
                 PlayerId = 11,
@@ -127,11 +127,60 @@ public sealed class GameDbOnlineServerMergeRowRewriterTests
     }
 
     [Fact]
+    public async Task Rewrite_KeysetPagination_BatchSizeOneWalksAllRows()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            // 3 条账本行 + 2 条交易行归属源服 1：batchSize=1 强制多页推进（键集游标翻页 + 即读即写）。
+            for (var index = 1; index <= 3; index++)
+            {
+                await AddLedgerAsync(new OnlineLedgerEntryState
+                {
+                    EntryId = "led-page-" + index,
+                    PlayerId = 20 + index,
+                    HomeServerId = 1,
+                    InitiatingServerId = 1,
+                    AmountBefore = 0,
+                    Delta = index,
+                    AmountAfter = index,
+                    SequenceNumber = index,
+                });
+            }
+
+            for (var index = 1; index <= 2; index++)
+            {
+                await AddTransactionAsync(new OnlineAssetTransactionRowState
+                {
+                    TransactionId = "txn-page-" + index,
+                    PlayerId = 30 + index,
+                    HomeServerId = 1,
+                    InitiatingServerId = 1,
+                });
+            }
+
+            var rewriter = new GameDbOnlineServerMergeRowRewriter();
+            var counts = await rewriter.RewriteServerDomainRowsAsync(new long[] { 1 }, 7, false, 1, CancellationToken.None);
+            Assert.Equal(3, counts[GameDbOnlineServerMergeRowRewriter.LedgerCategory]);
+            Assert.Equal(2, counts[GameDbOnlineServerMergeRowRewriter.TransactionCategory]);
+
+            // 全部行归属列已重写；重跑幂等（源服行数为 0）。
+            var rewrittenLedger = await GameDb.FindListAsync<OnlineLedgerEntryState>(state => state.HomeServerId == 7);
+            Assert.Equal(3, rewrittenLedger.Count);
+            var rewrittenTransactions = await GameDb.FindListAsync<OnlineAssetTransactionRowState>(state => state.HomeServerId == 7);
+            Assert.Equal(2, rewrittenTransactions.Count);
+
+            var rerunCounts = await rewriter.RewriteServerDomainRowsAsync(new long[] { 1 }, 7, false, 1, CancellationToken.None);
+            Assert.Equal(0, rerunCounts[GameDbOnlineServerMergeRowRewriter.LedgerCategory]);
+            Assert.Equal(0, rerunCounts[GameDbOnlineServerMergeRowRewriter.TransactionCategory]);
+        }, "c472-row-rewriter-pagination-tests");
+    }
+
+    [Fact]
     public async Task CountServerDomainRows_MatchesRewriteCounts()
     {
         await WithSqliteFacadeAsync(async () =>
         {
-            await GameDb.SaveOneAsync(new OnlineLedgerEntryState
+            await AddLedgerAsync(new OnlineLedgerEntryState
             {
                 EntryId = "led-2",
                 PlayerId = 12,
@@ -148,6 +197,24 @@ public sealed class GameDbOnlineServerMergeRowRewriterTests
             Assert.Equal(1, counts[GameDbOnlineServerMergeRowRewriter.LedgerCategory]);
             Assert.Equal(0, counts[GameDbOnlineServerMergeRowRewriter.TransactionCategory]);
         }, "c466-row-rewriter-count-tests");
+    }
+
+    /// <summary>
+    /// 按生产约定（行 Id 由序列分配，见资产库 ToState 路径）插入账本行。
+    /// </summary>
+    private static async Task AddLedgerAsync(OnlineLedgerEntryState state)
+    {
+        state.Id = await GameDb.NextSequenceAsync<OnlineLedgerEntryState>("row-id");
+        await GameDb.SaveOneAsync(state);
+    }
+
+    /// <summary>
+    /// 按生产约定（行 Id 由序列分配）插入交易行。
+    /// </summary>
+    private static async Task AddTransactionAsync(OnlineAssetTransactionRowState state)
+    {
+        state.Id = await GameDb.NextSequenceAsync<OnlineAssetTransactionRowState>("row-id");
+        await GameDb.SaveOneAsync(state);
     }
 
 }

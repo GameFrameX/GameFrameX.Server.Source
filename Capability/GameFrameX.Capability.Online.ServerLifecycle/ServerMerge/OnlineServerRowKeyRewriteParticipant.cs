@@ -78,6 +78,12 @@ public sealed class OnlineServerRowKeyRewriteParticipant : IServerMergeParticipa
         long affected = 0;
         foreach (var pair in counts)
         {
+            // skipped 明细是运营对账信息（CAS 失配超限跳过），不计入受影响行数。
+            if (pair.Key.EndsWith("-skipped", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             affected += pair.Value;
         }
 
