@@ -5,13 +5,15 @@
         {
           "src": "../",
           "files": [
-            "**/GameFrameX.NetWork.csproj",
-            "**/GameFrameX.NetWork.*.csproj",
+            "**/GameFrameX.Network.csproj",
+            "**/GameFrameX.Network.Abstractions.csproj",
+            "**/GameFrameX.Network.HTTP.csproj",
+            "**/GameFrameX.DataBase.csproj",
             "**/GameFrameX.DataBase.*.csproj",
+            "**/GameFrameX.Capability.Hosting.*.csproj",
             "**/GameFrameX.Core.csproj",
             "**/GameFrameX.Core.*.csproj",
             "**/GameFrameX.Extension.csproj",
-            "**/GameFrameX.NetWork.csproj",
             "**/GameFrameX.Log.csproj",
             "**/GameFrameX.Setting.csproj",
             "**/GameFrameX.StartUp.csproj",
