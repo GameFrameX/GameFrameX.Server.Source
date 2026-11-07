@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -80,9 +80,9 @@ public interface IAppStartUp
     /// </remarks>
     /// <param name="serverType">服务器类型 / The type of server to initialize</param>
     /// <param name="setting">应用程序设置 / The application settings</param>
-    /// <param name="args">启动参数 / The startup arguments</param>
+    /// <param name="args">启动参数（可选，默认为 <c>null</c>）/ The startup arguments (optional, defaults to <c>null</c>)</param>
     /// <returns>如果初始化成功则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if initialization is successful; otherwise <c>false</c></returns>
-    bool Init(string serverType, AppSetting setting, string[] args);
+    bool Init(string serverType, AppSetting setting, string[] args = null);
 
     /// <summary>
     /// 异步启动应用程序。
@@ -93,6 +93,14 @@ public interface IAppStartUp
     /// </remarks>
     /// <returns>表示异步启动操作的任务 / A task that represents the asynchronous start operation</returns>
     Task StartAsync();
+
+    /// <summary>获取本地宿主启动就绪任务。</summary>
+    /// <remarks>
+    /// Completes after databases, components and listeners are ready. The entry point also observes
+    /// the run task so startup failure cannot leave readiness waiting indefinitely.
+    /// Implementations without a separate startup phase may return Task.CompletedTask.
+    /// </remarks>
+    Task StartUpReadyTask { get; }
 
     /// <summary>
     /// 使用可选消息异步停止服务器。

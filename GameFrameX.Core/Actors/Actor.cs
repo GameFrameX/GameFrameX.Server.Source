@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,44 +27,14 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Collections.Concurrent;
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Timer;
 using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Core.Components;
+using GameFrameX.Core.Hotfix;
+using GameFrameX.Core.Timer;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
@@ -98,7 +68,7 @@ public sealed class Actor : IActor, IDisposable
         }
         else
         {
-            Tell(() => ComponentRegister.ActiveComponents(this));
+            Tell(() => ComponentRegister.ActiveComponentsAsync(this));
         }
     }
 
@@ -150,9 +120,9 @@ public sealed class Actor : IActor, IDisposable
     /// <typeparam name="T">组件代理类型</typeparam>
     /// <param name="isNew">当组件不存在时是否创建新实例,默认为true</param>
     /// <returns>返回指定类型的组件代理实例</returns>
-    public async Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent
+    public async Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent
     {
-        return (T)await GetComponentAgent(typeof(T), isNew);
+        return (T)await GetComponentAgentAsync(typeof(T), isNew);
     }
 
     /// <summary>
@@ -183,89 +153,97 @@ public sealed class Actor : IActor, IDisposable
     /// <param name="agentType">代理类型</param>
     /// <param name="isNew">当组件不存在时是否创建新实例,默认为true</param>
     /// <returns>返回指定类型的组件代理实例</returns>
-    public async Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
+    public async Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true)
     {
-        var compType = agentType.BaseType.GetGenericArguments()[0];
-        IComponentAgent agent;
+        var compType = HotfixModule.GetComponentTypeFromAgent(agentType);
         BaseComponent component;
         if (isNew)
         {
             component = _componentsMap.GetOrAdd(compType, GetOrAddFactory);
-            agent = component.GetAgent(agentType);
-            if (!component.IsActive)
-            {
-                async Task Worker()
-                {
-                    try
-                    {
-                        await component.Active();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-
-                    try
-                    {
-                        await agent.BeforeActivation();
-                        await agent.Active();
-                        await agent.AfterActivation();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-                }
-
-                await SendAsyncWithoutCheck(Worker);
-            }
-
-            return agent;
         }
-
-        if (!_componentsMap.TryGetValue(compType, out component))
+        else if (!_componentsMap.TryGetValue(compType, out component))
         {
             return default;
         }
 
-        agent = component.GetAgent(agentType);
-        if (!component.IsActive)
+        var agent = component.GetAgent(agentType);
+        // 快速路径：只有整个激活流程结束才放行——IsActive 在激活一开始即置位，
+        // 激活进行中（读库/代理三段回调未完）时外部调用者必须排队等待，不能提前拿到 agent。
+        if (!component.IsActivationCompleted)
         {
-            async Task Worker()
-            {
-                try
-                {
-                    await component.Active();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-
-                try
-                {
-                    await agent.BeforeActivation();
-                    await agent.Active();
-                    await agent.AfterActivation();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-            }
-
-            await SendAsyncWithoutCheck(Worker);
+            await SendAsyncWithoutCheck(() => ActivateComponentIfNeededAsync(component, agent, compType));
         }
 
         return agent;
     }
 
     /// <summary>
+    /// 在 actor 上下文内复检后再激活：排在前面的激活工作单元已完成（或当前是激活过程中的内联嵌套调用，
+    /// IsActive 已为 true）时直接返回，不重复执行激活逻辑。
+    /// </summary>
+    /// <param name="component">要激活的组件实例</param>
+    /// <param name="agent">组件对应的代理实例</param>
+    /// <param name="compType">组件类型,用于日志记录</param>
+    /// <returns>表示异步操作的任务</returns>
+    private Task ActivateComponentIfNeededAsync(BaseComponent component, IComponentAgent agent, Type compType)
+    {
+        if (component.IsActive)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ActivateComponentAsync(component, agent, compType);
+    }
+
+    /// <summary>
+    /// 激活指定组件并依次调用其代理的激活生命周期方法
+    /// </summary>
+    /// <param name="component">要激活的组件实例</param>
+    /// <param name="agent">组件对应的代理实例</param>
+    /// <param name="compType">组件类型,用于日志记录</param>
+    /// <returns>表示异步操作的任务</returns>
+    private async Task ActivateComponentAsync(BaseComponent component, IComponentAgent agent, Type compType)
+    {
+        try
+        {
+            await component.ActiveAsync();
+        }
+        catch (Exception e)
+        {
+            // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
+            if (GlobalSettings.CurrentSetting.IsDebug)
+            {
+                throw;
+            }
+        }
+
+        try
+        {
+            await agent.BeforeActivationAsync();
+            await agent.ActiveAsync();
+            await agent.AfterActivationAsync();
+        }
+        catch (Exception e)
+        {
+            // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
+            if (GlobalSettings.CurrentSetting.IsDebug)
+            {
+                throw;
+            }
+        }
+        // 与既有行为一致：激活失败也视为流程结束（不重试），等待方不再被阻塞。
+        component.IsActivationCompleted = true;
+    }
+
+    /// <summary>
     /// 处理跨天逻辑,遍历所有组件并执行跨天操作
     /// </summary>
-    /// <param name="openServerDay">开服天数</param>
-    public async Task CrossDay(int openServerDay)
+    /// <param name="serverDay">开服天数</param>
+    public async Task CrossDayAsync(int serverDay)
     {
+        // Localization: Core.Actor.CrossDay - actor跨天 id:{0} type:{1}
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDay, Id, Type));
         foreach (var comp in _componentsMap.Values)
         {
@@ -275,11 +253,12 @@ public sealed class Actor : IActor, IDisposable
                 // 使用try-catch缩小异常影响范围
                 try
                 {
-                    await crossDay.OnCrossDay(openServerDay);
+                    await crossDay.OnCrossDayAsync(serverDay);
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error(e, "Actor.CrossDay, CrossDay failed, componentType: {componentType}, actorId: {actorId}, actorType: {actorType}", agent.GetType().FullName, Id, Type);
+                    // Localization: Core.Actor.CrossDayFailed - {0}跨天失败 actorId:{1} actorType:{2} 异常：\n{3}
+                    LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDayFailed, agent.GetType().FullName, Id, Type, e));
                 }
             }
         }
@@ -355,48 +334,77 @@ public sealed class Actor : IActor, IDisposable
     /// Actor 回收时的处理方法
     /// </summary>
     /// <remarks>
-    /// 当 Actor 被系统回收时调用此方法。
-    /// 用于执行必要的清理工作，如:
-    /// - 释放占用的资源
-    /// - 清理组件状态
-    /// - 保存需要持久化的数据
-    /// - 取消订阅的事件
-    /// - 断开网络连接等
+    /// 当 Actor 被系统回收时调用此方法，固定两步：
+    /// 1. 依次执行一次性回收回调（单个回调异常记日志后继续）；
+    /// 2. 删除 <see cref="ScheduleIdSet"/> 中仍登记的全部 Quartz 定时任务并清空集合。
+    /// 第 2 步保证"Actor 出表 ⇒ 名下定时任务全部删除"：遗留任务触发时找不到 Actor，不会再把已回收的 Actor
+    /// 拉起。调度器未启动或已关闭时任务已不存在，只清空集合；删除异常记日志，不向回收流程外泄。
+    /// Runs the once recycle callbacks, then deletes every Quartz job still registered in
+    /// <see cref="ScheduleIdSet"/> and clears the set, so no timer outlives its actor.
     /// </remarks>
     /// <returns>表示异步操作的任务</returns>
-    public Task OnRecycle()
+    public async Task OnRecycleAsync()
     {
         try
         {
-            while (_onceRecycleCallbacks.First != null)
+            // ConcurrentQueue 排空：注册（AddOnceRecycleCallback）可在任意线程并发进行，
+            // 取出即执行，避免 LinkedList 并发读写的未定义行为
+            while (_onceRecycleCallbacks.TryDequeue(out var callback))
             {
-                var first = _onceRecycleCallbacks.First;
-                _onceRecycleCallbacks.RemoveFirst();
                 try
                 {
-                    first.Value?.Invoke();
+                    callback?.Invoke();
                 }
                 catch (Exception ex)
                 {
                     // 记录回调执行异常但继续执行其他回调
-                    LogHelper.Error(ex, "Actor.OnRecycle, RecycleCallback failed, actorId: {actorId}, actorType: {actorType}", Id, Type);
+                    // Localization: Core.Actor.RecycleCallbackFailed - Actor回收回调执行异常 actorId:{0} actorType:{1} 异常：\n{2}
+                    LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleCallbackFailed, Id, Type, ex));
                 }
             }
         }
         catch (Exception ex)
         {
             // 记录整体执行异常
-            LogHelper.Error(ex, "Actor.OnRecycle, Recycle failed, actorId: {actorId}, actorType: {actorType}", Id, Type);
+            // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
+            LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
+        }
+
+        await RemoveScheduledJobsAsync();
+    }
+
+    /// <summary>
+    /// 删除本 Actor 名下仍登记的全部定时任务并清空 <see cref="ScheduleIdSet"/>。
+    /// </summary>
+    /// <remarks>
+    /// Deletes every job still registered in <see cref="ScheduleIdSet"/> and clears the set.
+    /// </remarks>
+    private async Task RemoveScheduledJobsAsync()
+    {
+        if (ScheduleIdSet.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            if (QuartzTimer.IsSchedulerRunning)
+            {
+                await QuartzTimer.RemoveAsync(ScheduleIdSet);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
+            LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
         }
         finally
         {
-            _onceRecycleCallbacks.Clear();
+            ScheduleIdSet.Clear();
         }
-
-        return Task.CompletedTask;
     }
 
-    private readonly LinkedList<Action> _onceRecycleCallbacks = new LinkedList<Action>();
+    private readonly ConcurrentQueue<Action> _onceRecycleCallbacks = new ConcurrentQueue<Action>();
 
     /// <summary>
     /// 添加一个在Actor回收时执行一次的回调事件
@@ -411,17 +419,32 @@ public sealed class Actor : IActor, IDisposable
     /// </remarks>
     public void AddOnceRecycleCallback(Action action)
     {
-        _onceRecycleCallbacks.AddLast(action);
+        _onceRecycleCallbacks.Enqueue(action);
     }
 
     /// <summary>
     /// 反激活所有组件,使其进入非活动状态
     /// </summary>
-    public async Task Inactive()
+    /// <remarks>
+    /// 每个组件单独隔离：某个组件反激活抛异常时记 Fatal 后继续反激活其余组件，本方法不向外抛出。
+    /// 组件自身保证失败时 <see cref="BaseComponent.IsActive"/> 仍落为 false，因此单个组件故障不会让
+    /// Actor 永远无法被空闲回收，也不会让后续组件的状态登记残留。
+    /// Each component is isolated: a failing component is logged as Fatal and the rest still
+    /// deactivate; this method never throws.
+    /// </remarks>
+    public async Task InactiveAsync()
     {
         foreach (var item in _componentsMap.Values)
         {
-            await item.Inactive();
+            try
+            {
+                await item.InactiveAsync();
+            }
+            catch (Exception e)
+            {
+                // Localization: Core.Actor.InactiveComponentFailed - Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.InactiveComponentFailed, Id, item.GetType().FullName, e));
+            }
         }
     }
 
@@ -449,7 +472,7 @@ public sealed class Actor : IActor, IDisposable
     /// <summary>
     /// 保存所有组件的当前状态
     /// </summary>
-    internal async Task SaveAllState()
+    internal async Task SaveAllStateAsync()
     {
         foreach (var item in _componentsMap)
         {
@@ -514,17 +537,17 @@ public sealed class Actor : IActor, IDisposable
     /// 发送带超时的异步工作指令
     /// </summary>
     /// <param name="work">要执行的工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Action work, int timeout, CancellationToken cancellationToken = default)
+    public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
@@ -532,35 +555,35 @@ public sealed class Actor : IActor, IDisposable
     /// </summary>
     /// <typeparam name="T">返回值类型</typeparam>
     /// <param name="work">要执行的工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回指定类型的异步操作结果</returns>
-    public Task<T> SendAsync<T>(Func<T> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 发送带锁检查的异步工作指令
     /// </summary>
     /// <param name="work">要执行的异步工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="checkLock">是否检查锁,默认为true</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Func<Task> work, int timeout = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, checkLock, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, checkLock, cancellationToken);
     }
 
     /// <summary>
@@ -585,17 +608,17 @@ public sealed class Actor : IActor, IDisposable
     /// </summary>
     /// <typeparam name="T">返回值类型</typeparam>
     /// <param name="work">要执行的异步工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回指定类型的异步操作结果</returns>
-    public Task<T> SendAsync<T>(Func<Task<T>> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<Task<T>> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     #endregion

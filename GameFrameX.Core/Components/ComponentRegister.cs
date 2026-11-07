@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,45 +27,12 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Reflection;
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Attribute;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Hotfix;
-using GameFrameX.Core.Utility;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
@@ -100,6 +67,13 @@ public static class ComponentRegister
     private static readonly Dictionary<Type, short> ComponentFuncDic = new();
 
     /// <summary>
+    /// 初始化锁：全表扫描与静态字典写入的串行化点。
+    /// 多测试类/多入口并行初始化时保护静态字典不被并发写损坏（注册语义不变）。
+    /// </summary>
+    private static readonly object InitLock = new();
+
+
+    /// <summary>
     /// 根据 CompType 获取对应的 ActorType 类型
     /// </summary>
     /// <param name="componentType">组件类型</param>
@@ -127,47 +101,53 @@ public static class ComponentRegister
     /// <param name="assembly">目标程序集</param>
     /// <returns>初始化任务</returns>
     /// <exception cref="Exception">当程序集为 null 时抛出</exception>
-    public static Task Init(Assembly assembly = null)
+    public static Task InitAsync(Assembly assembly = null)
     {
         if (assembly == null)
         {
             assembly = Assembly.GetEntryAssembly();
         }
 
-        ArgumentNullException.ThrowIfNull(assembly, nameof(assembly));
+        ArgumentNullException.ThrowIfNull(assembly);
         var baseCompName = typeof(BaseComponent);
         var types = assembly.GetTypes();
-        foreach (var type in types)
+        // 全表扫描与四个静态字典的写入收敛进单一锁：并行初始化（多测试类/多入口）不再损坏字典
+        lock (InitLock)
         {
-            if (type.IsAbstract || !type.IsSubclassOf(baseCompName))
+            foreach (var type in types)
             {
-                continue;
-            }
-
-            if (type.GetCustomAttribute(typeof(ComponentTypeAttribute)) is ComponentTypeAttribute compAttr)
-            {
-                var actorType = compAttr.Type;
-                var compTypes = ActorComponentDic.GetOrAddValue(actorType);
-                compTypes.Add(type);
-
-                ComponentActorDic[type] = actorType;
-
-                if (actorType < GlobalConst.ActorTypeSeparator)
+                if (type.IsAbstract || !type.IsSubclassOf(baseCompName))
                 {
-                    if (type.GetCustomAttribute(typeof(FuncAttribute)) is FuncAttribute funcAttr)
+                    continue;
+                }
+
+                if (type.GetCustomAttribute(typeof(ComponentTypeAttribute)) is ComponentTypeAttribute compAttr)
+                {
+                    var actorType = compAttr.Type;
+                    var compTypes = ActorComponentDic.GetOrAddValue(actorType);
+                    compTypes.Add(type);
+
+                    ComponentActorDic[type] = actorType;
+
+                    if (actorType < GlobalConst.ActorTypeSeparator)
                     {
-                        var set = FuncComponentDic.GetOrAddValue(funcAttr.Func);
-                        set.Add(type);
-                        ComponentFuncDic[type] = funcAttr.Func;
+                        if (type.GetCustomAttribute(typeof(FuncAttribute)) is FuncAttribute funcAttr)
+                        {
+                            var set = FuncComponentDic.GetOrAddValue(funcAttr.Func);
+                            set.Add(type);
+                            ComponentFuncDic[type] = funcAttr.Func;
+                        }
                     }
                 }
-            }
-            else
-            {
-                throw new Exception($"component:[{type.FullName}] the actor type is not bound");
+                else
+                {
+                    // Localization: CoreExceptions.Component.ActorTypeNotBound - 组件:[{0}] Actor类型未绑定
+                    throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorTypeNotBound, type.FullName));
+                }
             }
         }
 
+        // Localization: Core.ComponentRegister.InitializationComplete - 组件注册初始化完成
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.InitializationComplete));
         return Task.CompletedTask;
     }
@@ -176,7 +156,7 @@ public static class ComponentRegister
     /// 激活全局组件
     /// </summary>
     /// <returns>激活任务</returns>
-    public static async Task ActiveGlobalComponents()
+    public static async Task ActiveGlobalComponentsAsync()
     {
         try
         {
@@ -184,31 +164,30 @@ public static class ComponentRegister
             {
                 foreach (var compType in value)
                 {
-                    var agentType = HotfixManager.GetAgentType(compType);
+                    var agentType = HotfixManager.Resolver.GetAgentType(compType);
                     if (agentType == null)
                     {
-                        LogHelper.Warning("ComponentRegister.ActiveGlobalComponents ActorType: {actorType} , Message: {message}", actorType, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.AgentNotImplemented, compType));
+                        // Localization: Core.ComponentRegister.GlobalComponentAgentNotImplemented - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确
+                        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentAgentNotImplemented, actorType, compType));
                     }
 
-                    /*if (actorType > ActorType.Separator)
-                    {
-                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Core.ComponentRegister.ActivateGlobalComponent, actorType, compType));
-                        await ActorManager.GetComponentAgent(agentType, actorType);
-                    }*/
                 }
 
                 if (actorType > GlobalConst.ActorTypeSeparator)
                 {
-                    LogHelper.Debug("ComponentRegister.ActiveGlobalComponents ActorType: {actorType} , Message: {message}", actorType, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalActor, actorType));
-                    await ActorManager.GetOrNew(ActorIdGenerator.GetActorId(actorType));
+                    // Localization: Core.ComponentRegister.GlobalActorActivated - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}
+                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalActorActivated, actorType, actorType));
+                    await ActorManager.GetOrNewAsync(ActorIdGenerator.GetActorId(actorType));
                 }
             }
 
-            LogHelper.Debug<string>("ComponentRegister.ActiveGlobalComponents Message: {message}", LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalComponentCheckComplete));
+            // Localization: Core.ComponentRegister.GlobalComponentCheckComplete - ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检查所有组件是否都包含Agent实现完成
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentCheckComplete));
         }
         catch (Exception exception)
         {
-            LogHelper.Error("ComponentRegister.ActiveGlobalComponents Message: {message} , Exception: {exception}", LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalComponentCheckFailed), exception);
+            // Localization: Core.ComponentRegister.GlobalComponentCheckFailed - ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检测所有组件是否包含Agent实现失败 , 异常: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentCheckFailed, exception));
             throw;
         }
     }
@@ -219,28 +198,11 @@ public static class ComponentRegister
     /// <param name="componentAgent">组件代理</param>
     /// <param name="openFuncSet">开放的功能集合</param>
     /// <returns>激活任务</returns>
-    public static Task ActiveRoleComponents(IComponentAgent componentAgent, HashSet<short> openFuncSet)
+    public static Task ActiveRoleComponentsAsync(IComponentAgent componentAgent, HashSet<short> openFuncSet)
     {
-        return ActiveComponents(componentAgent.Owner.Actor,
+        return ActiveComponentsAsync(componentAgent.Owner.Actor,
                                 t => !ComponentFuncDic.TryGetValue(t, out var func)
                                      || openFuncSet.Contains(func));
-        //foreach (var compType in GetComps(ActorType.Role))
-        //{
-        //    bool active;
-        //    if (CompFuncDic.TryGetValue(compType, out var func))
-        //    {
-        //        active = openFuncSet.Contains(func);
-        //    }
-        //    else
-        //    {
-        //        active = true;
-        //    }
-        //    if (active)
-        //    {
-        //        var agentType = HotfixMgr.GetAgentType(compType);
-        //        await compAgent.GetCompAgent(agentType);
-        //    }
-        //}
     }
 
     /// <summary>
@@ -249,32 +211,65 @@ public static class ComponentRegister
     /// <param name="actor">演员</param>
     /// <param name="predict">条件判断函数</param>
     /// <returns>激活任务</returns>
-    internal static async Task ActiveComponents(IActor actor, Func<Type, bool> predict = null)
+    internal static async Task ActiveComponentsAsync(IActor actor, Func<Type, bool> predict = null)
     {
         var compTypes = GetComponents(actor.Type);
 
-        if (compTypes != null)
+        if (compTypes == null)
         {
-            foreach (var compType in compTypes)
+            // Localization: Core.ComponentRegister.GetNotBelongComponent - ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GetNotBelongComponent, actor.Type, actor.Type));
+            return;
+        }
+
+        List<Type> failedComponentTypes = null;
+        List<Exception> failedExceptions = null;
+        foreach (var compType in compTypes)
+        {
+            if (predict != null && !predict(compType))
             {
-                if (predict == null || predict(compType))
+                continue;
+            }
+
+            var agentType = HotfixManager.Resolver.GetAgentType(compType);
+            if (agentType == null)
+            {
+                // Localization: Core.ComponentRegister.ComponentAgentNotImplemented - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} 未实现Agent，已跳过激活
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ComponentAgentNotImplemented, actor.Type, compType));
+                continue;
+            }
+
+            try
+            {
+                await actor.GetComponentAgentAsync(agentType);
+            }
+            catch (Exception exception)
+            {
+                // Localization: Core.ComponentRegister.ActivateComponentFailed - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentFailed, actor.Type, compType, exception));
+                if (failedComponentTypes == null)
                 {
-                    var agentType = HotfixManager.GetAgentType(compType);
-                    try
-                    {
-                        await actor.GetComponentAgent(agentType);
-                    }
-                    catch (Exception exception)
-                    {
-                        LogHelper.Fatal("ComponentRegister.ActiveComponents ActorType: {actorType} , ComponentType: {componentType} , Exception: {error}", actor.Type, compType, exception);
-                        // throw;
-                    }
+                    failedComponentTypes = new List<Type>();
+                    failedExceptions = new List<Exception>();
                 }
+
+                failedComponentTypes.Add(compType);
+                failedExceptions.Add(exception);
             }
         }
-        else
+
+        if (failedComponentTypes == null)
         {
-            LogHelper.Fatal("ComponentRegister.ActiveComponents ActorType: {actorType} , Message: {message}", actor.Type, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActorNotBelongToThis, actor.Type));
+            return;
+        }
+
+        var failedComponentNames = string.Join(", ", failedComponentTypes.Select(componentType => componentType.FullName));
+        // Localization: Core.ComponentRegister.ActivateComponentsFailedSummary - ComponentRegister.ActiveComponents Actor类型:{0} , 激活失败组件数:{1} , 组件清单:[{2}]
+        var summary = LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentsFailedSummary, actor.Type, failedComponentTypes.Count, failedComponentNames);
+        LogHelper.Fatal(summary);
+        if (GlobalSettings.CurrentSetting.IsDebug)
+        {
+            throw new AggregateException(summary, failedExceptions);
         }
     }
 
@@ -288,12 +283,14 @@ public static class ComponentRegister
     {
         if (!ActorComponentDic.TryGetValue(actor.Type, out var compTypes))
         {
-            throw new Exception($"get an actor that doesn't belong to this actor: [{actor.Type}] component:[{compType.FullName}]");
+            // Localization: CoreExceptions.Component.ActorNotBelongToThis - 获取了一个不属于此Actor的Actor: [{0}] 组件:[{1}]
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorNotBelongToThis, actor.Type, compType.FullName));
         }
 
         if (!compTypes.Contains(compType))
         {
-            throw new Exception($"get an actor that doesn't belong to this actor: [{actor.Type}] component:[{compType.FullName}]");
+            // Localization: CoreExceptions.Component.ActorNotBelongToThis - 获取了一个不属于此Actor的Actor: [{0}] 组件:[{1}]
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorNotBelongToThis, actor.Type, compType.FullName));
         }
 
         var comp = (BaseComponent)Activator.CreateInstance(compType);

@@ -1,0 +1,667 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Linq.Expressions;
+using GameFrameX.DataBase;
+using GameFrameX.DataBase.Abstractions;
+using Xunit;
+
+namespace GameFrameX.Tests.DataBase;
+
+/// <summary>
+/// GameDb 多库注册与门面别名行为的单元测试。
+/// </summary>
+/// <remarks>
+/// Unit tests for GameDb multi-database registration and facade alias behaviour.
+/// Uses <see cref="NoConnectionDatabaseService"/> so no real database connection is required.
+/// </remarks>
+[Collection(nameof(GameDbStaticStateCollection))]
+public class GameDbMultiDatabaseTests : IDisposable
+{
+    /// <summary>
+    /// 构造函数：每个测试前重置 GameDb 静态门面与多库注册表。
+    /// </summary>
+    public GameDbMultiDatabaseTests()
+    {
+        GameDb.ResetForTesting();
+    }
+
+    /// <summary>
+    /// 释放：测试后再次重置，避免静态状态泄漏到其它测试。
+    /// </summary>
+    public void Dispose()
+    {
+        GameDb.ResetForTesting();
+    }
+
+    /// <summary>
+    /// 按名注册后，As(name) 能取回对应实例（连接串由 DbOptions 承载）。
+    /// </summary>
+    [Fact]
+    public async Task Init_RegistersByName()
+    {
+        var opened = await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://business", Name = "gameframex" });
+
+        Assert.True(opened);
+        Assert.True(MultiDbRegistry.Contains("gameframex"));
+        var service = GameDb.As<NoConnectionDatabaseService>("gameframex");
+        Assert.NotNull(service);
+        Assert.Equal("mongodb://business", service.LastOpenedOptions.ConnectionString);
+        Assert.Equal("gameframex", service.LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// 辅助库 + 业务库双注册：两个名字各自可取回，互不覆盖。
+    /// </summary>
+    [Fact]
+    public async Task Init_AuxiliaryAndBusinessDatabase_BothResolvable()
+    {
+        var connectionString = "mongodb://127.0.0.1:27017";
+        var auxiliaryOpened = await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "auxiliary_database", IsDefault = false });
+        var businessOpened = await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "gameframex" });
+
+        Assert.True(auxiliaryOpened);
+        Assert.True(businessOpened);
+        Assert.Equal(2, MultiDbRegistry.GetRegisteredDatabaseNames().Count);
+        Assert.Equal("auxiliary_database", GameDb.As<NoConnectionDatabaseService>("auxiliary_database").LastOpenedOptions.Name);
+        Assert.Equal("gameframex", GameDb.As<NoConnectionDatabaseService>("gameframex").LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// 二次 Init 同名库：拒绝静默覆盖，抛 InvalidOperationException（fail fast），
+    /// 且注册失败前已打开的服务会被关闭，不泄漏连接。
+    /// </summary>
+    [Fact]
+    public async Task Init_SameNameTwice_Throws()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "gameframex" });
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "gameframex" }));
+
+        Assert.Equal(closeCountBefore + 1, NoConnectionDatabaseService.TotalCloseCallCount);
+    }
+
+    /// <summary>
+    /// 静态门面绑定首个注册库，后续 Init 不再覆盖（不漂移到最后一次 Init；两库均 IsDefault = false 触发回落）。
+    /// </summary>
+    [Fact]
+    public async Task Init_FacadeStaysOnFirstRegisteredDatabase()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
+
+        var facade = GameDb.As<NoConnectionDatabaseService>();
+        Assert.Equal("first_database", facade.LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// CloseAsync 关闭全部已注册库。
+    /// </summary>
+    [Fact]
+    public async Task CloseAsync_ClosesAllRegisteredDatabases()
+    {
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
+
+        await GameDb.CloseAsync();
+
+        Assert.Equal(closeCountBefore + 2, NoConnectionDatabaseService.TotalCloseCallCount);
+    }
+
+    /// <summary>
+    /// CloseAsync 关停即卸载：关闭全部库后注册表清空，同名库可重新注册（close→reopen 循环）。
+    /// </summary>
+    [Fact]
+    public async Task CloseAsync_TearsDownRegistry_AllowsReRegisterSameName()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+        Assert.True(GameDb.Contains("first_database"));
+
+        await GameDb.CloseAsync();
+
+        Assert.False(GameDb.Contains("first_database"));
+        Assert.Empty(MultiDbRegistry.GetRegisteredDatabaseNames());
+
+        var reopened = await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        Assert.True(reopened);
+        Assert.True(GameDb.Contains("first_database"));
+    }
+
+    /// <summary>
+    /// CloseAsync 后门面回到未初始化态：CRUD 入口抛 ArgumentNullException，而不是继续使用已关停服务。
+    /// </summary>
+    [Fact]
+    public async Task CloseAsync_UninitializesFacade()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        await GameDb.CloseAsync();
+
+        Assert.Throws<ArgumentNullException>(() => GameDb.As<NoConnectionDatabaseService>());
+        await Assert.ThrowsAsync<ArgumentNullException>(GameDb.CloseAsync);
+    }
+
+    /// <summary>
+    /// InitCore 提名冲突回滚：第二个 IsDefault=true 异名注册抛 set-once 冲突后，注册表不残留冲突库、
+    /// 冲突服务连接被关闭、门面与默认提名仍指向原默认库（修复失败不回滚）。
+    /// </summary>
+    [Fact]
+    public async Task Init_NominationConflict_RollsBackRegistration()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database" }));
+
+        Assert.False(GameDb.Contains("second_database"));
+        Assert.Equal(closeCountBefore + 1, NoConnectionDatabaseService.TotalCloseCallCount);
+        Assert.Equal("first_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+
+        // 原默认提名保持：同名幂等放行
+        GameDb.SetDefault("first_database");
+    }
+
+    /// <summary>
+    /// As(name) 未注册名：抛 InvalidOperationException 且消息包含已注册名。
+    /// </summary>
+    [Fact]
+    public void As_UnknownName_Throws()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => GameDb.As<NoConnectionDatabaseService>("missing_database"));
+
+        Assert.Contains("missing_database", exception.Message);
+    }
+
+    /// <summary>
+    /// 按非默认库先行的顺序双注册（辅助库显式 IsDefault=false；业务库缺省提名）：门面目标必须落在业务库
+    ///（声明式提名取代事后 SetDefault；set-once 绑首注册曾使门面静默指向首个非默认库的根缺陷回归用例）。
+    /// </summary>
+    [Fact]
+    public async Task Init_NonDefaultDatabaseBeforeBusiness_RoutesFacadeToBusinessDatabase()
+    {
+        var connectionString = "mongodb://127.0.0.1:27017";
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "auxiliary_database", IsDefault = false });
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "gameframex" });
+
+        var facade = GameDb.As<NoConnectionDatabaseService>();
+        Assert.Equal("gameframex", facade.LastOpenedOptions.Name);
+        Assert.Same(GameDb.As<NoConnectionDatabaseService>("gameframex"), facade);
+    }
+
+    /// <summary>
+    /// 声明式提名 set-once：第二个 IsDefault=true 注册与既有默认库异名时抛 InvalidOperationException，消息指名两库。
+    /// </summary>
+    [Fact]
+    public async Task Init_SecondDeclarativeDefault_Throws()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database" }));
+        Assert.Contains("first_database", exception.Message);
+        Assert.Contains("second_database", exception.Message);
+    }
+
+    /// <summary>
+    /// SetDefault 未注册名（含空注册表形态）：抛 InvalidOperationException，消息列出已注册名。
+    /// </summary>
+    [Fact]
+    public async Task SetDefault_UnknownName_Throws()
+    {
+        var emptyException = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("missing_database"));
+        Assert.Contains("missing_database", emptyException.Message);
+
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+        var exception = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("second_database"));
+        Assert.Contains("second_database", exception.Message);
+        Assert.Contains("first_database", exception.Message);
+    }
+
+    /// <summary>
+    /// SetDefault set-once：二次异名抛 InvalidOperationException；同名幂等放行且门面不变。
+    /// </summary>
+    [Fact]
+    public async Task SetDefault_SecondDifferentName_Throws_SameNameIsIdempotent()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
+        GameDb.SetDefault("second_database");
+
+        GameDb.SetDefault("second_database");
+        Assert.Equal("second_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+
+        Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("first_database"));
+        Assert.Equal("second_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// ResetForTesting 清理默认库标记：重置后门面回落「首注册」语义（单库形态兼容保护）。
+    /// </summary>
+    [Fact]
+    public async Task ResetForTesting_ClearsDefaultDatabase()
+    {
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://auxiliary", Name = "auxiliary_database", IsDefault = false });
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://business", Name = "gameframex", IsDefault = false });
+        GameDb.SetDefault("gameframex");
+
+        GameDb.ResetForTesting();
+
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://single", Name = "only_database" });
+        Assert.Equal("only_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// GameDb.Contains 转发命名库注册状态，调用点无需引用 MultiDbRegistry。
+    /// </summary>
+    [Fact]
+    public async Task Contains_ForNamedDatabase_ForwardsToRegistry()
+    {
+        Assert.False(GameDb.Contains("auxiliary_database"));
+        await GameDb.InitAsync<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://auxiliary", Name = "auxiliary_database" });
+
+        Assert.True(GameDb.Contains("auxiliary_database"));
+        Assert.False(GameDb.Contains("missing_database"));
+    }
+
+    /// <summary>
+    /// 无连接的数据库服务测试替身：Open 记录选项并成功，其余成员一律不支持。
+    /// </summary>
+    /// <remarks>
+    /// Test double without a real connection: Open records the options and succeeds; every other member throws NotSupportedException.
+    /// </remarks>
+    public sealed class NoConnectionDatabaseService : IDatabaseService
+    {
+        /// <summary>
+        /// 全部实例的 Close 调用总次数。
+        /// </summary>
+        private static int _totalCloseCallCount;
+
+        /// <summary>
+        /// 全部实例的 Close 调用总次数（只读快照）。
+        /// </summary>
+        public static int TotalCloseCallCount
+        {
+            get { return Volatile.Read(ref _totalCloseCallCount); }
+        }
+
+        /// <summary>
+        /// 最近一次 Open 收到的选项。
+        /// </summary>
+        public DbOptions LastOpenedOptions { get; private set; }
+
+        /// <summary>
+        /// 记录选项并返回成功。
+        /// </summary>
+        public Task<bool> OpenAsync(DbOptions dbOptions)
+        {
+            LastOpenedOptions = dbOptions;
+            return Task.FromResult(true);
+        }
+
+        /// <summary>
+        /// 计数并完成。
+        /// </summary>
+        public Task CloseAsync()
+        {
+            Volatile.Write(ref _totalCloseCallCount, TotalCloseCallCount + 1);
+            return Task.CompletedTask;
+        }
+
+        public Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter = null, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindAsync.");
+        }
+
+        public Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindAsync.");
+        }
+
+        public Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindAsync.");
+        }
+
+        public Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindAsync.");
+        }
+
+        public Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindListAsync.");
+        }
+
+        public Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindListAsync.");
+        }
+
+        public Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindByIdsAsync.");
+        }
+
+        public Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindByIdsAsync.");
+        }
+
+        public Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindPageAsync.");
+        }
+
+        public Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindPageAsync.");
+        }
+
+        public Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindProjectedAsync.");
+        }
+
+        public Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindProjectedAsync.");
+        }
+
+        public Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortAscendingFirstOneAsync.");
+        }
+
+        public Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortAscendingFirstOneAsync.");
+        }
+
+        public Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortDescendingFirstOneAsync.");
+        }
+
+        public Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortDescendingFirstOneAsync.");
+        }
+
+        public Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortDescendingAsync.");
+        }
+
+        public Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortDescendingAsync.");
+        }
+
+        public Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortAscendingAsync.");
+        }
+
+        public Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement FindSortAscendingAsync.");
+        }
+
+        public Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement CountAsync.");
+        }
+
+        public Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement CountAsync.");
+        }
+
+        public Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement CountAsync.");
+        }
+
+        public Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement CountAsync.");
+        }
+
+        public Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteAsync.");
+        }
+
+        public Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteAsync.");
+        }
+
+        public Task<long> DeleteAsync<TState>(TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteAsync.");
+        }
+
+        public Task<long> DeleteAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteAsync.");
+        }
+
+        public Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement HardDeleteAsync.");
+        }
+
+        public Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement HardDeleteAsync.");
+        }
+
+        public Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement RestoreAsync.");
+        }
+
+        public Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement RestoreAsync.");
+        }
+
+        public Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteListAsync.");
+        }
+
+        public Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteListAsync.");
+        }
+
+        public Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteListIdAsync.");
+        }
+
+        public Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement DeleteListIdAsync.");
+        }
+
+        public Task AddAsync<TState>(TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddAsync.");
+        }
+
+        public Task AddAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddAsync.");
+        }
+
+        public Task<TState> AddOrUpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddOrUpdateAsync.");
+        }
+
+        public Task<TState> AddOrUpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddOrUpdateAsync.");
+        }
+
+        public Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddOrUpdateListAsync.");
+        }
+
+        public Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddOrUpdateListAsync.");
+        }
+
+        public Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement SaveBulkAsync.");
+        }
+
+        public Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddListAsync.");
+        }
+
+        public Task AddListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddListAsync.");
+        }
+
+        public Task<TState> UpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateAsync.");
+        }
+
+        public Task<TState> UpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateAsync.");
+        }
+
+        public Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateAsync.");
+        }
+
+        public Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateAsync.");
+        }
+
+        public Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdatePartialAsync.");
+        }
+
+        public Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdatePartialAsync.");
+        }
+
+        public Task ExecuteInTransactionAsync(Func<Task> action)
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement ExecuteInTransactionAsync.");
+        }
+
+        public Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement ExecuteInTransactionAsync.");
+        }
+
+        public Task<bool> ExistsByIdAsync<TState>(long id) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement ExistsByIdAsync.");
+        }
+
+        public Task<bool> ExistsByIdAsync<TState>(long id, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement ExistsByIdAsync.");
+        }
+
+        public Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AnyAsync.");
+        }
+
+        public Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement AnyAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionIsNullAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionIsNullAsync.");
+        }
+
+        public Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement TryAddUniqueAsync.");
+        }
+
+        public Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement TryAddUniqueAsync.");
+        }
+
+        public Task<long> NextSequenceAsync<TState>(string sequenceName) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement NextSequenceAsync.");
+        }
+
+        public Task<long> NextSequenceAsync<TState>(string sequenceName, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement NextSequenceAsync.");
+        }
+
+    }
+}

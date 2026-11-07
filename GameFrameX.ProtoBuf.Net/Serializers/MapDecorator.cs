@@ -106,9 +106,9 @@ internal class MapDecorator<TDictionary, TKey, TValue> : ProtoDecoratorBase wher
 
     private bool AppendToCollection { get; }
 
-    public override object Read(object untyped, ProtoReader source)
+    public override object Read(object value, ProtoReader source)
     {
-        var typed = AppendToCollection ? (TDictionary)untyped : null;
+        var typed = AppendToCollection ? (TDictionary)value : null;
         if (typed == null)
         {
             typed = (TDictionary)Activator.CreateInstance(concreteType);
@@ -117,7 +117,7 @@ internal class MapDecorator<TDictionary, TKey, TValue> : ProtoDecoratorBase wher
         do
         {
             var key = DefaultKey;
-            var value = DefaultValue;
+            var val = DefaultValue;
             var token = ProtoReader.StartSubItem(source);
             int field;
             while ((field = source.ReadFieldHeader()) > 0)
@@ -128,7 +128,7 @@ internal class MapDecorator<TDictionary, TKey, TValue> : ProtoDecoratorBase wher
                         key = (TKey)keyTail.Read(null, source);
                         break;
                     case 2:
-                        value = (TValue)Tail.Read(Tail.RequiresOldValue ? value : null, source);
+                        val = (TValue)Tail.Read(Tail.RequiresOldValue ? val : null, source);
                         break;
                     default:
                         source.SkipField();
@@ -137,15 +137,15 @@ internal class MapDecorator<TDictionary, TKey, TValue> : ProtoDecoratorBase wher
             }
 
             ProtoReader.EndSubItem(token, source);
-            typed[key] = value;
+            typed[key] = val;
         } while (source.TryReadFieldHeader(fieldNumber));
 
         return typed;
     }
 
-    public override void Write(object untyped, ProtoWriter dest)
+    public override void Write(object value, ProtoWriter dest)
     {
-        foreach (var pair in (TDictionary)untyped)
+        foreach (var pair in (TDictionary)value)
         {
             ProtoWriter.WriteFieldHeader(fieldNumber, wireType, dest);
             var token = ProtoWriter.StartSubItem(null, dest);

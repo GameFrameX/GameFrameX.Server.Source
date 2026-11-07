@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,43 +27,12 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Core.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -88,7 +57,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <summary>
     /// 网络频道
     /// </summary>
-    public INetWorkChannel NetWorkChannel { get; private set; }
+    public INetworkChannel NetworkChannel { get; private set; }
 
     /// <summary>
     /// 消息对象
@@ -100,101 +69,175 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// 子类实现必须调用
     /// </summary>
     /// <param name="message">消息对象</param>
-    /// <param name="netWorkChannel">网络渠道</param>
+    /// <param name="networkChannel">网络渠道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public virtual Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
+    public virtual Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
-        ArgumentNullException.ThrowIfNull(netWorkChannel, nameof(netWorkChannel));
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(networkChannel);
         if (message is not TRequest requestMessage)
         {
-            throw new InvalidCastException($"消息类型错误, {message.GetType().FullName} to: {typeof(TRequest).FullName}");
+            // Localization: CoreExceptions.Message.TypeCastError - 消息类型错误, {0} to: {1}
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Message.TypeCastError, message.GetType().FullName, typeof(TRequest).FullName));
         }
 
         RequestMessage = requestMessage;
-        NetWorkChannel = netWorkChannel;
+        NetworkChannel = networkChannel;
         _isInit = true;
 
         return Task.FromResult(true);
     }
 
     /// <summary>
+    /// 当前执行取消令牌（超时/外部取消联动源写入；未执行时回落 <see cref="RuntimeContext.CurrentCancellationToken"/>）。
+    /// </summary>
+    protected CancellationToken ExecutionCancellationToken
+    {
+        get
+        {
+            if (_executionCancellationToken.CanBeCanceled)
+            {
+                return _executionCancellationToken;
+            }
+
+            return RuntimeContext.CurrentCancellationToken;
+        }
+    }
+
+    /// <summary>当前执行的联动取消令牌（无执行进行时为 None）。</summary>
+    private CancellationToken _executionCancellationToken;
+
+    /// <summary>
     /// 执行
     /// </summary>
+    /// <remarks>
+    /// 响应对象从消息对象池借出：业务任务到达终态（成功/失败/已取消）后归还对象池；
+    /// 超时或外部取消时先经联动取消源取消业务任务，仍在运行的孤儿任务所持有的响应对象不归还，防止其写入污染下一个借用者。
+    /// </remarks>
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>执行任务</returns>
-    public virtual async Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default)
+    public virtual async Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
     {
         if (_isInit == false)
         {
-            throw new Exception("消息处理器未初始化,请调用先Init方法，如果已经子类实现了Init方法，请调用在子类Init中调用父类Init方法");
+            // Localization: CoreExceptions.Message.HandlerNotInitialized - 消息处理器未初始化,请调用先Init方法，如果已经子类实现了Init方法，请调用在子类Init中调用父类Init方法
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Message.HandlerNotInitialized));
         }
 
+        TResponse response = null;
+        Task coreTask = null;
+        // 与外部取消令牌联动的取消源：超时或外部取消时取消业务任务，阻止孤儿任务继续写入 response
+        var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _executionCancellationToken = linkedCancellationTokenSource.Token;
         try
         {
-            var response = MessageObjectPoolHelper.Get<TResponse>();
+            response = MessageObjectPoolHelper.Get<TResponse>();
             var requestId = RequestMessage.UniqueId;
 
-            if (NetWorkChannel == null || NetWorkChannel.IsClosed() || response == null)
+            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
             {
                 return;
             }
 
-            var task = InnerActionAsync(RequestMessage, response);
-
+            coreTask = InnerActionCoreAsync(RequestMessage, response, linkedCancellationTokenSource.Token);
             try
             {
                 // 先等待业务逻辑执行完成（包括超时检查）/ Wait for business logic to complete (including timeout check)
-                await task.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
+                await coreTask.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
 
                 // 业务逻辑执行成功后，设置响应ID并发送 / After successful execution, set response ID and send
                 response.SetUniqueId(requestId);
-                await NetWorkChannel.WriteAsync(response);
+                await NetworkChannel.WriteAsync(response);
             }
             catch (TimeoutException timeoutException)
             {
-                LogHelper.Fatal("BaseRpcMessageHandler.InnerAction RequestMessage: {requestMessage} Message: {message}", RequestMessage, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeout, timeoutException.Message));
+                // 超时后先取消仍在运行的业务任务，阻止其继续写入 response / Cancel the still-running business task to stop further writes to response
+                linkedCancellationTokenSource.Cancel();
 
-                // 设置超时错误码并发送错误响应给客户端 / Set timeout error code and send error response to client
-                response.ErrorCode = OperationErrorCode.TimeOut;
-                response.SetUniqueId(requestId);
-                await NetWorkChannel.WriteAsync(response);
+                // Localization: Core.MessageHandler.RpcExecutionTimeout - BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeout, RequestMessage, timeoutException.Message));
 
-                //强制设状态-取消该操作
+                // 超时响应使用独立实例，业务任务可能忽略取消并继续写入原响应。
+                var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
+                try
+                {
+                    timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
+                    timeoutResponse.SetUniqueId(requestId);
+                    await NetworkChannel.WriteAsync(timeoutResponse);
+                }
+                finally
+                {
+                    MessageObjectPoolHelper.Return(timeoutResponse);
+                }
             }
         }
         catch (Exception e)
         {
             var fullName = GetType().FullName;
-            LogHelper.Fatal("BaseRpcMessageHandler.InnerAction, Handler: {handlerName} RequestMessage: {requestMessage} Message: {message}", fullName, RequestMessage, e);
+            // Localization: Core.MessageHandler.RpcInnerActionException - BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 异常:{2}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcInnerActionException, fullName, RequestMessage, e));
+        }
+        finally
+        {
+            if (coreTask == null || coreTask.IsCompleted)
+            {
+                // 业务任务已到达终态（成功/失败/已取消）或从未启动：response 无人再持有，释放联动取消源并安全归还对象池
+                linkedCancellationTokenSource.Dispose();
+                if (response != null)
+                {
+                    MessageObjectPoolHelper.Return(response);
+                }
+            }
+            else
+            {
+                // 业务尚未结束时保留其响应与取消源；终态后再释放，避免提前复用和外部令牌注册泄漏。
+                _ = coreTask.ContinueWith((completedTask, state) =>
+                {
+                    var cleanup = (Tuple<CancellationTokenSource, TResponse>)state;
+                    _ = completedTask.Exception;
+                    cleanup.Item1.Dispose();
+                    if (cleanup.Item2 != null)
+                    {
+                        MessageObjectPoolHelper.Return(cleanup.Item2);
+                    }
+                }, Tuple.Create(linkedCancellationTokenSource, response), CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
         }
     }
 
     /// <summary>
     /// 动作异步
     /// </summary>
+    /// <param name="request">请求消息</param>
+    /// <param name="response">响应消息</param>
+    /// <param name="cancellationToken">取消令牌，超时或外部取消时触发，业务实现应在协作式取消点检查并停止写入响应</param>
     /// <returns>动作执行任务</returns>
-    protected abstract Task ActionAsync(TRequest request, TResponse response);
+    protected abstract Task ActionAsync(TRequest request, TResponse response, CancellationToken cancellationToken);
 
     /// <summary>
     /// 内部动作异步
     /// 记录执行时间并调用 <see cref="ActionAsync" />
     /// </summary>
+    /// <param name="request">请求消息</param>
+    /// <param name="response">响应消息</param>
+    /// <param name="cancellationToken">取消令牌，透传给 <see cref="ActionAsync"/></param>
     /// <returns>动作执行任务</returns>
-    internal async Task InnerActionAsync(TRequest request, TResponse response)
+    internal async Task InnerActionCoreAsync(TRequest request, TResponse response, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(request, nameof(request));
-        ArgumentNullException.ThrowIfNull(response, nameof(response));
-        if (GlobalSettings.CurrentSetting.IsMonitorTimeOut)
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(response);
+        if (GlobalSettings.CurrentSetting.IsMonitorMessageTimeOut)
         {
             _stopwatch.Restart();
-            await ActionAsync(request, response);
+            await ActionAsync(request, response, cancellationToken);
             _stopwatch.Stop();
-            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorTimeOutSeconds)
+            if (_stopwatch.Elapsed.TotalSeconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 var fullName = GetType().FullName;
-                LogHelper.Warning("BaseRpcMessageHandler.InnerActionAsync, Handler: {handlerName} RequestMessage: {requestMessage} Message: {message}", fullName, RequestMessage, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeWarning, GetType().Name, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
+                // Localization: Core.MessageHandler.RpcExecutionTimeWarning - BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeWarning, fullName, RequestMessage, GetType().Name, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
             }
 
             return;
@@ -203,14 +246,15 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
         if (GlobalSettings.CurrentSetting.IsDebug)
         {
             _stopwatch.Restart();
-            await ActionAsync(request, response);
+            await ActionAsync(request, response, cancellationToken);
             _stopwatch.Stop();
             var fullName = GetType().FullName;
-            LogHelper.Debug("BaseRpcMessageHandler.InnerActionAsync, Handler: {handlerName} RequestMessage: {requestMessage} Message: {message}", fullName, RequestMessage, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeDebug, fullName, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
+            // Localization: Core.MessageHandler.RpcExecutionTimeDebug - BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeDebug, fullName, RequestMessage, fullName, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
             return;
         }
 
-        await ActionAsync(request, response);
+        await ActionAsync(request, response, cancellationToken);
     }
 
     /// <summary>

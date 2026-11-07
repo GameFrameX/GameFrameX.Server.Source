@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using System.Collections;
 using System.Text;
@@ -113,6 +81,12 @@ public sealed class IllegalWordDetection
     /// </remarks>
     private static readonly byte[] StartCache = new byte[char.MaxValue];
 
+    /// <summary>
+    /// 当前线程的敏感词检测缓冲区；首次访问（为 null）或长度不足时按需分配，初始化阶段不预分配。
+    /// </summary>
+    /// <remarks>
+    /// The detection buffer of the current thread; allocated on demand when null (first access) or too short, never pre-allocated during initialization.
+    /// </remarks>
     [ThreadStatic]
     private static char[] _dectectedBuffer;
 
@@ -137,6 +111,15 @@ public sealed class IllegalWordDetection
     private static readonly BitArray EndCache = new(char.MaxValue);
 
     /// <summary>
+    /// 注册状态门：0 = 就绪可用，1 = 注册进行中。
+    /// 注册期间 <see cref="DetectIllegalWords"/> 直接放行返回 false，杜绝后台 Init 与玩家消息并发读写非线程安全结构；同一时刻只允许一个注册过程。
+    /// Registration state gate: 0 = ready, 1 = registration in progress.
+    /// During registration <see cref="DetectIllegalWords"/> passes through returning false, preventing concurrent
+    /// reads/writes of the non-thread-safe structures; only one registration may run at a time.
+    /// </summary>
+    private static int _registrationState;
+
+    /// <summary>
     /// 通过配置表数据初始化敏感词检测器。
     /// </summary>
     /// <remarks>
@@ -157,7 +140,8 @@ public sealed class IllegalWordDetection
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                    // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
                 }
             });
         }
@@ -169,7 +153,8 @@ public sealed class IllegalWordDetection
             }
             catch (Exception e)
             {
-                LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
             }
         }
     }
@@ -194,7 +179,8 @@ public sealed class IllegalWordDetection
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                    // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
                 }
             });
         }
@@ -206,19 +192,20 @@ public sealed class IllegalWordDetection
             }
             catch (Exception e)
             {
-                LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
             }
         }
     }
 
-    private static unsafe void InnerInitBytes(byte[] data, int badIdx = 1)
+    private static void InnerInitBytes(byte[] data, int badIdx = 1)
     {
         if (data == null || data.Length < sizeof(int))
         {
             return;
         }
 
-        var startTime = DateTime.Now;
+        var startTime = DateTime.UtcNow;
         var offset = 0;
         var fieldNum = data.ReadIntBigEndianValue(ref offset);
         var typeList = new List<byte>();
@@ -233,107 +220,134 @@ public sealed class IllegalWordDetection
             nameList.Add(data.ReadStringBigEndianValue(ref offset));
         }
 
-        var sizeInt = sizeof(int);
-        var sizeLong = sizeof(long);
-        var sizeFloat = sizeof(float);
+        if (Interlocked.Exchange(ref _registrationState, 1) != 0)
+        {
+            // Localization: Utility.IllegalWordDetection.InitAlreadyInProgress - IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitAlreadyInProgress));
+            return;
+        }
 
         var activeNum = 0;
-        var maxWordLength = int.MinValue;
 
-        while (data.Length > offset)
+        try
         {
-            var word = "";
-            for (var i = 0; i < fieldNum; ++i)
+            ResetRegistrationState();
+            while (data.Length > offset)
             {
-                switch (typeList[i])
+                var word = ReadBadWordFromRecord(data, ref offset, typeList, badIdx);
+                if (string.IsNullOrEmpty(word))
                 {
-                    case 0: //int
-                        offset += sizeInt;
-                        break;
-                    case 1: //long
-                        offset += sizeLong;
-                        break;
-                    case 2: //string
-                        if (badIdx == i)
-                        {
-                            word = data.ReadStringBigEndianValue(ref offset);
-                        }
-                        else
-                        {
-                            var len = data.ReadShortBigEndianValue(ref offset);
-                            offset += len;
-                        }
-
-                        break;
-                    case 3: //float
-                        offset += sizeFloat;
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(word))
-            {
-                continue;
-            }
-
-            var strBadWord = OriginalToLower(word);
-            //求得单个的敏感词汇的长度
-            var wordLength = strBadWord.Length;
-            maxWordLength = System.Math.Max(wordLength, maxWordLength);
-
-            fixed (char* pWordStart = strBadWord)
-            {
-                for (var i = 0; i < wordLength; ++i)
-                {
-                    //准确记录8位以内的敏感词汇的某个词在词汇中的“位置”
-                    if (i < 7)
-                    {
-                        FastCheck[*(pWordStart + i)] |= (byte)(1 << i);
-                    }
-                    else //8位以外的敏感词汇的词直接限定在第8位
-                    {
-                        FastCheck[*(pWordStart + i)] |= 0x80; //0x80在内存中即为1000 0000，因为一个byte顶多标示8位，故超出8位的都位或上0x80，截断成第8位
-                    }
+                    continue;
                 }
 
-                //缓存敏感词汇的长度
-                var cachedWordsLength = System.Math.Min(8, wordLength);
-                var firstWord = *pWordStart;
-                //记录敏感词汇的“大致长度（超出8个字的敏感词汇会被截取成8的长度）”，“key”值为敏感词汇的第一个词
-                FastLength[firstWord] |= (byte)(1 << (cachedWordsLength - 1));
-                //缓存出当前以badWord第一个字开头的一系列的敏感词汇的最长的长度
-                if (StartCache[firstWord] < cachedWordsLength)
-                {
-                    StartCache[firstWord] = (byte)cachedWordsLength;
-                }
-
-                //存好敏感词汇的最后一个词汇的“出现情况”
-                EndCache[*(pWordStart + wordLength - 1)] = true;
-                //将长度大于1的敏感词汇都压入到字典中
-                if (WordsSet.Add(strBadWord))
+                if (RegisterBadWord(word))
                 {
                     activeNum++;
                 }
             }
+
+            // 记录应该跳过的不予检测的词
+            InitSkipBitArray();
+        }
+        finally
+        {
+            Volatile.Write(ref _registrationState, 0);
         }
 
-        //初始化好一个用来存检测到的字符串的buffer
-        _dectectedBuffer = new char[maxWordLength];
-        // 记录应该跳过的不予检测的词
-        fixed (char* start = SkipList)
+        // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
+    }
+
+    private static string ReadBadWordFromRecord(byte[] data, ref int offset, List<byte> typeList, int badIdx)
+    {
+        var word = "";
+        var sizeInt = sizeof(int);
+        var sizeLong = sizeof(long);
+        var sizeFloat = sizeof(float);
+
+        for (var i = 0; i < typeList.Count; ++i)
         {
-            var c = start;
-            var end = start + SkipList.Length;
-            while (c < end)
+            switch (typeList[i])
             {
-                SkipBitArray[*c++] = true;
+                case 0: //int
+                    offset += sizeInt;
+                    break;
+                case 1: //long
+                    offset += sizeLong;
+                    break;
+                case 2: //string
+                    if (badIdx == i)
+                    {
+                        word = data.ReadStringBigEndianValue(ref offset);
+                    }
+                    else
+                    {
+                        var len = data.ReadShortBigEndianValue(ref offset);
+                        if (len < 0 || offset + len > data.Length)
+                        {
+                            // Localization: Utility.IllegalWordDetection.BadWordTableCorrupted - IllegalWordDetection 敏感词表数据损坏：偏移 {1} 处字段长度非法 {0}，数据总长度 {2}
+                            throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.BadWordTableCorrupted, len, offset, data.Length));
+                        }
+
+                        offset += len;
+                    }
+
+                    break;
+                case 3: //float
+                    offset += sizeFloat;
+                    break;
             }
         }
 
-        LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
+        return word;
     }
 
-    private static unsafe void InnerInit(string[] badWords)
+    private static bool RegisterBadWord(string badWord)
+    {
+        var strBadWord = OriginalToLower(badWord);
+        //求得单个的敏感词汇的长度
+        var wordLength = strBadWord.Length;
+
+        for (var i = 0; i < wordLength; ++i)
+        {
+            //准确记录8位以内的敏感词汇的某个词在词汇中的“位置”
+            if (i < 7)
+            {
+                FastCheck[strBadWord[i]] |= (byte)(1 << i);
+            }
+            else //8位以外的敏感词汇的词直接限定在第8位
+            {
+                FastCheck[strBadWord[i]] |= 0x80; //0x80在内存中即为1000 0000，因为一个byte顶多标示8位，故超出8位的都位或上0x80，截断成第8位
+            }
+        }
+
+        //缓存敏感词汇的长度
+        var cachedWordsLength = System.Math.Min(8, wordLength);
+        var firstWord = strBadWord[0];
+        //记录敏感词汇的“大致长度（超出8个字的敏感词汇会被截取成8的长度）”，“key”值为敏感词汇的第一个词
+        FastLength[firstWord] |= (byte)(1 << (cachedWordsLength - 1));
+        //缓存出当前以badWord第一个字开头的一系列的敏感词汇的最长的长度
+        if (StartCache[firstWord] < cachedWordsLength)
+        {
+            StartCache[firstWord] = (byte)cachedWordsLength;
+        }
+
+        //存好敏感词汇的最后一个词汇的“出现情况”
+        EndCache[strBadWord[wordLength - 1]] = true;
+
+        //将长度大于1的敏感词汇都压入到字典中
+        return WordsSet.Add(strBadWord);
+    }
+
+    private static void InitSkipBitArray()
+    {
+        foreach (var c in SkipList)
+        {
+            SkipBitArray[c] = true;
+        }
+    }
+
+    private static void InnerInit(string[] badWords)
     {
         if (badWords == null || badWords.Length == 0)
         {
@@ -341,117 +355,74 @@ public sealed class IllegalWordDetection
         }
 
         var startTime = DateTime.UtcNow;
-        var activeNum = 0;
-        var maxWordLength = int.MinValue;
-        for (int stringIndex = 0, len = badWords.Length; stringIndex < len; ++stringIndex)
+
+        if (Interlocked.Exchange(ref _registrationState, 1) != 0)
         {
-            if (string.IsNullOrEmpty(badWords[stringIndex]))
-            {
-                continue;
-            }
+            // Localization: Utility.IllegalWordDetection.InitAlreadyInProgress - IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitAlreadyInProgress));
+            return;
+        }
 
-            var strBadWord = OriginalToLower(badWords[stringIndex]);
-            //求得单个的敏感词汇的长度
-            var wordLength = strBadWord.Length;
-            maxWordLength = System.Math.Max(wordLength, maxWordLength);
-
-            fixed (char* pWordStart = strBadWord)
+        int activeNum;
+        try
+        {
+            ResetRegistrationState();
+            activeNum = 0;
+            for (int stringIndex = 0, len = badWords.Length; stringIndex < len; ++stringIndex)
             {
-                for (var i = 0; i < wordLength; ++i)
+                if (string.IsNullOrEmpty(badWords[stringIndex]))
                 {
-                    //准确记录8位以内的敏感词汇的某个词在词汇中的“位置”
-                    if (i < 7)
-                    {
-                        FastCheck[*(pWordStart + i)] |= (byte)(1 << i);
-                    }
-                    else //8位以外的敏感词汇的词直接限定在第8位
-                    {
-                        FastCheck[*(pWordStart + i)] |= 0x80; //0x80在内存中即为1000 0000，因为一个byte顶多标示8位，故超出8位的都位或上0x80，截断成第8位
-                    }
+                    continue;
                 }
 
-                //缓存敏感词汇的长度
-                var cachedWordsLength = System.Math.Min(8, wordLength);
-                var firstWord = *pWordStart;
-                //记录敏感词汇的“大致长度（超出8个字的敏感词汇会被截取成8的长度）”，“key”值为敏感词汇的第一个词
-                FastLength[firstWord] |= (byte)(1 << (cachedWordsLength - 1));
-                //缓存出当前以badWord第一个字开头的一系列的敏感词汇的最长的长度
-                if (StartCache[firstWord] < cachedWordsLength)
-                {
-                    StartCache[firstWord] = (byte)cachedWordsLength;
-                }
-
-                //存好敏感词汇的最后一个词汇的“出现情况”
-                EndCache[*(pWordStart + wordLength - 1)] = true;
-                //将长度大于1的敏感词汇都压入到字典中
-                if (WordsSet.Add(strBadWord))
+                if (RegisterBadWord(badWords[stringIndex]))
                 {
                     activeNum++;
                 }
             }
-        }
 
-        // 初始化好一个用来存检测到的字符串的buffer
-        _dectectedBuffer = new char[maxWordLength];
-        // 记录应该跳过的不予检测的词
-        fixed (char* start = SkipList)
+            // 记录应该跳过的不予检测的词
+            InitSkipBitArray();
+        }
+        finally
         {
-            var itor = start;
-            var end = start + SkipList.Length;
-            while (itor < end)
-            {
-                SkipBitArray[*itor++] = true;
-            }
+            Volatile.Write(ref _registrationState, 0);
         }
 
-        LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
+        // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
     }
 
-    private static unsafe string OriginalToLower(string text)
+    /// <summary>
+    /// 清空全部注册结构，保证 Init 可重入：删词热更重载后旧词立即失效。
+    /// Clears every registration structure so Init is re-entrant: removed words stop matching immediately after a hot reload.
+    /// </summary>
+    private static void ResetRegistrationState()
     {
-        fixed (char* newText = text)
-        {
-            var ito = newText;
-            var end = newText + text.Length;
-
-            while (ito < end)
-            {
-                var c = *ito;
-
-                if (c is >= 'A' and <= 'Z')
-                {
-                    *ito = (char)(c | 0x20);
-                }
-
-                ++ito;
-            }
-        }
-
-        return text;
+        Array.Clear(FastCheck, 0, FastCheck.Length);
+        Array.Clear(FastLength, 0, FastLength.Length);
+        Array.Clear(StartCache, 0, StartCache.Length);
+        EndCache.SetAll(false);
+        WordsSet.Clear();
     }
 
-    private static unsafe bool EnsuranceLower(string text)
+    private static string OriginalToLower(string text)
     {
-        fixed (char* newText = text)
+        var chars = text.ToCharArray();
+
+        for (int i = 0; i < chars.Length; i++)
         {
-            var itor = newText;
-            var end = newText + text.Length;
+            var c = chars[i];
 
-            while (itor < end)
+            if (c >= 'A' && c <= 'Z')
             {
-                var c = *itor;
-
-                if (c is >= 'A' and <= 'Z')
-                {
-                    return true;
-                }
-
-                ++itor;
+                chars[i] = (char)(c | 0x20);
             }
         }
 
-        return false;
+        return new string(chars);
     }
+
 
     /// <summary>
     /// 过滤字符串，默认遇到敏感词汇就以'*'代替。
@@ -573,6 +544,26 @@ public sealed class IllegalWordDetection
     }
 
     /// <summary>
+    /// 获取当前线程的检测缓冲区；首次访问（为 null）或长度不足时按所需长度重新分配。
+    /// </summary>
+    /// <remarks>
+    /// Gets the detection buffer of the current thread; reallocates it when it is null (first access on this thread) or too short.
+    /// </remarks>
+    /// <param name="requiredLength">所需最小长度 / The minimum required length</param>
+    /// <returns>当前线程的检测缓冲区 / The detection buffer of the current thread</returns>
+    private static char[] GetDetectedBuffer(int requiredLength)
+    {
+        var detectedBuffer = _dectectedBuffer;
+        if (detectedBuffer == null || detectedBuffer.Length < requiredLength)
+        {
+            detectedBuffer = new char[requiredLength];
+            _dectectedBuffer = detectedBuffer;
+        }
+
+        return detectedBuffer;
+    }
+
+    /// <summary>
     /// 判断文本是否有敏感词汇，如果有则返回敏感词汇的位置。利用指针操作来加快运算速度。
     /// </summary>
     /// <remarks>
@@ -583,7 +574,7 @@ public sealed class IllegalWordDetection
     /// <param name="returnWhenFindFirst">是否找到第一个就返回 / Whether to return when the first match is found</param>
     /// <param name="findResult">查找到的敏感词结果（键为起始位置，值为长度） / The found sensitive words (key is start position, value is length)</param>
     /// <returns>是否有敏感词汇 / Whether the text contains sensitive words</returns>
-    public static unsafe bool DetectIllegalWords(string text, bool returnWhenFindFirst, out Dictionary<int, int> findResult)
+    public static bool DetectIllegalWords(string text, bool returnWhenFindFirst, out Dictionary<int, int> findResult)
     {
         findResult = new Dictionary<int, int>();
         if (string.IsNullOrEmpty(text))
@@ -591,98 +582,155 @@ public sealed class IllegalWordDetection
             return false;
         }
 
-        if (EnsuranceLower(text))
+        // 注册进行中：静态结构正被并发写入，直接放行返回未命中，杜绝与后台 Init 的数据竞争
+        // Registration in progress: the static structures are being written concurrently; pass through as no-match
+        // to avoid the data race with the background Init.
+        if (Volatile.Read(ref _registrationState) != 0)
         {
-            text = text.ToLower();
+            return false;
         }
 
-        var bufferLength = _dectectedBuffer.Length;
-        if (text.Length > bufferLength)
-        {
-            _dectectedBuffer = new char[bufferLength << 1];
-        }
+        // 与词典注册侧（RegisterBadWord → OriginalToLower）使用同一 ASCII 折叠，避免区域敏感 ToLower 在
+        // tr-TR 等文化下把 'I' 折成 'ı' 导致含 I 的英文敏感词全部漏检
+        // Use the same ASCII folding as registration (RegisterBadWord → OriginalToLower); a culture-sensitive
+        // ToLower would fold 'I' into 'ı' under tr-TR-like cultures and miss every English word containing I.
+        text = OriginalToLower(text);
 
-        fixed (char* pText = text, detectedStrStart = _dectectedBuffer)
-        {
-            //缓存字符串的初始位置
-            var aitor = (FastCheck[*pText] & 0x01) == 0 ? pText + 1 : pText;
-            //缓存字符串的末尾位置
-            var end = pText + text.Length;
+        var textLength = text.Length;
+        var detectedBuffer = GetDetectedBuffer(textLength);
+        //缓存字符串的初始位置
+        var aitorIdx = (FastCheck[text[0]] & 0x01) == 0 ? 1 : 0;
 
-            while (aitor < end)
+        while (aitorIdx < textLength)
+        {
+            if (ScanFromPosition(text, textLength, detectedBuffer, ref aitorIdx, returnWhenFindFirst, findResult))
             {
-                //如果text的第一个词不是敏感词汇或者当前遍历到了text第一个词的后面的词，则循环检测到text词汇的倒数第二个词，看看这一段子字符串中有没有敏感词汇
-                if ((FastCheck[*aitor] & 0x01) == 0)
-                {
-                    while (aitor < end - 1 && (FastCheck[*++aitor] & 0x01) == 0)
-                    {
-                        ;
-                    }
-                }
-
-                //如果有只有一个词的敏感词，且当前的字符串的“非第一个词”满足这个敏感词，则先加入已检测到的敏感词列表
-                if (StartCache[*aitor] != 0 && (FastLength[*aitor] & 0x01) > 0)
-                {
-                    //返回敏感词在text中的位置，以及敏感词的长度，供过滤功能用
-                    findResult.Add((int)(aitor - pText), 1);
-                    if (returnWhenFindFirst)
-                    {
-                        return true;
-                    }
-                }
-
-                var strIgor = detectedStrStart;
-                *strIgor++ = *aitor;
-                var remainLength = (int)(end - aitor - 1);
-                var skipCount = 0;
-                //此时已经检测到一个敏感词的“首词”了,记录下第一个检测到的敏感词的位置
-                //从当前的位置检测到字符串末尾
-                for (var i = 1; i <= remainLength; ++i)
-                {
-                    var subIto = aitor + i;
-                    // 跳过一些过滤的字符,比如空格特殊符号之类的
-                    if (SkipBitArray[*subIto])
-                    {
-                        ++skipCount;
-                        continue;
-                    }
-
-                    //如果检测到当前的词在所有敏感词中的位置信息中没有处在第i位的，则马上跳出遍历
-                    if (FastCheck[*subIto] >> System.Math.Min(i - skipCount, 7) == 0)
-                    {
-                        break;
-                    }
-
-                    *strIgor++ = *subIto;
-                    //如果有检测到敏感词的最后一个词，并且此时的“检测到的敏感词汇”的长度也符合要求，则才进一步查看检测到的敏感词汇是否是真的敏感
-                    if (FastLength[*aitor] >> System.Math.Min(i - 1 - skipCount, 7) > 0 && EndCache[*subIto])
-                    {
-                        //如果此子字符串在敏感词字典中存在，则记录。做此判断是避免敏感词中夹杂了其他敏感词的单词，而上面的算法无法剔除，故先用hash数组来剔除
-                        //上述算法是用于减少大部分的比较消耗
-                        if (WordsSet.Contains(new string(_dectectedBuffer, 0, (int)(strIgor - detectedStrStart))))
-                        {
-                            var curDetectedStartIndex = (int)(aitor - pText);
-                            findResult[curDetectedStartIndex] = i + 1;
-                            aitor = subIto;
-
-                            if (returnWhenFindFirst)
-                            {
-                                return true;
-                            }
-
-                            break;
-                        }
-                    }
-                    else if (i - skipCount > StartCache[*aitor] && StartCache[*aitor] < 0x80) //如果超过了以该词为首的一系列的敏感词汇的最大的长度，则不继续判断(前提是该词对应的所有敏感词汇没有超过8个词的)
-                    {
-                        break;
-                    }
-                }
-
-                ++aitor;
+                return true;
             }
         }
 
         return findResult.Count > 0;
+    }
+
+    /// <summary>
+    /// 在主扫描循环的当前位置执行一次敏感词检测：推进游标到下一个候选首字符、记录单字符敏感词、向后扫描多字符敏感词。
+    /// 命中且需要首个即返回时返回 true；否则通过 ref 推进 aitorIdx 并返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Performs one detection pass at the current cursor: advances to the next candidate start character,
+    /// records single-character bad words, then scans forward for multi-character bad words.
+    /// Returns true when a match is found and returnWhenFindFirst is set; otherwise advances aitorIdx via ref and returns false.
+    /// </remarks>
+    /// <param name="text">敏感词查询文本 / The text to check for sensitive words</param>
+    /// <param name="textLength">文本长度 / The text length</param>
+    /// <param name="detectedBuffer">当前线程的检测缓冲区（长度不小于文本长度） / The detection buffer of the current thread (at least as long as the text)</param>
+    /// <param name="aitorIdx">当前游标位置（引用），会被推进 / The current cursor (by ref), advanced by this call</param>
+    /// <param name="returnWhenFindFirst">是否找到第一个就返回 / Whether to return when the first match is found</param>
+    /// <param name="findResult">查找到的敏感词结果（键为起始位置，值为长度） / The found sensitive words (key is start position, value is length)</param>
+    /// <returns>是否找到敏感词并需立即返回 / Whether a match was found and the caller should return immediately</returns>
+    private static bool ScanFromPosition(string text, int textLength, char[] detectedBuffer, ref int aitorIdx, bool returnWhenFindFirst, Dictionary<int, int> findResult)
+    {
+        aitorIdx = AdvanceToNextStartChar(text, textLength, aitorIdx);
+
+        //如果有只有一个词的敏感词，且当前的字符串的“非第一个词”满足这个敏感词，则先加入已检测到的敏感词列表
+        if (StartCache[text[aitorIdx]] != 0 && (FastLength[text[aitorIdx]] & 0x01) > 0)
+        {
+            //返回敏感词在text中的位置，以及敏感词的长度，供过滤功能用
+            findResult.Add(aitorIdx, 1);
+            if (returnWhenFindFirst)
+            {
+                return true;
+            }
+        }
+
+        //此时已经检测到一个敏感词的“首词”了,记录下第一个检测到的敏感词的位置
+        //从当前的位置检测到字符串末尾
+        if (TryScanForward(text, textLength, detectedBuffer, ref aitorIdx, findResult) && returnWhenFindFirst)
+        {
+            return true;
+        }
+
+        ++aitorIdx;
+        return false;
+    }
+
+    /// <summary>
+    /// 跳过 FastCheck 标记为非敏感词首字符的位置，返回下一个候选首字符的索引。
+    /// </summary>
+    /// <remarks>
+    /// Skips characters not flagged by FastCheck as a sensitive-word start and returns the next candidate start index.
+    /// </remarks>
+    /// <param name="text">敏感词查询文本 / The text to check for sensitive words</param>
+    /// <param name="textLength">文本长度 / The text length</param>
+    /// <param name="aitorIdx">当前游标位置 / The current cursor</param>
+    /// <returns>推进后的候选首字符索引 / The advanced candidate start index</returns>
+    private static int AdvanceToNextStartChar(string text, int textLength, int aitorIdx)
+    {
+        //如果text的第一个词不是敏感词汇或者当前遍历到了text第一个词的后面的词，则循环检测到text词汇的倒数第二个词，看看这一段子字符串中有没有敏感词汇
+        if ((FastCheck[text[aitorIdx]] & 0x01) == 0)
+        {
+            while (aitorIdx < textLength - 1 && (FastCheck[text[++aitorIdx]] & 0x01) == 0)
+            {
+            }
+        }
+
+        return aitorIdx;
+    }
+
+    /// <summary>
+    /// 从当前首字符向后扫描多字符敏感词。命中时把 aitorIdx 推进到匹配末字符并返回 true，否则返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Scans forward from the current start character for multi-character sensitive words.
+    /// On a match, advances aitorIdx to the matched last character via ref and returns true; otherwise returns false.
+    /// </remarks>
+    /// <param name="text">敏感词查询文本 / The text to check for sensitive words</param>
+    /// <param name="textLength">文本长度 / The text length</param>
+    /// <param name="detectedBuffer">当前线程的检测缓冲区（长度不小于文本长度） / The detection buffer of the current thread (at least as long as the text)</param>
+    /// <param name="aitorIdx">当前游标位置（引用），命中时推进到匹配末字符 / The current cursor (by ref), advanced to the matched last character on hit</param>
+    /// <param name="findResult">查找到的敏感词结果（键为起始位置，值为长度） / The found sensitive words (key is start position, value is length)</param>
+    /// <returns>是否命中多字符敏感词 / Whether a multi-character sensitive word was matched</returns>
+    private static bool TryScanForward(string text, int textLength, char[] detectedBuffer, ref int aitorIdx, Dictionary<int, int> findResult)
+    {
+        var strIgorIdx = 0;
+        detectedBuffer[strIgorIdx++] = text[aitorIdx];
+        var remainLength = textLength - aitorIdx - 1;
+        var skipCount = 0;
+        for (var i = 1; i <= remainLength; ++i)
+        {
+            var subItoIdx = aitorIdx + i;
+            // 跳过一些过滤的字符,比如空格特殊符号之类的
+            if (SkipBitArray[text[subItoIdx]])
+            {
+                ++skipCount;
+                continue;
+            }
+
+            //如果检测到当前的词在所有敏感词中的位置信息中没有处在第i位的，则马上跳出遍历
+            if (FastCheck[text[subItoIdx]] >> System.Math.Min(i - skipCount, 7) == 0)
+            {
+                break;
+            }
+
+            detectedBuffer[strIgorIdx++] = text[subItoIdx];
+            //如果有检测到敏感词的最后一个词，并且此时的“检测到的敏感词汇”的长度也符合要求，则才进一步查看检测到的敏感词汇是否是真的敏感
+            if (FastLength[text[aitorIdx]] >> System.Math.Min(i - 1 - skipCount, 7) > 0 && EndCache[text[subItoIdx]])
+            {
+                //如果此子字符串在敏感词字典中存在，则记录。做此判断是避免敏感词中夹杂了其他敏感词的单词，而上面的算法无法剔除，故先用hash数组来剔除
+                //上述算法是用于减少大部分的比较消耗
+                if (WordsSet.Contains(new string(detectedBuffer, 0, strIgorIdx)))
+                {
+                    findResult[aitorIdx] = i + 1;
+                    aitorIdx = subItoIdx;
+                    return true;
+                }
+            }
+            else if (i - skipCount > StartCache[text[aitorIdx]] && StartCache[text[aitorIdx]] < 0x80) //如果超过了以该词为首的一系列的敏感词汇的最大的长度，则不继续判断(前提是该词对应的所有敏感词汇没有超过8个词的)
+            {
+                break;
+            }
+        }
+
+        return false;
     }
 }

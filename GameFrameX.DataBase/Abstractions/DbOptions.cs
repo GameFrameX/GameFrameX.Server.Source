@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -28,42 +28,63 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Utility.Setting;
+
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 数据库选项。
+/// 数据库选项（连接串、提供者与门面默认库提名的唯一载体）。
 /// </summary>
 /// <remarks>
-/// Database configuration options.
+/// Database configuration options: the single source of truth for the connection string,
+/// the provider enum and the facade default-database nomination.
 /// </remarks>
 public sealed record DbOptions
 {
     /// <summary>
-    /// 数据库类型。
+    /// 数据库实现提供者（非泛型 <c>GameDb.Init(DbOptions)</c> 的约定解析依据；泛型 <c>Init&lt;T&gt;</c> 忽略此字段——泛型实参即提供者）。
     /// </summary>
     /// <remarks>
-    /// Database type.
+    /// Database implementation provider, resolved by convention in the non-generic
+    /// <c>GameDb.Init(DbOptions)</c>; ignored by the generic <c>Init&lt;T&gt;</c> overload where the
+    /// type argument is itself the provider.
     /// </remarks>
-    /// <value>数据库类型 / Database type</value>
-    public string Type { get; init; }
+    /// <value>提供者枚举，缺省 <see cref="DatabaseProviderType.Mongo"/> / Provider enum, defaults to <see cref="DatabaseProviderType.Mongo"/></value>
+    public DatabaseProviderType Provider { get; init; } = DatabaseProviderType.Mongo;
 
     /// <summary>
-    /// 连接字符串。
+    /// 连接字符串（唯一来源；未配置在调用方即产生编译错误）。
     /// </summary>
     /// <remarks>
-    /// Connection string.
+    /// Connection string, the single source of truth; the <c>required</c> modifier turns a missing
+    /// value into a compile-time error at the call site instead of a runtime failure during Init.
     /// </remarks>
     /// <value>连接字符串 / Connection string</value>
-    public string ConnectionString { get; init; }
+    public required string ConnectionString { get; init; }
 
     /// <summary>
-    /// 数据库名称。
+    /// 数据库名称（同时作为 <see cref="MultiDbRegistry"/> 的注册名）。
     /// </summary>
     /// <remarks>
-    /// Database name.
+    /// Database name, also used as the registry name in <see cref="MultiDbRegistry"/>.
     /// </remarks>
-    /// <value>数据库名称 / Database name</value>
-    public string Name { get; init; }
+    /// <value>数据库名称，缺省 <c>"default"</c> / Database name, defaults to <c>"default"</c></value>
+    public string Name { get; init; } = "default";
+
+    /// <summary>
+    /// 是否将该库提名为静态门面的默认库（注册成功后生效，set-once：进程内至多一个库为 <c>true</c>，后注册异名抛 <see cref="InvalidOperationException"/>）。
+    /// </summary>
+    /// <remarks>
+    /// Nominates this database as the facade default right after its successful registration
+    /// (set-once: at most one database per process may register with <c>true</c>; a later conflicting
+    /// nomination throws <see cref="InvalidOperationException"/> naming both databases). Non-default
+    /// databases (e.g. an auxiliary database registered before the default database) MUST explicitly set
+    /// <c>false</c> — omitting it fails fast at startup instead of silently routing business
+    /// reads/writes to the wrong database. When no database is nominated the facade falls back to the
+    /// first registered database with a one-shot warning.
+    /// </remarks>
+    /// <value>是否提名门面默认库，缺省 <c>true</c> / Whether to nominate as facade default, defaults to <c>true</c></value>
+    public bool IsDefault { get; init; } = true;
 
     /// <summary>
     /// 是否使用时区时间记录。
@@ -71,7 +92,7 @@ public sealed record DbOptions
     /// <remarks>
     /// Whether to use time zone for time recording.
     /// </remarks>
-    /// <value>是否使用时区时间记录 / Whether to use time zone for time recording</value>
+    /// <value>是否使用时区时间记录 / Whether to use time zone time recording</value>
     public bool IsUseTimeZone { get; init; } = false;
 
     /// <summary>

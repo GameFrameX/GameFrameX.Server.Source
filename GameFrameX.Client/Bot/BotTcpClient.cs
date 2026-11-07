@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,42 +27,10 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Net;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.Message;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.Message;
+using GameFrameX.Network.Messages;
 using GameFrameX.Proto.Proto;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.ProtoBuf.Net;
@@ -76,46 +44,22 @@ using ErrorEventArgs = GameFrameX.SuperSocket.ClientEngine.ErrorEventArgs;
 namespace GameFrameX.Client.Bot;
 
 /// <summary>
-/// 机器人TCP客户端事件结构体,包含各种回调事件
-/// </summary>
-public struct BotTcpClientEvent
-{
-    /// <summary>
-    /// 连接成功时的回调
-    /// </summary>
-    public Action OnConnectedCallback;
-
-    /// <summary>
-    /// 连接关闭时的回调
-    /// </summary>
-    public Action OnClosedCallback;
-
-    /// <summary>
-    /// 发生错误时的回调
-    /// </summary>
-    public Action<ErrorEventArgs> OnErrorCallback;
-
-    /// <summary>
-    /// 接收到消息时的回调
-    /// </summary>
-    public Action<MessageObject> OnReceiveMsgCallback;
-}
-
-/// <summary>
 /// 机器人TCP客户端类,用于处理与服务器的TCP连接和消息收发
 /// </summary>
 public sealed class BotTcpClient
 {
-    private const string ServerHost = "127.0.0.1";
-    private const int ServerPort = 29100;
     private const int DelayTimes = 1000;
     private const int MaxRetryCount = 5;
-    private readonly AsyncTcpSession m_TcpClient;
+    private const int ConnectingTimeoutMs = 15000;
+    private AsyncTcpSession m_TcpClient;
     private int m_RetryCount;
     private int m_RetryDelay = 5000;
+    private DateTime? _connectingSince;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
     private readonly IMessageDecompressHandler messageDecompressHandler;
     private readonly IMessageCompressHandler messageCompressHandler;
+    private readonly string _serverHost;
+    private readonly int _serverPort;
 
     private const ushort InnerPackageHeaderLength = 14;
 
@@ -123,56 +67,185 @@ public sealed class BotTcpClient
     /// 初始化机器人TCP客户端
     /// </summary>
     /// <param name="clientEvent">客户端事件回调结构体</param>
-    public BotTcpClient(BotTcpClientEvent clientEvent)
+    public BotTcpClient(BotTcpClientEvent clientEvent, string serverHost, int serverPort)
     {
         m_BotTcpClientEvent = clientEvent;
-        m_TcpClient = new AsyncTcpSession();
-        m_TcpClient.Connected += OnMTcpClientOnConnected;
-        m_TcpClient.Closed += OnMTcpClientOnClosed;
-        m_TcpClient.DataReceived += OnMTcpClientOnDataReceived;
-        m_TcpClient.Error += OnMTcpClientOnError;
+        _serverHost = serverHost;
+        _serverPort = serverPort;
+        m_TcpClient = CreateTcpSession();
         messageDecompressHandler = new DefaultMessageDecompressHandler();
         messageCompressHandler = new DefaultMessageCompressHandler();
+    }
+
+    private AsyncTcpSession CreateTcpSession()
+    {
+        var session = new AsyncTcpSession();
+        session.Connected += OnMTcpClientOnConnected;
+        session.Closed += OnMTcpClientOnClosed;
+        session.DataReceived += OnMTcpClientOnDataReceived;
+        session.Error += OnMTcpClientOnError;
+        return session;
     }
 
     /// <summary>
     /// 启动客户端并尝试连接服务器
     /// </summary>
     /// <returns>异步任务</returns>
-    public async Task EntryAsync()
+    public async Task EntryAsync(CancellationToken cancellationToken = default)
     {
-        while (true)
+        try
         {
-            if (!m_TcpClient.IsConnected && !m_TcpClient.IsInConnecting)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
-                m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(ServerHost), ServerPort));
-                await Task.Delay(DelayTimes);
-                if (m_TcpClient.IsConnected || m_TcpClient.IsInConnecting)
+                if (await HandleConnectionTickAsync(cancellationToken))
                 {
-                    continue;
-                }
-
-                if (m_RetryCount < MaxRetryCount)
-                {
-                    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount + 1, MaxRetryCount));
-                    m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(ServerHost), ServerPort));
-                    m_RetryCount++;
-                    await Task.Delay(m_RetryDelay);
-                    m_RetryDelay *= 2;
-                }
-                else
-                {
-                    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
                     break;
                 }
             }
-            else
-            {
-                m_RetryCount = 0;
-                SendHeartBeat();
-                await Task.Delay(5000);
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            // no-op
+        }
+
+        Disconnect();
+    }
+
+    /// <summary>
+    /// 按当前连接状态执行一次轮询,返回是否应终止重连循环
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleConnectionTickAsync(CancellationToken cancellationToken)
+    {
+        if (m_TcpClient.IsConnected)
+        {
+            return await HandleConnectedStateAsync(cancellationToken);
+        }
+
+        if (m_TcpClient.IsInConnecting)
+        {
+            return await HandleConnectingStateAsync(cancellationToken);
+        }
+
+        return await HandleDisconnectedStateAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 处理已连接状态:重置重试计数、发送心跳并按节奏轮询
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>始终返回 false(已连接状态不终止循环)</returns>
+    private async Task<bool> HandleConnectedStateAsync(CancellationToken cancellationToken)
+    {
+        m_RetryCount = 0;
+        _connectingSince = null;
+        SendHeartBeat();
+        await Task.Delay(5000, cancellationToken);
+        return false;
+    }
+
+    /// <summary>
+    /// 处理连接中状态:判定是否卡死超时,超时则重建会话并重试或达上限终止
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleConnectingStateAsync(CancellationToken cancellationToken)
+    {
+        _connectingSince ??= DateTime.UtcNow;
+        if ((DateTime.UtcNow - _connectingSince.Value).TotalMilliseconds <= ConnectingTimeoutMs)
+        {
+            await Task.Delay(1000, cancellationToken);
+            return false;
+        }
+
+        // Localization: Client.Bot.Tcp.ConnectingTimeoutRecreateSession - 连接中状态超时（{0}毫秒），重建会话
+        LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Tcp.ConnectingTimeoutRecreateSession, ConnectingTimeoutMs));
+        RecreateTcpSession();
+        _connectingSince = null;
+
+        if (m_RetryCount >= MaxRetryCount)
+        {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
+            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
+            return true;
+        }
+
+        m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
+        m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
+        await Task.Delay(DelayTimes, cancellationToken);
+        return false;
+    }
+
+    /// <summary>
+    /// 重建底层 TCP 会话:退订事件、关闭旧会话后重新创建
+    /// </summary>
+    private void RecreateTcpSession()
+    {
+        m_TcpClient.Connected -= OnMTcpClientOnConnected;
+        m_TcpClient.Closed -= OnMTcpClientOnClosed;
+        m_TcpClient.DataReceived -= OnMTcpClientOnDataReceived;
+        m_TcpClient.Error -= OnMTcpClientOnError;
+        try
+        {
+            m_TcpClient.Close();
+        }
+        catch
+        {
+            // 重建期间关闭旧会话失败可忽略
+        }
+
+        m_TcpClient = CreateTcpSession();
+    }
+
+    /// <summary>
+    /// 处理断开状态:尝试连接服务器,失败则按退避策略重试或达上限终止
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleDisconnectedStateAsync(CancellationToken cancellationToken)
+    {
+        _connectingSince = null;
+        // Localization: Client.AttemptingToConnect - 尝试连接到服务器...
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
+        m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
+        await Task.Delay(DelayTimes, cancellationToken);
+
+        if (m_TcpClient.IsConnected || m_TcpClient.IsInConnecting)
+        {
+            return false;
+        }
+
+        if (m_RetryCount >= MaxRetryCount)
+        {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
+            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
+            return true;
+        }
+
+        m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
+        await Task.Delay(m_RetryDelay, cancellationToken);
+        m_RetryDelay *= 2;
+        return false;
+    }
+
+    /// <summary>
+    /// 主动断开连接，模拟客户端离线。
+    /// </summary>
+    public void Disconnect()
+    {
+        try
+        {
+            m_TcpClient.Close();
+        }
+        catch (Exception e)
+        {
+            // Localization: Client.Bot.DisconnectFailed - 断开连接失败: {0}
+            LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.DisconnectFailed, e.Message));
         }
     }
 
@@ -206,6 +279,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnError(object client, ErrorEventArgs e)
     {
+        // Localization: Client.ErrorOccurred - 客户端发生错误: {0}
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.ErrorOccurred, e.Exception.Message));
         m_BotTcpClientEvent.OnErrorCallback(e);
     }
@@ -215,6 +289,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnClosed(object client, EventArgs e)
     {
+        // Localization: Client.Disconnected - 客户端断开连接
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Disconnected));
         m_BotTcpClientEvent.OnClosedCallback();
     }
@@ -224,6 +299,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnConnected(object client, EventArgs e)
     {
+        // Localization: Client.ConnectedSuccessfully - 客户端成功连接到服务器
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.ConnectedSuccessfully));
         m_BotTcpClientEvent.OnConnectedCallback();
     }
@@ -247,7 +323,7 @@ public sealed class BotTcpClient
         // 消息总长度
         var totalLength = data.ReadIntBigEndianValue(ref offset);
         // 消息头长度
-        var operationType = data.ReadByteValue(ref offset);
+        data.ReadByteValue(ref offset);
         var zipFlag = data.ReadByteValue(ref offset);
         var uniqueId = data.ReadIntBigEndianValue(ref offset);
         var messageId = data.ReadIntBigEndianValue(ref offset);
@@ -263,7 +339,6 @@ public sealed class BotTcpClient
 
             var messageObject = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageData, messageType);
             messageObject.SetMessageId(messageId);
-            messageObject.SetOperationType(operationType);
             messageObject.SetUniqueId(uniqueId);
             m_BotTcpClientEvent.OnReceiveMsgCallback(messageObject);
         }
@@ -277,7 +352,6 @@ public sealed class BotTcpClient
     private byte[] Handler(MessageObject message)
     {
         MessageProtoHelper.SetMessageId(message);
-        message.SetOperationType(MessageProtoHelper.GetMessageOperationType(message));
 
         var messageData = ProtoBufSerializerHelper.Serialize(message);
         byte zipFlag = 0;
@@ -291,7 +365,8 @@ public sealed class BotTcpClient
         var buffer = new byte[totalLength];
         var offset = 0;
         buffer.WriteIntBigEndianValue(totalLength, ref offset);
-        buffer.WriteByteValue((byte)message.OperationType, ref offset);
+        // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+        buffer.WriteByteValue(0, ref offset);
         buffer.WriteByteValue(zipFlag, ref offset);
         buffer.WriteIntBigEndianValue(message.UniqueId, ref offset);
         buffer.WriteIntBigEndianValue(message.MessageId, ref offset);

@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -126,6 +127,7 @@ public sealed partial class MongoDbService
             return false;
         }
 
+        MongoClient newClient = null;
         try
         {
             var settings = MongoClientSettings.FromConnectionString(options.ConnectionString);
@@ -134,7 +136,7 @@ public sealed partial class MongoDbService
             settings.SocketTimeout = _socketTimeout;
             settings.RetryReads = true;
             settings.RetryWrites = true;
-            var newClient = new MongoClient(settings);
+            newClient = new MongoClient(settings);
             var newDatabase = newClient.GetDatabase(options.Name);
             await newDatabase.RunCommandAsync((Command<BsonDocument>)"{ping:1}", cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -147,11 +149,19 @@ public sealed partial class MongoDbService
                 oldClient?.Dispose();
             }
 
+            // 换源成功：newClient 已交付给 _mongoClient 字段，不再属于本方法，防止 catch 误 Dispose 活 client。
+            // Swap succeeded: newClient now belongs to the _mongoClient field; null it so the catch never disposes the live client.
+            newClient = null;
             return true;
         }
         catch (Exception exception)
         {
-            LogHelper.Warning("MongoDbService.TryReconnectAndPingAsync failed. error={error}", exception.Message);
+            // 探活失败：释放本轮新建的 client（含连接池与集群定时器），否则恢复循环每轮泄漏一个。
+            // Probe failed: release this round's freshly built client (connection pool and cluster timers included),
+            // otherwise the recovery loop leaks one per probe.
+            newClient?.Dispose();
+            // Localization: Database.Mongo.TryReconnectAndPingFailed - MongoDbService.TryReconnectAndPingAsync 失败。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.TryReconnectAndPingFailed, exception.Message));
             return false;
         }
     }

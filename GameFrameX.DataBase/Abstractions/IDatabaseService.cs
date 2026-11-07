@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -49,7 +49,7 @@ public interface IDatabaseService
     /// </remarks>
     /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    Task<bool> Open(DbOptions dbOptions);
+    Task<bool> OpenAsync(DbOptions dbOptions);
 
     /// <summary>
     /// 关闭数据库连接。
@@ -58,7 +58,7 @@ public interface IDatabaseService
     /// Close the database connection.
     /// </remarks>
     /// <returns>异步任务 / Async task</returns>
-    Task Close();
+    Task CloseAsync();
 
     /// <summary>
     /// 查询单条数据。
@@ -580,6 +580,26 @@ public interface IDatabaseService
     Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new();
 
     /// <summary>
+    /// 按批次大小分批执行批量 upsert 保存（`_id` 等值过滤 + 整文档替换 + IsUpsert）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> (`_id` equality
+    /// filter, whole-document replace, upsert). Each batch is acknowledged and exception-isolated
+    /// independently: a failed batch is logged and execution continues with the remaining batches,
+    /// and the returned list contains exactly the states of the acknowledged batches. Unlike
+    /// <see cref="AddOrUpdateListAsync{TState}(IEnumerable{TState})"/> this contract does NOT touch
+    /// state timestamps or <c>UpdateCount</c> — it persists the states exactly as handed in
+    /// (migrated verbatim from <c>StateComponent.ExecuteBatchWritesAsync</c> to keep the
+    /// shutdown-save path behaviour-identical).
+    /// </remarks>
+    /// <param name="states">待保存的状态集合 / The states to save</param>
+    /// <param name="batchSize">每批数量（&lt;= 0 抛异常） / Batch size (values &lt;= 0 throw)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>全部成功 ack 批次的状态列表 / The states of all acknowledged batches</returns>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="batchSize"/> &lt;= 0 时抛出 / Thrown when batchSize is &lt;= 0</exception>
+    Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new();
+
+    /// <summary>
     /// 批量保存数据。
     /// </summary>
     /// <remarks>
@@ -737,4 +757,194 @@ public interface IDatabaseService
     /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
     /// <returns>返回是否存在值,true表示存在，false表示不存在 / Returns whether data exists, true if exists, false if not</returns>
     Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 条件写：仅当存量文档的行版本号与期望值一致时整档写入（CAS / 乐观锁原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> equals
+    /// <paramref name="expectedRowVersion"/> (compare-and-swap / optimistic-lock primitive).
+    /// Concurrency semantics (business-rule level, enforced by all providers):
+    /// <list type="bullet">
+    /// <item><description>成功时写入的文档携带 <c>RowVersion = expectedRowVersion + 1</c>（递增走
+    /// <c>VersionedEntityHelper.IncrementRowVersion</c> 的 checked 语义，<c>long.MaxValue</c> 溢出抛出而非静默回绕）/
+    /// On success the stored document carries <c>RowVersion = expectedRowVersion + 1</c> (the increment uses
+    /// <c>VersionedEntityHelper.IncrementRowVersion</c>'s checked semantics — <c>long.MaxValue</c> overflows
+    /// instead of silently wrapping)</description></item>
+    /// <item><description>失败（<c>false</c>）路径不污染调用方对象：写前的临时版本递增在返回前回滚，
+    /// <paramref name="state"/> 的 <c>RowVersion</c> 保持调用前的值；异常路径不回滚（写结果未知）/
+    /// The <c>false</c> path does not pollute the caller's object: the temporary pre-write increment is
+    /// rolled back before returning, so <paramref name="state"/>'s <c>RowVersion</c> keeps its pre-call value;
+    /// exceptions do not roll back (the write outcome is unknown)</description></item>
+    /// <item><description>版本不符或行缺失返回 <c>false</c>，不抛异常（并发竞态下双写仅一个成功）/
+    /// A version mismatch or a missing row returns <c>false</c> without throwing (under a race exactly one of two writers succeeds)</description></item>
+    /// <item><description>存量文档缺失 <c>RowVersion</c> 字段或值为 null 时恒不匹配 /
+    /// A stored document whose <c>RowVersion</c> is missing or null never matches</description></item>
+    /// <item><description>本原语按原样持久化传入状态（不触碰 <c>UpdateTime</c>/<c>UpdateCount</c>，对齐
+    /// <see cref="SaveBulkAsync{TState}(IEnumerable{TState}, int)"/> 的口径），调用方自管审计字段 /
+    /// The state is persisted exactly as handed in (<c>UpdateTime</c>/<c>UpdateCount</c> are NOT touched, aligned
+    /// with <see cref="SaveBulkAsync{TState}(IEnumerable{TState}, int)"/>) — the caller owns the audit fields</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="expectedRowVersion">期望的存量行版本号 / The expected stored row version</param>
+    /// <param name="state">要写入的新状态对象 / The new state to write</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>版本匹配并写入返回 <c>true</c>；版本不符或行缺失返回 <c>false</c> / <c>true</c> when the version matched and the document was written; <c>false</c> on mismatch or missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    /// <exception cref="OverflowException">当 <paramref name="expectedRowVersion"/> 为 <c>long.MaxValue</c> 且版本匹配成功时抛出（checked 递增）/ Thrown when <paramref name="expectedRowVersion"/> is <c>long.MaxValue</c> and the version matches (checked increment)</exception>
+    Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 条件写：仅当存量文档的行版本号与期望值一致时整档写入（CAS / 乐观锁原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> equals
+    /// <paramref name="expectedRowVersion"/> (compare-and-swap / optimistic-lock primitive). See the
+    /// cancellation-free overload for the full concurrency contract.
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="expectedRowVersion">期望的存量行版本号 / The expected stored row version</param>
+    /// <param name="state">要写入的新状态对象 / The new state to write</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>版本匹配并写入返回 <c>true</c>；版本不符或行缺失返回 <c>false</c> / <c>true</c> when the version matched and the document was written; <c>false</c> on mismatch or missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    /// <exception cref="OverflowException">当 <paramref name="expectedRowVersion"/> 为 <c>long.MaxValue</c> 且版本匹配成功时抛出（checked 递增）/ Thrown when <paramref name="expectedRowVersion"/> is <c>long.MaxValue</c> and the version matches (checked increment)</exception>
+    Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive).
+    /// Concurrency semantics (business-rule level, enforced by all providers):
+    /// <list type="bullet">
+    /// <item><description>成功时写入的文档携带 <c>RowVersion = 0</c>（null ≡ 版本 -1 的补全基点，checked
+    /// 递增；回填后行与「新建行首次落账」基线一致——实体 Version = 行 RowVersion + 1 恒等式从 1 起）/
+    /// On success the stored document carries <c>RowVersion = 0</c> (null ≡ version -1 as the
+    /// backfill baseline, checked increment; after backfill the row shares the baseline of a freshly
+    /// inserted row — the entity Version = RowVersion + 1 identity starts at 1)</description></item>
+    /// <item><description>失败（<c>false</c>）路径不污染调用方对象：写前的临时版本递增在返回前回滚，
+    /// <paramref name="state"/> 的 <c>RowVersion</c> 保持调用前的值；异常路径不回滚（写结果未知）/
+    /// The <c>false</c> path does not pollute the caller's object: the temporary pre-write increment is
+    /// rolled back before returning; exceptions do not roll back (the write outcome is unknown)</description></item>
+    /// <item><description>存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c>，不抛异常（并发补全恰一胜者；
+    /// 被「抢先补全 / 正常写入」占用时由调用方重读后转正常 CAS）/ A non-null stored
+    /// <c>RowVersion</c> or a missing row returns <c>false</c> without throwing (exactly one of
+    /// concurrent backfillers wins; the loser re-reads and continues on the regular CAS path)</description></item>
+    /// <item><description>与 CAS 原语谓词不相交：本原语只匹配 null / 缺位，<c>UpdateIfRowVersionAsync</c>
+    /// 「存量 null 恒不匹配」的安全不变量保持不变 / Disjoint from the CAS predicate: this primitive
+    /// matches null/missing only — the CAS primitive's "a stored null never matches" safety invariant
+    /// is left untouched</description></item>
+    /// <item><description>本原语按原样持久化传入状态（不触碰 <c>UpdateTime</c>/<c>UpdateCount</c>，调用方自管审计字段）/
+    /// The state is persisted exactly as handed in (<c>UpdateTime</c>/<c>UpdateCount</c> are NOT touched;
+    /// the caller owns the audit fields)</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象（<c>RowVersion</c> 由本原语管理）/ The new state to write (its <c>RowVersion</c> is managed by this primitive)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). See the cancellation-free
+    /// overload for the full concurrency contract.
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象（<c>RowVersion</c> 由本原语管理）/ The new state to write (its <c>RowVersion</c> is managed by this primitive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
+    /// </summary>
+    /// <remarks>
+    /// Unique insert: inserts <paramref name="state"/> only when no existing document satisfies
+    /// <paramref name="uniqueFilter"/> (a conflict returns <c>false</c> instead of throwing).
+    /// Concurrency semantics (business-rule level, enforced by all providers):
+    /// <list type="bullet">
+    /// <item><description>唯一性判定无视软删可见性（物理唯一索引口径，软删行同样占用唯一键）/
+    /// Uniqueness ignores soft-delete visibility (the physical unique-index scope — soft-deleted rows still occupy the key)</description></item>
+    /// <item><description>唯一键命中或 <c>Id</c> 已占用返回 <c>false</c>；时间戳补齐对齐 <see cref="AddAsync{TState}(TState)"/> /
+    /// A unique-key hit or an already-occupied <c>Id</c> returns <c>false</c>; timestamps are filled like <see cref="AddAsync{TState}(TState)"/></description></item>
+    /// <item><description>完全竞态安全依赖 <c>EntityIndexAttribute(Unique = true)</c> 声明的 provider 唯一索引：
+    /// Mongo/PostgreSQL 先查后插、由引擎唯一索引兜底并发窗口（预查仅覆盖顺序冲突）；SQLite 在建表时把声明
+    /// 物化为 <c>json_extract</c> 表达式唯一索引，谓词可归约时以单语句 <c>INSERT … ON CONFLICT DO NOTHING</c> 落库
+    /// （零全表读、语句级原子、跨进程安全），不可归约时回落先查后插（仅兜底顺序冲突）/
+    /// Full race safety relies on the provider unique index declared via
+    /// <c>EntityIndexAttribute(Unique = true)</c>: Mongo/PostgreSQL probe and insert, with the engine index
+    /// backstopping the concurrent window (the pre-check only covers sequential conflicts); SQLite materializes
+    /// the declaration as a <c>json_extract</c> expression unique index when the table is created and, for a
+    /// reducible predicate, writes through a single <c>INSERT … ON CONFLICT DO NOTHING</c> statement (no table
+    /// scan, statement-atomic, cross-process safe), falling back to probe-and-insert (sequential conflicts only)
+    /// when the predicate cannot be reduced</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="state">要插入的数据对象 / The state to insert</param>
+    /// <param name="uniqueFilter">唯一性判定条件（对既有文档求值）/ The uniqueness predicate (evaluated against existing documents)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>插入成功返回 <c>true</c>；唯一键冲突或 Id 已占用返回 <c>false</c> / <c>true</c> when inserted; <c>false</c> on a unique-key or Id conflict</returns>
+    Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
+    /// </summary>
+    /// <remarks>
+    /// Unique insert: inserts <paramref name="state"/> only when no existing document satisfies
+    /// <paramref name="uniqueFilter"/> (a conflict returns <c>false</c> instead of throwing). See the
+    /// cancellation-free overload for the full concurrency contract.
+    /// </remarks>
+    /// <param name="state">要插入的数据对象 / The state to insert</param>
+    /// <param name="uniqueFilter">唯一性判定条件（对既有文档求值）/ The uniqueness predicate (evaluated against existing documents)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>插入成功返回 <c>true</c>；唯一键冲突或 Id 已占用返回 <c>false</c> / <c>true</c> when inserted; <c>false</c> on a unique-key or Id conflict</returns>
+    Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter, CancellationToken cancellationToken) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 获取指定状态类型命名序列的下一个值（原子单调递增）。
+    /// </summary>
+    /// <remarks>
+    /// Atomically increments and returns the next value of the named sequence for
+    /// <typeparamref name="TState"/> (the counter key is <c>typeof(TState).Name + ":" + sequenceName</c>,
+    /// so equal sequence names under different state types never collide). Concurrency semantics
+    /// (business-rule level, enforced by all providers):
+    /// <list type="bullet">
+    /// <item><description>首次调用返回 1，此后单调递增；并发调用永不重复、永不回退 /
+    /// The first call returns 1 and the value then increases monotonically; concurrent calls never
+    /// hand out a duplicate and never regress</description></item>
+    /// <item><description>失败重试可能产生空洞（某次尝试的值从未返回给调用方）/
+    /// A retried failed attempt may leave a gap (that attempt's value was never returned to a caller)</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="sequenceName">序列名（与状态类型名联合键控）/ The sequence name (keyed together with the state type name)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>序列的新值（首次为 1）/ The new sequence value (1 on first use)</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="sequenceName"/> 为 null 或空白时抛出 / Thrown when <paramref name="sequenceName"/> is null or whitespace</exception>
+    Task<long> NextSequenceAsync<TState>(string sequenceName) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 获取指定状态类型命名序列的下一个值（原子单调递增）。
+    /// </summary>
+    /// <remarks>
+    /// Atomically increments and returns the next value of the named sequence for
+    /// <typeparamref name="TState"/>. See the cancellation-free overload for the full concurrency contract.
+    /// </remarks>
+    /// <param name="sequenceName">序列名（与状态类型名联合键控）/ The sequence name (keyed together with the state type name)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>序列的新值（首次为 1）/ The new sequence value (1 on first use)</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="sequenceName"/> 为 null 或空白时抛出 / Thrown when <paramref name="sequenceName"/> is null or whitespace</exception>
+    Task<long> NextSequenceAsync<TState>(string sequenceName, CancellationToken cancellationToken) where TState : BaseCacheState, new();
 }

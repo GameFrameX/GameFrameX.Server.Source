@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Competition,GFX Online 竞技能力包(冻结面:不删除、不演进):赛季/锦标赛承载(InMemory 默认存储,懒默认描述符,族/宿主覆盖恒胜出)+ 自装配模块(OnlineCompetitionCapabilityModule,必选依赖 online-leaderboard);榜单能力已拆至 GameFrameX.Capability.Online.Leaderboard 独立包,LiveOps 运营面移交 Admin 仓. Frozen competition capability package for the GFX Online family: seasons and tournaments with in-memory default stores and the self-assembling module requiring online-leaderboard; leaderboards moved to the dedicated leaderboard package and LiveOps handed over to the admin console. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Competition,Season,Tournament,Frozen,GameServer</PackageTags>
+        <!-- 本包语言版本随 Directory.Build.props（latest），语法风格仍按仓内 C#10 惯例书写
+             （无 switch 表达式 / record / 顶层语句）。 -->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Leaderboard/GameFrameX.Capability.Online.Leaderboard.csproj"/>
+    </ItemGroup>
+
+</Project>

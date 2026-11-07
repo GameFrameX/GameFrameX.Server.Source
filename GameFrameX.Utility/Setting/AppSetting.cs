@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -28,10 +28,8 @@
 //  ==========================================================================================
 
 
-using System.Text.Json.Serialization;
 using GameFrameX.Foundation.Json;
-using GameFrameX.Foundation.Logger;
-using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Options.Attributes;
 
 namespace GameFrameX.Utility.Setting;
 
@@ -39,19 +37,10 @@ namespace GameFrameX.Utility.Setting;
 /// 应用程序配置类
 /// </summary>
 /// <remarks>
-/// Application configuration class containing server settings, network options, and runtime parameters.
+/// Application configuration class containing server settings, network options, and other configurable parameters.
 /// </remarks>
-public sealed class AppSetting
+public class AppSetting
 {
-    /// <summary>
-    /// 用于通知应用程序退出的任务完成源
-    /// </summary>
-    /// <remarks>
-    /// Task completion source for notifying application exit.
-    /// </remarks>
-    [JsonIgnore] public readonly TaskCompletionSource<bool> AppExitSource = new();
-
-    private bool _appRunning;
     private string _serverType;
 
     /// <summary>
@@ -69,62 +58,6 @@ public sealed class AppSetting
         IsDebugSendHeartBeat = true;
         IsDebugReceiveHeartBeat = true;
 #endif
-        LaunchTime = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// 获取应用程序退出的任务标记
-    /// </summary>
-    /// <remarks>
-    /// Gets the task token for application exit.
-    /// </remarks>
-    [JsonIgnore]
-    public Task<bool> AppExitToken
-    {
-        get { return AppExitSource.Task; }
-    }
-
-    /// <summary>
-    /// 应用程序启动时间
-    /// </summary>
-    /// <remarks>
-    /// Application launch time.
-    /// </remarks>
-    public DateTime LaunchTime { get; set; }
-
-    /// <summary>
-    /// 获取或设置应用程序是否正在运行
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets whether the application is running.
-    /// </remarks>
-    [JsonIgnore]
-    public bool AppRunning
-    {
-        get { return _appRunning; }
-        set
-        {
-            lock (AppExitSource)
-            {
-                if (AppExitSource.Task.IsCanceled)
-                {
-                    if (value)
-                    {
-                        LogHelper.Error<string>("AppSetting.AppRunning {value}", LocalizationService.GetString(Localization.Keys.Utility.Settings.AppAlreadyExited));
-                    }
-
-                    _appRunning = false;
-                    return;
-                }
-
-                _appRunning = value;
-                if (!value && !AppExitSource.Task.IsCompleted)
-                {
-                    LogHelper.Info<string>("AppSetting.AppRunning {value}", LocalizationService.GetString(Localization.Keys.Utility.AppSettings.SetAppRunningFalse));
-                    AppExitSource.TrySetCanceled();
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -133,10 +66,12 @@ public sealed class AppSetting
     /// <remarks>
     /// Gets or sets the server type.
     /// </remarks>
+    [Option(nameof(ServerType), Description = "本地应用类型，单值，如 Game")]
+    [GrafanaLokiLabelTag]
     public string ServerType
     {
         get { return _serverType; }
-        set
+        init
         {
             _serverType = value;
             ServerName = value;
@@ -157,27 +92,76 @@ public sealed class AppSetting
     }
 
     /// <summary>
-    /// 将对象序列化为JSON字符串
+    /// 将对象序列化为JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、HTTPS / WSS 证书密码）已脱敏，
+    /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
-    /// Serializes the object to a JSON string.
+    /// Serializes the object to a JSON string with credential fields (database password, HTTP signature secret,
+    /// HTTPS / WSS certificate passwords) masked; the output is safe for logging.
     /// </remarks>
-    /// <returns>JSON字符串 / JSON string</returns>
+    /// <returns>JSON字符串（凭据已脱敏）/ JSON string (credentials masked)</returns>
     public override string ToString()
     {
-        return JsonHelper.Serialize(this);
+        return JsonHelper.Serialize(CreateMaskedCloneForSerialization());
     }
 
     /// <summary>
-    /// 将对象序列化为格式化的JSON字符串
+    /// 将对象序列化为格式化的JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、HTTPS / WSS 证书密码）已脱敏，
+    /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
-    /// Serializes the object to a formatted JSON string.
+    /// Serializes the object to a formatted JSON string with credential fields (database password, HTTP signature secret,
+    /// HTTPS / WSS certificate passwords) masked; the output is safe for logging.
     /// </remarks>
-    /// <returns>格式化的JSON字符串 / Formatted JSON string</returns>
+    /// <returns>格式化的JSON字符串（凭据已脱敏）/ Formatted JSON string (credentials masked)</returns>
     public string ToFormatString()
     {
-        return JsonHelper.SerializeFormat(this);
+        return JsonHelper.SerializeFormat(CreateMaskedCloneForSerialization());
+    }
+
+    /// <summary>
+    /// 凭据字段的序列化掩码：非空值输出该掩码，保留"已配置/未配置"的运维可见性，同时保证明文永不离开进程。
+    /// </summary>
+    private const string SensitiveValueMask = "***";
+
+    /// <summary>
+    /// 创建用于序列化输出的脱敏浅拷贝：<see cref="DataBasePassword"/>、<see cref="HttpSignSecret"/>、
+    /// <see cref="HttpsCertPassword"/>、<see cref="WssCertificatePassword"/> 等凭据字段的非空值替换为
+    /// <see cref="SensitiveValueMask"/>（null 与空串原样保留，用于区分"未配置"）。
+    /// <para>安全约定：后续在 <see cref="AppSetting"/> 新增凭据类字段时，必须同步加入本方法的掩码清单，
+    /// 否则其明文将随启动/停止日志输出。</para>
+    /// </summary>
+    /// <remarks>
+    /// Creates a masked shallow copy for serialization output: non-empty values of the credential fields
+    /// (<see cref="DataBasePassword"/>, <see cref="HttpSignSecret"/>, <see cref="DataBaseUrl"/>,
+    /// <see cref="HttpsCertPassword"/>, <see cref="WssCertificatePassword"/>) are replaced with <see cref="SensitiveValueMask"/> (null and empty strings
+    /// are kept as-is to distinguish "not configured").
+    /// Convention: any new credential-like field added to <see cref="AppSetting"/> must be added to this mask list,
+    /// otherwise its plaintext would leak through startup/shutdown logs.
+    /// </remarks>
+    /// <returns>凭据字段已掩码的浅拷贝 / A shallow copy with credential fields masked</returns>
+    private AppSetting CreateMaskedCloneForSerialization()
+    {
+        var maskedClone = (AppSetting)MemberwiseClone();
+        maskedClone.DataBaseUrl = MaskSensitiveValue(DataBaseUrl);
+        maskedClone.DataBasePassword = MaskSensitiveValue(DataBasePassword);
+        maskedClone.HttpSignSecret = MaskSensitiveValue(HttpSignSecret);
+        maskedClone.HttpsCertPassword = MaskSensitiveValue(HttpsCertPassword);
+        maskedClone.WssCertificatePassword = MaskSensitiveValue(WssCertificatePassword);
+        return maskedClone;
+    }
+
+    /// <summary>
+    /// 凭据值脱敏：null/空串原样返回（表示未配置），非空值返回掩码。
+    /// </summary>
+    /// <remarks>
+    /// Masks a credential value: null/empty strings are returned as-is ("not configured"), non-empty values return the mask.
+    /// </remarks>
+    /// <param name="value">原始凭据值 / The original credential value</param>
+    /// <returns>脱敏后的值 / The masked value</returns>
+    private static string MaskSensitiveValue(string value)
+    {
+        return string.IsNullOrEmpty(value) ? value : SensitiveValueMask;
     }
 
     #region 从配置文件读取的属性
@@ -192,6 +176,7 @@ public sealed class AppSetting
     /// Used for collecting and monitoring application performance metrics data.
     /// Default value is false.
     /// </remarks>
+    [Option(nameof(IsOpenTelemetryMetrics), DefaultValue = false, Description = "是否启用指标收集功能,需要 IsOpenTelemetry 为true时有效,默认值为false")]
     public bool IsOpenTelemetryMetrics { get; set; }
 
     /// <summary>
@@ -204,6 +189,7 @@ public sealed class AppSetting
     /// Used for tracking and analyzing request flow in distributed systems.
     /// Default value is false.
     /// </remarks>
+    [Option(nameof(IsOpenTelemetryTracing), DefaultValue = false, Description = "是否启用分布式追踪功能,需要 IsOpenTelemetry为true时有效,默认值为false")]
     public bool IsOpenTelemetryTracing { get; set; }
 
     /// <summary>
@@ -218,6 +204,7 @@ public sealed class AppSetting
     /// When enabled, it provides unified management of metrics, traces, and logs.
     /// Default value is false.
     /// </remarks>
+    [Option(nameof(IsOpenTelemetry), DefaultValue = false, Description = "是否启用OpenTelemetry遥测功能,默认值为false")]
     public bool IsOpenTelemetry { get; set; }
 
     /// <summary>
@@ -226,6 +213,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to enable debug log mode. Default value is false.
     /// </remarks>
+    [Option(nameof(IsDebug), DefaultValue = false, Description = "是否是Debug打印日志模式,默认值为false")]
     public bool IsDebug { get; set; }
 
     /// <summary>
@@ -234,7 +222,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to print timeout logs.
     /// </remarks>
-    public bool IsMonitorTimeOut { get; set; }
+    [Option(nameof(IsMonitorMessageTimeOut), DefaultValue = false, Description = "是否打印超时日志,默认值为false")]
+    public bool IsMonitorMessageTimeOut { get; set; }
 
     /// <summary>
     /// 处理器超时时间（秒）,默认值为1秒
@@ -242,7 +231,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Handler timeout in seconds. Default value is 1 second.
     /// </remarks>
-    public int MonitorTimeOutSeconds { get; set; }
+    [Option(nameof(MonitorMessageTimeOutSeconds), DefaultValue = 1, Description = "处理器超时时间（秒）,默认值为1秒,只有IsMonitorMessageTimeOut为true时有效")]
+    public int MonitorMessageTimeOutSeconds { get; set; } = 1;
 
     /// <summary>
     /// 网络发送等待超时时间（秒）,默认值为5秒
@@ -250,7 +240,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Network send timeout in seconds. Default value is 5 seconds.
     /// </remarks>
-    public int NetWorkSendTimeOutSeconds { get; set; }
+    [Option(nameof(NetworkSendTimeOutSeconds), DefaultValue = 5, Description = "网络发送等待超时时间（秒）,默认值为5秒,最小值为1秒")]
+    public int NetworkSendTimeOutSeconds { get; set; } = 5;
 
     /// <summary>
     /// 是否打印发送数据,只有在IsDebug为true时有效,默认值为false
@@ -258,6 +249,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to print sent data, effective when IsDebug is true. Default value is false.
     /// </remarks>
+    [Option(nameof(IsDebugSend), DefaultValue = false, Description = "是否打印发送数据,只有在IsDebug为true时有效,默认值为false")]
     public bool IsDebugSend { get; set; }
 
     /// <summary>
@@ -266,6 +258,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to print sent heartbeat data, effective when IsDebugSend is true. Default value is false.
     /// </remarks>
+    [Option(nameof(IsDebugSendHeartBeat), DefaultValue = false, Description = "是否打印发送的心跳数据,只有在IsDebugSend为true时有效,默认值为false")]
     public bool IsDebugSendHeartBeat { get; set; }
 
     /// <summary>
@@ -274,6 +267,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to print received data, effective when IsDebug is true. Default value is false.
     /// </remarks>
+    [Option(nameof(IsDebugReceive), DefaultValue = false, Description = "是否打印接收数据,只有在IsDebug为true时有效,默认值为false")]
     public bool IsDebugReceive { get; set; }
 
     /// <summary>
@@ -282,6 +276,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to print received heartbeat data, effective when IsDebugReceive is true. Default value is false.
     /// </remarks>
+    [Option(nameof(IsDebugReceiveHeartBeat), DefaultValue = false, Description = "是否打印接收的心跳数据,只有在IsDebugReceive为true时有效,默认值为false")]
     public bool IsDebugReceiveHeartBeat { get; set; }
 
     /// <summary>
@@ -293,6 +288,7 @@ public sealed class AppSetting
     /// Whether to enable HTTP debug log master switch.
     /// Effective when IsDebug is true. Default value is true.
     /// </remarks>
+    [Option(nameof(IsDebugHttp), DefaultValue = true, Description = "是否启用HTTP调试日志总开关,只有在IsDebug为true时有效,默认值为true")]
     public bool IsDebugHttp { get; set; } = true;
 
     /// <summary>
@@ -306,6 +302,7 @@ public sealed class AppSetting
     /// Includes request method and parameter content.
     /// Effective when IsDebugHttp is true. Default value is true.
     /// </remarks>
+    [Option(nameof(IsDebugHttpRequest), DefaultValue = true, Description = "是否打印HTTP请求参数日志,只有在IsDebugHttp为true时有效,默认值为true")]
     public bool IsDebugHttpRequest { get; set; } = true;
 
     /// <summary>
@@ -319,6 +316,7 @@ public sealed class AppSetting
     /// Includes result content in execution time logs.
     /// Effective when IsDebugHttp is true. Default value is true.
     /// </remarks>
+    [Option(nameof(IsDebugHttpResponse), DefaultValue = true, Description = "是否打印HTTP响应结果日志,只有在IsDebugHttp为true时有效,默认值为true")]
     public bool IsDebugHttpResponse { get; set; } = true;
 
     /// <summary>
@@ -327,6 +325,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Server ID.
     /// </remarks>
+    [Option(nameof(ServerId), Description = "服务器ID-如果需要合服，请确保不同服的ServerId一样。不然合服后数据会无法处理用户数据")]
+    [GrafanaLokiLabelTag]
     public int ServerId { get; set; }
 
     /// <summary>
@@ -335,6 +335,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Server instance ID.
     /// </remarks>
+    [Option(nameof(ServerInstanceId), Description = "服务器实例ID-用于区分同一服务器的不同实例")]
+    [GrafanaLokiLabelTag]
     public long ServerInstanceId { get; set; }
 
     /// <summary>
@@ -351,15 +353,18 @@ public sealed class AppSetting
     /// <remarks>
     /// Tag name.
     /// </remarks>
+    [Option(nameof(TagName), DefaultValue = "", Description = "标签名称-用于区分不同环境的服务器,没有实际用途,只是方便运维管理")]
+    [GrafanaLokiLabelTag]
     public string TagName { get; set; }
 
     /// <summary>
     /// 保存数据的时间间隔（毫秒）
     /// </summary>
     /// <remarks>
-    /// Data save interval in milliseconds. Default is 300,000 (5 minutes).
+    /// Data save interval in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
-    public int SaveDataInterval { get; set; } = 300_000;
+    [Option(nameof(SaveDataInterval), DefaultValue = 30_000, Description = "保存数据间隔,单位毫秒,默认30000毫秒(30秒),最小值为5秒(5000毫秒)")]
+    public int SaveDataInterval { get; set; } = 30_000;
 
     /// <summary>
     /// 保存数据的批量数量长度，默认为500
@@ -367,6 +372,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Batch count for saving data. Default is 500.
     /// </remarks>
+    [Option(nameof(SaveDataBatchCount), DefaultValue = 500, Description = "保存数据的批量数量长度,默认为500")]
     public int SaveDataBatchCount { get; set; } = 500;
 
     /// <summary>
@@ -375,6 +381,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Data save batch timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
+    [Option(nameof(SaveDataBatchTimeOut), DefaultValue = 30_000, Description = "保存数据的超时时间(毫秒),默认值为30秒")]
     public int SaveDataBatchTimeOut { get; set; } = 30_000;
 
     /// <summary>
@@ -383,6 +390,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Actor task execution timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
+    [Option(nameof(ActorTimeOut), DefaultValue = 30_000, Description = "Actor 执行任务超时时间(毫秒),默认值为30秒")]
     public int ActorTimeOut { get; set; } = 30_000;
 
     /// <summary>
@@ -391,6 +399,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Actor idle recycle time in minutes. Default is 15 minutes.
     /// </remarks>
+    [Option(nameof(ActorRecycleTime), DefaultValue = 15, Description = "Actor 空闲多久回收,单位分钟,默认值为15分钟,最小值为1分钟,小于1则强制设置为5分钟")]
     public int ActorRecycleTime { get; set; } = 15;
 
     /// <summary>
@@ -399,7 +408,34 @@ public sealed class AppSetting
     /// <remarks>
     /// Actor queue timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
+    [Option(nameof(ActorQueueTimeOut), DefaultValue = 30_000, Description = "Actor 执行任务队列超时时间(毫秒),默认值为30秒")]
     public int ActorQueueTimeOut { get; set; } = 30_000;
+
+    /// <summary>
+    /// 是否启用热更程序集装载哈希校验（灰度开关），默认 false 不校验。
+    /// 开启且装载参数配置了期望 SHA-256 时，热更装载前校验文件内容完整性，不匹配拒绝装载。
+    /// 校验边界：仅覆盖主程序集单文件；依赖程序集不在校验范围（完整覆盖需运维侧哈希清单）。
+    /// </summary>
+    /// <remarks>
+    /// Whether to enable hotfix assembly load hash verification (gray switch). Default false (no verification).
+    /// When enabled and the load options carry an expected SHA-256, the assembly file content is verified
+    /// before loading; a mismatch rejects the load. Boundary: only the main assembly file is covered;
+    /// dependency assemblies are out of scope (full coverage needs the operations-side hash manifest).
+    /// </remarks>
+    [Option(nameof(HotfixVerifyEnabled), DefaultValue = false, Description = "是否启用热更程序集装载哈希校验，默认值为 false（仅覆盖主程序集）")]
+    public bool HotfixVerifyEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Actor 调用限制规则名（ActorLimit.RuleType 的字符串形式），默认 "None" 不检查。
+    /// 规则一经配置即生效（生产可用），解析失败记录错误并回落 None。
+    /// </summary>
+    /// <remarks>
+    /// The Actor call limit rule name (string form of ActorLimit.RuleType). Default "None" (no checking).
+    /// A configured rule takes effect immediately (production usable); parse failures log an error and fall back to None.
+    /// </remarks>
+    [Option(nameof(ActorLimitRule), DefaultValue = "None", Description = "Actor 调用限制规则名（None/NoBidirectionCall），默认值为 None")]
+    public string ActorLimitRule { get; set; } = "None";
+
 
     /// <summary>
     /// 是否启用TCP
@@ -407,7 +443,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to enable TCP.
     /// </remarks>
-    public bool IsEnableTcp { get; set; }
+    [Option(nameof(IsEnableTcp), DefaultValue = true, Description = "是否启用 TCP 服务，默认值为 true")]
+    public bool IsEnableTcp { get; set; } = true;
 
     /// <summary>
     /// 是否启用UDP
@@ -415,6 +452,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to enable UDP. Default is false.
     /// </remarks>
+    [Option(nameof(IsEnableUdp), DefaultValue = false, Description = "是否启用 UDP 服务，默认值为 false")]
     public bool IsEnableUdp { get; set; } = false;
 
     /// <summary>
@@ -439,7 +477,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Internal host address.
     /// </remarks>
-    public string InnerHost { get; set; }
+    [Option(nameof(InnerHost), DefaultValue = "0.0.0.0", Description = "内部IP")]
+    public string InnerHost { get; set; } = "0.0.0.0";
 
     /// <summary>
     /// 内部端口
@@ -447,7 +486,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Internal port.
     /// </remarks>
-    public ushort InnerPort { get; set; }
+    [Option(nameof(InnerPort), DefaultValue = 8888, Description = "内部端口")]
+    public ushort InnerPort { get; set; } = 8888;
 
     /// <summary>
     /// 雪花ID的工作ID
@@ -455,7 +495,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Snowflake ID worker ID.
     /// </remarks>
-    public ushort WorkerId { get; set; }
+    [Option(nameof(WorkerId), DefaultValue = 1, Description = "雪花ID的工作ID,默认为1")]
+    public ushort WorkerId { get; set; } = 1;
 
     /// <summary>
     /// 雪花ID的数据中心ID
@@ -463,7 +504,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Snowflake ID data center ID.
     /// </remarks>
-    public ushort DataCenterId { get; set; }
+    [Option(nameof(DataCenterId), DefaultValue = 1, Description = "雪花ID的数据中心ID,默认为1")]
+    public ushort DataCenterId { get; set; } = 1;
 
     /// <summary>
     /// 外部主机地址
@@ -471,7 +513,8 @@ public sealed class AppSetting
     /// <remarks>
     /// External host address.
     /// </remarks>
-    public string OuterHost { get; set; }
+    [Option(nameof(OuterHost), DefaultValue = "0.0.0.0", Description = "外部IP")]
+    public string OuterHost { get; set; } = "0.0.0.0";
 
     /// <summary>
     /// 外部端口
@@ -479,6 +522,7 @@ public sealed class AppSetting
     /// <remarks>
     /// External port.
     /// </remarks>
+    [Option(nameof(OuterPort), Description = "外部端口")]
     public ushort OuterPort { get; set; }
 
     /// <summary>
@@ -487,7 +531,8 @@ public sealed class AppSetting
     /// <remarks>
     /// HTTP URL path.
     /// </remarks>
-    public string HttpUrl { get; set; }
+    [Option(nameof(HttpUrl), DefaultValue = "/game/api/", Description = "API接口根路径,必须以/开头和以/结尾,默认为[/game/api/]")]
+    public string HttpUrl { get; set; } = "/game/api/";
 
     /// <summary>
     /// 是否启用 HTTP 服务
@@ -495,7 +540,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether to enable HTTP service.
     /// </remarks>
-    public bool IsEnableHttp { get; set; }
+    [Option(nameof(IsEnableHttp), DefaultValue = true, Description = "是否启用 HTTP 服务，默认值为 true")]
+    public bool IsEnableHttp { get; set; } = true;
 
     /// <summary>
     /// HTTP 是否是开发模式
@@ -503,6 +549,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Whether HTTP is in development mode.
     /// </remarks>
+    [Option(nameof(HttpIsDevelopment), DefaultValue = false, Description = "HTTP 是否是开发模式,当是开发模式的时候将会启用Swagger")]
     public bool HttpIsDevelopment { get; set; }
 
     /// <summary>
@@ -511,7 +558,8 @@ public sealed class AppSetting
     /// <remarks>
     /// HTTP port.
     /// </remarks>
-    public ushort HttpPort { get; set; }
+    [Option(nameof(HttpPort), DefaultValue = 8080, Description = "HTTP 端口")]
+    public ushort HttpPort { get; set; } = 8080;
 
     /// <summary>
     /// HTTPS端口
@@ -519,7 +567,147 @@ public sealed class AppSetting
     /// <remarks>
     /// HTTPS port.
     /// </remarks>
+    [Option(nameof(HttpsPort), Description = "HTTPS 端口")]
     public ushort HttpsPort { get; set; }
+
+    /// <summary>
+    /// HTTPS 证书文件路径（PFX 或 PEM 格式）。
+    /// <para>HttpsPort 大于 0 时必填；启动期校验，路径为空 / 文件缺失 / 加载失败均 fail fast。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTPS certificate file path (PFX or PEM format).
+    /// Required when HttpsPort is greater than 0; validated at startup — empty path, missing file
+    /// or load failure all fail fast.
+    /// </remarks>
+    [Option(nameof(HttpsCertPath), DefaultValue = "", Description = "HTTPS 证书文件路径(PFX或PEM格式),HttpsPort>0 时必填")]
+    public string HttpsCertPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTPS PFX 或 PEM 加密私钥密码（可为空）。
+    /// </summary>
+    /// <remarks>
+    /// HTTPS PFX or encrypted PEM private key password (may be empty).
+    /// </remarks>
+    [Option(nameof(HttpsCertPassword), DefaultValue = "", Description = "HTTPS 证书文件密码,可为空")]
+    public string HttpsCertPassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTPS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填。
+    /// </summary>
+    /// <remarks>HTTPS PEM private key path, required for .pem or .crt certificates.</remarks>
+    [Option(nameof(HttpsCertificateKeyPath), DefaultValue = "", Description = "HTTPS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填")]
+    public string HttpsCertificateKeyPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTP 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP request body size in bytes.
+    /// </remarks>
+    [Option(nameof(HttpMaxRequestBodyBytes), DefaultValue = 1048576L, Description = "HTTP 请求体最大字节数,默认 1MB")]
+    public long HttpMaxRequestBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP JSON 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP JSON request body size in bytes.
+    /// </remarks>
+    [Option(nameof(HttpMaxJsonBodyBytes), DefaultValue = 1048576L, Description = "HTTP JSON 请求体最大字节数,默认 1MB")]
+    public long HttpMaxJsonBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP ProtoBuf 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP ProtoBuf request body size in bytes.
+    /// </remarks>
+    [Option(nameof(HttpMaxProtoBodyBytes), DefaultValue = 1048576L, Description = "HTTP ProtoBuf 请求体最大字节数,默认 1MB")]
+    public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP 是否全局要求签名校验。
+    /// </summary>
+    /// <remarks>
+    /// Whether all HTTP handlers require signature validation globally.
+    /// </remarks>
+    [Option(nameof(HttpRequireSign), DefaultValue = false, Description = "HTTP是否全局要求签名校验,默认false。生产环境可开启")]
+    public bool HttpRequireSign { get; set; }
+
+    /// <summary>
+    /// HTTP 签名密钥（HMAC-SHA256）。
+    /// <para>开启签名校验（HttpRequireSign 或 [RequireHttpSignature]）后必须配置非空白值；
+    /// 为空时签名校验一律拒绝（fail-closed），不会放行任何请求。</para>
+    /// <para>签名口径：sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret)))，timestamp 为 unix 秒。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTP signature secret (HMAC-SHA256).
+    /// A non-blank value is required once signature validation is enabled (HttpRequireSign or
+    /// [RequireHttpSignature]); when blank every signature check is rejected (fail-closed) and no
+    /// request is let through.
+    /// Signature format: sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret))), timestamp in unix seconds.
+    /// </remarks>
+    [Option(nameof(HttpSignSecret), DefaultValue = "", Description = "HTTP签名密钥(HMAC-SHA256),开启签名校验后必填,为空时签名校验一律拒绝")]
+    public string HttpSignSecret { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTP 签名口径版本。
+    /// <para>1（默认）= 仅时间戳旧口径：sign = Base64(HMAC-SHA256(UTF8(timestamp), secret))，兼容存量客户端，过渡期保留并打弃用告警。</para>
+    /// <para>2 = 全要素口径：sign = Base64(HMAC-SHA256(UTF8(canonicalString), secret))，
+    /// canonicalString = command + "\n" + timestamp + "\n" + nonce + "\n" + 按 key 排序（排除 sign/timestamp/nonce）的 "k=v" 串；nonce 在时间窗内一次性有效，防篡改、防重放。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTP signature scheme version.
+    /// Version 1 (default) keeps the legacy timestamp-only scheme for existing clients, with a one-time deprecation warning.
+    /// Version 2 signs the full request (command, timestamp, nonce, sorted parameters) and enforces one-time nonce usage.
+    /// </remarks>
+    [Option(nameof(HttpSignVersion), DefaultValue = 1, Description = "HTTP签名口径版本:1=仅时间戳(兼容旧客户端),2=全要素+nonce防重放(推荐)")]
+    public int HttpSignVersion { get; set; } = 1;
+
+    /// <summary>
+    /// HTTP CORS 允许的 Origin 白名单，多个值用逗号或分号分隔。
+    /// </summary>
+    /// <remarks>
+    /// HTTP CORS allowed origin whitelist, separated by comma or semicolon.
+    /// </remarks>
+    [Option(nameof(HttpCorsAllowedOrigins), DefaultValue = "", Description = "HTTP CORS允许的Origin白名单,多个值用逗号或分号分隔。生产环境空值时不启用CORS")]
+    public string HttpCorsAllowedOrigins { get; set; }
+
+    /// <summary>
+    /// Online admin API 监听端口
+    /// </summary>
+    /// <remarks>
+    /// Online admin API listening port.
+    /// </remarks>
+    [Option(nameof(OnlineAdminPort), DefaultValue = 28090, Description = "Online admin API 监听端口,默认值为 28090,只有 Online 配置段 EnableAdminApi 为 true 时才生效")]
+    public ushort OnlineAdminPort { get; set; } = 28090;
+
+    /// <summary>
+    /// Online admin API 路由前缀（与 Admin 侧区服寻址约定一致）
+    /// </summary>
+    /// <remarks>
+    /// Online admin API route prefix (aligned with the Admin-side area addressing convention).
+    /// </remarks>
+    [Option(nameof(OnlineAdminApiPrefix), DefaultValue = "online/admin", Description = "Online admin API 路由前缀,默认值为 online/admin,与 Admin 侧区服 HttpManageUrl 寻址约定一致")]
+    public string OnlineAdminApiPrefix { get; set; } = "online/admin";
+
+    /// <summary>
+    /// Online 能力配置段（角色配置内嵌套 "Online" 节点的强类型绑定，C294 键集重定）
+    /// <para>双闸 EnableRuntime / EnableAdminApi、EnableRoles 名单、Capabilities 白名单 / Disable 排除表、
+    /// UseGameDbStores 覆盖开关与 Settings 能力级参数节点；EnableRoles 匹配当前应用身份时装配业务能力
+    ///（缺省名单 ["Game"]）；null 或空过滤器 = 全装配（缺省全装配红线）</para>
+    /// <para>CLI 侧经 StartupOptions.OnlineCapabilities / OnlineDisable 平铺别名投影（仅无配置段应用的缺省配置生效，配置段优先链不变）</para>
+    /// </summary>
+    /// <remarks>
+    /// Strong-typed binding of the nested "Online" node inside this application configuration section (the C294
+    /// key-set redefinition): the EnableRuntime / EnableAdminApi gates, the EnableRoles list, the
+    /// Capabilities whitelist / Disable exclusion list, the UseGameDbStores override switch and the
+    /// Settings capability-parameter node. The application named by EnableRoles composes the family once (default list ["Game"]); null or empty filters assemble everything (the
+    /// empty-filter-assembles-all guarantee). The CLI surface is the flat alias pair
+    /// StartupOptions.OnlineCapabilities / OnlineDisable, projected only on the launcher fallback
+    /// path for applications without a config section (the config-section-first chain is unchanged).
+    /// </remarks>
+    public OnlineCapabilityOptions Online { get; set; }
 
     /// <summary>
     /// Prometheus指标端口（如果为0则使用HTTP端口）
@@ -527,6 +715,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Prometheus metrics port (uses HTTP port if 0).
     /// </remarks>
+    [Option(nameof(MetricsPort), Description = "Metrics 端口")]
     public ushort MetricsPort { get; set; }
 
     /// <summary>
@@ -539,6 +728,7 @@ public sealed class AppSetting
     /// When enabled, the server will listen on WebSocket port for client connections.
     /// Default value is false.
     /// </remarks>
+    [Option(nameof(IsEnableWebSocket), DefaultValue = false, Description = "是否启用 WebSocket 服务，默认值为 false")]
     public bool IsEnableWebSocket { get; set; } = false;
 
     /// <summary>
@@ -547,7 +737,8 @@ public sealed class AppSetting
     /// <remarks>
     /// WebSocket port.
     /// </remarks>
-    public ushort WsPort { get; set; }
+    [Option(nameof(WsPort), DefaultValue = 8889, Description = "WebSocket 端口，默认值为 8889，当 IsEnableWebSocket 为 true 时才会启用")]
+    public ushort WsPort { get; set; } = 8889;
 
     /// <summary>
     /// WebSocket加密端口
@@ -555,15 +746,31 @@ public sealed class AppSetting
     /// <remarks>
     /// WebSocket secure port.
     /// </remarks>
+    [Option(nameof(WssPort), Description = "WebSocket 加密端口")]
     public ushort WssPort { get; set; }
 
     /// <summary>
-    /// Wss使用的证书路径
+    /// WSS 证书路径（PFX 或 PEM），WssPort 大于 0 时必填
     /// </summary>
     /// <remarks>
-    /// Certificate file path for WSS.
+    /// WSS certificate file path (PFX or PEM), required when WssPort is greater than 0.
     /// </remarks>
+    [Option(nameof(WssCertFilePath), Description = "Wss 使用的证书路径")]
     public string WssCertFilePath { get; set; }
+
+    /// <summary>
+    /// WSS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填。
+    /// </summary>
+    /// <remarks>WSS PEM private key path, required for .pem or .crt certificates.</remarks>
+    [Option(nameof(WssCertificateKeyPath), DefaultValue = "", Description = "WSS PEM 独立私钥路径，证书为 .pem 或 .crt 时必填")]
+    public string WssCertificateKeyPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// WSS PFX 或 PEM 加密私钥密码，可为空。
+    /// </summary>
+    /// <remarks>WSS PFX or encrypted PEM private key password, may be empty.</remarks>
+    [Option(nameof(WssCertificatePassword), DefaultValue = "", Description = "WSS PFX 或 PEM 加密私钥密码，可为空")]
+    public string WssCertificatePassword { get; set; } = string.Empty;
 
     /// <summary>
     /// 数据库地址
@@ -571,6 +778,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Database URL.
     /// </remarks>
+    [Option(nameof(DataBaseUrl), Description = "数据库 地址")]
     public string DataBaseUrl { get; set; }
 
     /// <summary>
@@ -579,7 +787,26 @@ public sealed class AppSetting
     /// <remarks>
     /// Database name.
     /// </remarks>
+    [Option(nameof(DataBaseName), Description = "数据库名称")]
     public string DataBaseName { get; set; }
+
+    /// <summary>
+    /// 数据库密码
+    /// </summary>
+    /// <remarks>
+    /// Database password.
+    /// </remarks>
+    [Option(nameof(DataBasePassword), Description = "数据库密码")]
+    public string DataBasePassword { get; set; }
+
+    /// <summary>
+    /// 服务器时区
+    /// </summary>
+    /// <remarks>
+    /// Server time zone identifier.
+    /// </remarks>
+    [Option(nameof(TimeZone), DefaultValue = "Asia/Shanghai", Description = "服务器时区设置，默认为 Asia/Shanghai，支持 IANA 时区数据库标准标识符")]
+    public string TimeZone { get; set; } = "Asia/Shanghai";
 
     /// <summary>
     /// 是否使用时区时间记录
@@ -591,7 +818,20 @@ public sealed class AppSetting
     /// When enabled, database timestamps will include time zone offset.
     /// Default value is false.
     /// </remarks>
+    [Option(nameof(IsUseTimeZone), DefaultValue = false, Description = "是否启用自定义时区设置，默认为 false，禁用时使用系统默认时区")]
     public bool IsUseTimeZone { get; set; } = false;
+
+    /// <summary>
+    /// 数据库实现提供者
+    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现；配置为 Sqlite 时切换为嵌入式 SQLite 实现（单进程拓扑，启动打印边界警告）</para>
+    /// </summary>
+    /// <remarks>
+    /// Database implementation provider.
+    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation;
+    /// setting Sqlite switches to the embedded SQLite implementation (single-process topology with a startup boundary warning).
+    /// </remarks>
+    [Option(nameof(DatabaseProvider), DefaultValue = "Mongo", Description = "数据库实现提供者：Mongo（默认）/ PostgreSql / Sqlite（嵌入式，单进程拓扑，启动有边界警告）")]
+    public DatabaseProviderType DatabaseProvider { get; set; } = DatabaseProviderType.Mongo;
 
     /// <summary>
     /// 语言
@@ -599,6 +839,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Language.
     /// </remarks>
+    [Option(nameof(Language), Description = "语言")]
+    [GrafanaLokiLabelTag]
     public string Language { get; set; }
 
     /// <summary>
@@ -607,6 +849,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Data center.
     /// </remarks>
+    [Option(nameof(DataCenter), Description = "数据中心")]
     public string DataCenter { get; set; }
 
     /// <summary>
@@ -623,6 +866,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Minimum module ID for game logic server.
     /// </remarks>
+    [Option(nameof(MinModuleId), Description = "游戏逻辑服务器的处理最小模块ID")]
     public short MinModuleId { get; set; }
 
     /// <summary>
@@ -631,6 +875,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Maximum module ID for game logic server.
     /// </remarks>
+    [Option(nameof(MaxModuleId), Description = "游戏逻辑服务器的处理最大模块ID")]
     public short MaxModuleId { get; set; }
 
     /// <summary>
@@ -639,6 +884,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Description.
     /// </remarks>
+    [Option(nameof(Description), DefaultValue = "", Description = "描述信息-用于描述该服务器的用途,没有实际用途,只是方便运维管理")]
+    [GrafanaLokiLabelTag]
     public string Description { get; set; }
 
     /// <summary>
@@ -647,6 +894,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Note.
     /// </remarks>
+    [Option(nameof(Note), DefaultValue = "", Description = "备注信息-用于描述该服务器的备注信息,没有实际用途,只是方便运维管理")]
+    [GrafanaLokiLabelTag]
     public string Note { get; set; }
 
     /// <summary>
@@ -655,6 +904,8 @@ public sealed class AppSetting
     /// <remarks>
     /// Label.
     /// </remarks>
+    [Option(nameof(Label), DefaultValue = "", Description = "标签信息-用于描述该服务器的标签信息,没有实际用途,只是方便运维管理")]
+    [GrafanaLokiLabelTag]
     public string Label { get; set; }
 
     /// <summary>
@@ -663,6 +914,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Client API host.
     /// </remarks>
+    [Option(nameof(ClientApiHost), DefaultValue = "", Description = "客户端API地址")]
     public string ClientApiHost { get; set; }
 
     /// <summary>
@@ -671,6 +923,7 @@ public sealed class AppSetting
     /// <remarks>
     /// Hub API host.
     /// </remarks>
+    [Option(nameof(HubApiHost), DefaultValue = "", Description = "HubAPI地址")]
     public string HubApiHost { get; set; }
 
     #endregion

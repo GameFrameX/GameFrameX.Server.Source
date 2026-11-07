@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,43 +27,18 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 namespace GameFrameX.Utility.Math;
 
 /// <summary>
 /// 生成基于确定性方法的随机数。
 /// </summary>
+/// <remarks>
+/// 梅森旋转（MT19937）伪随机：确定性可复现，但**非密码学安全**，
+/// 不得用于令牌、验证码、防作弊抽奖等安全决策；安全场景请使用
+/// <c>System.Security.Cryptography.RandomNumberGenerator</c>。
+/// 静态共享实例不保证线程安全（状态推进无锁）；需要并发隔离时用
+/// <see cref="New"/> 创建独立实例。
+/// </remarks>
 public sealed class FPRandom
 {
     // 来源：http://www.codeproject.com/Articles/164087/Random-Number-Generation
@@ -78,19 +53,32 @@ public sealed class FPRandom
     /// <summary>
     /// 使用种子 1 的 {@link TSRandom} 的静态实例。
     /// </summary>
-    public static FPRandom instance;
+    /// <remarks>
+    /// 首次访问静态成员时懒初始化（种子 1，确定性序列），无需调用方先调用 <see cref="Init"/>。
+    /// </remarks>
+    private static FPRandom instance;
+
+    /// <summary>
+    /// 静态成员使用的确定性实例；未初始化时按种子 1 创建（并发首次访问只发布一个实例）。
+    /// </summary>
+    private static FPRandom Instance
+    {
+        get
+        {
+            var current = Volatile.Read(ref instance);
+            if (current != null)
+            {
+                return current;
+            }
+
+            var created = New(1);
+            return Interlocked.CompareExchange(ref instance, created, null) ?? created;
+        }
+    }
 
     private readonly uint[] mag01 = { 0x0U, MATRIX_A, }; // 变换矩阵
     private readonly uint[] mt = new uint[N]; // 梅森旋转状态向量
     private int mti = N + 1; // 当前状态向量索引
-
-    /// <summary>
-    /// 初始化一个新的实例，使用当前时间的毫秒数作为种子。
-    /// </summary>
-    private FPRandom()
-    {
-        init_genrand((uint)DateTime.UtcNow.Millisecond);
-    }
 
     /// <summary>
     /// 使用指定的种子初始化一个新的实例。
@@ -129,20 +117,37 @@ public sealed class FPRandom
     /// </summary>
     public static FP value
     {
-        get { return instance.NextFP(); }
+        get { return Instance.NextFP(); }
     }
 
     /// <summary>
     /// 返回一个随机的 {@link TSVector}，表示半径为 1 的球体内的一个点。
     /// </summary>
+    /// <remarks>
+    /// 单位立方体拒绝采样：三个分量独立取 [-1, 1]，模长超 1 则重采，
+    /// 结果在球体内均匀分布（旧实现返回的是立方体内的点）。
+    /// </remarks>
     public static FPVector3 insideUnitSphere
     {
-        get { return new FPVector3(value, value, value); }
+        get
+        {
+            while (true)
+            {
+                var candidate = new FPVector3(value * 2 - FP.One, value * 2 - FP.One, value * 2 - FP.One);
+                if (candidate.magnitude <= FP.One)
+                {
+                    return candidate;
+                }
+            }
+        }
     }
 
+    /// <summary>
+    /// 显式重置静态实例为种子 1 的新序列（测试用）。
+    /// </summary>
     internal static void Init()
     {
-        instance = New(1);
+        Interlocked.Exchange(ref instance, New(1));
     }
 
     /// <summary>
@@ -175,7 +180,7 @@ public sealed class FPRandom
     /// <returns>生成的随机整数。</returns>
     public static int CallNext()
     {
-        return instance.Next();
+        return Instance.Next();
     }
 
     /// <summary>
@@ -183,7 +188,7 @@ public sealed class FPRandom
     /// </summary>
     /// <param name="minValue">最小值。</param>
     /// <param name="maxValue">最大值。</param>
-    /// <returns>生成的随机整数。</returns>
+    /// <returns>生成的随机整数。minValue == maxValue 时返回 minValue。</returns>
     public int Next(int minValue, int maxValue)
     {
         if (minValue > maxValue)
@@ -191,9 +196,28 @@ public sealed class FPRandom
             (maxValue, minValue) = (minValue, maxValue);
         }
 
-        var range = maxValue - minValue;
+        var range = (ulong)((long)maxValue - minValue);
+        if (range == 0)
+        {
+            return minValue;
+        }
 
-        return minValue + Next() % range;
+        // 拒绝采样消除模偏：Next() ∈ [0, 2^31 - 1]，只接受落在 range 整数倍内的样本。
+        var drawCount = (ulong)MaxRandomInt + 1;
+        if (range < drawCount)
+        {
+            var limit = drawCount - drawCount % range;
+            int draw;
+            do
+            {
+                draw = Next();
+            } while ((ulong)draw >= limit);
+
+            return (int)(minValue + (long)((ulong)draw % range));
+        }
+
+        // 跨度超过 31 位随机域（如 int.MinValue..int.MaxValue）时用 [0,1) 双精度缩放。
+        return (int)(minValue + (long)(NextDouble() * range));
     }
 
     /// <summary>
@@ -223,7 +247,7 @@ public sealed class FPRandom
     /// <returns>生成的随机整数。</returns>
     public static int Range(int minValue, int maxValue)
     {
-        return instance.Next(minValue, maxValue);
+        return Instance.Next(minValue, maxValue);
     }
 
     /// <summary>
@@ -234,7 +258,7 @@ public sealed class FPRandom
     /// <returns>生成的随机 FP 值。</returns>
     public static FP Range(float minValue, float maxValue)
     {
-        return instance.Next(minValue, maxValue);
+        return Instance.Next(minValue, maxValue);
     }
 
     /// <summary>

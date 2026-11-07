@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -32,8 +32,8 @@ using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Actors;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
 using Serilog;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -67,23 +67,23 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     /// 初始化
     /// </summary>
     /// <returns>初始化任务</returns>
-    protected abstract Task<bool> InitActor();
+    protected abstract Task<bool> InitActorAsync();
 
     /// <summary>
     /// 初始化
     /// </summary>
     /// <param name="message">网络消息</param>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public override async Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
+    public override async Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
     {
-        var initSuccess = await base.Init(message, netWorkChannel);
+        var initSuccess = await base.InitAsync(message, networkChannel);
         if (!initSuccess)
         {
             return false;
         }
 
-        initSuccess = await InitActor();
+        initSuccess = await InitActorAsync();
         if (!initSuccess)
         {
             return false;
@@ -93,19 +93,21 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         {
             if (ActorId == default)
             {
-                LogHelper.Fatal<string>("BaseRpcComponentHandler.Init, ActorId is zero, message type: {messageType}", message.GetType().FullName);
-                NetWorkChannel.Close();
+                // Localization: Core.MessageHandler.ActorIdIsZero - ActorId为0，无法获取组件，{0}，关闭通道
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ActorIdIsZero, message.GetType().FullName));
+                NetworkChannel.Close();
                 return false;
             }
 
             try
             {
-                CacheComponent = await ActorManager.GetComponentAgent(ActorId, ComponentAgentType);
+                CacheComponent = await ActorManager.GetComponentAgentAsync(ActorId, ComponentAgentType);
             }
             catch (Exception e)
             {
-                LogHelper.Fatal(e, "BaseRpcComponentHandler.Init, get component failed, close channel, actorId: {actorId}, componentAgentType: {componentAgentType}", ActorId, ComponentAgentType.FullName);
-                NetWorkChannel.Close();
+                // Localization: Core.MessageHandler.RpcGetComponentFailed - BaseRpcComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentFailed, ActorId, ComponentAgentType.FullName, e));
+                NetworkChannel.Close();
                 return false;
             }
         }
@@ -119,23 +121,48 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>内部执行任务</returns>
-    public override Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default)
+    public override Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseRpcComponentHandler.InnerAction, CacheComponent is null, message type: {messageType}", RequestMessage.GetType().FullName);
-            NetWorkChannel.Close();
+            // Localization: Core.MessageHandler.RpcInnerActionCacheComponentNull - BaseRpcComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcInnerActionCacheComponentNull, RequestMessage.GetType().FullName));
+            NetworkChannel.Close();
             return Task.CompletedTask;
         }
 
-        async Task Work()
+        CacheComponent.Tell(() => ExecuteWorkAsync(timeout, cancellationToken), timeout, cancellationToken);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 在组件代理上执行内部处理并回写响应（由 <see cref="InnerActionAsync"/> 调度）。
+    /// 业务核心以 <see cref="Task.WaitAsync(TimeSpan, CancellationToken)"/> 包装：超时时向客户端回写独立的
+    /// <see cref="OperationErrorCode.TimeOut"/> 响应（含 requestId），不再让客户端只能等自身超时。
+    /// </summary>
+    /// <param name="timeout">执行超时时间，单位毫秒</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task ExecuteWorkAsync(int timeout, CancellationToken cancellationToken)
+    {
+        var response = MessageObjectPoolHelper.Get<TResponse>();
+        var requestId = RequestMessage.UniqueId;
+        Task coreTask = null;
+        try
         {
-            var response = MessageObjectPoolHelper.Get<TResponse>();
-            var requestId = RequestMessage.UniqueId;
             try
             {
-                await InnerActionAsync(RequestMessage, response);
+                coreTask = InnerActionCoreAsync(RequestMessage, response, cancellationToken);
+                await coreTask.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
                 response?.SetUniqueId(requestId);
+            }
+            catch (TimeoutException)
+            {
+                // Localization: Core.MessageHandler.RpcComponentExecutionTimeout - BaseRpcComponentHandler组件RPC执行超时，消息类型:{0} 超时:{1}ms
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcComponentExecutionTimeout, RequestMessage.GetType().FullName, timeout));
+                await WriteTimeoutResponseAsync(requestId);
+
+                // 原响应经终态延续归还，此处不再写回
+                return;
             }
             catch (RpcException e)
             {
@@ -146,24 +173,84 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             }
             catch (Exception e)
             {
-                LogHelper.Error(e, "BaseRpcComponentHandler.InnerAction, InnerActionAsync error, message type: {messageType}, message: {message}", RequestMessage.GetType().FullName, RequestMessage);
+                // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
+                LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
                 if (response != null && response.ErrorCode == 0)
                 {
                     response.ErrorCode = OperationErrorCode.InternalServerError;
                 }
             }
 
-            if (NetWorkChannel == null || NetWorkChannel.IsClosed() || response == null)
+            // 取消等路径下业务核心仍在运行（孤儿持有 response 引用）：写共享实例会被并发改写撕裂，
+            // 该响应无人等待时不写回（超时路径已用独立实例回写过 TimeOut）
+            if (coreTask != null && !coreTask.IsCompleted)
             {
                 return;
             }
 
-            await NetWorkChannel.WriteAsync(response);
-            MessageObjectPoolHelper.Return(response);
+            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
+            {
+                return;
+            }
+
+            await NetworkChannel.WriteAsync(response);
+        }
+        finally
+        {
+            ReturnResponseAtTerminalState(coreTask, response);
+        }
+    }
+
+    /// <summary>
+    /// 回写独立的超时响应（池化实例，写完即归还）：孤儿业务任务仍持有原响应，其写入不得污染已回写的超时响应。
+    /// </summary>
+    /// <param name="requestId">请求唯一标识，超时响应需携带 / The request id to carry on the timeout response</param>
+    private async Task WriteTimeoutResponseAsync(int requestId)
+    {
+        var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
+        try
+        {
+            timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
+            timeoutResponse.SetUniqueId(requestId);
+            if (NetworkChannel != null && !NetworkChannel.IsClosed())
+            {
+                await NetworkChannel.WriteAsync(timeoutResponse);
+            }
+        }
+        finally
+        {
+            MessageObjectPoolHelper.Return(timeoutResponse);
+        }
+    }
+
+    /// <summary>
+    /// 在响应到达终态时归还池化实例：核心任务已完成立即归还；孤儿业务任务（取消/超时后仍在运行，
+    /// 持有 response 引用）经终态延续归还，避免并发改写撕裂与对象池耗尽。
+    /// </summary>
+    /// <param name="coreTask">业务核心任务 / The business core task</param>
+    /// <param name="response">本次执行使用的池化响应 / The pooled response used by this execution</param>
+    private static void ReturnResponseAtTerminalState(Task coreTask, TResponse response)
+    {
+        if (coreTask == null || coreTask.IsCompleted)
+        {
+            if (response != null)
+            {
+                MessageObjectPoolHelper.Return(response);
+            }
+
+            return;
         }
 
-        CacheComponent.Tell(Work, timeout, cancellationToken);
-        return Task.CompletedTask;
+        _ = coreTask.ContinueWith((completedTask, state) =>
+        {
+            _ = completedTask.Exception;
+            var orphanResponse = (TResponse)state;
+            if (orphanResponse != null)
+            {
+                MessageObjectPoolHelper.Return(orphanResponse);
+            }
+        }, response, CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
     /// <summary>
@@ -171,15 +258,16 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     /// </summary>
     /// <typeparam name="TOtherAgent">组件代理类型</typeparam>
     /// <returns>组件代理任务</returns>
-    protected Task<TOtherAgent> GetComponentAgent<TOtherAgent>() where TOtherAgent : IComponentAgent
+    protected Task<TOtherAgent> GetComponentAgentAsync<TOtherAgent>() where TOtherAgent : IComponentAgent
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseRpcComponentHandler.GetComponentAgent, CacheComponent is null, message type: {messageType}", RequestMessage.GetType().FullName);
-            NetWorkChannel.Close();
-            return default;
+            // Localization: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull - BaseRpcComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
+            var errorMessage = LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentAgentCacheComponentNull, RequestMessage.GetType().FullName);
+            NetworkChannel.Close();
+            throw new InvalidOperationException(errorMessage);
         }
 
-        return CacheComponent.GetComponentAgent<TOtherAgent>();
+        return CacheComponent.GetComponentAgentAsync<TOtherAgent>();
     }
 }

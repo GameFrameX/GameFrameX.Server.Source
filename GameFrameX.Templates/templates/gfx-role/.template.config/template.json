@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "GameFrameX",
+  "classifications": [
+    "GameFrameX",
+    "ServerRole"
+  ],
+  "identity": "GameFrameX.RoleSlice",
+  "name": "GameFrameX 本地 server Actor 业务切片",
+  "shortName": "gfx-role",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "description": "生成同一 server Actor 上的本地业务切片：.proto 源、Apps 状态与组件、Hotfix 代理与处理器、规则及测试。保留既有 ServerRole 目录命名，不生成进程入口。在 Server.Source 仓根执行，协议须经现有导出流程生成后再构建。",
+  "symbols": {
+    "Name": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "切片名（PascalCase，如 Demo）；参与类型名、目录名与文件名替换",
+      "isRequired": true,
+      "replaces": "{{Name}}",
+      "fileRename": "{{Name}}"
+    },
+    "Domain": {
+      "type": "parameter",
+      "datatype": "int",
+      "description": "消息域号（3 位正整数 100-999；避开已用域号与 Online 预留段 600-649/700-799，治理表见 GameFrameX.Templates/README.md）",
+      "isRequired": true,
+      "replaces": "{{Domain}}",
+      "fileRename": "{{Domain}}"
+    }
+  }
+}

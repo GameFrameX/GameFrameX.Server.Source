@@ -1,33 +1,31 @@
 ﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
 
 using System;
 using System.Collections.Generic;
@@ -293,6 +291,7 @@ namespace GameFrameX.Tests.Utility
         #endregion
 
         #region IsNetworkReachable 方法测试
+#pragma warning disable CS0618 // 同步 Ping 为警告级废弃，回归用例钉住其既有契约
 
         /// <summary>
         /// 测试网络连通性检查（本地回环）
@@ -347,7 +346,164 @@ namespace GameFrameX.Tests.Utility
             Assert.Throws<ArgumentOutOfRangeException>(() => NetHelper.IsNetworkReachable("127.0.0.1", -1));
         }
 
+        /// <summary>
+        /// 测试异步网络连通性检查（本地回环）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithLocalhost_ShouldReturnTrue()
+        {
+            // Act
+            var isReachable = await NetHelper.IsNetworkReachableAsync("127.0.0.1", 1000);
+
+            // Assert
+            Assert.True(isReachable);
+        }
+
+        /// <summary>
+        /// 测试异步网络连通性检查（无效主机返回 false 而非抛出）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithInvalidHost_ShouldReturnFalse()
+        {
+            // Act
+            var isReachable = await NetHelper.IsNetworkReachableAsync("999.999.999.999", 1000);
+
+            // Assert
+            Assert.False(isReachable);
+        }
+
+        /// <summary>
+        /// 测试异步网络连通性检查参数校验（与同步契约一致）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithInvalidArguments_ShouldThrow()
+        {
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentNullException>(() => NetHelper.IsNetworkReachableAsync(null));
+            await Assert.ThrowsAsync<ArgumentException>(() => NetHelper.IsNetworkReachableAsync(""));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NetHelper.IsNetworkReachableAsync("127.0.0.1", -1));
+        }
+
+        /// <summary>
+        /// 测试异步网络连通性检查取消路径（预取消令牌不抛出、返回 false）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithExternalCancelledToken_ShouldReturnFalse()
+        {
+            // Arrange
+            using (var cancelled = new CancellationTokenSource())
+            {
+                await cancelled.CancelAsync();
+
+                // Act
+                var isReachable = await NetHelper.IsNetworkReachableAsync("127.0.0.1", 1000, cancelled.Token);
+
+                // Assert
+                Assert.False(isReachable);
+            }
+        }
+
+        /// <summary>
+        /// 测试异步端点解析（IP 直入与回环主机名解析）
+        /// </summary>
+        [Fact]
+        public async Task ParseEndPointAsync_WithIpAndLoopback_ShouldResolve()
+        {
+            // Act
+            var byIp = await NetHelper.ParseEndPointAsync("127.0.0.1", 8080);
+            var byHost = await NetHelper.ParseEndPointAsync("localhost", 8080);
+
+            // Assert
+            var ipEndpoint = Assert.IsType<IPEndPoint>(byIp);
+            Assert.Equal(IPAddress.Loopback, ipEndpoint.Address);
+            Assert.Equal(8080, ipEndpoint.Port);
+            Assert.NotNull(byHost);
+            Assert.Equal(8080, ((IPEndPoint)byHost).Port);
+        }
+
+        /// <summary>
+        /// 测试异步端点解析参数校验（与同步契约一致）
+        /// </summary>
+        [Fact]
+        public async Task ParseEndPointAsync_WithInvalidArguments_ShouldThrow()
+        {
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => NetHelper.ParseEndPointAsync("", 8080));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NetHelper.ParseEndPointAsync("127.0.0.1", 0));
+        }
+
+        /// <summary>
+        /// 测试异步域名解析（回环主机名至少可解析出一个地址；取消令牌可终止等待）
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithLoopback_ShouldResolveOrEmpty()
+        {
+            // Act
+            var address = await NetHelper.GetHostIPv4Async("localhost");
+
+            // Assert：localhost 必可解析（回环 IPv4），断言非空钉住成功路径
+            Assert.False(string.IsNullOrEmpty(address));
+        }
+
+        /// <summary>
+        /// 测试异步域名解析取消路径（预取消令牌使 DNS 等待立即终止）
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithCancelledToken_ShouldThrowOperationCanceledException()
+        {
+            // Arrange
+            using (var cancelled = new CancellationTokenSource())
+            {
+                await cancelled.CancelAsync();
+
+                // Act & Assert
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => NetHelper.GetHostIPv4Async("localhost", cancelled.Token));
+            }
+        }
+
+        /// <summary>
+        /// 测试异步域名解析有界完成；代理 DNS 可能为保留域名返回合成地址。
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithReservedDomain_ShouldNotHang()
+        {
+            // 外部等待只负责断言上限，不以取消令牌掩盖框架自己的超时约束。
+            string address = null;
+            var exception = await Record.ExceptionAsync(async () =>
+            {
+                address = await NetHelper.GetHostIPv4Async("nonexistent.invalid")
+                                         .WaitAsync(TimeSpan.FromSeconds(15));
+            });
+
+            Assert.False(exception is TimeoutException, "DNS resolution exceeded the completion bound.");
+            if (exception != null)
+            {
+                Assert.True(exception is SocketException or OperationCanceledException, exception.ToString());
+            }
+            else if (!string.IsNullOrEmpty(address))
+            {
+                Assert.True(IPAddress.TryParse(address, out var parsedAddress));
+                Assert.Equal(AddressFamily.InterNetwork, parsedAddress.AddressFamily);
+            }
+        }
+
+        /// <summary>
+        /// 回归：同步 ParseEndPoint 仍可用（Obsolete 仅警告级，不破坏编译与行为）
+        /// </summary>
+        [Fact]
+        public void ParseEndPoint_WithLoopbackIp_ShouldResolve()
+        {
+            // Act
+            var endPoint = NetHelper.ParseEndPoint("127.0.0.1", 8080);
+
+            // Assert
+            var ipEndpoint = Assert.IsType<IPEndPoint>(endPoint);
+            Assert.Equal(IPAddress.Loopback, ipEndpoint.Address);
+            Assert.Equal(8080, ipEndpoint.Port);
+        }
+
         #endregion
+#pragma warning restore CS0618
 
         #region GetMacAddresses 方法测试
 
@@ -657,6 +813,62 @@ namespace GameFrameX.Tests.Utility
             {
                 Assert.True(NetHelper.PortIsAvailable(port), $"端口 {port} 应该是可用的");
             }
+        }
+
+        #endregion
+
+        #region MAC 地址格式化与端口 bind 探测
+
+        /// <summary>
+        /// 偶数长度的物理地址按字节分组。
+        /// </summary>
+        [Fact]
+        public void FormatMacAddress_WithEvenLength_GroupsByByte()
+        {
+            Assert.Equal("A1:B2:C3:D4:E5:F6", NetHelper.FormatMacAddress("A1B2C3D4E5F6"));
+        }
+
+        /// <summary>
+        /// 奇数长度的物理地址左补 0，最后一位不得静默丢失。
+        /// </summary>
+        [Fact]
+        public void FormatMacAddress_WithOddLength_PreservesAllNibbles()
+        {
+            var formatted = NetHelper.FormatMacAddress("A1B2C3D4E");
+
+            Assert.Equal("0A:1B:2C:3D:4E", formatted);
+            Assert.Equal("0A1B2C3D4E", formatted.Replace(":", string.Empty));
+        }
+
+        /// <summary>
+        /// 已被监听占用的端口必须判定为不可用。
+        /// </summary>
+        [Fact]
+        public void PortIsAvailable_WithBoundPort_ReturnsFalse()
+        {
+            using (var listener = new TcpListener(IPAddress.Any, 0))
+            {
+                listener.Start();
+                var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+                Assert.False(NetHelper.PortIsAvailable(port));
+            }
+        }
+
+        /// <summary>
+        /// 已释放的端口必须判定为可用。
+        /// </summary>
+        [Fact]
+        public void PortIsAvailable_WithReleasedPort_ReturnsTrue()
+        {
+            int port;
+            using (var listener = new TcpListener(IPAddress.Any, 0))
+            {
+                listener.Start();
+                port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            }
+
+            Assert.True(NetHelper.PortIsAvailable(port));
         }
 
         #endregion

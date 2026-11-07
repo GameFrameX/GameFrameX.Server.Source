@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,49 +27,20 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Runtime.Loader;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.BaseHandler;
 using GameFrameX.Core.Components;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.HTTP;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility.Hotload;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Hotfix;
@@ -77,12 +48,12 @@ namespace GameFrameX.Core.Hotfix;
 /// <summary>
 /// 热更模块，负责热更新相关的初始化、卸载、解析DLL等工作。
 /// </summary>
-internal sealed class HotfixModule
+internal sealed class HotfixModule : ICollectibleAssemblyModule
 {
     /// <summary>
-    /// 角色类型到事件ID到监听者的映射。
+    /// 角色类型到事件参数类型到监听者的映射（事件绑定键为 GameEventArgs 子类的 Type）。
     /// </summary>
-    private readonly Dictionary<ushort, Dictionary<int, List<IEventListener>>> _actorEvtListeners = new Dictionary<ushort, Dictionary<int, List<IEventListener>>>(512);
+    private readonly Dictionary<ushort, Dictionary<Type, List<IEventListener>>> _actorEvtListeners = new Dictionary<ushort, Dictionary<Type, List<IEventListener>>>(512);
 
     /// <summary>
     /// 代理类型到代理包装类型的映射。
@@ -100,6 +71,11 @@ internal sealed class HotfixModule
     private readonly Dictionary<Type, Type> _compAgentMap = new Dictionary<Type, Type>(512);
 
     /// <summary>
+    /// 组件类型到代理实例工厂的映射（已按 _useAgentWrapper 选好包装类型或代理类型，注册期构建）。
+    /// </summary>
+    private readonly Dictionary<Type, Func<IComponentAgent>> _agentFactoryMap = new Dictionary<Type, Func<IComponentAgent>>(512);
+
+    /// <summary>
     /// DLL路径。
     /// </summary>
     private readonly string _dllPath;
@@ -107,22 +83,21 @@ internal sealed class HotfixModule
     /// <summary>
     /// HTTP命令到处理器的映射。
     /// </summary>
-    private readonly ConcurrentDictionary<string, BaseHttpHandler> _httpHandlerMap = new ConcurrentDictionary<string, BaseHttpHandler>();
+    private readonly ConcurrentDictionary<string, BaseHttpHandler> _httpHandlerMap = new ConcurrentDictionary<string, BaseHttpHandler>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// RPC请求类型到响应类型的映射。
+    /// RPC请求类型到处理器实例工厂的映射（注册期经 CreateFactory 校验并构建；处理器有状态，工厂每次调用创建新实例）。
     /// </summary>
-    private readonly ConcurrentDictionary<Type, Type> _rpcHandlerMap = new ConcurrentDictionary<Type, Type>();
-
+    private readonly ConcurrentDictionary<Type, Func<IMessageHandler>> _rpcHandlerMap = new ConcurrentDictionary<Type, Func<IMessageHandler>>();
     /// <summary>
-    /// 消息ID到处理器类型的映射。
+    /// 消息ID到处理器实例工厂的映射（注册期构建；处理器有状态，工厂每次调用创建新实例）。
     /// </summary>
-    private readonly ConcurrentDictionary<int, Type> _tcpHandlerMap = new ConcurrentDictionary<int, Type>();
+    private readonly ConcurrentDictionary<int, Func<IMessageHandler>> _messageHandlerMap = new ConcurrentDictionary<int, Func<IMessageHandler>>();
 
     /// <summary>
     /// 消息处理类型列表
     /// </summary>
-    private readonly List<Type> _tcpHandlerTypes = new List<Type>(512);
+    private readonly List<Type> _messageHandlerTypes = new List<Type>(512);
 
     /// <summary>
     /// 类型缓存。
@@ -135,9 +110,15 @@ internal sealed class HotfixModule
     private readonly bool _useAgentWrapper = true;
 
     /// <summary>
-    /// DLL加载器。
+    /// 可收集加载上下文（模块生命周期与卸载验证经 <see cref="ICollectibleAssemblyModule"/> 契约由模块链驱动）。
+    /// The collectible load context (module lifecycle and unload verification are driven by the module chain via the <see cref="ICollectibleAssemblyModule"/> contract).
     /// </summary>
-    private DllLoader _dllLoader;
+    private CollectibleAssemblyLoadContext _loadContext;
+    /// <summary>
+    /// 热更装载参数（磁盘装载构造用；承载装载哈希期望值等校验输入）。
+    /// </summary>
+    private readonly HotfixLoadOptions _loadOptions;
+
 
     /// <summary>
     /// 热更程序集。
@@ -145,12 +126,36 @@ internal sealed class HotfixModule
     internal Assembly HotfixAssembly;
 
     /// <summary>
+    /// 获取模块装载的程序集（<see cref="ICollectibleAssemblyModule"/> 契约成员，供退役链按程序集身份路由）。
+    /// Gets the assembly loaded by this module (the <see cref="ICollectibleAssemblyModule"/> contract member used
+    /// for assembly-identity routing on the retirement chain).
+    /// </summary>
+    Assembly ICollectibleAssemblyModule.LoadedAssembly
+    {
+        get { return HotfixAssembly; }
+    }
+
+    /// <summary>
     /// 构造函数，接受DLL路径。
     /// </summary>
     /// <param name="dllPath">DLL路径。</param>
-    internal HotfixModule(string dllPath)
+    /// <param name="loadOptions">装载参数（null 时无哈希期望，行为与无参装载一致）。</param>
+    internal HotfixModule(string dllPath, HotfixLoadOptions loadOptions = null)
     {
         _dllPath = dllPath;
+        _loadOptions = loadOptions;
+    }
+
+    /// <summary>
+    /// 获取模块的 DLL 完整路径（装载入口幂等判重用：同路径重复装载时跳过）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the module's full DLL path (used by the load entries for same-path idempotency:
+    /// repeated loads of the same path are skipped).
+    /// </remarks>
+    internal string DllPath
+    {
+        get { return _dllPath; }
     }
 
     /// <summary>
@@ -159,7 +164,18 @@ internal sealed class HotfixModule
     internal HotfixModule()
     {
         HotfixAssembly = Assembly.GetEntryAssembly();
-        ParseDll();
+        ConvertHotfixAssembly();
+    }
+
+    /// <summary>
+    /// 测试用构造函数：直接扫描指定程序集并解析注册（不经磁盘 DLL 加载）。
+    /// </summary>
+    /// <param name="assembly">要解析的热更程序集。</param>
+    internal HotfixModule(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        HotfixAssembly = assembly;
+        ConvertHotfixAssembly();
     }
 
     /// <summary>
@@ -177,22 +193,26 @@ internal sealed class HotfixModule
         var success = false;
         try
         {
-            _dllLoader = new DllLoader(_dllPath);
-            HotfixAssembly = _dllLoader.HotfixDll;
-            if (!reload)
-            {
-                // 启动服务器时加载关联的DLL
-                LoadRefAssemblies();
-            }
+            // 装载信任防线：开关开启且配置了期望哈希时，在创建可收集上下文与装载前完成内容完整性校验
+            //（校验失败时起服路径异常上抛、reload 路径经 catch 返回 false，且不产生任何 ALC/装载副作用）
+            VerifyAssemblyHash();
 
-            ParseDll();
+            _loadContext = new CollectibleAssemblyLoadContext();
+            HotfixAssembly = _loadContext.LoadFromAssemblyPath(_dllPath);
+            // 依赖装载进当前模块的可收集上下文，随模块退役回收；热重载路径同样需要
+            //（新上下文内没有副本，若仅启动时装载，重载后的热更程序集在首次使用依赖类型时解析失败）
+            LoadRefAssemblies();
 
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllInitializationSuccess, _dllPath));
+            ConvertHotfixAssembly();
+
+            // Localization: Core.Hotfix.DllInitializationSuccess - 热更DLL初始化成功: {0}
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationSuccess, _dllPath));
             success = true;
         }
         catch (Exception e)
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllInitializationFailed, e));
+            // Localization: Core.Hotfix.DllInitializationFailed - 热更DLL初始化失败...\n{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationFailed, e));
             if (!reload)
             {
                 throw;
@@ -203,30 +223,23 @@ internal sealed class HotfixModule
     }
 
     /// <summary>
-    /// 卸载热更模块。
+    /// 卸载热更模块底层的可收集上下文（契约成员）。
+    /// Unloads the module's underlying collectible context (contract member).
     /// </summary>
-    public void Unload()
+    /// <returns>
+    /// 指向已卸载上下文的弱引用（供模块链做 GC 释放验证）；未持有上下文（如测试构造）时返回 <c>null</c>。
+    /// A weak reference to the unloaded context (for the module chain's GC release verification); <c>null</c>
+    /// when no context is owned (e.g. test-constructed modules).
+    /// </returns>
+    public WeakReference Unload()
     {
-        if (_dllLoader != null)
+        if (_loadContext == null)
         {
-            var weak = _dllLoader.Unload();
-            if (GlobalSettings.CurrentSetting.IsDebug)
-            {
-                // 检查热更DLL是否已经释放
-                Task.Run(async () =>
-                {
-                    var tryCount = 0;
-                    while (weak.IsAlive && tryCount++ < 10)
-                    {
-                        await Task.Delay(100);
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-                    }
-
-                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllUninstall, weak.IsAlive ? "failure" : "successful"));
-                });
-            }
+            return null;
         }
+
+        _loadContext.Unload();
+        return new WeakReference(_loadContext);
     }
 
     /// <summary>
@@ -234,8 +247,12 @@ internal sealed class HotfixModule
     /// </summary>
     private void LoadRefAssemblies()
     {
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        var nameSet = new HashSet<string>(assemblies.Select(t => t.GetName().Name));
+        // 判重基准只取默认加载上下文内已存在的程序集名：可收集上下文（历史模块）内的同名副本
+        // 不参与判重——热重载的新模块需要自己上下文内的副本，否则依赖类型在新模块内解析失败
+        var defaultLoadContext = AssemblyLoadContext.Default;
+        var nameSet = new HashSet<string>(AppDomain.CurrentDomain.GetAssemblies()
+            .Where(t => AssemblyLoadContext.GetLoadContext(t) == defaultLoadContext)
+            .Select(t => t.GetName().Name));
         var hotfixRefAssemblies = HotfixAssembly.GetReferencedAssemblies();
         foreach (var refAssembly in hotfixRefAssemblies)
         {
@@ -247,15 +264,44 @@ internal sealed class HotfixModule
             var refPath = $"{Environment.CurrentDirectory}/{refAssembly.Name}.dll";
             if (File.Exists(refPath))
             {
-                Assembly.LoadFrom(refPath);
+                // 依赖与主模块同生共死：经可收集上下文装载，随模块卸载回收，不再进入默认 ALC 永不卸载
+                _loadContext.LoadFromAssemblyPath(refPath);
             }
+        }
+    }
+
+    /// <summary>
+    /// 装载前校验热更程序集内容完整性：灰度开关开启且配置了期望 SHA-256 时流式计算文件哈希，不匹配即抛出。
+    /// </summary>
+    /// <remarks>
+    /// 开关关闭（默认）或未配置期望哈希时不做任何事，行为与历史逐字节一致。
+    /// </remarks>
+    private void VerifyAssemblyHash()
+    {
+        var expectedSha256 = _loadOptions?.ExpectedSha256;
+        if (string.IsNullOrEmpty(expectedSha256) || !(GlobalSettings.CurrentSetting?.HotfixVerifyEnabled ?? false))
+        {
+            return;
+        }
+
+        string actualSha256;
+        using (var fileStream = File.OpenRead(_dllPath))
+        using (var sha256 = SHA256.Create())
+        {
+            actualSha256 = Convert.ToHexString(sha256.ComputeHash(fileStream));
+        }
+
+        if (!string.Equals(expectedSha256, actualSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            // Localization: CoreExceptions.HotfixModule.AssemblyHashMismatch - 热更程序集哈希校验失败，路径:{0} 期望SHA-256:{1} 实际SHA-256:{2}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.AssemblyHashMismatch, _dllPath, expectedSha256, actualSha256));
         }
     }
 
     /// <summary>
     /// 解析DLL中的类型并进行注册。
     /// </summary>
-    private void ParseDll()
+    private void ConvertHotfixAssembly()
     {
         var fullName = typeof(IHotfixBridge).FullName;
         var types = HotfixAssembly.GetTypes();
@@ -263,20 +309,76 @@ internal sealed class HotfixModule
         {
             if (!AddAgent(type)
                 && !AddEvent(type)
-                && !AddTcpHandler(type)
+                && !AddMessageHandler(type)
                 && !AddHttpHandler(type))
             {
                 if (HotfixBridge.IsNull() && type.GetInterface(fullName) != null)
                 {
-                    var bridge = (IHotfixBridge)Activator.CreateInstance(type);
-
-                    HotfixBridge = bridge;
+                    HotfixBridge = CreateFactory<IHotfixBridge>(type)();
                 }
             }
 
             AddRpcHandler(type);
         }
+
+        BuildAgentFactories();
     }
+
+    /// <summary>
+    /// 为每个已注册组件构建代理实例工厂（启用包装且存在对应包装类型时优先包装类型），注册期即校验实现类型的可实例化条件。
+    /// </summary>
+    /// <remarks>
+    /// 工厂必须在类型枚举循环结束后统一构建：类型枚举顺序不确定，登记某个代理类型时其包装类型可能尚未被扫描登记。
+    /// </remarks>
+    private void BuildAgentFactories()
+    {
+        foreach (var (componentType, agentType) in _compAgentMap)
+        {
+            var implementationType = agentType;
+            if (_useAgentWrapper && _agentAgentWrapperMap.TryGetValue(agentType, out var wrapperType))
+            {
+                implementationType = wrapperType;
+            }
+
+            _agentFactoryMap[componentType] = CreateFactory<IComponentAgent>(implementationType);
+        }
+    }
+
+    /// <summary>
+    /// 注册期创建并缓存实例工厂：校验实现类型是否为可实例化的封闭类型、是否实现 <typeparamref name="TService"/>、是否具有公共无参构造函数。
+    /// </summary>
+    /// <param name="implementationType">实现类型。</param>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <returns>创建 <typeparamref name="TService"/> 实例的强类型工厂委托。</returns>
+    /// <exception cref="InvalidOperationException">实现类型不满足上述条件。</exception>
+    private static Func<TService> CreateFactory<TService>(Type implementationType) where TService : class
+    {
+        if (implementationType.IsAbstract
+            || implementationType.ContainsGenericParameters
+            || !typeof(TService).IsAssignableFrom(implementationType)
+            || implementationType.GetConstructor(Type.EmptyTypes) == null)
+        {
+            // Localization: CoreExceptions.Hotfix.MissingParameterlessConstructor - {0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MissingParameterlessConstructor, implementationType.FullName, typeof(TService).FullName));
+        }
+
+        var createInstanceMethod = typeof(HotfixModule)
+                                   .GetMethod(nameof(CreateInstance), BindingFlags.NonPublic | BindingFlags.Static)
+                                   .MakeGenericMethod(typeof(TService), implementationType);
+        return createInstanceMethod.CreateDelegate<Func<TService>>();
+    }
+
+    /// <summary>
+    /// 泛型实例化目标方法：经 <see cref="CreateFactory{TService}" /> 的泛型方法实例化转为强类型工厂委托，运行时直接调用无参构造，避免每次调用走反射激活。
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <typeparam name="TImplementation">实现类型（受 new() 约束，实例化时由运行时直接调用其无参构造）。</typeparam>
+    /// <returns>新创建的实现实例。</returns>
+    private static TService CreateInstance<TService, TImplementation>() where TImplementation : TService, new()
+    {
+        return new TImplementation();
+    }
+
 
     /// <summary>
     /// 添加HTTP处理器。
@@ -297,17 +399,25 @@ internal sealed class HotfixModule
             return true;
         }
 
-        var handler = (BaseHttpHandler)Activator.CreateInstance(type);
+        var handler = CreateFactory<BaseHttpHandler>(type)();
         // 注册原始命令
         if (!_httpHandlerMap.TryAdd(attr.OriginalCmd, handler))
         {
-            throw new Exception($"HTTP processor command repeatedly registers, command:{attr.OriginalCmd}");
+            // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
+        }
+
+        // 注册标准化的命名：与原始命令仅大小写等价（全小写类名）时同一命令，跳过二次注册
+        if (string.Equals(attr.OriginalCmd, attr.StandardCmd, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
         }
 
         // 注册标准化的命名
         if (!_httpHandlerMap.TryAdd(attr.StandardCmd, handler))
         {
-            throw new Exception($"HTTP processor command repeatedly registers, command:{attr.OriginalCmd}");
+            // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.StandardCmd));
         }
 
         return true;
@@ -321,22 +431,16 @@ internal sealed class HotfixModule
     /// <returns>对应的 <see cref="IMessageHandler"/> 实例，如果未找到则返回 null。</returns>
     internal IMessageHandler GetRpcHandler(Type type)
     {
-        if (!_rpcHandlerMap.TryGetValue(type, out var handlerType))
+        if (!_rpcHandlerMap.TryGetValue(type, out var handlerFactory))
         {
             return default;
         }
 
-        var instance = Activator.CreateInstance(handlerType);
-        if (instance is IMessageHandler handler)
-        {
-            return handler;
-        }
-
-        throw new Exception($"wrong tcp processor type:{instance.GetType().FullName}");
+        return handlerFactory();
     }
 
     /// <summary>
-    /// 添加RPC处理器。
+    /// 添加RPC处理器：注册期经 <see cref="CreateFactory{TService}"/> 校验可实例化契约并构建工厂，同一请求消息重复注册 fail-fast。
     /// </summary>
     /// <param name="type">处理器类型。</param>
     /// <returns>是否添加成功。</returns>
@@ -348,24 +452,22 @@ internal sealed class HotfixModule
             return false;
         }
 
-        var isHas = _rpcHandlerMap.TryGetValue(attribute.RequestMessage.GetType(), out var requestHandler);
-        if (isHas && requestHandler?.GetType() == attribute.ResponseMessage.GetType())
+        var handlerFactory = CreateFactory<IMessageHandler>(type);
+        if (!_rpcHandlerMap.TryAdd(attribute.RequestMessageType, handlerFactory))
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered, attribute.RequestMessage));
-            return false;
+            // Localization: CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered - RPC处理器重复注册，请求消息类型:{0} 处理器类型:{1}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered, attribute.RequestMessageType.FullName, type.FullName));
         }
-
-        _rpcHandlerMap.TryAdd(attribute.RequestMessage.GetType(), attribute.ResponseMessage.GetType());
 
         return true;
     }
 
     /// <summary>
-    /// 添加TCP处理器。
+    /// 添加消息处理器。
     /// </summary>
     /// <param name="type">处理器类型。</param>
     /// <returns>是否添加成功。</returns>
-    private bool AddTcpHandler(Type type)
+    private bool AddMessageHandler(Type type)
     {
         var attribute = (MessageMappingAttribute)type.GetCustomAttribute(typeof(MessageMappingAttribute), true);
         if (attribute == null)
@@ -381,17 +483,20 @@ internal sealed class HotfixModule
 
         if (!type.IsSealed)
         {
-            throw new InvalidOperationException($"{classFullName} must be a class marked as sealed");
+            // Localization: CoreExceptions.Hotfix.ClassMustBeSealed - {0} 必须是标记为sealed的类
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ClassMustBeSealed, classFullName));
         }
 
         if (!classFullName.EndsWith(GlobalConst.ComponentHandlerNameSuffix))
         {
-            throw new Exception($"the message processor must be in the[{GlobalConst.ComponentHandlerNameSuffix}]ending，{classFullName}");
+            // Localization: CoreExceptions.Hotfix.MessageProcessorWrongSuffix - 消息处理器必须以[{0}]结尾，{1}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MessageProcessorWrongSuffix, GlobalConst.ComponentHandlerNameSuffix, classFullName));
         }
 
-        if (_tcpHandlerTypes.Contains(attribute.MessageType))
+        if (_messageHandlerTypes.Contains(attribute.MessageType))
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, type.FullName));
+            // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, type.FullName));
             return false;
         }
 
@@ -402,17 +507,19 @@ internal sealed class HotfixModule
         }
 
         var msgId = msgIdField.MessageId;
-        if (!_tcpHandlerMap.TryAdd(msgId, type))
+        var messageHandlerFactory = CreateFactory<IMessageHandler>(type);
+        if (!_messageHandlerMap.TryAdd(msgId, messageHandlerFactory))
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, type));
+            // Localization: CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered - 消息号重复注册，消息号:{0} 处理器类型:{1}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered, msgId, type.FullName));
         }
 
-        _tcpHandlerTypes.Add(attribute.MessageType);
+        _messageHandlerTypes.Add(attribute.MessageType);
         return true;
     }
 
     /// <summary>
-    /// 添加事件监听者。
+    /// 添加事件监听者：读取 <see cref="EventAttribute" /> 按事件参数类型注册。
     /// </summary>
     /// <param name="type">监听者类型。</param>
     /// <returns>是否添加成功。</returns>
@@ -431,35 +538,42 @@ internal sealed class HotfixModule
 
         if (!type.IsSealed)
         {
-            throw new InvalidOperationException($"{classFullName} must be a class marked as sealed");
+            // Localization: CoreExceptions.Hotfix.ClassMustBeSealed - {0} 必须是标记为sealed的类
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ClassMustBeSealed, classFullName));
         }
 
         if (!classFullName.EndsWith(GlobalConst.EventListenerNameSuffix))
         {
-            throw new Exception($"the event handler must be based on [{GlobalConst.EventListenerNameSuffix}] ending，{classFullName}");
+            // Localization: CoreExceptions.Hotfix.EventHandlerWrongSuffix - 事件处理器必须以[{0}]结尾，{1}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.EventHandlerWrongSuffix, GlobalConst.EventListenerNameSuffix, classFullName));
         }
 
-        var compAgentType = type.BaseType.GetGenericArguments()[0];
-        var compType = compAgentType.BaseType.GetGenericArguments()[0];
-        var actorType = ComponentRegister.ComponentActorDic[compType];
+        var compAgentType = GetComponentTypeFromAgent(type);
+        var compType = GetComponentTypeFromAgent(compAgentType);
+        if (!ComponentRegister.ComponentActorDic.TryGetValue(compType, out var actorType))
+        {
+            // Localization: CoreExceptions.Component.ActorTypeNotBound - 组件:[{0}] Actor类型未绑定
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorTypeNotBound, compType.FullName));
+        }
+
         var evtListenersDic = _actorEvtListeners.GetOrAddValue(actorType);
 
-        var eventInfoAttributes = type.GetCustomAttributes<EventInfoAttribute>();
-        var infoAttributes = eventInfoAttributes.ToList();
-        if (infoAttributes.Count == 0)
+        var eventAttribute = type.GetCustomAttribute<EventAttribute>();
+        if (eventAttribute == null)
         {
-            throw new Exception($"IEventListener:{type.FullName} There are no events that are specified to listen to");
+            // Localization: CoreExceptions.Hotfix.NoEventsToListen - IEventListener:{0} 没有指定要监听的事件
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.NoEventsToListen, type.FullName));
         }
 
-        var eventInfoAttribute = infoAttributes.FirstOrDefault();
-        if (eventInfoAttribute == null)
+        var eventArgsType = eventAttribute.EventArgsType;
+        if (!typeof(GameEventArgs).IsAssignableFrom(eventArgsType))
         {
-            throw new Exception($"IEventListener:{type.FullName} There are no events that are specified to listen to");
+            // Localization: CoreExceptions.Hotfix.EventArgsTypeInvalid - 事件监听器:{0} 绑定的类型 {1} 必须是 GameEventArgs 的子类
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.EventArgsTypeInvalid, type.FullName, eventArgsType.FullName));
         }
 
-        var evtId = eventInfoAttribute.EventId;
-        var listeners = evtListenersDic.GetOrAddValue(evtId);
-        listeners.Add((IEventListener)Activator.CreateInstance(type));
+        var listeners = evtListenersDic.GetOrAddValue(eventArgsType);
+        listeners.Add(CreateFactory<IEventListener>(type)());
 
         return true;
     }
@@ -471,7 +585,7 @@ internal sealed class HotfixModule
     /// <returns>是否添加成功。</returns>
     private bool AddAgent(Type type)
     {
-        ArgumentNullException.ThrowIfNull(type, nameof(type));
+        ArgumentNullException.ThrowIfNull(type);
         if (!type.IsImplWithInterface(typeof(IComponentAgent)))
         {
             return false;
@@ -479,11 +593,6 @@ internal sealed class HotfixModule
 
         var fullName = type.FullName;
         if (fullName == null)
-        {
-            return false;
-        }
-
-        if (fullName == "GameFrameX.Launcher.Logic.Server.ServerComp")
         {
             return false;
         }
@@ -497,41 +606,53 @@ internal sealed class HotfixModule
 
         if (!fullName.EndsWith(GlobalConst.ComponentAgentNameSuffix))
         {
-            throw new Exception($"the component agent must be based on [{GlobalConst.ComponentAgentNameSuffix}] ending，{fullName}");
+            // Localization: CoreExceptions.Hotfix.ComponentAgentWrongSuffix - 组件代理必须以[{0}]结尾，{1}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ComponentAgentWrongSuffix, GlobalConst.ComponentAgentNameSuffix, fullName));
         }
 
-        var compType = type.BaseType.GetGenericArguments()[0];
+        var compType = GetComponentTypeFromAgent(type);
         if (!_compAgentMap.TryAdd(compType, type))
         {
-            throw new Exception($"component:[{compType.FullName}] there are multiple agents");
+            // Localization: CoreExceptions.Hotfix.MultipleAgents - 组件:[{0}] 存在多个代理
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MultipleAgents, compType.FullName));
         }
 
         _agentCompMap[type] = compType;
         return true;
     }
 
+    /// <summary>
+    /// 从代理/监听器类型反推其组件类型：读取基类泛型参数并做契约守卫。
+    /// </summary>
+    /// <param name="agentType">代理或监听器类型。</param>
+    /// <returns>基类泛型参数指定的组件（或代理）类型。</returns>
+    /// <exception cref="InvalidOperationException">基类为空、非泛型或未声明泛型参数（契约违规类型）。</exception>
+    internal static Type GetComponentTypeFromAgent(Type agentType)
+    {
+        var baseType = agentType.BaseType;
+        if (baseType == null || !baseType.IsGenericType || baseType.GetGenericArguments().Length == 0)
+        {
+            // Localization: CoreExceptions.HotfixModule.AgentBaseTypeInvalid - 组件代理基类型无效，无法推导组件类型: {0}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.AgentBaseTypeInvalid, agentType.FullName));
+        }
+
+        return baseType.GetGenericArguments()[0];
+    }
+
 
     /// <summary>
-    /// 获取TCP处理器。
+    /// 获取消息处理器。
     /// </summary>
     /// <param name="msgId">消息ID。</param>
-    /// <returns>TCP处理器实例。</returns>
-    internal IMessageHandler GetTcpHandler(int msgId)
+    /// <returns>消息处理器实例。</returns>
+    internal IMessageHandler GetMessageHandler(int msgId)
     {
-        if (!_tcpHandlerMap.TryGetValue(msgId, out var handlerType))
+        if (!_messageHandlerMap.TryGetValue(msgId, out var messageHandlerFactory))
         {
             return default;
         }
 
-        var instance = Activator.CreateInstance(handlerType);
-        if (instance is IMessageHandler handler)
-        {
-            return handler;
-        }
-
-        throw new Exception($"wrong tcp processor type:{instance.GetType().FullName}");
-
-        //throw new HandlerNotFoundException($"消息ID：{msgId}");
+        return messageHandlerFactory();
     }
 
     /// <summary>
@@ -557,15 +678,15 @@ internal sealed class HotfixModule
     internal List<BaseHttpHandler> GetListHttpHandler()
     {
         var values = _httpHandlerMap.Values;
-        List<BaseHttpHandler> list = new List<BaseHttpHandler>(values.Count / 2);
+        var seenHandlers = new HashSet<BaseHttpHandler>();
+        var list = new List<BaseHttpHandler>(values.Count / 2);
         foreach (var handler in values)
         {
-            if (list.Contains(handler))
+            // 同一处理器实例可注册多个 cmd，引用去重线性完成
+            if (seenHandlers.Add(handler))
             {
-                continue;
+                list.Add(handler);
             }
-
-            list.Add(handler);
         }
 
         return list;
@@ -580,43 +701,26 @@ internal sealed class HotfixModule
     internal T GetAgent<T>(BaseComponent component) where T : class, IComponentAgent
     {
         var type = component.GetType();
-        if (_compAgentMap.TryGetValue(type, out var agentType))
+        if (_agentFactoryMap.TryGetValue(type, out var agentFactory))
         {
-            T agent = null;
-            if (_useAgentWrapper)
-            {
-                if (_agentAgentWrapperMap.TryGetValue(agentType, out var warpType))
-                {
-                    agent = (T)Activator.CreateInstance(warpType);
-                }
-            }
-
-            if (agent.IsNull())
-            {
-                agent = (T)Activator.CreateInstance(agentType);
-            }
-
-            if (agent.IsNull())
-            {
-                throw new ArgumentNullException(nameof(agent));
-            }
-
+            var agent = (T)agentFactory();
             agent.SetOwner(component);
             return agent;
         }
 
-        throw new KeyNotFoundException(nameof(_compAgentMap) + " ===>" + nameof(type));
+        // Localization: Exceptions.Hotfix.ComponentAgentMapNotFound - 未找到组件代理映射：{0} ===> {1}
+        throw new KeyNotFoundException(LocalizationService.GetString(Localization.Keys.Exceptions.Component_Agent_Map_Not_Found, nameof(_compAgentMap), type.FullName));
     }
 
     /// <summary>
     /// 查找事件监听者。
     /// </summary>
     /// <param name="actorType">角色类型。</param>
-    /// <param name="eventId">事件ID。</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）。</param>
     /// <returns>事件监听者列表。</returns>
-    internal List<IEventListener> FindListeners(ushort actorType, int eventId)
+    internal List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
     {
-        if (_actorEvtListeners.TryGetValue(actorType, out var eventListeners) && eventListeners.TryGetValue(eventId, out var listeners))
+        if (_actorEvtListeners.TryGetValue(actorType, out var eventListeners) && eventListeners.TryGetValue(eventArgsType, out var listeners))
         {
             return listeners;
         }
@@ -627,14 +731,14 @@ internal sealed class HotfixModule
     /// <summary>
     /// 查找事件监听者。
     /// </summary>
-    /// <param name="eventId">事件ID。</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）。</param>
     /// <returns>事件监听者列表。</returns>
-    internal List<IEventListener> FindListeners(int eventId)
+    internal List<IEventListener> FindListeners(Type eventArgsType)
     {
         var listenerList = new List<IEventListener>(32);
         foreach (var actorEvtListener in _actorEvtListeners)
         {
-            if (actorEvtListener.Value.TryGetValue(eventId, out var listeners))
+            if (actorEvtListener.Value.TryGetValue(eventArgsType, out var listeners))
             {
                 listenerList.AddRange(listeners);
             }
@@ -651,7 +755,21 @@ internal sealed class HotfixModule
     /// <returns>实例对象。</returns>
     internal T GetInstance<T>(string typeName)
     {
-        return (T)_typeCacheMap.GetOrAdd(typeName, k => HotfixAssembly.CreateInstance(k));
+        if (!_typeCacheMap.TryGetValue(typeName, out var value))
+        {
+            value = HotfixAssembly.CreateInstance(typeName);
+            if (value == null)
+            {
+                // ConcurrentDictionary 不接受 null 值，工厂返回 null 会抛脱离语境的 ArgumentNullException；
+                // 此处显式抛带类型名的契约异常
+                // Localization: CoreExceptions.Hotfix.TypeNotFound - 未找到类型：{0}
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.TypeNotFound, typeName));
+            }
+
+            _typeCacheMap[typeName] = value;
+        }
+
+        return (T)value;
     }
 
     /// <summary>

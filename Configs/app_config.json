@@ -1,0 +1,31 @@
+[
+  {
+    "ServerType": "Game",
+    "ServerId": 1001,
+    "ServerInstanceId": 1001,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 29100,
+    "OuterHost": "0.0.0.0",
+    "OuterPort": 29100,
+    "HttpPort": 28080,
+    "WsPort": 29110,
+    "KcpPort": 29120,
+    "IsEnableKcp": false,
+    "OnlineAdminPort": 28090,
+    "MetricsPort": 29090,
+    "Online": {
+      "EnableRuntime": true,
+      "EnableAdminApi": true,
+      "EnableRoles": [
+        "Game"
+      ],
+      "UseGameDbStores": true
+    },
+    "MinModuleId": 10,
+    "MaxModuleId": 9999,
+    "DataBaseUrl": "Data Source=data/gameframex.db",
+    "DataBaseName": "gameframex",
+    "DatabaseProvider": "Sqlite",
+    "HttpIsDevelopment": true
+  }
+]

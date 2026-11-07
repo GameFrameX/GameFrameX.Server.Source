@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <Import Project="../Version.props" Label="版本号定义"/>
     <PropertyGroup>
-        <Description>GameFrameX.DataBase.Mongo,GameFrameX 框架的基础设施框架库,用于和数据库交互的接口.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Database,Core,MongoDB,Server,GameServer</PackageTags>
+        <Description>GameFrameX.DataBase.Mongo,GameFrameX 框架的 MongoDB 数据访问实现模块. MongoDB data access implementation module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,DataBase,Database,MongoDB,Persistence,Repository,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
@@ -11,8 +11,13 @@
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 
+    <!-- 数据库实现的 internal 测试接口向强名称测试程序集开放。 -->
     <ItemGroup>
-        <PackageReference Include="MongoDB.Driver" Version="3.7.1" />
+        <InternalsVisibleTo Include="GameFrameX.Tests, PublicKey=0024000004800000140100000602000000240000525341310008000001000100dbdd8ce8567465b0c7a56029b2f252989170cd00f15cd79b53c1cb8ecea09065a7fec9bfd5e241999707748cd59c25b4d8a721a1fe741495720642bae68ee134ba578cb153bd380d440e1908191e5a27ae79534f7dbd8c70c6fc18f26c1afaafe76d0b95d366b1bc81bffcf317673f37c839533a14f8939274c75fc8588134edad6d08f783a29916954fa5df678ed4dc9395c9618000d05be87d9caf15005987b48b224bdfcb07ea467ecc8be679620662a75b6a5b6748154664c8aa831c65428af7e5a955aa4eef974c0351a7865b9868d1c81a599eeda487bc5b46d0cbfd67729ae7d8e4c81b651bbbcc33e493f8d978b45350c7191e92989585ab7bf693bf"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MongoDB.Driver" Version="3.12.0" />
     </ItemGroup>
 
 </Project>

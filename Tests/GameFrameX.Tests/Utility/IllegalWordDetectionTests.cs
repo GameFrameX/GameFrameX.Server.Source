@@ -1,33 +1,31 @@
 ﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
 
 using System;
 using System.Collections.Generic;
@@ -75,9 +73,12 @@ namespace GameFrameX.Tests.Utility
             // Arrange
             var badWords = new[] { "test1", "test2", "test3" };
 
-            // Act & Assert
-            // 不应该抛出异常
+            // Act
             IllegalWordDetection.Init(badWords, false);
+
+            // Assert
+            // 非空同步初始化后该词条应可被检测到，验证初始化真正生效
+            Assert.True(IllegalWordDetection.HasBlockWords("test1"));
         }
 
         /// <summary>
@@ -90,7 +91,9 @@ namespace GameFrameX.Tests.Utility
             var emptyArray = Array.Empty<string>();
 
             // Act & Assert
-            IllegalWordDetection.Init(emptyArray, false);
+            // 空数组初始化不应抛出异常
+            var exception = Record.Exception(() => IllegalWordDetection.Init(emptyArray, false));
+            Assert.Null(exception);
         }
 
         /// <summary>
@@ -100,7 +103,9 @@ namespace GameFrameX.Tests.Utility
         public void Init_WithNullArray_ShouldNotThrow()
         {
             // Act & Assert
-            IllegalWordDetection.Init((string[])null, false);
+            // null 数组初始化不应抛出异常
+            var exception = Record.Exception(() => IllegalWordDetection.Init((string[])null, false));
+            Assert.Null(exception);
         }
 
         /// <summary>
@@ -482,6 +487,127 @@ namespace GameFrameX.Tests.Utility
             var averageTime = totalTime / iterations;
             Assert.True(averageTime < 10, $"平均检测时间应该小于10ms，实际: {averageTime:F2}ms");
         }
+
+        #endregion
+
+        #region 线程安全与缓冲区测试
+
+        /// <summary>
+        /// 测试在未执行初始化的线程上检测：ThreadStatic 检测缓冲区必须按需懒分配，不抛 NullReferenceException。
+        /// </summary>
+        [Fact]
+        public void HasBlockWords_OnThreadWithoutInitializedBuffer_ShouldNotThrowAndReturnTrue()
+        {
+            // Arrange：主线程同步初始化，新建工作线程的检测缓冲区为 null
+            IllegalWordDetection.Init(new[] { "跨线程检测词" }, false);
+            Exception capturedException = null;
+            var hasIllegalWords = false;
+            var workerThread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    hasIllegalWords = IllegalWordDetection.HasBlockWords("前缀跨线程检测词后缀");
+                }
+                catch (Exception exception)
+                {
+                    capturedException = exception;
+                }
+            });
+
+            // Act
+            workerThread.Start();
+            workerThread.Join();
+
+            // Assert：非初始化线程首次检测不抛异常且能命中敏感词
+            Assert.Null(capturedException);
+            Assert.True(hasIllegalWords);
+        }
+
+        /// <summary>
+        /// 测试文本长度超过最长敏感词两倍以上且敏感词位于末尾：缓冲区按文本长度取足，不抛 IndexOutOfRangeException 且能命中。
+        /// </summary>
+        [Fact]
+        public void DetectIllegalWords_WithTextLongerThanTwiceMaxWordLength_ShouldHitWordAtEnd()
+        {
+            // Arrange：本次初始化最长敏感词 10 字符；用敏感词首字符 + 词尾字符填充，保证向前扫描持续写入缓冲区
+            var badWord = "abcdefghij";
+            IllegalWordDetection.Init(new[] { badWord }, false);
+            var text = "a" + new string('j', 100) + badWord;
+
+            // Act
+            Dictionary<int, int> findResult = null;
+            var exception = Record.Exception(() => IllegalWordDetection.DetectIllegalWords(text, false, out findResult));
+
+            // Assert：不越界，且命中位于文本末尾的敏感词（起始位置 = 文本长度 - 词长，值 = 词长）
+            Assert.Null(exception);
+            Assert.NotNull(findResult);
+            Assert.Single(findResult);
+            Assert.Equal(text.Length - badWord.Length, findResult.Keys.Single());
+            Assert.Equal(badWord.Length, findResult.Values.Single());
+        }
+
+        #region GFX-1174（C434）CR-M06/CR-M07 重初始化、损坏表与文化一致性
+
+        /// <summary>
+        /// 重新 Init 后旧词必须立即失效：删词热更重载不再被残留静态结构拦截。
+        /// </summary>
+        [Fact]
+        public void Init_Twice_RemovesRetiredWords()
+        {
+            IllegalWordDetection.Init(new[] { "oldword" }, false);
+            Assert.True(IllegalWordDetection.HasBlockWords("oldword"));
+
+            IllegalWordDetection.Init(new[] { "newword" }, false);
+
+            Assert.False(IllegalWordDetection.HasBlockWords("oldword"));
+            Assert.True(IllegalWordDetection.HasBlockWords("newword"));
+        }
+
+        /// <summary>
+        /// 检测与注册必须使用同一 ASCII 折叠：tr-TR 文化下含 I 的英文敏感词不得漏检。
+        /// </summary>
+        [Fact]
+        public void HasBlockWords_UnderTurkishCulture_DetectsWordContainingI()
+        {
+            var originalCulture = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("tr-TR");
+                IllegalWordDetection.Init(new[] { "pink" }, false);
+
+                Assert.True(IllegalWordDetection.HasBlockWords("PINK"));
+                Assert.True(IllegalWordDetection.HasBlockWords("Pink"));
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentCulture = originalCulture;
+            }
+        }
+
+        /// <summary>
+        /// 损坏的词表（字段长度为负/越过表末尾）必须显式失败：清空旧表且不注册任何新词，而不是静默半表上线。
+        /// </summary>
+        [Fact]
+        public void Init_WithCorruptedLengthField_ClearsPreviousWordsAndRegistersNothing()
+        {
+            // 合法表：fieldNum=2（两个 string 字段），names=["w","x"]，记录：(skip "a", word "badword")
+            var validTable = new byte[]
+            {
+                0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x00, 0x01, (byte)'w', 0x00, 0x01, (byte)'x',
+                0x00, 0x01, (byte)'a', 0x00, 0x07, (byte)'b', (byte)'a', (byte)'d', (byte)'w', (byte)'o', (byte)'r', (byte)'d',
+            };
+            IllegalWordDetection.Init(validTable, 1, false);
+            Assert.True(IllegalWordDetection.HasBlockWords("badword"));
+
+            // 损坏表：fieldNum=1（string 字段），names=["w"]，记录首字段长度 30000 越过表末尾
+            var corruptedTable = new byte[] { 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x01, (byte)'w', 0x75, 0x30 };
+            var exception = Record.Exception(() => IllegalWordDetection.Init(corruptedTable, 1, false));
+
+            Assert.Null(exception); // 异常在 Init 内部记录日志，不外抛
+            Assert.False(IllegalWordDetection.HasBlockWords("badword")); // 旧表已按可重入语义清空
+        }
+
+        #endregion
 
         #endregion
     }

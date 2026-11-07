@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -100,8 +100,9 @@ public sealed partial class MongoDbService
         var currentTime = GetCurrentTimestamp();
         state.CreatedTime = currentTime;
         state.UpdateTime = currentTime;
+        state.UpdateCount ??= 0;
         var collection = _mongoDbContext.GetCollection<TState>();
-        await ExecuteWriteWithRetryAsync(token => collection.InsertOneAsync(state, cancellationToken: token), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => InsertOneWithAmbientSessionAsync(collection, state, token), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -143,10 +144,11 @@ public sealed partial class MongoDbService
         {
             cacheState.CreatedTime = currentTime;
             cacheState.UpdateTime = currentTime;
+            cacheState.UpdateCount ??= 0;
         }
 
         var collection = _mongoDbContext.GetCollection<TState>();
-        await ExecuteWriteWithRetryAsync(token => collection.InsertManyAsync(cacheStates, cancellationToken: token), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => InsertManyWithAmbientSessionAsync(collection, cacheStates, token), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
     }
 
     #endregion 插入

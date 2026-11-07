@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Components;
@@ -91,49 +59,68 @@ public static class GlobalTimer
     /// </summary>
     public static void Start()
     {
+        // Localization: Core.Timer.GlobalTimerInitializationStart - 初始化全局定时开始...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationStart));
         IsWorking = true;
-        _loopTask = Task.Run(Loop);
+        _loopTask = Task.Run(LoopAsync);
+        // Localization: Core.Timer.GlobalTimerInitializationComplete - 初始化全局定时完成...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationComplete));
     }
 
     /// <summary>
     /// 循环执行的方法
     /// </summary>
-    private static async Task Loop()
+    private static async Task LoopAsync()
     {
         var nextSaveTime = NextSaveTime();
         var onceDelay = TimeSpan.FromSeconds(5);
 
         while (IsWorking)
         {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, nextSaveTime));
-            var currentTime = TimerHelper.UnixTimeMilliseconds();
-            while (currentTime < nextSaveTime && IsWorking)
+            try
             {
-                await Task.Delay(onceDelay);
+                // Localization: Core.Timer.NextSaveTime - 下次定时回存时间 {0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampMillisecondsToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
+                var currentTime = TimerHelper.UnixTimeMilliseconds();
+                while (currentTime < nextSaveTime && IsWorking)
+                {
+                    await Task.Delay(onceDelay);
+                    currentTime = TimerHelper.UnixTimeMilliseconds();
+                }
+
+                if (!IsWorking)
+                {
+                    break;
+                }
+
+                var startTime = TimerHelper.UnixTimeMilliseconds();
+                // Localization: Core.Timer.SaveStart - 开始定时回存 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                await StateComponent.TimerSaveAsync();
+                var endTime = TimerHelper.UnixTimeMilliseconds();
+                var cost = endTime - startTime;
+                // Localization: Core.Timer.SaveEnd - 结束定时回存 时间:{0} 耗时: {1}ms
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
+                // Localization: Core.Timer.ActorRecycleStart - 开始回收空闲Actor 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                await ActorManager.CheckIdleAsync();
                 currentTime = TimerHelper.UnixTimeMilliseconds();
+                // Localization: Core.Timer.ActorRecycleEnd - 结束回收空闲Actor 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                do
+                {
+                    nextSaveTime = NextSaveTime();
+                } while (currentTime > nextSaveTime);
             }
-
-            if (!IsWorking)
+            catch (Exception e)
             {
-                break;
-            }
-
-            var startTime = TimerHelper.UnixTimeMilliseconds();
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, startTime));
-            await StateComponent.TimerSave();
-            var endTime = TimerHelper.UnixTimeMilliseconds();
-            var cost = endTime - startTime;
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, endTime, cost));
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, startTime));
-            await ActorManager.CheckIdle();
-            currentTime = TimerHelper.UnixTimeMilliseconds();
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, currentTime));
-            do
-            {
+                // 单轮失败只跳过本轮，循环继续；不重新抛出，否则循环退出后定时回存与空闲 Actor 回收永久停止
+                // Localization: Core.Timer.LoopIterationError - 全局定时器本轮执行异常，跳过本轮\n{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LoopIterationError, e));
+                // 推进下一轮回存时间，让循环进入延迟等待后重试，避免异常后零延迟紧密重试刷爆日志；
+                // 若推进自身失败（如配置读取永态损坏）则异常逃出循环，行为与历史版本一致
                 nextSaveTime = NextSaveTime();
-            } while (currentTime > nextSaveTime);
+            }
         }
     }
 
@@ -147,19 +134,78 @@ public static class GlobalTimer
     }
 
     /// <summary>
-    /// 停止全局定时
+    /// 停止产生定时回存和回收任务，并等待正在执行的循环结束。
+    /// Stop producing scheduled saves and recycling work, and await the active loop.
     /// </summary>
-    public static async Task Stop()
+    /// <remarks>
+    /// 此阶段保持数据库开放，供会话下线、事件排空和 Actor 回收完成后再执行最终回存。
+    /// Database connections remain open until session, event and actor cleanup has finished.
+    /// </remarks>
+    /// <returns>循环完全停止时完成的任务。A task completing when the loop has stopped.</returns>
+    public static async Task QuiesceAsync()
     {
-        Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopStart));
         IsWorking = false;
-        if (_loopTask != null)
+        var loopTask = _loopTask;
+        if (loopTask != null)
         {
-            await _loopTask;
+            await loopTask;
+        }
+    }
+
+    /// <summary>
+    /// 停止全局定时，并尝试最终回存和关闭数据库。
+    /// </summary>
+    /// <remarks>
+    /// 此方法不等待业务事件排空。若宿主因排空超时进入本方法，回存只是尽力处理，
+    /// 不能证明未完成业务已持久化；宿主仍须传播其原始停机失败。
+    /// This method does not drain business events. Persistence after a host drain timeout is best effort
+    /// and cannot establish durability of unfinished work; the host must retain its original failure.
+    /// </remarks>
+    public static async Task StopAsync()
+    {
+        // Localization: Core.Timer.GlobalTimerStopStart - 全局定时器开始停止
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopStart));
+
+        var cleanupFailures = new List<Exception>();
+        try
+        {
+            try
+            {
+                await QuiesceAsync();
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(exception);
+            }
+
+            try
+            {
+                await StateComponent.SaveAllForShutdownAsync(true);
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(exception);
+            }
+        }
+        finally
+        {
+            // 回存失败也必须尝试关闭全部数据库，不能覆盖原始回存/生产者异常。
+            try
+            {
+                await GameDb.CloseAsync();
+            }
+            catch (Exception exception)
+            {
+                cleanupFailures.Add(exception);
+            }
         }
 
-        StateComponent.SaveAll(true).Wait();
-        GameDb.Close();
-        Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopComplete));
+        if (cleanupFailures.Count > 0)
+        {
+            throw new AggregateException(cleanupFailures);
+        }
+
+        // Localization: Core.Timer.GlobalTimerStopComplete - 全局定时器停止完成
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopComplete));
     }
 }

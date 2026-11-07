@@ -1,33 +1,31 @@
 ﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
 
 using System;
 using System.Linq;
@@ -154,19 +152,78 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
-        /// 测试解压缩无效数据应返回原始数据
+        /// 测试解压缩无效数据应抛出 InvalidDataException（不再静默返回原始字节）
         /// </summary>
         [Fact]
-        public void Decompress_WithInvalidData_ShouldReturnOriginalData()
+        public void Decompress_WithInvalidData_ShouldThrowInvalidDataException()
         {
             // Arrange
             var invalidData = new byte[] { 1, 2, 3, 4, 5 }; // 无效的压缩数据
 
+            // Act & Assert
+            var exception = Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(invalidData));
+            Assert.NotNull(exception.InnerException);
+        }
+
+        /// <summary>
+        /// 测试解压缩被截断的数据应快速抛出 InvalidDataException（防 SharpZipLib 空转死循环）
+        /// </summary>
+        [Fact]
+        public void Decompress_WithTruncatedData_ShouldThrowInvalidDataException()
+        {
+            // Arrange：合法压缩流砍掉尾部（Deflate 结束标记与 Adler32 校验缺失）
+            var original = new byte[2048];
+            new Random(42).NextBytes(original);
+            var compressed = CompressionHelper.Compress(original);
+            var truncated = new byte[compressed.Length / 2];
+            Array.Copy(compressed, truncated, truncated.Length);
+
+            // Act & Assert
+            Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(truncated));
+        }
+
+        /// <summary>
+        /// 测试解压输出超过显式上限应抛出 InvalidDataException（解压炸弹防线：膨胀过程内中止）
+        /// </summary>
+        [Fact]
+        public void Decompress_ExceedingOutputLimit_ShouldThrowInvalidDataException()
+        {
+            // Arrange：256KB 全零载荷高压缩比压缩，上限 1KB——修复前会完整膨胀 256KB 后才可能被事后检查发现
+            var compressed = CompressionHelper.Compress(new byte[256 * 1024]);
+
+            // Act & Assert
+            Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(compressed, 1024));
+        }
+
+        /// <summary>
+        /// 测试显式上限内的正常解压应完成往返
+        /// </summary>
+        [Fact]
+        public void Decompress_WithinOutputLimit_ShouldRestoreOriginalData()
+        {
+            // Arrange
+            var original = new byte[4096];
+            new Random(7).NextBytes(original);
+            var compressed = CompressionHelper.Compress(original);
+
             // Act
-            var result = CompressionHelper.Decompress(invalidData);
+            var result = CompressionHelper.Decompress(compressed, original.Length);
 
             // Assert
-            Assert.Equal(invalidData, result);
+            Assert.Equal(original, result);
+        }
+
+        /// <summary>
+        /// 测试负上限参数应抛出 ArgumentOutOfRangeException
+        /// </summary>
+        [Fact]
+        public void Decompress_WithNegativeLimit_ShouldThrowArgumentOutOfRangeException()
+        {
+            // Arrange
+            var compressed = CompressionHelper.Compress(new byte[] { 1, 2, 3 });
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => CompressionHelper.Decompress(compressed, -1));
         }
 
         #endregion

@@ -1,0 +1,934 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Audit;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+
+namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
+
+/// <summary>
+/// Hotfix 回滚服务（服务端配合面——版本协议清单登记、
+/// 协议兼容性检查（回滚前置闸门）与 Hotfix 回滚受控命令；承担「协议兼容检查通过」的服务端半边）。
+/// <para>
+/// 维护约束（红线）：
+/// ① <b>回滚命令顺序固定</b>——参数校验（4001 宁拒毋缺）→ 幂等先行（重放透传首次结果）→
+/// 读清单（目标未登记 4002 / 无活跃版本 5001 / 目标 = 当前 5003）→ 协议兼容检查（不兼容 6002 拒绝）→
+/// <b>审计先行</b>（统一审计，Domain = Operation，审计失败 1001 拒绝且切换未发生——「无审计不执行」）→
+/// 执行器回滚（未装配 / 失败 8002）→ 切活跃版本（失败按指数退避重试，耗尽即反切执行器回旧版本并告警）→ 事件发布 → 幂等落定；
+/// ② <b>登记 / 激活不落审计</b>——登记是发布流水线簿记、激活是装配面初始化入口，回滚是唯一受控操作
+/// （操作者显式命令 + 审计）；回滚审计标识从命令幂等键确定性派生（<c>hotfix-rollback-{幂等键}</c>，
+/// 重复执行同一命令命中同一条审计）；
+/// ③ <b>清单与活跃指针是全局资产</b>（单键化后无作用域锚定位；原「App 级资产」口径）——服务内按版本号
+/// 全局定位（对齐审计口径）；多实例逐实例回滚编排归运维，本服务单进程语义；
+/// ④ <b>依赖方向</b>——实际 DLL 加载切换经 <see cref="IOnlineHotfixRollbackExecutor"/> 承载（装配面），
+/// 本模块不引用 Core。
+/// ⑤ <b>状态收敛与轨迹</b>——执行器切换成功后，活跃指针写入失败自动重试（指数退避，至多
+/// <see cref="ActivePointerWriteMaxRetryCount"/> 次），重试耗尽即反切执行器回守卫期旧版本（补偿不受命令
+/// 取消影响），绝不裸露「执行器已切换、活跃指针未更新」的不一致状态；执行链全程状态变迁经
+/// <see cref="IOnlineHotfixRollbackLog"/> 落轨迹，任意失败点可从日志还原终态；
+/// </para>
+/// </summary>
+public sealed class OnlineHotfixRollbackService
+{
+    /// <summary>
+    /// 版本清单存储（登记簿 + 活跃版本指针的唯一写入面）。
+    /// </summary>
+    private readonly IOnlineHotfixVersionStore _store;
+
+    /// <summary>
+    /// 幂等判定（回滚命令的重复执行透传首次结果）。
+    /// </summary>
+    private readonly OnlineIdempotencyService _idempotencyService;
+
+    /// <summary>
+    /// 统一审计链路（回滚受控操作的审计先行落点）。
+    /// </summary>
+    private readonly OnlineAuditService _auditService;
+
+    /// <summary>
+    /// 回滚执行器（可空 = 未装配；回滚命令执行时未装配拒绝 8002）。
+    /// </summary>
+    private readonly IOnlineHotfixRollbackExecutor _executor;
+
+    /// <summary>
+    /// 登记期制品获取器（可空 = 未装配；清单携带制品字段时登记先行获取制品，未装配则拒绝登记）。
+    /// </summary>
+    private readonly IOnlineHotfixArtifactFetcher _artifactFetcher;
+
+    /// <summary>
+    /// 版本号禁止出现的路径相关字符（镜像 <c>HotfixLoadOptions.ResolveAssemblyFilePath</c> 注入防线）。
+    /// </summary>
+    private static readonly char[] ForbiddenVersionPathChars = { '/', '\\', ':', };
+
+    /// <summary>
+    /// 事件发布出口（可空 = 未接线时跳过）。
+    /// </summary>
+    private readonly IOnlineEventPublisher _eventPublisher;
+
+    /// <summary>
+    /// 活跃指针写入失败重试次数上限（总尝试数 = 1 + 本值；指数退避）。
+    /// </summary>
+    private const int ActivePointerWriteMaxRetryCount = 3;
+
+    /// <summary>
+    /// 活跃指针写入重试的指数退避基准延迟缺省值（200ms，逐次翻倍：200 / 400 / 800）。
+    /// </summary>
+    private static readonly TimeSpan DefaultActivePointerWriteRetryBaseDelay = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>
+    /// 回滚状态变迁日志出口（可空 = 未接线时跳过轨迹日志；回滚结果不依赖日志出口）。
+    /// </summary>
+    private readonly IOnlineHotfixRollbackLog _rollbackLog;
+
+    /// <summary>
+    /// 活跃指针写入重试的指数退避基准延迟（测试注入零延迟避免时序抖动）。
+    /// </summary>
+    private readonly TimeSpan _activePointerWriteRetryBaseDelay;
+
+
+    /// <summary>
+    /// 初始化 <see cref="OnlineHotfixRollbackService"/>。
+    /// </summary>
+    /// <param name="store">版本清单存储。</param>
+    /// <param name="idempotencyService">幂等判定服务。</param>
+    /// <param name="auditService">统一审计服务（回滚审计先行的必要依赖，不可为空）。</param>
+    /// <param name="executor">回滚执行器（运行时装配注入；未装配时回滚命令拒绝）。</param>
+    /// <param name="artifactFetcher">登记期制品获取器（运行时装配注入；清单携带制品字段时必须装配，否则登记拒绝）。</param>
+    /// <param name="eventPublisher">事件发布出口（未接线时跳过事件发布）。</param>
+    /// <param name="rollbackLog">回滚状态变迁日志出口（未接线时跳过轨迹日志）。</param>
+    /// <param name="activePointerWriteRetryBaseDelay">活跃指针写入重试的指数退避基准延迟（null = 200ms 缺省；测试可注入 <see cref="TimeSpan.Zero"/>）。</param>
+    public OnlineHotfixRollbackService(IOnlineHotfixVersionStore store, OnlineIdempotencyService idempotencyService, OnlineAuditService auditService, IOnlineHotfixRollbackExecutor executor = null, IOnlineHotfixArtifactFetcher artifactFetcher = null, IOnlineEventPublisher eventPublisher = null, IOnlineHotfixRollbackLog rollbackLog = null, TimeSpan? activePointerWriteRetryBaseDelay = null)
+    {
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
+        _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
+        _executor = executor;
+        _artifactFetcher = artifactFetcher;
+        _eventPublisher = eventPublisher;
+        _rollbackLog = rollbackLog;
+        _activePointerWriteRetryBaseDelay = activePointerWriteRetryBaseDelay ?? DefaultActivePointerWriteRetryBaseDelay;
+    }
+
+    /// <summary>
+    /// 登记一份版本协议清单（发布流水线簿记：不改变活跃版本、不落审计；重复登记幂等回执不覆盖）。
+    /// <para>清单携带制品字段（<see cref="OnlineHotfixProtocolManifest.ArtifactSourceUrl"/> /
+    /// <see cref="OnlineHotfixProtocolManifest.ArtifactSha256"/>）时，登记落簿前先经制品获取器
+    /// 把制品取到版本目录（下载 / 校验 / 原子落盘）——「已登记」与「已落盘」同时成立，
+    /// 切换命令只消费已落盘版本（切换时刻零下载红线）；获取失败登记未生效、可重试。</para>
+    /// </summary>
+    /// <param name="manifest">待登记清单。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>新登记返回 <c>true</c>；同版本号已存在返回 <c>false</c>；清单非法返回 4001；
+    /// 制品获取失败或获取器未装配返回 8002（登记未生效）。</returns>
+    public async Task<OnlineResult<bool>> RegisterAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken = default)
+    {
+        if (manifest == null)
+        {
+            throw new ArgumentNullException(nameof(manifest));
+        }
+
+        var validation = ValidateManifest(manifest);
+        if (validation != null)
+        {
+            return validation;
+        }
+
+        var artifactFailure = await EnsureArtifactAsync(manifest, cancellationToken).ConfigureAwait(false);
+        if (artifactFailure != null)
+        {
+            return artifactFailure;
+        }
+
+        var isNew = await _store.RegisterAsync(manifest, cancellationToken).ConfigureAwait(false);
+        if (isNew && _eventPublisher != null)
+        {
+            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateVersionRegistered(manifest.Version, manifest.RegisteredTime, manifest.Messages?.Count ?? 0), cancellationToken).ConfigureAwait(false);
+        }
+
+        return OnlineResult<bool>.Ok(isNew);
+    }
+
+    /// <summary>
+    /// 激活一个已登记版本为活跃版本（装配面初始化入口：不落审计、不经幂等）。
+    /// </summary>
+    /// <param name="version">目标版本号（须已登记）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>激活成功（重复激活同版本幂等返回成功）；版本未登记 4002。</returns>
+    public async Task<OnlineResult<bool>> ActivateAsync(string version, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(version) || version.IndexOf('|') >= 0)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "版本号必填且禁止包含竖线（回放令牌分隔符）");
+        }
+
+        var manifest = await _store.FindAsync(version, cancellationToken).ConfigureAwait(false);
+        if (manifest == null)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "目标版本未登记清单，无法激活：" + version);
+        }
+
+        await _store.SetActiveAsync(version, cancellationToken).ConfigureAwait(false);
+        return OnlineResult<bool>.Ok(true);
+    }
+
+    /// <summary>
+    /// 协议兼容预检（只读演练入口：回滚演练 Runbook / Admin 预检调用；不经幂等、不落审计、不触执行器）。
+    /// </summary>
+    /// <param name="targetVersion">目标回滚版本号。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>兼容检查报告；目标未登记 4002、无活跃版本 5001。</returns>
+    public async Task<OnlineResult<OnlineProtocolCompatibilityReport>> CheckProtocolCompatibilityAsync(string targetVersion, CancellationToken cancellationToken = default)
+    {
+        var preparation = await PrepareTargetAndCurrentAsync(targetVersion, cancellationToken).ConfigureAwait(false);
+        if (!preparation.IsSuccess)
+        {
+            return OnlineResult<OnlineProtocolCompatibilityReport>.Fail(preparation.Code, preparation.Message);
+        }
+
+        return OnlineResult<OnlineProtocolCompatibilityReport>.Ok(OnlineProtocolCompatibilityChecker.Check(preparation.Data.Current, preparation.Data.Target));
+    }
+
+    /// <summary>
+    /// 执行 Hotfix 回滚受控命令（幂等先行 → 清单守卫 → 协议兼容闸门 → 审计先行 → 执行器 → 切活跃 → 事件 → 幂等落定）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>回滚回执（重复命令幂等回放首次结果，<c>IsReplay = true</c>）；
+    /// 参数缺失 4001 / 目标未登记 4002 / 无活跃版本 5001 / 目标=当前 5003 /
+    /// 协议不兼容 6002 / 审计失败 1001 / 执行器未装配或失败 8002 /
+    /// 活跃指针切换重试耗尽（已反切回旧版本、状态一致可重试）或反切失败（状态不一致须对账）5000。</returns>
+    public async Task<OnlineResult<OnlineHotfixRollbackResult>> RollbackAsync(OnlineHotfixRollbackRequest request, CancellationToken cancellationToken = default)
+    {
+        var validation = ValidateRollbackRequest(request);
+        if (validation != null)
+        {
+            return validation;
+        }
+
+        // 幂等锚点：清单与活跃指针是全局资产（原 App 级），锚定不带区服位——回滚命令的幂等键不随区服分裂。
+        var anchor = new OnlineScope(0);
+        var outcome = await _idempotencyService.BeginAsync(anchor, request.IdempotencyKey, BuildCanonicalRequestText(request), false, cancellationToken).ConfigureAwait(false);
+        if (!outcome.CanExecute)
+        {
+            return await ResolveNonExecuteOutcomeAsync(request, outcome, cancellationToken).ConfigureAwait(false);
+        }
+
+        var preparation = await PrepareRollbackAsync(anchor, request, cancellationToken).ConfigureAwait(false);
+        if (!preparation.IsSuccess)
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(preparation.Code, preparation.Message);
+        }
+
+        return await ExecuteRollbackAsync(anchor, request, preparation.Data, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 回滚命令的清单守卫链（目标可寻 4002 / 有活跃 5001 / 目标≠当前 5003 / 协议兼容 6002；
+    /// 任一守卫失败把幂等键落定失败后返回错误——失败命令不得占住幂等占位）。
+    /// </summary>
+    /// <param name="anchor">全局锚定作用域（幂等键空间锚点）。</param>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>守卫通过返回回滚准备物（目标清单 + 当前清单 + 兼容报告）；否则返回对应错误。</returns>
+    private async Task<OnlineResult<RollbackPreparation>> PrepareRollbackAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, CancellationToken cancellationToken)
+    {
+        var guard = await PrepareTargetAndCurrentAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
+        if (!guard.IsSuccess)
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<RollbackPreparation>.Fail(guard.Code, guard.Message);
+        }
+
+        var preparation = guard.Data;
+        if (string.Equals(preparation.Current.Version, preparation.Target.Version, StringComparison.Ordinal))
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.StateOperationForbidden, "目标版本即当前活跃版本，无需回滚：" + request.TargetVersion);
+        }
+
+        preparation.Report = OnlineProtocolCompatibilityChecker.Check(preparation.Current, preparation.Target);
+        if (!preparation.Report.IsCompatible)
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.VersionConflict, "协议兼容检查不通过，拒绝回滚（差异摘要：" + BuildCompatibilitySummary(preparation.Report) + "）");
+        }
+
+        return OnlineResult<RollbackPreparation>.Ok(preparation);
+    }
+
+    /// <summary>
+    /// 回滚执行链（审计先行 → 执行器 → 切活跃（失败指数退避重试，耗尽反切）→ 事件 → 幂等落定；
+    /// 全程状态变迁经 <see cref="IOnlineHotfixRollbackLog"/> 落轨迹）。
+    /// </summary>
+    /// <param name="anchor">全局锚定作用域（幂等落定锚点）。</param>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物（目标清单 + 当前清单 + 兼容报告）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>回滚回执。</returns>
+    private async Task<OnlineResult<OnlineHotfixRollbackResult>> ExecuteRollbackAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    {
+        var auditFailure = await IngestRollbackAuditAsync(request, preparation, cancellationToken).ConfigureAwait(false);
+        if (auditFailure != null)
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return auditFailure;
+        }
+
+        if (_executor == null)
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.DependencyUnavailable, "回滚执行器未装配（运行时装配 X4 须注入 IOnlineHotfixRollbackExecutor）");
+        }
+
+        // 状态轨迹：审计已落、守卫已过——执行链正式启动（此前任何失败点状态零变迁，结果码即终态）。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "chain-started", "previous=" + preparation.Current.Version + "|target=" + request.TargetVersion));
+
+        try
+        {
+            await _executor.RollbackAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // 状态轨迹：执行器未切换成功，系统仍在旧版本（状态一致）——失败结果码即终态，无须补偿。
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "executor-switch-failed", "target=" + request.TargetVersion + "|error=" + ex.Message));
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.DependencyUnavailable, "回滚执行器执行失败（回滚未生效）：" + ex.Message);
+        }
+
+        // 状态轨迹：执行器已切到目标版本——此后到活跃指针落定之间是两处状态可能分叉的窗口。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "executor-switched", "target=" + request.TargetVersion));
+
+        var switchOutcome = await SwitchActiveVersionWithRetryAsync(request, preparation, cancellationToken).ConfigureAwait(false);
+        if (!switchOutcome.IsSuccess)
+        {
+            await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(switchOutcome.Code, switchOutcome.Message);
+        }
+
+        var previousVersion = switchOutcome.Data;
+
+        // 状态轨迹：活跃指针已切换——执行器与指针同指目标版本，状态回到一致。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "pointer-switched", "previous=" + previousVersion + "|target=" + request.TargetVersion));
+
+        var summary = BuildCompatibilitySummary(preparation.Report);
+        if (_eventPublisher != null)
+        {
+            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateRolledBack(previousVersion, request.TargetVersion, summary), cancellationToken).ConfigureAwait(false);
+        }
+
+        var result = new OnlineHotfixRollbackResult
+        {
+            TargetVersion = request.TargetVersion,
+            PreviousVersion = previousVersion,
+            IsReplay = false,
+            CompatibilitySummary = summary,
+        };
+        await _idempotencyService.CompleteAsync(anchor, request.IdempotencyKey, EncodeReplayToken(previousVersion, request.TargetVersion, summary), false, cancellationToken).ConfigureAwait(false);
+
+        // 状态轨迹：事件已发、幂等已落定——回滚完成（终态 = 执行器与活跃指针同指目标版本）。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(request, "rollback-completed", "previous=" + previousVersion + "|target=" + request.TargetVersion));
+        return OnlineResult<OnlineHotfixRollbackResult>.Ok(result);
+    }
+
+    /// <summary>
+    /// 带指数退避重试的活跃指针切换（总尝试数 = 1 + <see cref="ActivePointerWriteMaxRetryCount"/>；
+    /// 第 n 次失败后延迟 基准 × 2^(n-1)；重试耗尽进入反切补偿——执行器已切换而指针未落时，
+    /// 不再裸露不一致状态，逐次尝试与耗尽均落状态轨迹）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物（Current = 反切锚定的旧版本）。</param>
+    /// <param name="cancellationToken">取消令牌（取消视同本次尝试失败，照常进入补偿链）。</param>
+    /// <returns>成功返回切换前活跃版本号；重试耗尽返回反切结果（已反切 = 状态一致 5000 可重试 / 反切失败 = 须对账 5000）。</returns>
+    private async Task<OnlineResult<string>> SwitchActiveVersionWithRetryAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    {
+        var totalAttempts = 1 + ActivePointerWriteMaxRetryCount;
+        Exception lastFailure = null;
+        for (var attempt = 1; attempt <= totalAttempts; attempt++)
+        {
+            try
+            {
+                var previousVersion = await _store.SetActiveAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
+                return OnlineResult<string>.Ok(previousVersion);
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex;
+                if (attempt >= totalAttempts)
+                {
+                    break;
+                }
+
+                var retryDelayMilliseconds = GetExponentialBackoffMilliseconds(attempt);
+
+                // 状态轨迹：指针写入单次失败——记录第几次 / 共几次与退避间隔，失败点可还原。
+                WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "pointer-write-failed", "attempt=" + attempt + "/" + totalAttempts + "|retryInMilliseconds=" + retryDelayMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + ex.Message));
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(retryDelayMilliseconds), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // 命令取消视同本次尝试失败：执行器已切换，状态收敛优先于命令生命周期，直接进入耗尽补偿。
+                    break;
+                }
+            }
+        }
+
+        var lastFailureMessage = lastFailure == null ? string.Empty : lastFailure.Message;
+
+        // 状态轨迹：重试耗尽——进入反切补偿（此行之后执行器与指针可能短暂分叉，以反切结果行收束）。
+        WriteLog(RollbackLogLevel.Error, BuildTraceMessage(request, "pointer-write-exhausted", "attempts=" + totalAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + lastFailureMessage));
+        return await RevertExecutorAfterPointerFailureAsync(request, preparation, lastFailureMessage).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 反切补偿：把执行器切回守卫期旧版本（活跃指针仍指旧版本——反切成功即两处状态一致、
+    /// 回滚未生效、命令可重试；反切失败为真正须对账的不一致终态并落 Error 轨迹）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物（Current.Version = 反切目标）。</param>
+    /// <param name="pointerFailureMessage">指针写入重试耗尽时的最后错误消息。</param>
+    /// <returns>反切成功或失败对应的 5000 错误结果（回滚未生效）。</returns>
+    private async Task<OnlineResult<string>> RevertExecutorAfterPointerFailureAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, string pointerFailureMessage)
+    {
+        var previousVersion = preparation.Current.Version;
+        try
+        {
+            // 反切用独立取消令牌：命令取消不得跳过补偿——执行器已切到目标版本，状态收敛优先于命令生命周期。
+            await _executor.RollbackAsync(previousVersion, CancellationToken.None).ConfigureAwait(false);
+
+            // 状态轨迹：反切成功——终态 = 执行器与活跃指针一致停留在旧版本，回滚未生效，命令可重试。
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(request, "executor-reverted", "previous=" + previousVersion + "|target=" + request.TargetVersion + "|detail=回滚未生效，执行器与活跃指针一致停留在旧版本，命令可重试"));
+            return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽，已反切执行器回旧版本（回滚未生效，状态一致，可重试）：" + previousVersion + "；指针写入最后错误：" + pointerFailureMessage);
+        }
+        catch (Exception revertFailure)
+        {
+            var revertFailureMessage = revertFailure == null ? string.Empty : revertFailure.Message;
+
+            // 状态轨迹：反切失败——终态 = 执行器停目标版本、活跃指针停旧版本（不一致，须对账）。
+            WriteLog(RollbackLogLevel.Error, BuildTraceMessage(request, "executor-revert-failed", "executor=" + request.TargetVersion + "|activePointer=" + previousVersion + "|detail=状态不一致，须对账|error=" + revertFailureMessage));
+            return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽且反切旧版本失败（执行器已切到 " + request.TargetVersion + " 但活跃指针仍为 " + previousVersion + "，状态不一致，须对账）；指针写入错误：" + pointerFailureMessage + "；反切错误：" + revertFailureMessage);
+        }
+    }
+
+    /// <summary>
+    /// 计算第 <paramref name="failedAttempt"/> 次失败后的指数退避延迟（基准 × 2^(failedAttempt-1)，毫秒）。
+    /// </summary>
+    /// <param name="failedAttempt">刚失败的尝试序号（从 1 起）。</param>
+    /// <returns>退避延迟毫秒数。</returns>
+    private long GetExponentialBackoffMilliseconds(int failedAttempt)
+    {
+        // 负延迟注入属构造误用，钳到 0 防护 Task.Delay 抛出参数异常（补偿路径不得被观测参数击穿）。
+        var baseDelayMilliseconds = Math.Max(0L, (long)_activePointerWriteRetryBaseDelay.TotalMilliseconds);
+        return baseDelayMilliseconds << (failedAttempt - 1);
+    }
+
+    /// <summary>
+    /// 写一条回滚状态轨迹日志（未接线跳过；出口异常静默吞并——日志失败不得影响回滚链路）。
+    /// </summary>
+    /// <param name="level">日志级别。</param>
+    /// <param name="message">轨迹行内容。</param>
+    private void WriteLog(RollbackLogLevel level, string message)
+    {
+        if (_rollbackLog == null)
+        {
+            return;
+        }
+
+        try
+        {
+            switch (level)
+            {
+                case RollbackLogLevel.Warn:
+                    _rollbackLog.Warn(message);
+                    break;
+                case RollbackLogLevel.Error:
+                    _rollbackLog.Error(message);
+                    break;
+                default:
+                    _rollbackLog.Info(message);
+                    break;
+            }
+        }
+        catch (Exception)
+        {
+            // 端口红线外的最后防线：观测面异常绝不改变回滚结果。
+        }
+    }
+
+    /// <summary>
+    /// 组装回滚状态轨迹行（固定前缀 + 幂等键 + 变迁名 + 事实字段，单行可独立归因与还原）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="transition">变迁名（chain-started / executor-switched / pointer-write-failed 等）。</param>
+    /// <param name="facts">事实字段（竖线分隔的 key=value）。</param>
+    /// <returns>轨迹行文本。</returns>
+    private static string BuildTraceMessage(OnlineHotfixRollbackRequest request, string transition, string facts)
+    {
+        return "hotfix-rollback|key=" + request.IdempotencyKey
+               + "|transition=" + transition
+               + (string.IsNullOrEmpty(facts) ? string.Empty : "|" + facts);
+    }
+
+    /// <summary>
+    /// 读取并守卫目标 / 当前清单（目标未登记 4002、无活跃版本 5001；供预检与回滚守卫链共用）。
+    /// </summary>
+    /// <param name="targetVersion">目标版本号。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>守卫通过返回准备物；否则返回对应错误。</returns>
+    private async Task<OnlineResult<RollbackPreparation>> PrepareTargetAndCurrentAsync(string targetVersion, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(targetVersion))
+        {
+            return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.ParameterInvalid, "目标版本号必填");
+        }
+
+        var target = await _store.FindAsync(targetVersion, cancellationToken).ConfigureAwait(false);
+        if (target == null)
+        {
+            return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.ResourceNotFound, "目标版本未登记清单：" + targetVersion);
+        }
+
+        var current = await _store.FindActiveAsync(cancellationToken).ConfigureAwait(false);
+        if (current == null)
+        {
+            return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.StateNotReady, "当前无活跃版本，无从回滚（先经 ActivateAsync 激活基线版本）");
+        }
+
+        return OnlineResult<RollbackPreparation>.Ok(new RollbackPreparation { Target = target, Current = current, });
+    }
+
+    /// <summary>
+    /// 处理幂等判定的不可执行分支（Replay 透传首次结果；Conflict/Busy/InvalidKey 映射协议错误码）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="outcome">幂等判定结果。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>回放结果或错误结果。</returns>
+    private async Task<OnlineResult<OnlineHotfixRollbackResult>> ResolveNonExecuteOutcomeAsync(OnlineHotfixRollbackRequest request, OnlineIdempotencyOutcome outcome, CancellationToken cancellationToken)
+    {
+        if (outcome.Kind == OnlineIdempotencyOutcomeKind.Replay)
+        {
+            return await BuildReplayResultAsync(outcome, cancellationToken).ConfigureAwait(false);
+        }
+
+        return OnlineResult<OnlineHotfixRollbackResult>.Fail(outcome.ErrorCode, "回滚命令幂等判定拒绝（" + outcome.Kind + "）：键 " + request.IdempotencyKey);
+    }
+
+    /// <summary>
+    /// 构造幂等回放结果（从回放令牌还原首次回滚回执——IsReplay = true 且不重复执行 / 不重复落审计）。
+    /// </summary>
+    /// <param name="outcome">幂等判定（Replay）。</param>
+    /// <param name="cancellationToken">取消令牌（回放路径无异步等待，令牌仅对齐签名）。</param>
+    /// <returns>与首次结果同构的回放回执。</returns>
+    private static Task<OnlineResult<OnlineHotfixRollbackResult>> BuildReplayResultAsync(OnlineIdempotencyOutcome outcome, CancellationToken cancellationToken)
+    {
+        var token = Encoding.UTF8.GetString(outcome.FirstResponse.ToArray());
+        var separatorIndex = token.LastIndexOf('|');
+        if (separatorIndex <= 0 || separatorIndex >= token.Length - 1)
+        {
+            return Task.FromResult(OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.InternalError, "幂等回放令牌损坏"));
+        }
+
+        // 令牌 = previous|target|summary；previous 与 target 均经「版本号禁含竖线」校验，从右侧切出 summary 后其余即版本段。
+        var summaryIndex = token.LastIndexOf('|', separatorIndex - 1);
+        if (summaryIndex <= 0)
+        {
+            return Task.FromResult(OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.InternalError, "幂等回放令牌损坏"));
+        }
+
+        var result = new OnlineHotfixRollbackResult
+        {
+            PreviousVersion = token.Substring(0, summaryIndex),
+            TargetVersion = token.Substring(summaryIndex + 1, separatorIndex - summaryIndex - 1),
+            IsReplay = true,
+            CompatibilitySummary = token.Substring(separatorIndex + 1),
+        };
+        return Task.FromResult(OnlineResult<OnlineHotfixRollbackResult>.Ok(result));
+    }
+
+    /// <summary>
+    /// 审计先行：把回滚命令落统一审计（Domain = Operation；审计失败即拒绝执行——「无审计不执行」）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>审计失败时返回 1001 错误结果；成功返回 <see langword="null"/>。</returns>
+    private async Task<OnlineResult<OnlineHotfixRollbackResult>> IngestRollbackAuditAsync(OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    {
+        var entry = new OnlineAuditEntry
+        {
+            Domain = OnlineAuditDomain.Operation,
+            EventId = "hotfix-rollback-" + request.IdempotencyKey,
+            EventType = OnlineHotfixEvents.RolledBack,
+            OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ServerId = 0,
+            PlayerId = 0,
+            OperatorId = request.OperatorId,
+            OperatorName = request.OperatorName,
+            Reason = request.Reason,
+            Source = OnlineHotfixEvents.Source,
+            CorrelationId = request.TargetVersion,
+            PayloadAuditFields = new Dictionary<string, string>
+            {
+                { "PreviousVersion", preparation.Current.Version ?? string.Empty },
+                { "TargetVersion", request.TargetVersion },
+                { "RemovedCount", preparation.Report.RemovedCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                { "ChangedCount", preparation.Report.ChangedCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                { "AddedCount", preparation.Report.AddedCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            },
+        };
+
+        try
+        {
+            var ingest = await _auditService.IngestAsync(entry, cancellationToken).ConfigureAwait(false);
+            if (!ingest.IsSuccess)
+            {
+                return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.InternalError, "回滚审计接入被拒（无审计不执行）：" + ingest.Message);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.InternalError, "回滚审计接入异常（无审计不执行）：" + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 把幂等键落定失败（失败路径专用；落定失败不掩盖原始错误，静默吞并）。
+    /// </summary>
+    /// <param name="anchor">全局锚定作用域（幂等落定锚点）。</param>
+    /// <param name="idempotencyKey">命令幂等键。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task FailIdempotencyAsync(OnlineScope anchor, string idempotencyKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _idempotencyService.FailAsync(anchor, idempotencyKey, false, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // 失败路径的幂等落定失败不得掩盖原始业务错误；占位未释放由 Foundation 失败策略与超时收敛。
+        }
+    }
+
+    /// <summary>
+    /// 校验回滚命令请求（操作者 / 原因 / 目标版本 / 幂等键必填与格式，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<OnlineHotfixRollbackResult> ValidateRollbackRequest(OnlineHotfixRollbackRequest request)
+    {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.TargetVersion) || request.TargetVersion.IndexOf('|') >= 0)
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "目标版本号必填且禁止包含竖线（回放令牌分隔符）");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.OperatorId))
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "操作者（OperatorId）必填——受控操作审计完整性要求");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "操作原因（Reason）必填——受控操作审计完整性要求");
+        }
+
+        if (!OnlineRequestContextValidator.IsIdempotencyKeyValid(request.IdempotencyKey))
+        {
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.ParameterInvalid, "幂等键必填且格式合法（字母数字下划线连字符，长度 1～128）");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验登记清单（版本号 / 契约行名与号的唯一性，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="manifest">待登记清单。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifest(OnlineHotfixProtocolManifest manifest)
+    {
+        var versionFailure = ValidateManifestVersion(manifest.Version);
+        if (versionFailure != null)
+        {
+            return versionFailure;
+        }
+
+        var artifactFailure = ValidateManifestArtifactFields(manifest.ArtifactSourceUrl, manifest.ArtifactSha256);
+        if (artifactFailure != null)
+        {
+            return artifactFailure;
+        }
+
+        var messagesFailure = ValidateManifestMessages(manifest);
+        if (messagesFailure != null)
+        {
+            return messagesFailure;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单版本号（必填且禁竖线 + 路径注入防线，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="version">清单版本号。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestVersion(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version) || version.IndexOf('|') >= 0)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号必填且禁止包含竖线（回放令牌分隔符）");
+        }
+
+        // 版本号是制品落盘与装载路径的目录段（{CWD}/{Version}/GameFrameX.Hotfix.dll），注入防线与 HotfixLoadOptions 同源。
+        if (version.IndexOfAny(ForbiddenVersionPathChars) >= 0 || version.Contains("..", StringComparison.Ordinal))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号禁止包含路径分隔符、卷分隔符或「..」段（制品落盘/装载路径注入面）");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单制品字段（成对提供 + 绝对 http/https 地址 + 64 位十六进制校验和，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="artifactSourceUrl">制品下载地址（原始字段，空白视同缺省）。</param>
+    /// <param name="artifactSha256">制品校验和（原始字段，空白视同缺省）。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestArtifactFields(string artifactSourceUrl, string artifactSha256)
+    {
+        var sourceUrl = NormalizeOptionalField(artifactSourceUrl);
+        var sha256 = NormalizeOptionalField(artifactSha256);
+        if (sourceUrl != null && sha256 == null)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 与 ArtifactSha256 必须成对提供（只给下载地址不给校验和 = 拒绝）");
+        }
+
+        if (sourceUrl != null && (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var sourceUri) || (sourceUri.Scheme != Uri.UriSchemeHttp && sourceUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 必须是绝对 http/https 地址：" + artifactSourceUrl);
+        }
+
+        if (sha256 != null && !IsSha256Hex(sha256))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSha256 必须是 64 位十六进制字符串");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单契约行（消息名必填 / 消息号大于 0 / 名与号全清单唯一，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="manifest">待登记清单（版本号已通过校验）。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestMessages(OnlineHotfixProtocolManifest manifest)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var ids = new HashSet<int>();
+        foreach (var message in manifest.Messages ?? Array.Empty<OnlineHotfixProtocolMessage>())
+        {
+            if (message == null || string.IsNullOrWhiteSpace(message.MessageName))
+            {
+                return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "协议消息契约行的消息名必填（版本 " + manifest.Version + "）");
+            }
+
+            if (message.MessageId <= 0)
+            {
+                return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "协议消息 " + message.MessageName + " 的消息号必须大于 0");
+            }
+
+            if (!names.Add(message.MessageName))
+            {
+                return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单内消息名重复：" + message.MessageName + "（版本 " + manifest.Version + "）");
+            }
+
+            if (!ids.Add(message.MessageId))
+            {
+                return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单内消息号重复：" + message.MessageId + "（版本 " + manifest.Version + "）");
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 登记期制品获取（清单携带制品字段时的登记前置：获取器先行，失败 = 登记未生效 8002 可重试；
+    /// 无制品字段 = 纯本地登记路径，不触达获取器——现状行为逐字节不变）。
+    /// </summary>
+    /// <param name="manifest">待登记清单（已通过形状校验）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>失败时返回 8002 错误结果；通过返回 <see langword="null"/>。</returns>
+    private async Task<OnlineResult<bool>> EnsureArtifactAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken)
+    {
+        var sourceUrl = NormalizeOptionalField(manifest.ArtifactSourceUrl);
+        var artifactSha256 = NormalizeOptionalField(manifest.ArtifactSha256);
+        if (sourceUrl == null && artifactSha256 == null)
+        {
+            return null;
+        }
+
+        if (_artifactFetcher == null)
+        {
+            // 宁拒不静默：无获取器的登记会让制品永不落盘，切换时的零下载红线反被兑现成必然失败。
+            return OnlineResult<bool>.Fail(OnlineErrorCode.DependencyUnavailable, "清单携带制品字段但登记面未装配 IOnlineHotfixArtifactFetcher（运行时装配须注入制品获取器）");
+        }
+
+        try
+        {
+            await _artifactFetcher.EnsureArtifactAsync(manifest.Version, sourceUrl, artifactSha256, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.DependencyUnavailable, "登记期制品获取失败（登记未生效，可重试）：" + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 规整可选制品字段（trim；空白视为缺省 null）。
+    /// </summary>
+    /// <param name="value">原始字段值。</param>
+    /// <returns>规整后值或 <c>null</c>。</returns>
+    private static string NormalizeOptionalField(string value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrEmpty(normalized) ? null : normalized;
+    }
+
+    /// <summary>
+    /// 判定字符串是否为 64 位十六进制（SHA-256 hex）。
+    /// </summary>
+    /// <param name="value">待判定字符串。</param>
+    /// <returns>合法返回 <c>true</c>。</returns>
+    private static bool IsSha256Hex(string value)
+    {
+        if (value.Length != 64)
+        {
+            return false;
+        }
+
+        foreach (var c in value)
+        {
+            var isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            if (!isHex)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 构造回滚命令的规范化请求文本（幂等意图摘要——同键不同意图判冲突；目标版本 + 操作者为意图主体）。
+    /// </summary>
+    /// <param name="request">回滚命令请求。</param>
+    /// <returns>规范化请求文本。</returns>
+    private static string BuildCanonicalRequestText(OnlineHotfixRollbackRequest request)
+    {
+        return "hotfix-rollback|v1|" + request.TargetVersion + "|" + request.OperatorId;
+    }
+
+    /// <summary>
+    /// 构造协议兼容报告摘要（Removed/Changed/Added 计数文本；不含竖线，可入回放令牌）。
+    /// </summary>
+    /// <param name="report">兼容检查报告。</param>
+    /// <returns>摘要文本。</returns>
+    private static string BuildCompatibilitySummary(OnlineProtocolCompatibilityReport report)
+    {
+        return "Removed=" + report.RemovedCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                          + ",Changed=" + report.ChangedCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                          + ",Added=" + report.AddedCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// 编码回放令牌（previous|target|summary；版本段经「禁含竖线」校验保证可逆解析）。
+    /// </summary>
+    /// <param name="previousVersion">回滚前活跃版本号。</param>
+    /// <param name="targetVersion">目标版本号。</param>
+    /// <param name="summary">兼容摘要。</param>
+    /// <returns>令牌字节。</returns>
+    private static ReadOnlyMemory<byte> EncodeReplayToken(string previousVersion, string targetVersion, string summary)
+    {
+        return Encoding.UTF8.GetBytes(previousVersion + "|" + targetVersion + "|" + summary);
+    }
+
+    /// <summary>
+    /// 回滚状态轨迹日志级别（对齐 <see cref="IOnlineHotfixRollbackLog"/> 三级出口）。
+    /// </summary>
+    private enum RollbackLogLevel
+    {
+        /// <summary>状态变迁记录（启动 / 切换成功 / 完成）。</summary>
+        Info,
+
+        /// <summary>需运维关注的非致命变迁（重试 / 已反切）。</summary>
+        Warn,
+
+        /// <summary>须对账的致命变迁（重试耗尽 / 反切失败）。</summary>
+        Error,
+    }
+
+    /// <summary>
+    /// 回滚守卫链产物（目标清单 + 当前清单 + 兼容报告）。
+    /// </summary>
+    private sealed class RollbackPreparation
+    {
+        /// <summary>
+        /// 获取或设置目标（回滚到）清单。
+        /// </summary>
+        public OnlineHotfixProtocolManifest Target { get; set; }
+
+        /// <summary>
+        /// 获取或设置当前（活跃）清单。
+        /// </summary>
+        public OnlineHotfixProtocolManifest Current { get; set; }
+
+        /// <summary>
+        /// 获取或设置协议兼容检查报告（守卫链后段填充）。
+        /// </summary>
+        public OnlineProtocolCompatibilityReport Report { get; set; }
+    }
+}

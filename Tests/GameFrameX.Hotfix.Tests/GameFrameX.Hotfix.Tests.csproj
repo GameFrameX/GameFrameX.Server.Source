@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+
+        <!-- 测试项目 public-sign：以共享 snk 成为签名程序集（GameFrameX.Core）的 InternalsVisibleTo 友元 -->
+        <PublicSign>true</PublicSign>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../gameframex.key.snk</AssemblyOriginatorKeyFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+        <PackageReference Include="xunit" Version="2.9.3" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj" />
+      <!-- 验收夹具玩法（RPS）经 OnlineMatchOptions.AddGame 注入（P4a 后能力包零具体玩法） -->
+      <ProjectReference Include="..\..\GameFrameX.Apps.Sample\GameFrameX.Apps.Sample.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.DataBase.Sqlite\GameFrameX.DataBase.Sqlite.csproj" />
+      <!-- 桥契约 harness 直用 CapabilityRuntime（此前经 Online.Abstractions→AdminApi 传递获得；管理契约上移 Hosting.Abstractions 后显式直引机制包） -->
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.Core\GameFrameX.Capability.Hosting.Core.csproj" />
+      <ProjectReference Include="..\GameFrameX.Hotfix.Tests.Probes\GameFrameX.Hotfix.Tests.Probes.csproj" />
+    </ItemGroup>
+
+    <!-- 桥契约测试发布面（C294）：把测试程序集复制为部署命名约定形态
+         GameFrameX.Hotfix.Tests.BridgeStubs.dll —— 测试桩能力模块经 Compose + ActivateAsync
+         用 CapabilityBridgePublisher 发布桥契约，复刻生产「模块 Activate 发布 / 宿主停机撤桥」。 -->
+    <Target Name="CopyTestAssemblyAsBridgeStubs" AfterTargets="Build">
+      <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(OutDir)GameFrameX.Hotfix.Tests.BridgeStubs.dll" SkipUnchangedFiles="true" />
+    </Target>
+
+</Project>

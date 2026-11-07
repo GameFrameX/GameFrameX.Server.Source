@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <!-- 独立游戏工程：使用 GameFrameX 2.0 NuGet 包；构建前须准备 nuget.config 指定的包源。 -->
+        <IsPackable>false</IsPackable>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Compose 扫描部署的能力包，依赖校验与过滤决定实际装配集合。
+             默认包含 Foundation、Social、Match、Assets、Leaderboard、Competition；
+             真实玩法与玩家目录由应用接入，增减能力时检查 manifest 依赖。 -->
+        <PackageReference Include="GameFrameX.Capability.Hosting.AdminApi" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Foundation" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Social" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Assets" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Match" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Leaderboard" Version="2.0.0" />
+        <PackageReference Include="GameFrameX.Capability.Online.Competition" Version="2.0.0" />
+    </ItemGroup>
+
+</Project>

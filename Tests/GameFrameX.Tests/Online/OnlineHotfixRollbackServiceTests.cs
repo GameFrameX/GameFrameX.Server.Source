@@ -1,0 +1,1023 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using GameFrameX.Foundation.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Audit;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Operations.HotfixRollback;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using Xunit;
+
+namespace GameFrameX.Tests.Online
+{
+    /// <summary>
+    /// Hotfix 回滚服务测试（服务端半边：协议兼容检查三类差异判定
+    /// （Removed/Changed 不兼容拒绝、Added 兼容入报告）、回滚成功全链路（版本切换 + 审计 Domain=Operation + 事件）、
+    /// 幂等重放同构（IsReplay、不重复执行、审计不重复落档）、目标未登记 4002 / 无活跃版本 5001 /
+    /// 目标=当前 5003 / 协议不兼容 6002 且版本未切换 / 执行器失败 8002 且幂等键落 Fail 可重试 /
+    /// 活跃指针写入失败指数退避重试（瞬时失败重试成功不反切）/ 重试耗尽反切执行器回旧版本且状态一致可重试 /
+    /// 反切失败须对账告警 /
+    /// 审计失败 1001 无审计不执行 / 参数缺失逐维 4001 / 只读预检无副作用 / 作用域隔离与登记簿记幂等）。
+    /// </summary>
+    public class OnlineHotfixRollbackServiceTests
+    {
+
+        /// <summary>
+        /// 步进时钟（Foundation 协调器依赖 IClock；每次读取前进 10ms，
+        /// 保证单测试周期内记录远不过期）。
+        /// </summary>
+        private sealed class StepClock : IClock
+        {
+            private long _nowMilliseconds = 1760000000000;
+
+            public long UtcNowTime
+            {
+                get
+                {
+                    _nowMilliseconds += 10;
+                    return _nowMilliseconds;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 计数回滚执行器（记录调用与目标版本；可注入失败模式）。
+        /// </summary>
+        private sealed class CountingExecutor : IOnlineHotfixRollbackExecutor
+        {
+            public int CallCount
+            {
+                get;
+                private set;
+            }
+
+            public List<string> TargetVersions
+            {
+                get;
+            } = new List<string>();
+
+            public string FailMessage
+            {
+                get;
+                set;
+            }
+
+            /// <summary>从第几次调用起注入失败（0 = 全部按 FailMessage 口径；用于「正切成功、反切失败」注入）。</summary>
+            public int FailFromCallIndex
+            {
+                get;
+                set;
+            }
+
+            public Task RollbackAsync(string targetVersion, CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+                TargetVersions.Add(targetVersion);
+                if (!string.IsNullOrEmpty(FailMessage) && (FailFromCallIndex <= 0 || CallCount >= FailFromCallIndex))
+                {
+                    throw new InvalidOperationException(FailMessage);
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
+        /// <summary>
+        /// 记录型制品获取器（记录调用参数；可注入失败模式）。
+        /// </summary>
+        private sealed class RecordingFetcher : IOnlineHotfixArtifactFetcher
+        {
+            public int CallCount
+            {
+                get;
+                private set;
+            }
+
+            public List<(string Version, string SourceUrl, string Sha256)> Calls
+            {
+                get;
+            } = new List<(string, string, string)>();
+
+            public string FailMessage
+            {
+                get;
+                set;
+            }
+
+            public Task EnsureArtifactAsync(string version, string sourceUrl, string artifactSha256, CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+                Calls.Add((version, sourceUrl, artifactSha256));
+                if (!string.IsNullOrEmpty(FailMessage))
+                {
+                    throw new InvalidOperationException(FailMessage);
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
+        /// <summary>
+        /// 抛异常审计存储（验证「无审计不执行」：审计链路异常时拒绝回滚且切换未发生）。
+        /// </summary>
+        private sealed class ThrowingAuditStore : IOnlineAuditStore
+        {
+            public Task<bool> AppendAsync(OnlineAuditRecord record, CancellationToken cancellationToken = default)
+            {
+                throw new InvalidOperationException("audit store down");
+            }
+
+            public Task<OnlineAuditStorePage> QueryAsync(OnlineAuditStoreQuery query, CancellationToken cancellationToken = default)
+            {
+                throw new InvalidOperationException("audit store down");
+            }
+        }
+
+        /// <summary>
+        /// 可注入活跃指针写失败的版本存储装饰器（委托内存实现，仅前 N 次 SetActiveAsync 抛异常）。
+        /// </summary>
+        private sealed class FlakySetActiveVersionStore : IOnlineHotfixVersionStore
+        {
+            private readonly InMemoryOnlineHotfixVersionStore _inner = new InMemoryOnlineHotfixVersionStore();
+
+            /// <summary>SetActiveAsync 累计调用次数。</summary>
+            public int SetActiveCallCount
+            {
+                get;
+                private set;
+            }
+
+            /// <summary>剩余失败次数（每次 SetActiveAsync 失败消耗一次；0 = 从不失败——setup 激活后再注值，只作用于回滚命令的指针写入）。</summary>
+            public int RemainingSetActiveFailures
+            {
+                get;
+                set;
+            }
+
+            /// <summary>失败注入消息。</summary>
+            public string FailMessage
+            {
+                get;
+                set;
+            } = "pointer store down";
+
+            public Task<bool> RegisterAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken = default)
+            {
+                return _inner.RegisterAsync(manifest, cancellationToken);
+            }
+
+            public Task<OnlineHotfixProtocolManifest> FindAsync(string version, CancellationToken cancellationToken = default)
+            {
+                return _inner.FindAsync(version, cancellationToken);
+            }
+
+            public Task<OnlineHotfixProtocolManifest> FindActiveAsync(CancellationToken cancellationToken = default)
+            {
+                return _inner.FindActiveAsync(cancellationToken);
+            }
+
+            public async Task<string> SetActiveAsync(string version, CancellationToken cancellationToken = default)
+            {
+                SetActiveCallCount++;
+                if (RemainingSetActiveFailures > 0)
+                {
+                    RemainingSetActiveFailures--;
+                    throw new InvalidOperationException(FailMessage);
+                }
+
+                return await _inner.SetActiveAsync(version, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// 记录型回滚状态日志（按级别收集轨迹行，供断言状态变迁轨迹）。
+        /// </summary>
+        private sealed class RecordingRollbackLog : IOnlineHotfixRollbackLog
+        {
+            /// <summary>Info 轨迹行。</summary>
+            public List<string> InfoLines
+            {
+                get;
+            } = new List<string>();
+
+            /// <summary>Warn 轨迹行。</summary>
+            public List<string> WarnLines
+            {
+                get;
+            } = new List<string>();
+
+            /// <summary>Error 轨迹行。</summary>
+            public List<string> ErrorLines
+            {
+                get;
+            } = new List<string>();
+
+            public void Info(string message)
+            {
+                InfoLines.Add(message);
+            }
+
+            public void Warn(string message)
+            {
+                WarnLines.Add(message);
+            }
+
+            public void Error(string message)
+            {
+                ErrorLines.Add(message);
+            }
+        }
+
+
+        /// <summary>
+        /// 被测组件集合（服务 + 各记录桩引用，供断言副作用）。
+        /// </summary>
+        private sealed class Harness
+        {
+            public OnlineHotfixRollbackService Service
+            {
+                get;
+            }
+
+            public IOnlineHotfixVersionStore Store
+            {
+                get;
+            }
+
+            public OnlineAuditService AuditService
+            {
+                get;
+            }
+
+            public CountingExecutor Executor
+            {
+                get;
+            } = new CountingExecutor();
+
+            public OnlineEventRecorder EventRecorder
+            {
+                get;
+            } = new OnlineEventRecorder();
+
+            public Harness(OnlineAuditService auditService, bool withoutExecutor = false, IOnlineHotfixArtifactFetcher fetcher = null, IOnlineHotfixVersionStore storeOverride = null, RecordingRollbackLog rollbackLog = null)
+            {
+                AuditService = auditService;
+                Store = storeOverride ?? new InMemoryOnlineHotfixVersionStore();
+                var options = new IdempotencyOptions
+                {
+                    ConcurrentWaitTimeoutMilliseconds = 1,
+                    // 回滚命令面向可重试的瞬时失败（执行器 8002）：失败记录允许同键重新执行（装配面口径）。
+                    FailedReplayPolicy = FailedReplayPolicy.ReExecute,
+                };
+                var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), options);
+                var idempotencyService = new OnlineIdempotencyService(coordinator, null);
+                // 指针重试退避注入零延迟：重试路径不引入真实等待，消除时序抖动。
+                Service = new OnlineHotfixRollbackService(Store, idempotencyService, auditService, withoutExecutor ? null : Executor, fetcher, EventRecorder, rollbackLog, TimeSpan.Zero);
+            }
+        }
+
+        /// <summary>
+        /// 构造一份版本协议清单。
+        /// </summary>
+        /// <param name="version">版本号。</param>
+        /// <param name="messages">协议消息契约行。</param>
+        /// <returns>版本清单。</returns>
+        private static OnlineHotfixProtocolManifest CreateManifest(string version, params OnlineHotfixProtocolMessage[] messages)
+        {
+            return new OnlineHotfixProtocolManifest
+            {
+                Version = version,
+                Messages = messages.ToList(),
+                RegisteredTime = 1_760_000_000_000L,
+            };
+        }
+
+        /// <summary>
+        /// 构造一条协议消息契约行。
+        /// </summary>
+        /// <param name="name">消息名。</param>
+        /// <param name="id">消息号。</param>
+        /// <returns>契约行。</returns>
+        private static OnlineHotfixProtocolMessage Msg(string name, int id)
+        {
+            return new OnlineHotfixProtocolMessage { MessageName = name, MessageId = id };
+        }
+
+        /// <summary>
+        /// 构造一条回滚命令请求。
+        /// </summary>
+        /// <param name="targetVersion">目标版本。</param>
+        /// <param name="idempotencyKey">命令幂等键。</param>
+        /// <returns>回滚命令请求。</returns>
+        private static OnlineHotfixRollbackRequest CreateRollbackRequest(string targetVersion, string idempotencyKey)
+        {
+            return new OnlineHotfixRollbackRequest
+            {
+                TargetVersion = targetVersion,
+                OperatorId = "admin-001",
+                OperatorName = "运维一号",
+                Reason = "线上协议异常，回滚到稳定版本",
+                IdempotencyKey = idempotencyKey,
+            };
+        }
+
+        /// <summary>
+        /// 登记并激活基线：v1={A,B} 为初始活跃，v2={A,B}（热修逻辑未动协议面）为待回滚离开的版本并激活。
+        /// </summary>
+        /// <param name="harness">被测组件。</param>
+        private static async Task SetupActiveV2Async(Harness harness)
+        {
+            await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1), Msg("LoginRes", 2)));
+            await harness.Service.ActivateAsync("1.0.0");
+            await harness.Service.RegisterAsync(CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("LoginRes", 2)));
+            await harness.Service.ActivateAsync("1.1.0");
+        }
+
+        /// <summary>
+        /// 查询当前作用域已落档的回滚审计记录数。
+        /// </summary>
+        /// <param name="harness">被测组件。</param>
+        /// <returns>审计记录数。</returns>
+        private static async Task<int> CountAuditRecordsAsync(Harness harness)
+        {
+            var page = await harness.AuditService.QueryAsync();
+            return page.Data.Records.Count;
+        }
+
+        // ==================== 协议兼容检查（纯函数，三类差异判定） ====================
+
+        /// <summary>
+        /// Removed 差异（当前有、目标无）判不兼容：回滚丢失既有协议面必须被拒绝。
+        /// </summary>
+        [Fact]
+        public void Check_CurrentHasExtraMessage_IncompatibleWithRemovedIssue()
+        {
+            var current = CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("MatchReq", 5));
+            var target = CreateManifest("1.0.0", Msg("LoginReq", 1));
+
+            var report = OnlineProtocolCompatibilityChecker.Check(current, target);
+
+            Assert.False(report.IsCompatible);
+            Assert.Equal(1, report.RemovedCount);
+            var issue = Assert.Single(report.Issues);
+            Assert.Equal(OnlineProtocolCompatibilityIssue.IssueKind.RemovedMessage, issue.Kind);
+            Assert.Equal("MatchReq", issue.MessageName);
+        }
+
+        /// <summary>
+        /// Changed 差异（同名不同消息号）判不兼容：路由错乱必须被拒绝。
+        /// </summary>
+        [Fact]
+        public void Check_SameNameDifferentId_IncompatibleWithChangedIssue()
+        {
+            var current = CreateManifest("1.1.0", Msg("LoginReq", 9));
+            var target = CreateManifest("1.0.0", Msg("LoginReq", 1));
+
+            var report = OnlineProtocolCompatibilityChecker.Check(current, target);
+
+            Assert.False(report.IsCompatible);
+            Assert.Equal(1, report.ChangedCount);
+            Assert.Equal(OnlineProtocolCompatibilityIssue.IssueKind.ChangedMessage, Assert.Single(report.Issues).Kind);
+        }
+
+        /// <summary>
+        /// Changed 差异（同消息号不同名）判不兼容。
+        /// </summary>
+        [Fact]
+        public void Check_SameIdDifferentName_IncompatibleWithChangedIssue()
+        {
+            var current = CreateManifest("1.1.0", Msg("LoginReqV2", 1));
+            var target = CreateManifest("1.0.0", Msg("LoginReq", 1));
+
+            var report = OnlineProtocolCompatibilityChecker.Check(current, target);
+
+            Assert.False(report.IsCompatible);
+            Assert.Equal(1, report.ChangedCount);
+            var issue = Assert.Single(report.Issues);
+            Assert.Equal(OnlineProtocolCompatibilityIssue.IssueKind.ChangedMessage, issue.Kind);
+            Assert.Equal("LoginReqV2", issue.MessageName);
+        }
+
+        /// <summary>
+        /// Added 差异（目标独有）判兼容：回滚恢复旧处理器无害，差异入报告提示。
+        /// </summary>
+        [Fact]
+        public void Check_TargetHasExtraMessage_CompatibleWithAddedIssue()
+        {
+            var current = CreateManifest("1.1.0", Msg("LoginReq", 1));
+            var target = CreateManifest("1.0.0", Msg("LoginReq", 1), Msg("ChatReq", 7));
+
+            var report = OnlineProtocolCompatibilityChecker.Check(current, target);
+
+            Assert.True(report.IsCompatible);
+            Assert.Equal(1, report.AddedCount);
+            Assert.Equal(OnlineProtocolCompatibilityIssue.IssueKind.AddedMessage, Assert.Single(report.Issues).Kind);
+        }
+
+        /// <summary>
+        /// 协议面一致（热修仅改内部逻辑）判兼容且零差异——回滚常态用例。
+        /// </summary>
+        [Fact]
+        public void Check_IdenticalContracts_CompatibleWithNoIssues()
+        {
+            var current = CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("LoginRes", 2));
+            var target = CreateManifest("1.0.0", Msg("LoginReq", 1), Msg("LoginRes", 2));
+
+            var report = OnlineProtocolCompatibilityChecker.Check(current, target);
+
+            Assert.True(report.IsCompatible);
+            Assert.Empty(report.Issues);
+            Assert.Equal(0, report.RemovedCount + report.ChangedCount + report.AddedCount);
+        }
+
+        // ==================== 回滚命令全链路 ====================
+
+        /// <summary>
+        /// 回滚成功全链路：执行器切版本、活跃指针切换、审计落档 Domain=Operation 且含操作者/原因、事件发布。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_CompatibleTarget_SwitchesVersionAuditsAndPublishesEvent()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-001"));
+
+            Assert.True(result.IsSuccess);
+            Assert.False(result.Data.IsReplay);
+            Assert.Equal("1.0.0", result.Data.TargetVersion);
+            Assert.Equal("1.1.0", result.Data.PreviousVersion);
+            Assert.Contains("Removed=0", result.Data.CompatibilitySummary);
+            Assert.Equal(1, harness.Executor.CallCount);
+            Assert.Equal("1.0.0", harness.Executor.TargetVersions[0]);
+
+            var active = await harness.Store.FindActiveAsync();
+            Assert.Equal("1.0.0", active.Version);
+
+            var page = await harness.AuditService.QueryAsync();
+            var record = Assert.Single(page.Data.Records);
+            Assert.Equal(OnlineAuditDomain.Operation, record.Domain);
+            Assert.Equal("hotfix-rollback-rb-key-001", record.EventId);
+            Assert.Equal("admin-001", record.OperatorId);
+            Assert.Equal("线上协议异常，回滚到稳定版本", record.Reason);
+
+            var published = harness.EventRecorder.Filter(OnlineHotfixEvents.RolledBack);
+            var rolledBack = Assert.Single(published);
+            Assert.Equal("online-hotfix", rolledBack.Source);
+            Assert.Equal("1.0.0", rolledBack.CorrelationId);
+        }
+
+        /// <summary>
+        /// 幂等重放同构：重复命令 IsReplay=true、不重复执行、审计不重复落档、回执同构。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_DuplicateCommand_ReplaysFirstResultWithoutSideEffects()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+
+            var first = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-002"));
+            Assert.True(first.IsSuccess);
+
+            var replay = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-002"));
+
+            Assert.True(replay.IsSuccess);
+            Assert.True(replay.Data.IsReplay);
+            Assert.Equal(first.Data.TargetVersion, replay.Data.TargetVersion);
+            Assert.Equal(first.Data.PreviousVersion, replay.Data.PreviousVersion);
+            Assert.Equal(first.Data.CompatibilitySummary, replay.Data.CompatibilitySummary);
+            Assert.Equal(1, harness.Executor.CallCount);
+            Assert.Equal(1, await CountAuditRecordsAsync(harness));
+        }
+
+        /// <summary>
+        /// 相同幂等键承载不同意图（目标版本不同）判 6002 冲突。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_SameKeyDifferentIntent_RejectedAsConflict()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+            await harness.Service.RegisterAsync(CreateManifest("0.9.0", Msg("LoginReq", 1), Msg("LoginRes", 2), Msg("LegacyReq", 3)));
+
+            var first = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-003"));
+            Assert.True(first.IsSuccess);
+
+            var conflict = await harness.Service.RollbackAsync(CreateRollbackRequest("0.9.0", "rb-key-003"));
+
+            Assert.False(conflict.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, conflict.Code);
+        }
+
+        /// <summary>
+        /// 目标版本未登记清单 → 4002，且活跃版本未变、审计零落档。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_UnregisteredTarget_RejectedWith404()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("0.1.0", "rb-key-004"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal(0, await CountAuditRecordsAsync(harness));
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 从未激活任何版本 → 5001 业务状态未准备。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_NoActiveVersion_RejectedWithStateNotReady()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1)));
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-005"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateNotReady, result.Code);
+            Assert.Equal(0, harness.Executor.CallCount);
+        }
+
+        /// <summary>
+        /// 目标即当前活跃版本 → 5003 状态机不允许（无意义的自反回滚）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_TargetEqualsCurrent_RejectedWithStateForbidden()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.1.0", "rb-key-006"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, result.Code);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal(0, await CountAuditRecordsAsync(harness));
+        }
+
+        /// <summary>
+        /// 协议不兼容（当前有目标无）→ 6002 拒绝且版本未切换、执行器未触达（兼容闸门先行于执行器）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_IncompatibleTarget_RejectedAndVersionUnchanged()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1)));
+            await harness.Service.ActivateAsync("1.0.0");
+            await harness.Service.RegisterAsync(CreateManifest("1.1.0", Msg("LoginReq", 1), Msg("MatchReq", 5)));
+            await harness.Service.ActivateAsync("1.1.0");
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-007"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, result.Code);
+            Assert.Contains("Removed=1", result.Message);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 执行器失败 → 8002 且幂等键落定 Fail（同键重试可重新执行并成功——失败不占死幂等占位）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ExecutorFails_RejectedAndIdempotencyReleased()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+            harness.Executor.FailMessage = "dll load failure";
+
+            var failed = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-008"));
+
+            Assert.False(failed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, failed.Code);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+
+            harness.Executor.FailMessage = null;
+            var retried = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-008"));
+            Assert.True(retried.IsSuccess);
+            Assert.False(retried.Data.IsReplay);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 执行器未装配（null）→ 8002 拒绝（装配面 X4 必须注入执行器才能回滚）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ExecutorMissing_RejectedWithDependencyUnavailable()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), withoutExecutor: true);
+            await SetupActiveV2Async(harness);
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-009"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 审计链路异常 → 1001 拒绝且切换未发生（「无审计不执行」——审计先行先于执行器）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_AuditIngestFails_RejectedWithoutExecution()
+        {
+            var harness = new Harness(new OnlineAuditService(new ThrowingAuditStore()));
+            await SetupActiveV2Async(harness);
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-010"));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.InternalError, result.Code);
+            Assert.Contains("无审计不执行", result.Message);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        // ==================== 参数校验（4001 宁拒毋缺） ====================
+
+        /// <summary>
+        /// 操作者 / 原因 / 目标版本 / 幂等键逐维缺失或非法 → 4001（宁拒毋缺）。
+        /// </summary>
+        [Theory]
+        [InlineData("operator")]
+        [InlineData("reason")]
+        [InlineData("version")]
+        [InlineData("idempotencyKey")]
+        [InlineData("badKeyFormat")]
+        [InlineData("versionWithPipe")]
+        public async Task RollbackAsync_MissingOrInvalidDimension_RejectedWithParameterInvalid(string brokenDimension)
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+            var request = CreateRollbackRequest("1.0.0", "rb-key-011");
+            switch (brokenDimension)
+            {
+                case "operator":
+                    request.OperatorId = string.Empty;
+                    break;
+                case "reason":
+                    request.Reason = string.Empty;
+                    break;
+                case "version":
+                    request.TargetVersion = string.Empty;
+                    break;
+                case "idempotencyKey":
+                    request.IdempotencyKey = string.Empty;
+                    break;
+                case "badKeyFormat":
+                    request.IdempotencyKey = "bad key";
+                    break;
+                case "versionWithPipe":
+                    request.TargetVersion = "1.0|backdoor";
+                    break;
+                default:
+                    break;
+            }
+
+            var result = await harness.Service.RollbackAsync(request);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal(0, await CountAuditRecordsAsync(harness));
+        }
+
+        // ==================== 只读预检与登记 / 激活簿记 ====================
+
+        /// <summary>
+        /// 只读预检：产出兼容报告且无任何副作用（不落审计、不触执行器、活跃版本不变）——供回滚演练 Runbook 调用。
+        /// </summary>
+        [Fact]
+        public async Task CheckProtocolCompatibilityAsync_ReturnsReportWithoutSideEffects()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            await SetupActiveV2Async(harness);
+            // 预检目标取超集版本（Added 兼容差异）：当前 1.1.0={LoginReq,LoginRes}，目标 2.0.0 多一条 ChatReq。
+            await harness.Service.RegisterAsync(CreateManifest("2.0.0", Msg("LoginReq", 1), Msg("LoginRes", 2), Msg("ChatReq", 7)));
+
+            var report = await harness.Service.CheckProtocolCompatibilityAsync("2.0.0");
+
+            Assert.True(report.IsSuccess);
+            Assert.True(report.Data.IsCompatible);
+            Assert.Equal(1, report.Data.AddedCount);
+            Assert.Equal(0, harness.Executor.CallCount);
+            Assert.Equal(0, await CountAuditRecordsAsync(harness));
+            Assert.Empty(harness.EventRecorder.Filter(OnlineHotfixEvents.RolledBack));
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 登记簿记幂等：同 (作用域, 版本号) 重复登记返回 false 且不覆盖既有清单、不重复发登记事件。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_DuplicateVersion_IdempotentReceiptWithoutOverwrite()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var first = await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1)));
+            Assert.True(first.IsSuccess);
+            Assert.True(first.Data);
+
+            var second = await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("HackedReq", 99)));
+
+            Assert.True(second.IsSuccess);
+            Assert.False(second.Data);
+            var stored = await harness.Store.FindAsync("1.0.0");
+            Assert.Single(stored.Messages);
+            Assert.Single(harness.EventRecorder.Filter(OnlineHotfixEvents.VersionRegistered));
+        }
+
+        /// <summary>
+        /// 清单内消息名重复 → 4001（契约行唯一性是兼容判定的前提）。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_DuplicateMessageName_RejectedWithParameterInvalid()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+
+            var result = await harness.Service.RegisterAsync(CreateManifest("1.0.0", Msg("LoginReq", 1), Msg("LoginReq", 2)));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
+        /// 激活未登记版本 → 4002。
+        /// </summary>
+        [Fact]
+        public async Task ActivateAsync_UnregisteredVersion_RejectedWith404()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+
+            var result = await harness.Service.ActivateAsync("404.0.0");
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
+        }
+
+
+        /// <summary>
+        /// 登记携带制品字段（SourceUrl + Sha256 成对）：获取器先行（登记先于清单落簿），登记成功。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_WithArtifactFields_FetchesThenRegisters()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Data);
+            Assert.Equal(1, fetcher.CallCount);
+            Assert.Equal(("3.0.0", "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll", new string('a', 64)), fetcher.Calls[0]);
+            Assert.NotNull(await harness.Store.FindAsync("3.0.0"));
+        }
+
+        /// <summary>
+        /// 获取器失败 → 8002（登记未生效可重试：清单不落簿；修复后同版本登记成功）。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_FetchFailure_RejectedWithDependencyUnavailableAndRetryable()
+        {
+            var fetcher = new RecordingFetcher { FailMessage = "download failed", };
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var failure = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(failure.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, failure.Code);
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
+
+            fetcher.FailMessage = null;
+            var retry = await harness.Service.RegisterAsync(manifest);
+            Assert.True(retry.IsSuccess);
+            Assert.True(retry.Data);
+            Assert.Equal(2, fetcher.CallCount);
+        }
+
+        /// <summary>
+        /// 只给 SourceUrl 不给 ArtifactSha256 → 4001（成对提供红线），获取器不被触达。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_UrlOnlyWithoutSha_RejectedWithParameterInvalid()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+            Assert.Equal(0, fetcher.CallCount);
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
+        }
+
+        /// <summary>
+        /// 制品字段形状非法（校验和非 64 位 hex / URL 非 http(s) / 版本含路径字符）逐维 4001。
+        /// </summary>
+        [Theory]
+        [InlineData("bad-sha")]
+        [InlineData(null)]
+        public async Task RegisterAsync_MalformedArtifactFields_RejectedWithParameterInvalid(string brokenDimension)
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: new RecordingFetcher());
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = brokenDimension == "bad-sha" ? "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll" : "ftp://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = brokenDimension == "bad-sha" ? "not-hex" : new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
+        /// 版本号含路径注入字符 → 4001（制品落盘/装载路径注入面，与 HotfixLoadOptions 同防线）。
+        /// </summary>
+        [Theory]
+        [InlineData("3/0.0")]
+        [InlineData("3\\0.0")]
+        [InlineData("3:0.0")]
+        [InlineData("3..0.0")]
+        public async Task RegisterAsync_ForbiddenVersionChars_RejectedWithParameterInvalid(string version)
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+
+            var result = await harness.Service.RegisterAsync(CreateManifest(version, Msg("LoginReq", 1)));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
+        /// 纯本地登记（无制品字段）不触达获取器——现状行为逐字节不变红线。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_WithoutArtifactFields_DoesNotInvokeFetcher()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+
+            var result = await harness.Service.RegisterAsync(CreateManifest("3.0.0", Msg("LoginReq", 1)));
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Data);
+            Assert.Equal(0, fetcher.CallCount);
+        }
+
+        /// <summary>
+        /// 携带制品字段但获取器未装配 → 8002（宁拒不静默——无获取器的登记会让制品永不落盘）。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_ArtifactFieldsWithoutFetcher_RejectedWithDependencyUnavailable()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
+            Assert.Null(await harness.Store.FindAsync("3.0.0"));
+        }
+
+        // ==================== 活跃指针写入失败：重试与反切补偿 ====================
+
+        /// <summary>
+        /// 指针写第 1 次失败第 2 次成功 → 重试吸收瞬时失败，回滚整体成功且不反切（执行器单次调用）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteTransientFailure_RetriedAndSucceedsWithoutRevert()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 1;
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-101"));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("1.0.0", result.Data.TargetVersion);
+            Assert.Equal(4, store.SetActiveCallCount); // setup 激活 2 次 + 命令第 1 次失败 + 第 2 次成功
+            Assert.Equal(1, harness.Executor.CallCount);
+            Assert.Equal(new[] { "1.0.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
+            Assert.Equal(1, await CountAuditRecordsAsync(harness));
+            var warnLine = Assert.Single(rollbackLog.WarnLines);
+            Assert.Contains("transition=pointer-write-failed", warnLine);
+            Assert.Contains("attempt=1/4", warnLine);
+            Assert.DoesNotContain(rollbackLog.WarnLines, line => line.Contains("transition=executor-reverted"));
+            Assert.Empty(rollbackLog.ErrorLines);
+            Assert.Contains(rollbackLog.InfoLines, line => line.Contains("transition=rollback-completed"));
+        }
+
+        /// <summary>
+        /// 指针写重试耗尽且反切成功 → 5000 且消息声明已反切；执行器调用序列 = [目标, 旧版本]，
+        /// 活跃指针停旧版本（状态一致）；同幂等键在存储恢复后可重新执行成功；轨迹含耗尽与反切告警。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteExhausted_RevertsExecutorToPreviousVersion()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 10;
+
+            var failed = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-102"));
+
+            Assert.False(failed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.InternalError, failed.Code);
+            Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
+            Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+            Assert.Contains(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
+            Assert.Contains(rollbackLog.WarnLines, line => line.Contains("transition=executor-reverted"));
+            Assert.Equal(3, rollbackLog.WarnLines.Count(line => line.Contains("transition=pointer-write-failed")));
+
+            store.RemainingSetActiveFailures = 0;
+            var retried = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-102"));
+            Assert.True(retried.IsSuccess);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync()).Version);
+        }
+
+        /// <summary>
+        /// 指针写重试耗尽且反切执行器亦失败 → 5000 且消息声明状态不一致须对账；
+        /// 执行器双调用、活跃指针停旧版本；轨迹含耗尽与反切失败（终态 = 执行器目标版本 / 指针旧版本）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteExhaustedAndRevertFails_ReportsInconsistentState()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 10;
+            harness.Executor.FailMessage = "revert load failure";
+            harness.Executor.FailFromCallIndex = 2;
+
+            var failed = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-103"));
+
+            Assert.False(failed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.InternalError, failed.Code);
+            Assert.Contains("须对账", failed.Message);
+            Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
+            Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync()).Version);
+            var exhaustedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
+            Assert.Contains("attempts=4", exhaustedLine);
+            var revertFailedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=executor-revert-failed"));
+            Assert.Contains("executor=1.0.0", revertFailedLine);
+            Assert.Contains("activePointer=1.1.0", revertFailedLine);
+        }
+    }
+}

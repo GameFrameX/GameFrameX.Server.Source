@@ -1,36 +1,32 @@
 // ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
 
-using System;
-using System.Threading.Tasks;
 using GameFrameX.Utility.Setting;
 using Xunit;
 
@@ -51,12 +47,6 @@ public class AppSettingTests
         var appSetting = new AppSetting();
 
         // Assert
-        Assert.NotNull(appSetting.AppExitSource);
-        Assert.NotNull(appSetting.AppExitToken);
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.LaunchTime <= DateTime.UtcNow);
-        Assert.True(appSetting.LaunchTime > DateTime.UtcNow.AddMinutes(-1));
-
 #if DEBUG
         Assert.True(appSetting.IsDebug);
         Assert.True(appSetting.IsDebugReceive);
@@ -70,78 +60,6 @@ public class AppSettingTests
         Assert.False(appSetting.IsDebugSendHeartBeat);
         Assert.False(appSetting.IsDebugReceiveHeartBeat);
 #endif
-    }
-
-    /// <summary>
-    /// 测试AppExitToken属性
-    /// </summary>
-    [Fact]
-    public void AppExitToken_ShouldReturnTaskFromAppExitSource()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-
-        // Act
-        var token = appSetting.AppExitToken;
-
-        // Assert
-        Assert.NotNull(token);
-        Assert.Same(appSetting.AppExitSource.Task, token);
-        Assert.False(token.IsCompleted);
-    }
-
-    /// <summary>
-    /// 测试AppRunning属性设置为true
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToTrue_ShouldUpdateValue()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-
-        // Act
-        appSetting.AppRunning = true;
-
-        // Assert
-        Assert.True(appSetting.AppRunning);
-        Assert.False(appSetting.AppExitToken.IsCompleted);
-    }
-
-    /// <summary>
-    /// 测试AppRunning属性设置为false
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToFalse_ShouldCancelAppExitToken()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        appSetting.AppRunning = true;
-
-        // Act
-        appSetting.AppRunning = false;
-
-        // Assert
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.AppExitToken.IsCanceled);
-    }
-
-    /// <summary>
-    /// 测试AppRunning在已取消状态下设置为true
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToTrueAfterCanceled_ShouldRemainFalse()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        appSetting.AppRunning = true;
-        appSetting.AppRunning = false; // 取消
-
-        // Act
-        appSetting.AppRunning = true; // 尝试重新设置为true
-
-        // Assert
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.AppExitToken.IsCanceled);
     }
 
     /// <summary>
@@ -177,41 +95,6 @@ public class AppSettingTests
     }
 
     /// <summary>
-    /// 测试LaunchTime属性
-    /// </summary>
-    [Fact]
-    public void LaunchTime_ShouldBeSetToCurrentUtcTime()
-    {
-        // Arrange
-        var beforeCreation = DateTime.UtcNow;
-
-        // Act
-        var appSetting = new AppSetting();
-        var afterCreation = DateTime.UtcNow;
-
-        // Assert
-        Assert.True(appSetting.LaunchTime >= beforeCreation);
-        Assert.True(appSetting.LaunchTime <= afterCreation);
-    }
-
-    /// <summary>
-    /// 测试LaunchTime属性可以被设置
-    /// </summary>
-    [Fact]
-    public void LaunchTime_CanBeSet_ShouldUpdateValue()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        var newTime = DateTime.UtcNow.AddHours(-1);
-
-        // Act
-        appSetting.LaunchTime = newTime;
-
-        // Assert
-        Assert.Equal(newTime, appSetting.LaunchTime);
-    }
-
-    /// <summary>
     /// 测试默认配置属性值
     /// </summary>
     [Fact]
@@ -224,16 +107,26 @@ public class AppSettingTests
         Assert.False(appSetting.IsOpenTelemetryMetrics);
         Assert.False(appSetting.IsOpenTelemetryTracing);
         Assert.False(appSetting.IsOpenTelemetry);
-        Assert.False(appSetting.IsMonitorTimeOut);
-        Assert.Equal(0, appSetting.MonitorTimeOutSeconds);
-        Assert.Equal(0, appSetting.NetWorkSendTimeOutSeconds);
-        Assert.Equal(300_000, appSetting.SaveDataInterval);
+        Assert.False(appSetting.IsMonitorMessageTimeOut);
+        Assert.Equal(1, appSetting.MonitorMessageTimeOutSeconds);
+        Assert.Equal(5, appSetting.NetworkSendTimeOutSeconds);
+        Assert.Equal(30_000, appSetting.SaveDataInterval);
         Assert.Equal(500, appSetting.SaveDataBatchCount);
         Assert.Equal(30_000, appSetting.SaveDataBatchTimeOut);
         Assert.Equal(30_000, appSetting.ActorTimeOut);
         Assert.Equal(15, appSetting.ActorRecycleTime);
         Assert.Equal(30_000, appSetting.ActorQueueTimeOut);
         Assert.Equal(3000, appSetting.MaxClientCount);
+        Assert.Equal(1_048_576, appSetting.HttpMaxRequestBodyBytes);
+        Assert.Equal(1_048_576, appSetting.HttpMaxJsonBodyBytes);
+        Assert.Equal(1_048_576, appSetting.HttpMaxProtoBodyBytes);
+        Assert.False(appSetting.HttpRequireSign);
+        Assert.Equal(string.Empty, appSetting.HttpSignSecret);
+        Assert.Equal(string.Empty, appSetting.HttpsCertPath);
+        Assert.Equal(string.Empty, appSetting.HttpsCertPassword);
+        Assert.Equal(string.Empty, appSetting.HttpsCertificateKeyPath);
+        Assert.Equal(string.Empty, appSetting.WssCertificateKeyPath);
+        Assert.Equal(string.Empty, appSetting.WssCertificatePassword);
     }
 
     /// <summary>
@@ -249,9 +142,9 @@ public class AppSettingTests
         appSetting.IsOpenTelemetryMetrics = true;
         appSetting.IsOpenTelemetryTracing = true;
         appSetting.IsOpenTelemetry = true;
-        appSetting.IsMonitorTimeOut = true;
-        appSetting.MonitorTimeOutSeconds = 5;
-        appSetting.NetWorkSendTimeOutSeconds = 10;
+        appSetting.IsMonitorMessageTimeOut = true;
+        appSetting.MonitorMessageTimeOutSeconds = 5;
+        appSetting.NetworkSendTimeOutSeconds = 10;
         appSetting.SaveDataInterval = 600_000;
         appSetting.SaveDataBatchCount = 1000;
         appSetting.SaveDataBatchTimeOut = 60_000;
@@ -259,14 +152,19 @@ public class AppSettingTests
         appSetting.ActorRecycleTime = 30;
         appSetting.ActorQueueTimeOut = 60_000;
         appSetting.MaxClientCount = 5000;
+        appSetting.HttpMaxRequestBodyBytes = 2_097_152;
+        appSetting.HttpMaxJsonBodyBytes = 524_288;
+        appSetting.HttpMaxProtoBodyBytes = 786_432;
+        appSetting.HttpRequireSign = true;
+        appSetting.HttpCorsAllowedOrigins = "https://admin.example.com";
 
         // Assert
         Assert.True(appSetting.IsOpenTelemetryMetrics);
         Assert.True(appSetting.IsOpenTelemetryTracing);
         Assert.True(appSetting.IsOpenTelemetry);
-        Assert.True(appSetting.IsMonitorTimeOut);
-        Assert.Equal(5, appSetting.MonitorTimeOutSeconds);
-        Assert.Equal(10, appSetting.NetWorkSendTimeOutSeconds);
+        Assert.True(appSetting.IsMonitorMessageTimeOut);
+        Assert.Equal(5, appSetting.MonitorMessageTimeOutSeconds);
+        Assert.Equal(10, appSetting.NetworkSendTimeOutSeconds);
         Assert.Equal(600_000, appSetting.SaveDataInterval);
         Assert.Equal(1000, appSetting.SaveDataBatchCount);
         Assert.Equal(60_000, appSetting.SaveDataBatchTimeOut);
@@ -274,6 +172,11 @@ public class AppSettingTests
         Assert.Equal(30, appSetting.ActorRecycleTime);
         Assert.Equal(60_000, appSetting.ActorQueueTimeOut);
         Assert.Equal(5000, appSetting.MaxClientCount);
+        Assert.Equal(2_097_152, appSetting.HttpMaxRequestBodyBytes);
+        Assert.Equal(524_288, appSetting.HttpMaxJsonBodyBytes);
+        Assert.Equal(786_432, appSetting.HttpMaxProtoBodyBytes);
+        Assert.True(appSetting.HttpRequireSign);
+        Assert.Equal("https://admin.example.com", appSetting.HttpCorsAllowedOrigins);
     }
 
     /// <summary>
@@ -294,6 +197,11 @@ public class AppSettingTests
         appSetting.HttpIsDevelopment = true;
         appSetting.HttpPort = 80;
         appSetting.HttpsPort = 443;
+        appSetting.HttpsCertPath = "/path/to/https-cert.pfx";
+        appSetting.HttpsCertPassword = "cert-password";
+        appSetting.HttpsCertificateKeyPath = "/path/to/https-key.pem";
+        appSetting.WssCertificateKeyPath = "/path/to/wss-key.pem";
+        appSetting.WssCertificatePassword = "wss-password";
         appSetting.MetricsPort = 9091;
         appSetting.WsPort = 8081;
         appSetting.WssPort = 8443;
@@ -308,6 +216,11 @@ public class AppSettingTests
         Assert.True(appSetting.HttpIsDevelopment);
         Assert.Equal((ushort)80, appSetting.HttpPort);
         Assert.Equal((ushort)443, appSetting.HttpsPort);
+        Assert.Equal("/path/to/https-cert.pfx", appSetting.HttpsCertPath);
+        Assert.Equal("cert-password", appSetting.HttpsCertPassword);
+        Assert.Equal("/path/to/https-key.pem", appSetting.HttpsCertificateKeyPath);
+        Assert.Equal("/path/to/wss-key.pem", appSetting.WssCertificateKeyPath);
+        Assert.Equal("wss-password", appSetting.WssCertificatePassword);
         Assert.Equal((ushort)9091, appSetting.MetricsPort);
         Assert.Equal((ushort)8081, appSetting.WsPort);
         Assert.Equal((ushort)8443, appSetting.WssPort);
@@ -366,30 +279,6 @@ public class AppSettingTests
     }
 
     /// <summary>
-    /// 测试多线程环境下AppRunning属性的线程安全性
-    /// </summary>
-    [Fact]
-    public async Task AppRunning_MultipleThreads_ShouldBeThreadSafe()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        var tasks = new Task[10];
-
-        // Act
-        for (int i = 0; i < tasks.Length; i++)
-        {
-            int index = i;
-            tasks[i] = Task.Run(() => { appSetting.AppRunning = index % 2 == 0; });
-        }
-
-        await Task.WhenAll(tasks);
-
-        // Assert
-        // 验证最终状态是一致的
-        Assert.True(appSetting.AppExitToken.IsCanceled || !appSetting.AppExitToken.IsCompleted);
-    }
-
-    /// <summary>
     /// 测试ServerInstanceId属性
     /// </summary>
     [Fact]
@@ -404,5 +293,78 @@ public class AppSettingTests
 
         // Assert
         Assert.Equal(instanceId, appSetting.ServerInstanceId);
+    }
+
+    /// <summary>
+    /// ToString/ToFormatString 必须对四个凭据字段脱敏：非空值输出掩码，明文绝不进入序列化输出（SEC-H01）。
+    /// </summary>
+    [Fact]
+    public void ToString_WithCredentialFields_ShouldMaskSensitiveValues()
+    {
+        // Arrange
+        var appSetting = new AppSetting();
+        appSetting.DataBasePassword = "db-password-plain";
+        appSetting.HttpSignSecret = "http-sign-secret-plain";
+        appSetting.DataBaseUrl = "private-connection-value";
+        appSetting.HttpsCertPassword = "https-cert-password-plain";
+        appSetting.WssCertificatePassword = "wss-certificate-password-plain";
+
+        // Act
+        var json = appSetting.ToString();
+        var formattedJson = appSetting.ToFormatString();
+
+        // Assert：两条序列化路径均不含任何明文凭据
+        Assert.DoesNotContain("private-connection-value", json);
+        Assert.DoesNotContain("private-connection-value", formattedJson);
+        Assert.DoesNotContain("db-password-plain", json);
+        Assert.DoesNotContain("http-sign-secret-plain", json);
+        Assert.DoesNotContain("https-cert-password-plain", json);
+        Assert.DoesNotContain("wss-certificate-password-plain", json);
+        Assert.Contains($"\"{nameof(AppSetting.WssCertificatePassword)}\":\"***\"", json);
+        Assert.DoesNotContain("db-password-plain", formattedJson);
+        Assert.DoesNotContain("http-sign-secret-plain", formattedJson);
+        Assert.DoesNotContain("https-cert-password-plain", formattedJson);
+        Assert.DoesNotContain("wss-certificate-password-plain", formattedJson);
+
+        // 已配置的字段以掩码出现，保留"已配置"的运维可见性
+        Assert.Contains("\"***\"", json);
+        Assert.Contains("***", formattedJson);
+    }
+
+    /// <summary>
+    /// 未配置（空串）的凭据字段保持空输出，不误报为已配置。
+    /// </summary>
+    [Fact]
+    public void ToString_WithUnsetCredentialFields_ShouldKeepEmptyValues()
+    {
+        // Arrange：默认构造——DataBasePassword 为 null（JsonHelper 跳过 null 属性），
+        var appSetting = new AppSetting();
+
+        // Act
+        var json = appSetting.ToString();
+
+        // Assert：空串凭据字段保留空值输出（紧凑 JSON 无空格分隔），未配置不误报为已配置（不出现掩码）
+        Assert.Contains($"\"{nameof(AppSetting.WssCertificatePassword)}\":\"\"", json);
+        Assert.DoesNotContain("***", json);
+    }
+
+    /// <summary>
+    /// 脱敏不得影响配置对象自身的字段值（掩码只作用于序列化拷贝）。
+    /// </summary>
+    [Fact]
+    public void ToString_AfterMasking_ShouldNotMutateOriginalSetting()
+    {
+        // Arrange
+        var appSetting = new AppSetting();
+        appSetting.DataBasePassword = "db-password-plain";
+        appSetting.WssCertificatePassword = "wss-password-plain";
+
+        // Act
+        appSetting.ToString();
+        appSetting.ToFormatString();
+
+        // Assert
+        Assert.Equal("db-password-plain", appSetting.DataBasePassword);
+        Assert.Equal("wss-password-plain", appSetting.WssCertificatePassword);
     }
 }

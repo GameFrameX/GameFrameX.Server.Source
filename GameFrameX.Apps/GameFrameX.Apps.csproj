@@ -1,14 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <ImplicitUsings>disable</ImplicitUsings>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\GameFrameX.Core\GameFrameX.Core.csproj" />
       <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj" />
-      <ProjectReference Include="..\GameFrameX.Monitor\GameFrameX.Monitor.csproj" />
       <ProjectReference Include="..\GameFrameX.Proto\GameFrameX.Proto.csproj" />
     </ItemGroup>
 

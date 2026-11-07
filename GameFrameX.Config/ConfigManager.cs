@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using System.Collections.Concurrent;
 using GameFrameX.Core.Config;
@@ -99,20 +67,17 @@ internal sealed partial class ConfigManager : IConfigManager
 
 
     /// <summary>
-    /// 增加指定全局配置项。
+    /// 增加指定全局配置项；同名键已存在时以新值原子替换（upsert，支持配置热重载发布）。
     /// </summary>
-    /// <param name="configName">要增加全局配置项的名称。</param>
-    /// <param name="configValue">全局配置项的值。</param>
-    /// <returns>是否增加全局配置项成功。</returns>
+    /// <remarks>
+    /// Adds the specified global configuration item; atomically replaces the value when a key
+    /// with the same name already exists (upsert, supporting hot-reload publishing).
+    /// </remarks>
+    /// <param name="configName">要增加全局配置项的名称 / The name of the global configuration item to add</param>
+    /// <param name="configValue">全局配置项的值 / The value of the global configuration item</param>
     public void AddConfig(string configName, IDataTable configValue)
     {
-        var isExist = m_ConfigDatas.TryGetValue(configName, out var value);
-        if (isExist)
-        {
-            return;
-        }
-
-        m_ConfigDatas.TryAdd(configName, configValue);
+        m_ConfigDatas[configName] = configValue;
     }
 
     /// <summary>

@@ -1,0 +1,83 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using GameFrameX.Network.Abstractions;
+
+namespace GameFrameX.Core.Session;
+
+/// <summary>
+/// 玩家运行时会话契约。成员仅镜像 <see cref="PlayerSession"/> 既有公共面（接口化裁定），不补充新成员；
+/// 命名 PlayerSession 与连接级 GameAppSession、Online 模块 OnlineSession 族区分。
+/// </summary>
+public interface IPlayerSession
+{
+    /// <summary>
+    /// 全局会话ID
+    /// </summary>
+    string SessionId { get; }
+
+    /// <summary>
+    /// 玩家ID
+    /// </summary>
+    long PlayerId { get; }
+
+    /// <summary>
+    /// 连接时间
+    /// </summary>
+    long CreateTime { get; }
+
+    /// <summary>
+    /// 连接上下文
+    /// </summary>
+    INetworkChannel WorkChannel { get; }
+
+    /// <summary>
+    /// 连接标示，避免自己顶自己的号,客户端每次启动游戏生成一次/或者每个设备一个
+    /// </summary>
+    string Sign { get; }
+
+    /// <summary>
+    /// 设置玩家ID
+    /// </summary>
+    /// <param name="playerId">玩家ID</param>
+    void SetPlayerId(long playerId);
+
+    /// <summary>
+    /// 设置签名
+    /// </summary>
+    /// <param name="sign">签名</param>
+    void SetSign(string sign);
+
+    /// <summary>
+    /// 发送消息
+    /// </summary>
+    /// <param name="messageObject">消息对象</param>
+    /// <param name="errorCode">消息错误码</param>
+    Task WriteAsync(INetworkMessage messageObject, int errorCode = 0);
+}

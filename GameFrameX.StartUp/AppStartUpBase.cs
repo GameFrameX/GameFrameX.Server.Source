@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -31,6 +31,7 @@
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.StartUp.Abstractions;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.StartUp;
@@ -44,15 +45,6 @@ namespace GameFrameX.StartUp;
 /// </remarks>
 public abstract partial class AppStartUpBase : IAppStartUp
 {
-    /// <summary>
-    /// 应用程序退出任务完成源。
-    /// </summary>
-    /// <remarks>
-    /// Application exit task completion source.
-    /// Used to asynchronously wait for application exit signals.
-    /// </remarks>
-    protected readonly TaskCompletionSource<string> AppExitSource = new();
-
     /// <summary>
     /// 获取服务器类型标识符。
     /// </summary>
@@ -74,6 +66,32 @@ public abstract partial class AppStartUpBase : IAppStartUp
     public AppSetting Setting { get; protected set; }
 
     /// <summary>
+    /// 启动就绪信号源（启动阶段完成时置位；进程退出前保持未完成也合法）。
+    /// </summary>
+    /// <remarks>
+    /// The startup-ready signal source (set when the startup phase completes; it is also legal for it to stay incomplete until process exit).
+    /// </remarks>
+    private readonly TaskCompletionSource _startUpReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// 获取启动就绪任务。
+    /// </summary>
+    /// <remarks>
+    /// Gets the startup-ready task (priority startup barrier).
+    /// Satisfies the required <see cref="IAppStartUp.StartUpReadyTask"/> member (a breaking API addition):
+    /// classes deriving from this base need no migration, while direct <see cref="IAppStartUp"/>
+    /// implementers must provide the member themselves (see the interface remarks for the migration notes).
+    /// Completes when the application calls <see cref="MarkStartUpReady"/> — i.e. its databases, components
+    /// and network listeners are up — long before the run-until-exit <see cref="StartAsync"/> task completes.
+    /// The local host awaits this signal before reporting startup completion.
+    /// </remarks>
+    /// <value>启动就绪任务 / The startup-ready task</value>
+    public Task StartUpReadyTask
+    {
+        get { return _startUpReady.Task; }
+    }
+
+    /// <summary>
     /// 获取应用程序退出令牌。
     /// </summary>
     /// <remarks>
@@ -83,7 +101,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <value>当应用程序应该退出时完成的任务 / Task that completes when the application should exit</value>
     public Task<string> AppExitToken
     {
-        get { return AppExitSource.Task; }
+        get { return GameAppRuntime.AppExitToken; }
     }
 
     /// <summary>
@@ -91,7 +109,9 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// </summary>
     /// <remarks>
     /// Initialize the application startup.
-    /// Sets the server type and configuration information, and calls the virtual Init method for subclass-specific initialization.
+    /// Sets the server type and configuration information, idempotently initializes the process-level
+    /// shared kernel (log handler) via <see cref="AppBootstrapper.EnsureInitialized"/> (only the
+    /// local host creates the kernel), and calls the virtual Init method for subclass-specific initialization.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / Server type identifier</param>
     /// <param name="setting">应用程序配置设置 / Application configuration settings</param>
@@ -100,9 +120,9 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <exception cref="ArgumentNullException">当 <paramref name="setting"/> 为 null 时抛出 / Thrown when <paramref name="setting"/> is null</exception>
     public bool Init(string serverType, AppSetting setting, string[] args = null)
     {
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
         ServerType = serverType;
         Setting = setting;
+        AppBootstrapper.EnsureInitialized(() => LogHandler.Create(LogOptions.Default));
         Init();
         GlobalSettings.SetCurrentSetting(Setting);
         return true;
@@ -119,6 +139,21 @@ public abstract partial class AppStartUpBase : IAppStartUp
     public abstract Task StartAsync();
 
     /// <summary>
+    /// 标记当前应用启动就绪。
+    /// </summary>
+    /// <remarks>
+    /// Marks the local application as startup-ready.
+    /// Derived classes call this at the end of their startup phase (after databases, components
+    /// and network listeners are up, before entering the run-until-exit wait).
+    /// Idempotent: the first call wins; later calls are no-ops. An application that never calls it simply
+    /// keeps the barrier released by its <see cref="StartAsync"/> completion instead.
+    /// </remarks>
+    protected void MarkStartUpReady()
+    {
+        _startUpReady.TrySetResult();
+    }
+
+    /// <summary>
     /// 停止服务器。
     /// </summary>
     /// <remarks>
@@ -129,10 +164,17 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <returns>表示异步停止操作的任务 / A task representing the asynchronous stop operation</returns>
     public virtual async Task StopAsync(string message = "")
     {
-        GlobalSettings.IsAppRunning = false;
+        GameAppRuntime.MarkStopping();
+        // Localization: StartUp.ServerStopped - 服务器类型:{0} 停止! 终止原因：{1} 配置信息: {2}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.ServerStopped, Setting.ServerType, message, Setting.ToFormatString()));
-        await StopServerAsync();
-        AppExitSource?.TrySetResult(message);
+        try
+        {
+            await StopServerAsync();
+        }
+        finally
+        {
+            GameAppRuntime.MarkStopped(message);
+        }
     }
 
     /// <summary>

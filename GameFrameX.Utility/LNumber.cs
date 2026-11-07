@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,38 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 
@@ -75,7 +43,7 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
     private const int INTEGER_BITS = sizeof(long) * 8 - FRACTION_BITS; // 整数位位数 50
 
     private const int FRACTION_MASK = (int)(uint.MaxValue >> INTEGER_BITS); // 2^14-1 = 16384-1 =16383 == 01111111111111
-    private const int INTEGER_MASK = -1 & ~FRACTION_MASK; // -16384
+    private const int INTEGER_MASK = ~FRACTION_MASK; // -16384
     private const int FRACTION_RANGE = FRACTION_MASK + 1; // 16384 == 10000000000000
 
     /// <summary>
@@ -168,7 +136,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
     {
 #if XNUMBER_CHECK
         if (i > Max || i < -Max || f > FMax || f < -FMax)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.CreateFailed, i, f));
+        }
 #endif
 
         // 确定符号：如果整数部分为负，则结果为负；如果整数部分为0且小数部分为负，则结果为负
@@ -320,7 +290,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = (int)lhs * (int)rhs;
         if (tmp > max || tmp < -max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, lhs + " * " + rhs, ""));
+        }
 #endif
         LNumber r;
         if (lhs.Raw > int.MaxValue || rhs.Raw > int.MaxValue || lhs.Raw < int.MinValue || rhs.Raw < int.MinValue)
@@ -332,16 +304,19 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
             if (c > long.MinValue && c < long.MaxValue)
             {
-                r.Raw = long.Parse(c.ToString()); //未越界
+                // 上方范围检查已保证 c 在 long 范围内；LongValue 直接取低 64 位补码，零分配。
+                r.Raw = c.LongValue(); //未越界
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {
-                LogHelper.Error<string>("LNumber.MultiplicationOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.MultiplicationOverflowLog - LNumber.MultiplicationOverflow LNumber乘法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflowLog, c));
                 r.Raw = long.MaxValue;
             }
             else
             {
-                LogHelper.Error<string>("LNumber.MultiplicationOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.MultiplicationOverflowLog - LNumber.MultiplicationOverflow LNumber乘法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflowLog, c));
                 r.Raw = long.MinValue;
             }
         }
@@ -374,12 +349,12 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
         if ((rhs.Raw + factor) >> 1 == 0)
         {
-            //Debug.LogError("除0了");
-            return 0;
+            // Localization: Utility.LNumber.DivisionByZero - LNumber 除数为零
+            throw new DivideByZeroException(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionByZero));
         }
 
         LNumber r;
-        if (lhs.Raw > 1L << (62 - FRACTION_BITS))
+        if (lhs.Raw > 1L << (62 - FRACTION_BITS) || lhs.Raw < -(1L << (62 - FRACTION_BITS)))
         {
             //可能越界了
             BigInteger a = lhs.Raw;
@@ -388,16 +363,19 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
             if (c > long.MinValue && c < long.MaxValue)
             {
-                r.Raw = long.Parse(c.ToString()); //未越界
+                // 上方范围检查已保证 c 在 long 范围内；LongValue 直接取低 64 位补码，零分配。
+                r.Raw = c.LongValue(); //未越界
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {
-                LogHelper.Error<string>("LNumber.DivisionOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.DivisionOverflowLog - LNumber.DivisionOverflow LNumber除法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionOverflowLog, c));
                 r.Raw = long.MaxValue;
             }
             else
             {
-                LogHelper.Error<string>("LNumber.DivisionOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.DivisionOverflowLog - LNumber.DivisionOverflow LNumber除法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionOverflowLog, c));
                 r.Raw = long.MinValue;
             }
         }
@@ -547,7 +525,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = value;
         if (tmp > Max || tmp < -Max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, "value", value.ToString()));
+        }
 #endif
         //LNumber r;
         //r.raw = value << FRACTION_BITS;
@@ -565,7 +545,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = value;
         if (tmp > Max || tmp < -Max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, "value", value.ToString()));
+        }
 #endif
         //LNumber r;
         //r.raw = value << FRACTION_BITS;

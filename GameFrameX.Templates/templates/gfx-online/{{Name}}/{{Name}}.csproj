@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>{{Name}}</RootNamespace>
+        <!-- 最小组合根宿主（gfx-online 模板生成）：不打包、不入 Server.slnx，独立 dotnet build。 -->
+        <IsPackable>false</IsPackable>
+        <!-- 覆写仓根 Directory.Build.props 的共享输出（../bin/app_debug），产物隔离在本工程 bin/ 下。 -->
+        <OutputPath>bin</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Compose 按部署前缀扫描能力包，依赖校验与过滤决定实际装配集合
+             （机制面 Hosting.Abstractions / Hosting.Core 经 Online.Foundation 传递获得；管理面 UseAdminApi
+             需显式引 Hosting.AdminApi——管理契约上移后 Online.Abstractions 不再传递 AdminApi）。
+             增减能力 = 只增删 ProjectReference，Program.cs 无按包装配代码。 -->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Hosting.AdminApi\GameFrameX.Capability.Hosting.AdminApi.csproj"/>
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj"/>
+        <!--#if (Assets)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj"/>
+        <!--#endif-->
+        <!--#if (Social)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj"/>
+        <!--#endif-->
+        <!--#if (Matchmaking)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj"/>
+        <!--#endif-->
+        <!--#if (Match)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj"/>
+        <!--#endif-->
+        <!--#if (Leaderboard && !Competition)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj"/>
+        <!--#endif-->
+        <!--#if (Competition)-->
+        <!-- online-competition 必选依赖 online-leaderboard（赛季 / 锦标赛的榜单写路径），由 Compose 校验依赖 -->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Leaderboard\GameFrameX.Capability.Online.Leaderboard.csproj"/>
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj"/>
+        <!--#endif-->
+        <!--#if (Operations)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj"/>
+        <!--#endif-->
+    </ItemGroup>
+
+</Project>

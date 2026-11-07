@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,40 +27,9 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Text.Json;
 using GameFrameX.Core.Config;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Config;
@@ -75,26 +44,32 @@ public class ConfigComponent
         Tables = new TablesComponent();
     }
 
+    /// <summary>
+    /// 进程唯一实例的静态获取入口（过渡保留：请改经构造参数注入 <see cref="ConfigComponent"/> 实例——
+    /// 宿主 / 模块持有实例引用传递；本实例即注入源的进程缺省）。
+    /// </summary>
+    [Obsolete("静态单例入口过渡保留：请改用经构造参数注入的 ConfigComponent 实例（进程唯一实例即注入源）。Static singleton entry kept for transition; inject the ConfigComponent instance through constructors (this process-unique instance is the injection source).", false)]
     public static ConfigComponent Instance { get; } = new();
 
     private TablesComponent Tables { get; }
 
-    public async Task LoadConfig()
+    public async Task LoadConfigAsync()
     {
         Tables.Init(Instance);
-        LogHelper.Debug("Load Config Start...");
-        Instance.RemoveAllConfigs();
-        await Tables.LoadAsync(Loader);
-        LogHelper.Debug("Load Config End...");
+        // Localization: Config.Table.LoadConfigStart - 开始加载配置表...
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigStart));
+        await Tables.LoadAsync(LoaderAsync);
+        // Localization: Config.Table.LoadConfigEnd - 配置表加载完成...
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigEnd));
     }
 
-    private static async Task<ByteBuf> Loader(string file, bool tag)
+    private static async Task<ByteBuf> LoaderAsync(string file, bool tag)
     {
         var configBytes = await File.ReadAllBytesAsync($"json/{file}.bytes");
         return ByteBuf.Wrap(configBytes);
     }
 
-    private static async Task<JsonElement> Loader(string file)
+    private static async Task<JsonElement> LoaderAsync(string file)
     {
         var configJson = await File.ReadAllTextAsync($"json/{file}.json");
         var jsonElement = JsonDocument.Parse(configJson).RootElement;
@@ -102,23 +77,38 @@ public class ConfigComponent
     }
 
     /// <summary>
-    /// 获取指定全局配置项。
+    /// 获取指定全局配置表；未注册或未加载时抛出异常。
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
+    /// <typeparam name="T">配置表类型。</typeparam>
+    /// <returns>指定的全局配置表。</returns>
+    /// <exception cref="InvalidOperationException">配置表未注册或未加载。</exception>
     public T GetConfig<T>() where T : IDataTable
     {
-        if (HasConfig<T>())
+        if (TryGetConfig<T>(out var config))
         {
-            var configName = typeof(T).Name;
-            var config = _configManager.GetConfig(configName);
-            if (config != null)
-            {
-                return (T)config;
-            }
+            return config;
         }
 
-        return default;
+        // Localization: Config.Table.ConfigNotFound - 配置表 {0} 未注册或未加载
+        throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Config.Table.ConfigNotFound, typeof(T).Name));
+    }
+
+    /// <summary>
+    /// 尝试获取指定全局配置表。
+    /// </summary>
+    /// <typeparam name="T">配置表类型。</typeparam>
+    /// <param name="config">获取到的全局配置表；不存在时为 null。</param>
+    /// <returns>指定的全局配置表是否存在。</returns>
+    public bool TryGetConfig<T>(out T config) where T : IDataTable
+    {
+        if (_configManager.GetConfig(typeof(T).Name) is T dataTable)
+        {
+            config = dataTable;
+            return true;
+        }
+
+        config = default;
+        return false;
     }
 
     /// <summary>

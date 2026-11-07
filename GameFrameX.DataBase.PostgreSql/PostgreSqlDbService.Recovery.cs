@@ -1,0 +1,176 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and applicable international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+using Npgsql;
+
+namespace GameFrameX.DataBase.PostgreSql;
+
+public sealed partial class PostgreSqlDbService
+{
+    /// <summary>
+    /// 启动后台恢复任务（单飞）。
+    /// </summary>
+    /// <remarks>
+    /// Starts the background recovery task exactly once (single-flight).
+    /// </remarks>
+    private void EnsureRecoveryTaskStarted()
+    {
+        if (Interlocked.CompareExchange(ref _recoveryTaskStartedFlag, 1, 0) != 0)
+        {
+            return;
+        }
+
+        _recoveryTaskCancellationTokenSource = new CancellationTokenSource();
+        _recoveryTask = Task.Run(() => RunRecoveryLoopAsync(_recoveryTaskCancellationTokenSource.Token));
+    }
+
+    /// <summary>
+    /// 停止后台恢复任务。
+    /// </summary>
+    /// <remarks>
+    /// Stops the background recovery task and releases its resources.
+    /// </remarks>
+    private async Task StopRecoveryTaskAsync()
+    {
+        if (Interlocked.CompareExchange(ref _recoveryTaskStartedFlag, 0, 1) != 1)
+        {
+            return;
+        }
+
+        try
+        {
+            _recoveryTaskCancellationTokenSource?.Cancel();
+            if (_recoveryTask != null)
+            {
+                await _recoveryTask.ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _recoveryTaskCancellationTokenSource?.Dispose();
+            _recoveryTaskCancellationTokenSource = null;
+            _recoveryTask = null;
+        }
+    }
+
+    /// <summary>
+    /// 后台恢复循环，负责 Unhealthy 状态下探活。
+    /// </summary>
+    /// <remarks>
+    /// Background recovery loop that probes the database while it is Unhealthy.
+    /// </remarks>
+    private async Task RunRecoveryLoopAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (AvailabilityState != DatabaseAvailabilityState.Unhealthy)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            var jitterMilliseconds = Random.Shared.Next(0, (int)_recoveryProbeJitterDelay.TotalMilliseconds);
+            await Task.Delay(_recoveryProbeBaseDelay + TimeSpan.FromMilliseconds(jitterMilliseconds), cancellationToken).ConfigureAwait(false);
+
+            var pingSucceeded = await TryReconnectAndPingAsync(cancellationToken).ConfigureAwait(false);
+            if (!pingSucceeded)
+            {
+                continue;
+            }
+
+            lock (_availabilityLock)
+            {
+                if (AvailabilityState == DatabaseAvailabilityState.Unhealthy)
+                {
+                    ChangeAvailabilityState(DatabaseAvailabilityState.Recovering, "background_probe_success");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 尝试重建数据源并执行探活。
+    /// </summary>
+    /// <remarks>
+    /// Attempts to rebuild the data source and execute a ping probe.
+    /// </remarks>
+    private async Task<bool> TryReconnectAndPingAsync(CancellationToken cancellationToken)
+    {
+        var options = Options;
+        if (options == null || string.IsNullOrWhiteSpace(options.ConnectionString))
+        {
+            return false;
+        }
+
+        NpgsqlDataSource newDataSource = null;
+        try
+        {
+            newDataSource = CreateDataSource(options.ConnectionString);
+            await using (var connection = newDataSource.CreateConnection())
+            {
+                await ExecutePingAsync(connection, cancellationToken).ConfigureAwait(false);
+            }
+
+            lock (_availabilityLock)
+            {
+                var oldDataSource = DataSource;
+                DataSource = newDataSource;
+                // 换源后必须清空 per-TState EF 上下文选项缓存：缓存 options 绑定旧（下方即将 Dispose）数据源，
+                // 不失效则恢复成功后全部操作仍走死池（对齐 ResetConnectionState 的既有清缓存语义）。
+                // The per-TState EF context options cache must be cleared on source swap: cached options
+                // bind the old data source (disposed right below) — without invalidation every post-recovery
+                // operation would keep hitting the dead pool (same semantics as ResetConnectionState).
+                _contextOptionsCache.Clear();
+                oldDataSource?.Dispose();
+            }
+
+            // 换源成功：newDataSource 已交付给 DataSource 字段，不再属于本方法，防止 catch 误 Dispose 活源。
+            // Swap succeeded: newDataSource now belongs to the DataSource field; null it so the catch never disposes the live source.
+            newDataSource = null;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            // 探活失败：释放本轮新建的数据源（含其连接池），否则恢复循环每轮泄漏一个。
+            // Probe failed: release this round's freshly built data source (connection pool included),
+            // otherwise the recovery loop leaks one per probe.
+            newDataSource?.Dispose();
+            // Localization: Database.PostgreSql.TryReconnectAndPingFailed - PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.TryReconnectAndPingFailed, exception.Message));
+            return false;
+        }
+    }
+}

@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using GameFrameX.Core.Abstractions.Agent;
 
@@ -110,7 +78,7 @@ public interface IActor : IWorker
     /// 使当前Actor的所有组件进入非激活状态，通常在Actor被回收前调用
     /// </summary>
     /// <returns>一个表示异步操作的任务</returns>
-    Task Inactive();
+    Task InactiveAsync();
 
     /// <summary>
     /// 根据组件类型获取对应的 IComponentAgent
@@ -119,7 +87,7 @@ public interface IActor : IWorker
     /// <param name="agentType">组件类型，指定要获取的组件的具体类型</param>
     /// <param name="isNew">是否当获取为空的时候默认创建，默认值为true</param>
     /// <returns>一个表示异步操作的任务，返回 IComponentAgent 实例</returns>
-    Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true);
+    Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true);
 
     /// <summary>
     /// 根据组件类型获取对应的 IComponentAgent
@@ -128,7 +96,7 @@ public interface IActor : IWorker
     /// <typeparam name="T">组件类型，必须实现IComponentAgent接口</typeparam>
     /// <param name="isNew">是否当获取为空的时候默认创建，默认值为true</param>
     /// <returns>一个表示异步操作的任务，返回指定类型的 IComponentAgent 实例</returns>
-    Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent;
+    Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent;
 
     /// <summary>
     /// 获取所有已激活的组件代理实例
@@ -153,7 +121,7 @@ public interface IActor : IWorker
     /// </summary>
     /// <param name="serverDay">服务器运行天数，表示服务器运行的累计天数</param>
     /// <returns>一个表示异步操作的任务</returns>
-    Task CrossDay(int serverDay);
+    Task CrossDayAsync(int serverDay);
 
     /// <summary>
     /// 设置Actor的数据
@@ -213,7 +181,7 @@ public interface IActor : IWorker
     /// - 断开网络连接等
     /// </remarks>
     /// <returns>表示异步操作的任务</returns>
-    Task OnRecycle();
+    Task OnRecycleAsync();
 
     /// <summary>
     /// 添加一个在Actor回收时执行一次的回调事件

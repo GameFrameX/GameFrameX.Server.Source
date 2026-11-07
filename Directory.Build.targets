@@ -1,0 +1,18 @@
+<Project>
+    <!-- 非打包项目不发布 API 文档，避免生成代码、热更程序集和测试项目产生 CS1591 噪音。 -->
+    <PropertyGroup Condition="'$(IsPackable)' == 'false' Or '$(IsTestProject)' == 'true'">
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <DocumentationFile></DocumentationFile>
+    </PropertyGroup>
+    <!-- GameFrameX.Architecture.Analyzers（架构约束 GFX0001–0018 + GFX0022 + 代码风格 GFX0019/0020/0021）全仓统一注入。
+         排除分析器工程自身、源生成器工程、vendored PB 库、模板工程与自行引用分析器的测试工程；
+         Proto 生成物不做工程级排除，改由 .editorconfig 按路径关闭规则。 -->
+    <ItemGroup Condition="'$(MSBuildProjectName)' != 'GameFrameX.Architecture.Analyzers'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Hotfix.WrapperGenerator'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.ProtoBuf.Net'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Templates'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Tests'">
+        <ProjectReference Include="$(MSBuildThisFileDirectory)GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj"
+                          OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
+</Project>

@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using System.Diagnostics;
 
@@ -105,7 +106,7 @@ public sealed partial class MongoDbService
 
             if (_consecutiveFailures >= _degradedToUnhealthyFailureThreshold)
             {
-                ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, $"consecutive_failures={_consecutiveFailures};reason={GetFailureReason(exception)}");
+                ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, $"consecutive_failures={_consecutiveFailures};reason={ExceptionClassifier.GetFailureReason(exception)}");
                 EnsureRecoveryTaskStarted();
             }
         }
@@ -141,7 +142,8 @@ public sealed partial class MongoDbService
         }
 
         DbHealthStateTransitionTotal.Add(1, new TagList { { "from", oldState.ToString() }, { "to", newState.ToString() }, { "reason", reason ?? "unknown" }, });
-        LogHelper.Warning("MongoDbService.StateTransition {from} -> {to}. reason={reason}", oldState, newState, reason);
+        // Localization: Database.Mongo.StateTransition - MongoDbService 状态迁移 {0} -> {1}。原因：{2}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.StateTransition, oldState, newState, reason));
     }
 
     /// <summary>
@@ -198,7 +200,8 @@ public sealed partial class MongoDbService
 
         fallbackValue = fallbackValueFactory != null ? fallbackValueFactory() : default;
         DbDegradeActionTotal.Add(1, new TagList { { "kind", "read_fallback" }, { "state", state.ToString() }, { "name", operationName }, });
-        LogHelper.Warning("MongoDbService.ReadFallback {operationName} state={state}", operationName, state);
+        // Localization: Database.Mongo.ReadFallback - MongoDbService 读降级 {0}，状态={1}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.ReadFallback, operationName, state));
         return true;
     }
 

@@ -25,19 +25,24 @@ internal sealed class EnumSerializer : IProtoSerializer
         this.map = map;
         if (map != null)
         {
-            for (var i = 1; i < map.Length; i++)
-            {
-                for (var j = 0; j < i; j++)
-                {
-                    if (map[i].WireValue == map[j].WireValue && !Equals(map[i].RawValue, map[j].RawValue))
-                    {
-                        throw new ProtoException("Multiple enums with wire-value " + map[i].WireValue);
-                    }
+            ValidateMap(map);
+        }
+    }
 
-                    if (Equals(map[i].RawValue, map[j].RawValue) && map[i].WireValue != map[j].WireValue)
-                    {
-                        throw new ProtoException("Multiple enums with deserialized-value " + map[i].RawValue);
-                    }
+    private static void ValidateMap(EnumPair[] map)
+    {
+        for (var i = 1; i < map.Length; i++)
+        {
+            for (var j = 0; j < i; j++)
+            {
+                if (map[i].WireValue == map[j].WireValue && !Equals(map[i].RawValue, map[j].RawValue))
+                {
+                    throw new ProtoException("Multiple enums with wire-value " + map[i].WireValue);
+                }
+
+                if (Equals(map[i].RawValue, map[j].RawValue) && map[i].WireValue != map[j].WireValue)
+                {
+                    throw new ProtoException("Multiple enums with deserialized-value " + map[i].RawValue);
                 }
             }
         }

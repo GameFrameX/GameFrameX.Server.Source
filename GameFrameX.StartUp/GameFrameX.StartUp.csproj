@@ -2,27 +2,49 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Setting,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Setting,Server,GameServer</PackageTags>
+        <Description>GameFrameX.StartUp,GameFrameX 框架的应用启动流程、生命周期与服务注册模块. Application startup flow, lifecycle, and service registration module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,StartUp,Lifecycle,Hosting,Services,Server,GameServer</PackageTags>
+        <!--
+          NU5104 定点压制：OpenTelemetry.Exporter.Prometheus.AspNetCore 至今（2026-10-23）上游仅发布预发布版
+          （最新 1.19.1-beta.1；NuGet 上该包全部版本均为 beta/alpha/rc，无稳定版），稳定版发布后本警告自然消失。
+          该警告只描述“打包携带预发布依赖”的包元数据语义，不是代码缺陷，故仅在本项目内定点 NoWarn。
+          解除条件：上游发布稳定版后升级版本号并移除此 NoWarn（change C291 裁决）。
+        -->
+        <NoWarn>$(NoWarn);NU5104</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\GameFrameX.AppHost.ServiceDefaults\GameFrameX.AppHost.ServiceDefaults.csproj"/>
         <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
-        <ProjectReference Include="..\GameFrameX.Monitor\GameFrameX.Monitor.csproj"/>
-        <ProjectReference Include="..\GameFrameX.NetWork.Abstractions\GameFrameX.NetWork.Abstractions.csproj"/>
-        <ProjectReference Include="..\GameFrameX.NetWork.HTTP\GameFrameX.NetWork.HTTP.csproj"/>
-        <ProjectReference Include="..\GameFrameX.NetWork.Kcp\GameFrameX.NetWork.Kcp.csproj"/>
-        <ProjectReference Include="..\GameFrameX.NetWork.Message\GameFrameX.NetWork.Message.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Network.Abstractions\GameFrameX.Network.Abstractions.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Network.HTTP\GameFrameX.Network.HTTP.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Network\GameFrameX.Network.csproj"/>
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Options" Version="2.2.10"/>
-        <PackageReference Include="GameFrameX.SuperSocket.ClientEngine" Version="1.2.0"/>
-        <PackageReference Include="GameFrameX.SuperSocket.Server" Version="1.2.0"/>
-        <PackageReference Include="GameFrameX.SuperSocket.Udp" Version="1.2.0"/>
-        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.12"/>
+        <InternalsVisibleTo Include="GameFrameX.Tests, PublicKey=0024000004800000140100000602000000240000525341310008000001000100dbdd8ce8567465b0c7a56029b2f252989170cd00f15cd79b53c1cb8ecea09065a7fec9bfd5e241999707748cd59c25b4d8a721a1fe741495720642bae68ee134ba578cb153bd380d440e1908191e5a27ae79534f7dbd8c70c6fc18f26c1afaafe76d0b95d366b1bc81bffcf317673f37c839533a14f8939274c75fc8588134edad6d08f783a29916954fa5df678ed4dc9395c9618000d05be87d9caf15005987b48b224bdfcb07ea467ecc8be679620662a75b6a5b6748154664c8aa831c65428af7e5a955aa4eef974c0351a7865b9868d1c81a599eeda487bc5b46d0cbfd67729ae7d8e4c81b651bbbcc33e493f8d978b45350c7191e92989585ab7bf693bf"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GameFrameX.Foundation.Logger.GrafanaLoki" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Options" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.SuperSocket.ClientEngine" Version="1.3.0"/>
+        <PackageReference Include="GameFrameX.SuperSocket.Kcp" Version="1.3.0"/>
+        <PackageReference Include="GameFrameX.SuperSocket.Server" Version="1.3.0"/>
+        <PackageReference Include="GameFrameX.SuperSocket.Udp" Version="1.3.0"/>
+        <!-- OTel 服务默认配置 ServiceDefaultsExtensions 自退役的 ServiceDefaults 项目迁入 -->
+        <PackageReference Include="Grafana.OpenTelemetry" Version="1.13.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
+        <!-- MongoDB 健康检查经 Provider 程序集（GameFrameX.DataBase.Mongo）反射解析，StartUp 不直接引用 MongoDB.Driver（解倒挂） -->
+        <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.19.1-beta.1"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
     </ItemGroup>
 </Project>

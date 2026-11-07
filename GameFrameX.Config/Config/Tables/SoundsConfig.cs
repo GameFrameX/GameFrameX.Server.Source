@@ -7,35 +7,41 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config.Tables
 {
     public sealed partial class SoundsConfig : BeanBase
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public SoundsConfig(int Id, string GroupName, string Path, string Title, string CharacterName) 
         {
+            Translator = null;
             this.Id = Id;
             this.GroupName = GroupName;
             this.Path = Path;
             this.Title = Title;
             this.CharacterName = CharacterName;
             PostInit();
-        }        
-        */
-
-        public SoundsConfig(JsonElement _buf) 
-        {
-            Id = _buf.GetProperty("id").GetInt32();
-            GroupName = _buf.GetProperty("groupName").GetString();
-            Path = _buf.GetProperty("path").GetString();
-            Title = _buf.GetProperty("title").GetString();
-            CharacterName = _buf.GetProperty("characterName").GetString();
         }
-    
-        public static SoundsConfig DeserializeSoundsConfig(JsonElement _buf)
+
+        public SoundsConfig(ByteBuf _buf) 
+        {
+            Translator = null;
+            Id = _buf.ReadInt();
+            GroupName = _buf.ReadString();
+            Path = _buf.ReadString();
+            Title = _buf.ReadString();
+            CharacterName = _buf.ReadString();
+            // Localization Key Begin
+            Title_Localization_Key = Title;
+            CharacterName_Localization_Key = CharacterName;
+            // Localization Key End
+            PostInit();
+        }
+
+        public static SoundsConfig DeserializeSoundsConfig(ByteBuf _buf)
         {
             return new Tables.SoundsConfig(_buf);
         }
@@ -55,10 +61,38 @@ namespace GameFrameX.Config.Tables
         /// <summary>
         /// 声音标题Key
         /// </summary>
-        public string Title { private set; get; }
-        public string CharacterName { private set; get; }
-
-        private const int __ID__ = 4070031;
+        private string _Title;
+        public string Title
+        {
+            get
+            {
+                if (Translator != null)
+                {
+                    return Translator(Title_Localization_Key, _Title);
+                }
+                return _Title;
+            }
+            private set => _Title = value;
+        }
+        /// <summary>
+        /// 声音标题Key 的多语言Key
+        /// </summary>
+        public readonly string Title_Localization_Key;
+        private string _CharacterName;
+        public string CharacterName
+        {
+            get
+            {
+                if (Translator != null)
+                {
+                    return Translator(CharacterName_Localization_Key, _CharacterName);
+                }
+                return _CharacterName;
+            }
+            private set => _CharacterName = value;
+        }
+        public readonly string CharacterName_Localization_Key;
+        public const int __ID__ = 4070031;
         public override int GetTypeId() => __ID__;
 
         public  void ResolveRef(TablesComponent tables)
@@ -68,6 +102,12 @@ namespace GameFrameX.Config.Tables
             
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -82,5 +122,6 @@ namespace GameFrameX.Config.Tables
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

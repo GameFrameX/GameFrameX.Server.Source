@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,42 +27,11 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Messages;
 using GameFrameX.Proto.Proto;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.Foundation.Extensions;
+using System.Collections.Concurrent;
 using ErrorEventArgs = GameFrameX.SuperSocket.ClientEngine.ErrorEventArgs;
 
 namespace GameFrameX.Client.Bot;
@@ -70,42 +39,104 @@ namespace GameFrameX.Client.Bot;
 /// <summary>
 /// 机器人客户端类,用于模拟玩家行为进行测试
 /// </summary>
-public sealed class BotClient
+public sealed partial class BotClient
 {
+    private static readonly ConcurrentDictionary<string, long> OnlinePlayerIds = new(StringComparer.Ordinal);
+
+    private enum FriendScenarioStage
+    {
+        None = 0,
+        WaitAdd = 1,
+        WaitListAfterAdd = 2,
+        WaitDelete = 3,
+        WaitListAfterDelete = 4,
+        Completed = 5,
+    }
+
     private readonly BotTcpClient m_TcpClient;
-    private readonly BotHttpClient m_HttpClient;
+    private readonly BotKcpClient m_KcpClient;
     private readonly string m_BotName;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
-    private const string m_LoginUrl = "http://127.0.0.1:28080/game/api/";
+    private readonly BotRunOptions _options;
+    private int _disconnectScheduled;
+    private long _accountId;
+    private long _playerId;
+    private string _sessionToken;
+    private bool _awaitingSessionResume;
+    private bool _resumedOnce;
+    private int _matchReconnectScheduled;
+    private int _resumeReplaySent;
+    private long _currentMatchId;
+    private long _friendTargetPlayerId;
+    private int _friendTargetResolveAttempts;
+    private FriendScenarioStage _friendScenarioStage;
+    private int _matchStatusPollAttempts;
+    private bool _matchEntered;
+    // Timing fields
+    private long _connectStartMs;
+    private long _authStartMs, _listStartMs, _createStartMs, _loginStartMs;
+    private long _connectMs = -1, _authMs = -1, _listMs = -1, _createMs = -1, _loginMs = -1, _totalMs = -1;
 
     /// <summary>
     /// 初始化机器人客户端
     /// </summary>
     /// <param name="botName">机器人名称</param>
-    public BotClient(string botName)
+    /// <param name="options">运行参数</param>
+    public BotClient(string botName, BotRunOptions options)
     {
         m_BotName = botName;
+        _options = options;
         m_BotTcpClientEvent.OnConnectedCallback += ClientConnectedCallback;
         m_BotTcpClientEvent.OnClosedCallback += ClientClosedCallback;
         m_BotTcpClientEvent.OnErrorCallback += ClientErrorCallback;
         m_BotTcpClientEvent.OnReceiveMsgCallback += ClientReceiveCallback;
-        m_TcpClient = new BotTcpClient(m_BotTcpClientEvent);
-        m_HttpClient = new BotHttpClient();
+        m_TcpClient = new BotTcpClient(m_BotTcpClientEvent, options.TcpHost, options.TcpPort);
+
+        // KCP 事件以局部变量对象初始化器装配（事件成员为属性），仅用于构造传参
+        var kcpClientEvent = new BotKcpClientEvent
+        {
+            OnConnectedCallback = ClientConnectedCallback,
+            OnClosedCallback = ClientClosedCallback,
+            OnErrorCallback = ClientErrorCallbackForKcp,
+            OnReceiveMsgCallback = ClientReceiveCallback,
+        };
+        m_KcpClient = new BotKcpClient(kcpClientEvent, options.KcpHost, options.KcpPort);
+    }
+
+    /// <summary>
+    /// 当前机器人使用的传输类型。默认 tcp，与历史行为一致。
+    /// </summary>
+    internal bool UseKcpTransport
+    {
+        get
+        {
+            return string.Equals(_options.Transport, BotTransport.Kcp, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     /// <summary>
     /// 启动机器人客户端
     /// </summary>
     /// <returns>异步任务</returns>
-    public async Task EntryAsync()
+    public async Task EntryAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await m_TcpClient.EntryAsync();
+            _connectStartMs = Environment.TickCount64;
+            if (UseKcpTransport)
+            {
+                await m_KcpClient.EntryAsync(cancellationToken);
+            }
+            else
+            {
+                await m_TcpClient.EntryAsync(cancellationToken);
+            }
         }
         catch (Exception e)
         {
-            LogHelper.Info($"EntryAsync Error: {e.Message}| Thread ID:{Thread.CurrentThread.ManagedThreadId} ");
+            // Localization: Client.Bot.EntryAsyncError - 入口方法 EntryAsync 错误: {0}| 线程 ID:{1} 
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.EntryAsyncError, e.Message, Thread.CurrentThread.ManagedThreadId));
+            EmitMetrics();
         }
     }
 
@@ -117,8 +148,77 @@ public sealed class BotClient
     {
         switch (messageObject)
         {
+            case RespLogin msg:
+                OnAccountLoginSuccess(msg);
+                break;
+            case RespPlayerList msg:
+                OnPlayerListSuccess(msg);
+                break;
+            case RespPlayerCreate msg:
+                OnPlayerCreateSuccess(msg);
+                break;
             case RespPlayerLogin msg:
                 OnPlayerLoginSuccess(msg);
+                break;
+            case RespFriendByAdd msg:
+                OnFriendAddSuccess(msg);
+                break;
+            case RespFriendList msg:
+                OnFriendListSuccess(msg);
+                break;
+            case RespDeleteFriend msg:
+                OnDeleteFriendSuccess(msg);
+                break;
+            case RespMatchEnqueue msg:
+                OnMatchEnqueueResponse(msg);
+                break;
+            case RespMatchStatus msg:
+                OnMatchStatusResponse(msg);
+                break;
+            case RespMatchEnter msg:
+                OnMatchEnterResponse(msg);
+                break;
+            case RespSessionResume msg:
+                OnSessionResumeResponse(msg);
+                break;
+            case NotifyMatchMade msg:
+                OnMatchMadePush(msg);
+                break;
+            case RespCreateRoom msg:
+                OnRpsCreateRoomResponse(msg);
+                break;
+            case RespRoomList msg:
+                OnRpsRoomListResponse(msg);
+                OnConnectFourRoomListResponse(msg);
+                break;
+            case RespJoinRoom msg:
+                OnRpsJoinRoomResponse(msg);
+                OnConnectFourJoinRoomResponse(msg);
+                break;
+            case RespStartRoomGame msg:
+                OnRpsStartRoomGameResponse(msg);
+                break;
+            case RespSubmitRockPaperScissorsGesture msg:
+                OnRpsSubmitGestureResponse(msg);
+                break;
+            case RespRockPaperScissorsGameInfo msg:
+                OnRpsGameInfoResponse(msg);
+                break;
+            case NotifyRockPaperScissorsGameChanged msg:
+                OnRpsGameInfoResponse(msg);
+                break;
+            case NotifyRoomChanged msg:
+                OnRpsRoomChangedNotify(msg);
+                OnConnectFourRoomChangedNotify(msg);
+                break;
+            case RespConnectFourGameInfo msg:
+                OnConnectFourGameInfoResponse(msg);
+                break;
+            case RespSubmitConnectFourMove msg:
+                OnConnectFourMoveResponse(msg);
+                break;
+            case NotifyConnectFourGameChanged msg:
+                OnConnectFourGameInfoResponse(msg);
                 break;
         }
     }
@@ -130,7 +230,19 @@ public sealed class BotClient
     /// </summary>
     private void ClientConnectedCallback()
     {
-        SendLoginMessage();
+        _connectMs = Environment.TickCount64 - _connectStartMs;
+        _authStartMs = Environment.TickCount64;
+        if (_awaitingSessionResume && !string.IsNullOrWhiteSpace(_sessionToken))
+        {
+            // match 恢复演练：断线后新连接不走完整登录，携登录凭据直接恢复身份与对局。
+            _awaitingSessionResume = false;
+            // Localization: Client.Bot.SessionResumeRequested - 机器人-{0}会话恢复请求已发送（携带登录凭据）
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.SessionResumeRequested, m_BotName));
+            SendToTransport(new ReqSessionResume { Token = _sessionToken });
+            return;
+        }
+
+        SendAccountLoginMessage();
     }
 
     /// <summary>
@@ -138,6 +250,10 @@ public sealed class BotClient
     /// </summary>
     private void ClientClosedCallback()
     {
+        if (!string.IsNullOrWhiteSpace(m_BotName))
+        {
+            OnlinePlayerIds.TryRemove(m_BotName, out _);
+        }
     }
 
     /// <summary>
@@ -146,6 +262,49 @@ public sealed class BotClient
     /// <param name="error">错误信息</param>
     private void ClientErrorCallback(ErrorEventArgs error)
     {
+        // 机器人客户端对底层传输错误采取容忍策略，此处刻意留空：
+        // 连接异常最终会触发 ClientClosedCallback 清理在线表，EntryAsync 的 try/catch 亦已兜底记录，
+        // 故无需在此重复处理，避免对可恢复的瞬态错误产生噪声。
+    }
+
+    /// <summary>
+    /// KCP 传输的错误回调。语义与 <see cref="ClientErrorCallback"/> 一致：容忍底层瞬态错误，由关闭回调兜底清理。
+    /// </summary>
+    /// <param name="error">底层传输抛出的异常</param>
+    private void ClientErrorCallbackForKcp(Exception error)
+    {
+        // 同 ClientErrorCallback：连接异常最终由 Closed 回调与 EntryAsync 的 try/catch 兜底。
+    }
+
+    /// <summary>
+    /// 按当前传输类型发送消息到服务端。
+    /// </summary>
+    /// <param name="message">待发送的消息对象</param>
+    private void SendToTransport(MessageObject message)
+    {
+        if (UseKcpTransport)
+        {
+            m_KcpClient.SendToServer(message);
+        }
+        else
+        {
+            m_TcpClient.SendToServer(message);
+        }
+    }
+
+    /// <summary>
+    /// 按当前传输类型主动断开连接。
+    /// </summary>
+    private void DisconnectTransport()
+    {
+        if (UseKcpTransport)
+        {
+            m_KcpClient.Disconnect();
+        }
+        else
+        {
+            m_TcpClient.Disconnect();
+        }
     }
 
     /// <summary>
@@ -161,78 +320,31 @@ public sealed class BotClient
 
     #region 消息发送
 
+    private void EmitMetrics()
+    {
+        // Localization: Client.Bot.Metrics - [指标] connect={0} auth={1} list={2} create={3} login={4} total={5}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.Metrics, _connectMs, _authMs, _listMs, _createMs, _loginMs, _totalMs));
+    }
+
     /// <summary>
     /// 发送登录消息并处理登录流程
     /// </summary>
-    private async void SendLoginMessage()
+    private void SendAccountLoginMessage()
     {
         try
         {
-            //请求登录验证
             var reqLogin = new ReqLogin
             {
                 UserName = m_BotName,
-                Password = "12312",
+                Password = _options.LoginPassword,
                 Platform = "LoginPlatform.Custom",
             };
-
-            string respLoginUrl = $"{m_LoginUrl}{nameof(ReqLogin).ConvertToSnakeCase()}";
-            var respLogin = await m_HttpClient.Post<RespLogin>(respLoginUrl, reqLogin);
-            if (respLogin.ErrorCode != 0)
-            {
-                LogHelper.Error("请求登录验证，错误信息:" + respLogin.ErrorCode);
-                return;
-            }
-
-            LogHelper.Info($"机器人-{m_BotName}账号验证成功,id:{respLogin.Id}");
-
-            //请求角色列表
-            var reqPlayerList = new ReqPlayerList();
-            reqPlayerList.Id = respLogin.Id;
-            string reqPlayerListUrl = $"{m_LoginUrl}{nameof(ReqPlayerList).ConvertToSnakeCase()}";
-            var respPlayerList = await m_HttpClient.Post<RespPlayerList>(reqPlayerListUrl, reqPlayerList);
-
-            if (respPlayerList.ErrorCode != 0)
-            {
-                LogHelper.Error("请求角色列表，错误信息:" + respPlayerList.ErrorCode);
-                return;
-            }
-
-            PlayerInfo player;
-            if (respPlayerList.PlayerList.Count == 0)
-            {
-                LogHelper.Info("角色列表为空");
-
-                //请求创建角色
-                var reqCreatePlayer = new ReqPlayerCreate();
-                reqCreatePlayer.Id = respLogin.Id;
-
-                string reqCreatePlayerUrl = $"{m_LoginUrl}{nameof(ReqPlayerCreate).ConvertToSnakeCase()}";
-                var respPlayerCreator = await m_HttpClient.Post<RespPlayerCreate>(reqCreatePlayerUrl,
-                                                                                  reqCreatePlayer);
-                if (respPlayerCreator.ErrorCode != 0)
-                {
-                    LogHelper.Error("请求创建角色，错误信息:" + respPlayerCreator.ErrorCode);
-                    return;
-                }
-
-                player = respPlayerCreator.PlayerInfo;
-                LogHelper.Info($"创建角色 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
-            }
-            else
-            {
-                player = respPlayerList.PlayerList[0];
-                LogHelper.Info($"角色列表 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
-            }
-
-            var reqPlayerLogin = new ReqPlayerLogin();
-            reqPlayerLogin.Id = player.Id;
-            // reqPlayerLogin.Name = m_BotName;
-            m_TcpClient.SendToServer(reqPlayerLogin);
+            SendToTransport(reqLogin);
         }
         catch (Exception e)
         {
-            LogHelper.Error($"SendLoginMessage Error: {e.Message}| Thread ID:{Thread.CurrentThread.ManagedThreadId} ");
+            // Localization: Client.Bot.SendAccountLoginError - 发送账号登录消息错误: {0}| 线程 ID:{1} 
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.SendAccountLoginError, e.Message, Thread.CurrentThread.ManagedThreadId));
         }
     }
 
@@ -241,13 +353,268 @@ public sealed class BotClient
 
     #region 消息接收
 
+    private void OnAccountLoginSuccess(RespLogin msg)
+    {
+        if (msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.AccountLoginFailed - 机器人-{0}账号登录失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.AccountLoginFailed, m_BotName, msg.ErrorCode));
+            EmitMetrics();
+            return;
+        }
+
+        _accountId = msg.Id;
+        _authMs = Environment.TickCount64 - _authStartMs;
+        _listStartMs = Environment.TickCount64;
+        // Localization: Client.Bot.AccountLoginSuccess - 机器人-{0}账号验证成功,id:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.AccountLoginSuccess, m_BotName, msg.Id));
+        SendToTransport(new ReqPlayerList { Id = _accountId });
+    }
+
+    private void OnPlayerListSuccess(RespPlayerList msg)
+    {
+        if (msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.PlayerListFailed - 机器人-{0}请求角色列表失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListFailed, m_BotName, msg.ErrorCode));
+            EmitMetrics();
+            return;
+        }
+
+        _listMs = Environment.TickCount64 - _listStartMs;
+
+        if (msg.PlayerList.Count <= 0)
+        {
+            // Localization: Client.Bot.PlayerListEmpty - 机器人-{0}角色列表为空，开始创建角色。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListEmpty, m_BotName));
+            _createStartMs = Environment.TickCount64;
+            SendToTransport(new ReqPlayerCreate
+            {
+                Id = _accountId,
+                Name = m_BotName,
+            });
+            return;
+        }
+
+        var player = msg.PlayerList[0];
+        // Localization: Client.Bot.PlayerListItem - 角色列表 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListItem, player.Id, player.Name, player.Level, player.State));
+        _loginStartMs = Environment.TickCount64;
+        SendToTransport(new ReqPlayerLogin { Id = player.Id });
+    }
+
+    private void OnPlayerCreateSuccess(RespPlayerCreate msg)
+    {
+        if (msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.PlayerCreateFailed - 机器人-{0}创建角色失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerCreateFailed, m_BotName, msg.ErrorCode));
+            EmitMetrics();
+            return;
+        }
+
+        var player = msg.PlayerInfo;
+        _createMs = Environment.TickCount64 - _createStartMs;
+        // Localization: Client.Bot.PlayerCreated - 创建角色 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerCreated, player.Id, player.Name, player.Level, player.State));
+        _loginStartMs = Environment.TickCount64;
+        SendToTransport(new ReqPlayerLogin { Id = player.Id });
+    }
+
     /// <summary>
     /// 处理玩家登录成功的响应
     /// </summary>
     /// <param name="msg">登录成功的响应消息</param>
     private void OnPlayerLoginSuccess(RespPlayerLogin msg)
     {
-        LogHelper.Info($"机器人-{m_BotName}登录成功,id:{msg.PlayerInfo.Id}");
+        _playerId = msg.PlayerInfo.Id;
+        _sessionToken = msg.SessionToken;
+        _loginMs = Environment.TickCount64 - _loginStartMs;
+        _totalMs = Environment.TickCount64 - _connectStartMs;
+        OnlinePlayerIds[m_BotName] = _playerId;
+        // Localization: Client.Bot.PlayerLoginSuccess - 机器人-{0}登录成功,id:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerLoginSuccess, m_BotName, _playerId));
+        EmitMetrics();
+        if (_options.HasScenario("match"))
+        {
+            StartMatchScenario();
+            return;
+        }
+
+        if (_options.HasScenario("friend"))
+        {
+            StartFriendScenario();
+            return;
+        }
+
+        if (_options.HasScenario("connectfour"))
+        {
+            StartConnectFourScenario();
+            return;
+        }
+
+        if (_options.HasRpsRole)
+        {
+            StartRpsScenario();
+            return;
+        }
+
+        ScheduleDisconnectIfNeeded();
+    }
+
+    private void StartFriendScenario()
+    {
+        if (_playerId <= 0)
+        {
+            // Localization: Client.Bot.FriendScenarioInvalidPlayerId - 机器人-{0}好友场景启动失败，玩家ID非法:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioInvalidPlayerId, m_BotName, _playerId));
+            ScheduleDisconnectIfNeeded();
+            return;
+        }
+
+        if (!TryResolveFriendTargetPlayerId())
+        {
+            _friendTargetResolveAttempts++;
+            if (_friendTargetResolveAttempts > 5)
+            {
+                // Localization: Client.Bot.FriendScenarioNoTarget - 机器人-{0}好友场景启动失败，未找到可用好友目标。
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioNoTarget, m_BotName));
+                ScheduleDisconnectIfNeeded();
+                return;
+            }
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                StartFriendScenario();
+            });
+            return;
+        }
+
+        _friendScenarioStage = FriendScenarioStage.WaitAdd;
+        // Localization: Client.Bot.FriendScenarioStarted - 机器人-{0}开始执行好友场景，目标玩家:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioStarted, m_BotName, _friendTargetPlayerId));
+        SendToTransport(new ReqFriendByAdd { PlayerId = _friendTargetPlayerId });
+    }
+
+    private void OnFriendAddSuccess(RespFriendByAdd msg)
+    {
+        if (_friendScenarioStage != FriendScenarioStage.WaitAdd)
+        {
+            return;
+        }
+
+        if (!msg.Success || msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.FriendAddFailed - 机器人-{0}好友场景-加好友失败，Success:{1}, ErrorCode:{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendAddFailed, m_BotName, msg.Success, msg.ErrorCode));
+            ScheduleDisconnectIfNeeded();
+            return;
+        }
+
+        _friendScenarioStage = FriendScenarioStage.WaitListAfterAdd;
+        // Localization: Client.Bot.FriendAddSuccess - 机器人-{0}好友场景-加好友成功，开始拉取好友列表。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendAddSuccess, m_BotName));
+        SendToTransport(new ReqFriendList());
+    }
+
+    private void OnDeleteFriendSuccess(RespDeleteFriend msg)
+    {
+        if (_friendScenarioStage != FriendScenarioStage.WaitDelete)
+        {
+            return;
+        }
+
+        if (!msg.Success || msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.FriendDeleteFailed - 机器人-{0}好友场景-删好友失败，Success:{1}, ErrorCode:{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendDeleteFailed, m_BotName, msg.Success, msg.ErrorCode));
+            ScheduleDisconnectIfNeeded();
+            return;
+        }
+
+        _friendScenarioStage = FriendScenarioStage.WaitListAfterDelete;
+        // Localization: Client.Bot.FriendDeleteSuccess - 机器人-{0}好友场景-删好友成功，开始二次拉取好友列表。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendDeleteSuccess, m_BotName));
+        SendToTransport(new ReqFriendList());
+    }
+
+    private void OnFriendListSuccess(RespFriendList msg)
+    {
+        if (_friendScenarioStage != FriendScenarioStage.WaitListAfterAdd
+            && _friendScenarioStage != FriendScenarioStage.WaitListAfterDelete)
+        {
+            return;
+        }
+
+        if (msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.FriendListFailed - 机器人-{0}好友场景-拉取列表失败，ErrorCode:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendListFailed, m_BotName, msg.ErrorCode));
+            ScheduleDisconnectIfNeeded();
+            return;
+        }
+
+        if (_friendScenarioStage == FriendScenarioStage.WaitListAfterAdd)
+        {
+            _friendScenarioStage = FriendScenarioStage.WaitDelete;
+            // Localization: Client.Bot.FriendListFirstSuccess - 机器人-{0}好友场景-首次列表成功，数量:{1}，开始删好友。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendListFirstSuccess, m_BotName, msg.Friends?.Count ?? 0));
+            SendToTransport(new ReqDeleteFriend { PlayerId = _friendTargetPlayerId });
+            return;
+        }
+
+        _friendScenarioStage = FriendScenarioStage.Completed;
+        // Localization: Client.Bot.FriendScenarioCompleted - 机器人-{0}好友场景执行完成，二次列表数量:{1}。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioCompleted, m_BotName, msg.Friends?.Count ?? 0));
+        ScheduleDisconnectIfNeeded();
+    }
+
+    private bool TryResolveFriendTargetPlayerId()
+    {
+        foreach (var entry in OnlinePlayerIds)
+        {
+            if (entry.Key == m_BotName)
+            {
+                continue;
+            }
+
+            if (entry.Value > 0 && entry.Value != _playerId)
+            {
+                _friendTargetPlayerId = entry.Value;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void ScheduleDisconnectIfNeeded()
+    {
+        if (!_options.EnableDisconnectLoop || _options.DisconnectAfterLoginSeconds <= 0)
+        {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(ref _disconnectScheduled, 1, 0) != 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_options.DisconnectAfterLoginSeconds));
+                // Localization: Client.Bot.DisconnectSimulated - 机器人-{0}主动断开连接，模拟离线。
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.DisconnectSimulated, m_BotName));
+                DisconnectTransport();
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _disconnectScheduled, 0);
+            }
+        });
     }
 
     #endregion

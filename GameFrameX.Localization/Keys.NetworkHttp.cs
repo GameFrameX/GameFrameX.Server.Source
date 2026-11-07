@@ -1,0 +1,293 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+namespace GameFrameX.Localization;
+
+/// <summary>
+/// 本地化键常量定义 - NetworkHttp 分部类
+/// </summary>
+public static partial class Keys
+{
+    /// <summary>
+    /// Network.HTTP模块相关日志和错误消息资源键
+    /// </summary>
+    public static class NetworkHttp
+    {
+        /// <summary>
+        /// 参数重复了:{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ParameterDuplicate
+        /// 用途: 当HTTP请求中参数重复时记录错误
+        /// 参数: {0} - 重复的参数名
+        /// </remarks>
+        public const string ParameterDuplicate = "Network.Http.ParameterDuplicate";
+
+        /// <summary>
+        /// 不支持的Content Type: {0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.UnsupportedContentType
+        /// 用途: 当HTTP请求的Content-Type不支持时记录错误
+        /// 参数: {0} - 不支持的Content-Type值
+        /// </remarks>
+        public const string UnsupportedContentType = "Network.Http.UnsupportedContentType";
+
+        /// <summary>
+        /// 请求参数:{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestParameters
+        /// 用途: 记录HTTP请求的参数信息
+        /// 参数: {0} - 序列化后的参数
+        /// </remarks>
+        public const string RequestParameters = "Network.Http.RequestParameters";
+
+        /// <summary>
+        /// 服务器状态错误[正在起/关服]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ServerStatusError
+        /// 用途: 当服务器状态不正常时返回错误
+        /// </remarks>
+        public const string ServerStatusError = "Network.Http.ServerStatusError";
+
+        /// <summary>
+        /// http cmd handler 不存在：{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.CommandHandlerNotFound
+        /// 用途: 当找不到对应的HTTP命令处理器时记录警告
+        /// 参数: {0} - 命令名称
+        /// </remarks>
+        public const string CommandHandlerNotFound = "Network.Http.CommandHandlerNotFound";
+
+        /// <summary>
+        /// {0},执行时间：{1}ms, 结果: {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ExecutionTime
+        /// 用途: 记录HTTP请求的执行时间
+        /// 参数: {0} - 日志头, {1} - 执行时间(毫秒), {2} - 结果
+        /// </remarks>
+        public const string ExecutionTime = "Network.Http.ExecutionTime";
+
+        /// <summary>
+        /// {0}, 发生异常. {1} {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ExceptionOccurred
+        /// 用途: 当HTTP处理过程中发生异常时记录错误
+        /// 参数: {0} - 日志头, {1} - 异常消息, {2} - 堆栈跟踪
+        /// </remarks>
+        public const string ExceptionOccurred = "Network.Http.ExceptionOccurred";
+
+        /// <summary>
+        /// 消息类型 {0} 必须继承自 HttpMessageRequestBase
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.MessageTypeInheritanceError
+        /// 用途: 当HTTP消息请求类型未继承自HttpMessageRequestBase时抛出异常
+        /// 参数: {0} - 消息类型名称
+        /// </remarks>
+        public const string MessageTypeInheritanceError = "Network.Http.MessageTypeInheritanceError";
+
+        /// <summary>
+        /// 消息类型 {0} 必须继承自 HttpMessageResponseBase
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ResponseMessageTypeInheritanceError
+        /// 用途: 当HTTP消息响应类型未继承自HttpMessageResponseBase时抛出异常
+        /// 参数: {0} - 消息类型名称
+        /// </remarks>
+        public const string ResponseMessageTypeInheritanceError = "Network.Http.ResponseMessageTypeInheritanceError";
+
+        /// <summary>
+        /// {0} 必须是标记为sealed的类
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ClassMustBeSealed
+        /// 用途: 当类不是sealed时抛出异常
+        /// 参数: {0} - 类名
+        /// </remarks>
+        public const string ClassMustBeSealed = "Network.Http.ClassMustBeSealed";
+
+        /// <summary>
+        /// {0} 必须以{1}结尾
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ClassMustEndWithSuffix
+        /// 用途: 当类名不以指定后缀结尾时抛出异常
+        /// 参数: {0} - 类名, {1} - 要求的后缀
+        /// </remarks>
+        public const string ClassMustEndWithSuffix = "Network.Http.ClassMustEndWithSuffix";
+
+        /// <summary>
+        /// [HTTPServer] TraceIdentifier:[{0}], 来源[{1}], url:[{2}]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestLogHeader
+        /// 用途: HTTP请求的日志头信息
+        /// 参数: {0} - TraceIdentifier, {1} - IP地址, {2} - URL
+        /// </remarks>
+        public const string RequestLogHeader = "Network.Http.RequestLogHeader";
+
+        /// <summary>
+        /// {0}，请求方式:[{1}]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestMethod
+        /// 用途: HTTP请求方法日志
+        /// 参数: {0} - 日志头, {1} - 请求方法
+        /// </remarks>
+        public const string RequestMethod = "Network.Http.RequestMethod";
+
+        /// <summary>
+        /// 消息对象编码异常,请检查错误日志
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.MessageEncodingException
+        /// 用途: 当消息对象编码异常时记录错误
+        /// </remarks>
+        public const string MessageEncodingException = "Network.Http.MessageEncodingException";
+
+        /// <summary>
+        /// http header content type is null
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.HttpHeaderContentTypeNull
+        /// 用途: 当HTTP头的Content-Type为null时的错误消息
+        /// </remarks>
+        public const string HttpHeaderContentTypeNull = "Network.Http.HttpHeaderContentTypeNull";
+
+        /// <summary>
+        /// data verification failed
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.DataVerificationFailed
+        /// 用途: 当数据验证失败时的错误消息
+        /// </remarks>
+        public const string DataVerificationFailed = "Network.Http.DataVerificationFailed";
+
+        /// <summary>
+        /// 请求体必须是 JSON 对象
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestBodyNotJsonObject
+        /// 用途: 当JSON请求体不是对象（null字面量/数组/标量/空体）时返回参数错误
+        /// </remarks>
+        public const string RequestBodyNotJsonObject = "Network.Http.RequestBodyNotJsonObject";
+
+        /// <summary>
+        /// http命令未包含验证参数{0} 和 {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.HttpCommandMissingValidationParameters
+        /// 用途: 当HTTP命令缺少验证参数时的错误消息
+        /// 参数: {0} - 第一个参数名, {1} - 第二个参数名
+        /// </remarks>
+        public const string HttpCommandMissingValidationParameters = "Network.Http.HttpCommandMissingValidationParameters";
+
+        /// <summary>
+        /// undefined command
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.UndefinedCommand
+        /// 用途: 使用未定义命令时的错误消息
+        /// </remarks>
+        public const string UndefinedCommand = "Network.Http.UndefinedCommand";
+
+        /// <summary>
+        /// server error
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ServerError
+        /// 用途: 服务器内部错误时的错误消息
+        /// </remarks>
+        public const string ServerError = "Network.Http.ServerError";
+
+        /// <summary>
+        /// {0},执行时间：{1}ms
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ExecutionTimeNoResult
+        /// 用途: 记录HTTP请求的执行时间（无结果输出）
+        /// 参数: {0} - 日志头, {1} - 执行时间(毫秒)
+        /// </remarks>
+        public const string ExecutionTimeNoResult = "Network.Http.ExecutionTimeNoResult";
+
+        /// <summary>
+        /// 消息编码异常: {0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.ProtoBufMessageEncodingException
+        /// 用途: ProtoBuf响应消息序列化发生异常时记录错误
+        /// 参数: {0} - 异常详情
+        /// </remarks>
+        public const string ProtoBufMessageEncodingException = "Network.Http.ProtoBufMessageEncodingException";
+
+        /// <summary>
+        /// HTTP签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignSecretMissing
+        /// 用途: 开启签名校验但签名密钥为空时记录错误（fail-closed，绝不放行）
+        /// </remarks>
+        public const string SignSecretMissing = "Network.Http.SignSecretMissing";
+
+        /// <summary>
+        /// HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignSecretTooWeak
+        /// 用途: 签名密钥过短时的一次性告警（不阻断请求）
+        /// 参数: {0} - 最小建议长度
+        /// </remarks>
+        public const string SignSecretTooWeak = "Network.Http.SignSecretTooWeak";
+
+        /// <summary>
+        /// HTTP 签名 nonce 缺失或已在时间窗内使用（疑似重放），请求已拒绝
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignNonceInvalid
+        /// 用途: v2 签名口径下 nonce 缺失/重放时记录告警
+        /// </remarks>
+        public const string SignNonceInvalid = "Network.Http.SignNonceInvalid";
+
+        /// <summary>
+        /// HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignVersionOneDeprecated
+        /// 用途: v1 口径首次使用时的一次性弃用告警
+        /// </remarks>
+        public const string SignVersionOneDeprecated = "Network.Http.SignVersionOneDeprecated";
+    }
+}

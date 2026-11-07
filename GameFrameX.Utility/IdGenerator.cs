@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using GameFrameX.Foundation.Utility.DistributedSystem.Snowflake;
 
@@ -93,14 +61,29 @@ public static class IdGenerator
     private static int _intCounter = (int)(DateTime.UtcNow - UtcTimeStart).TotalSeconds;
 
     /// <summary>
+    /// 共享计数器，初始值为当前UTC时间与起始时间的秒数差值。
+    /// 用于生成递增的整数ID。
+    /// </summary>
+    /// <remarks>
+    /// Shared counter with initial value set to the seconds difference between
+    /// current UTC time and the start time. Used for generating incremental integer IDs.
+    /// 唯一性边界：仅保证进程存活期内唯一且递增；进程重启（同秒或时钟回拨）与跨进程场景可能重复，
+    /// 请勿将其用作持久唯一键，持久唯一键请改用 <see cref="GetNextUniqueId"/>（雪花）。
+    /// Uniqueness boundary: unique and increasing only within the lifetime of the current process;
+    /// restarts (same-second or clock rollback) and cross-process usage may repeat values.
+    /// Do not use it as a persistent unique key — use <see cref="GetNextUniqueId"/> (snowflake) instead.
+    /// </remarks>
     /// 使用Interlocked.Increment生成唯一的整数ID。
     /// 通过原子操作确保线程安全。
+    /// 唯一性边界：仅进程内唯一且递增，跨重启/跨进程不保证（见字段 remarks），勿用作持久唯一键。
     /// </summary>
     /// <remarks>
     /// Generates a unique integer ID using Interlocked.Increment.
     /// Ensures thread safety through atomic operations.
+    /// Uniqueness boundary: process-local only (increasing and unique within the current process lifetime);
+    /// not guaranteed across restarts or processes — do not use as a persistent unique key.
     /// </remarks>
-    /// <returns>返回下一个唯一的整数ID，保证递增且不重复 / The next unique integer ID, guaranteed to be incremental and unique</returns>
+    /// <returns>返回下一个唯一的整数ID，保证进程内递增且不重复 / The next unique integer ID, guaranteed incremental and unique within the current process</returns>
     public static int GetNextUniqueIntId()
     {
         // 原子性地递增值，确保线程安全

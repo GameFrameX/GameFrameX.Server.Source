@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -41,6 +41,85 @@ public static partial class Keys
     public static class StartUp
     {
         /// <summary>
+        /// 启动期 TLS 证书错误消息。
+        /// </summary>
+        /// <remarks>TLS certificate error messages used during startup.</remarks>
+        public static class Certificates
+        {
+            /// <summary>
+            /// 已启用 {0}，但证书路径配置 {1} 为空。
+            /// </summary>
+            /// <remarks>
+            /// {0} is enabled but certificate path setting {1} is empty.
+            /// 键名: StartUp.Certificates.PathMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string PathMissing = "StartUp.Certificates.PathMissing";
+
+            /// <summary>
+            /// {0} 证书文件不存在：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate file does not exist: {1}.
+            /// 键名: StartUp.Certificates.FileNotFound
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string FileNotFound = "StartUp.Certificates.FileNotFound";
+
+            /// <summary>
+            /// {0} PEM 证书必须配置独立私钥路径 {1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} PEM certificate requires a separate private key path in {1}.
+            /// 键名: StartUp.Certificates.KeyPathMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string KeyPathMissing = "StartUp.Certificates.KeyPathMissing";
+
+            /// <summary>
+            /// {0} PEM 私钥文件不存在：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} PEM private key file does not exist: {1}.
+            /// 键名: StartUp.Certificates.KeyFileNotFound
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string KeyFileNotFound = "StartUp.Certificates.KeyFileNotFound";
+
+            /// <summary>
+            /// {0} 证书不包含私钥：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate has no private key: {1}.
+            /// 键名: StartUp.Certificates.PrivateKeyMissing
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string PrivateKeyMissing = "StartUp.Certificates.PrivateKeyMissing";
+
+            /// <summary>
+            /// {0} 证书加载失败（证书或私钥损坏、密码错误或私钥不匹配）：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} certificate failed to load (invalid certificate or key, incorrect password, or mismatched private key): {1}.
+            /// 键名: StartUp.Certificates.LoadFailed
+            /// 参数: {0} - 协议名称，{1} - 配置项名称或文件路径
+            /// </remarks>
+            public const string LoadFailed = "StartUp.Certificates.LoadFailed";
+
+            /// <summary>
+            /// {0} 私钥使用了传统 OpenSSL 加密格式（Proc-Type/DEK-Info 头），不受支持，请先用 openssl pkcs8 -topk8 转换为加密 PKCS#8 格式：{1}。
+            /// </summary>
+            /// <remarks>
+            /// {0} private key uses the legacy OpenSSL encrypted format (Proc-Type/DEK-Info headers), which is not supported;
+            /// convert it to encrypted PKCS#8 with openssl pkcs8 -topk8 first: {1}.
+            /// 键名: StartUp.Certificates.TraditionalEncryptedKeyUnsupported
+            /// 参数: {0} - 协议名称，{1} - 私钥文件路径
+            /// </remarks>
+            public const string TraditionalEncryptedKeyUnsupported = "StartUp.Certificates.TraditionalEncryptedKeyUnsupported";
+
+        }
+
+        /// <summary>
         /// 服务器类型:{0} 停止! 终止原因：{1} 配置信息: {2}
         /// </summary>
         /// <remarks>
@@ -71,14 +150,14 @@ public static partial class Keys
         public const string GrafanaLokiLabelExists = "StartUp.GrafanaLokiLabelExists";
 
         /// <summary>
-        /// Finding the boot configuration for the corresponding server type in the configuration file will be configured to boot=>{0}
+        /// 启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}
         /// </summary>
         /// <remarks>
-        /// 键名: StartUp.FindingConfigurationForServerType
-        /// 用途: 当在配置文件中找到对应服务器类型的启动配置时记录
-        /// 参数: {0} - 服务器类型
+        /// 键名: StartUp.InvalidLauncherArguments
+        /// 用途: 当命令行启动参数解析失败时写标准错误流并中止进程（不再静默回落默认配置）
+        /// 参数: {0} - 底层解析异常消息, {1} - 进程退出码
         /// </remarks>
-        public const string FindingConfigurationForServerType = "StartUp.FindingConfigurationForServerType";
+        public const string InvalidLauncherArguments = "StartUp.InvalidLauncherArguments";
 
         /// <summary>
         /// If no startup configuration is found for the server type, it will start with the default configuration=>{0}
@@ -139,16 +218,6 @@ public static partial class Keys
         public const string PrometheusMetricsEndpointEnabled = "StartUp.PrometheusMetricsEndpointEnabled";
 
         /// <summary>
-        /// 独立 Metrics 健康检查端点: http://{0}:{1}/health
-        /// </summary>
-        /// <remarks>
-        /// 键名: StartUp.MetricsHealthCheckEndpointEnabled
-        /// 用途: 当Metrics健康检查端点启用时记录
-        /// 参数: {0} - IP地址, {1} - 端口号
-        /// </remarks>
-        public const string MetricsHealthCheckEndpointEnabled = "StartUp.MetricsHealthCheckEndpointEnabled";
-
-        /// <summary>
         /// Prometheus metrics endpoint is enabled: http://{0}:{1}/metrics
         /// </summary>
         /// <remarks>
@@ -157,16 +226,6 @@ public static partial class Keys
         /// 参数: {0} - IP地址, {1} - 端口号
         /// </remarks>
         public const string PrometheusMetricsEndpointEnabledInline = "StartUp.PrometheusMetricsEndpointEnabledInline";
-
-        /// <summary>
-        /// Prometheus metrics service will be provided on the standalone port {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: StartUp.PrometheusMetricsServiceOnStandalonePort
-        /// 用途: 当Prometheus指标服务将在独立端口提供时记录
-        /// 参数: {0} - 端口号
-        /// </remarks>
-        public const string PrometheusMetricsServiceOnStandalonePort = "StartUp.PrometheusMetricsServiceOnStandalonePort";
 
         /// <summary>
         /// HTTP服务器相关消息
@@ -264,6 +323,15 @@ public static partial class Keys
             public const string StartingServer = "StartUp.HttpServer.StartingServer";
 
             /// <summary>
+            /// HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.SignDisabledWarning
+            /// 用途: HTTP 服务器启动且全局签名开关关闭时记录警告
+            /// </remarks>
+            public const string SignDisabledWarning = "StartUp.HttpServer.SignDisabledWarning";
+
+            /// <summary>
             /// 启动 [HTTP] 服务器端口 [{0}] 超出范围 [{1}-{2}]，HTTP服务无法启动，启动已忽略
             /// </summary>
             /// <remarks>
@@ -339,15 +407,6 @@ public static partial class Keys
             public const string ApiContactName = "StartUp.HttpServer.ApiContactName";
 
             /// <summary>
-            /// HTTP
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpServer.OpenTelemetryServiceType
-            /// 用途: OpenTelemetry服务类型
-            /// </remarks>
-            public const string OpenTelemetryServiceType = "StartUp.HttpServer.OpenTelemetryServiceType";
-
-            /// <summary>
             /// HTTP服务器启动完成 - 端口: {0}
             /// </summary>
             /// <remarks>
@@ -366,77 +425,44 @@ public static partial class Keys
             /// 参数: {0} - 端口号
             /// </remarks>
             public const string PortOccupied = "StartUp.HttpServer.PortOccupied";
+
+            /// <summary>
+            /// HTTP端口[{0}]占用详情: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.PortOccupiedDetails
+            /// 用途: 当HTTP端口被占用时记录占用进程详情
+            /// 参数: {0} - 端口号, {1} - 占用进程列表
+            /// </remarks>
+            public const string PortOccupiedDetails = "StartUp.HttpServer.PortOccupiedDetails";
+
+            /// <summary>
+            /// HTTP端口[{0}]已被占用，但未能获取占用进程详情。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.PortOccupiedNoProcessDetails
+            /// 用途: 当HTTP端口被占用但未能获取占用进程详情时记录警告
+            /// 参数: {0} - 端口号
+            /// </remarks>
+            public const string PortOccupiedNoProcessDetails = "StartUp.HttpServer.PortOccupiedNoProcessDetails";
+
+            /// <summary>
+            /// HTTP请求错误: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.HttpRequestError
+            /// 用途: 当HTTP请求处理发生异常时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string HttpRequestError = "StartUp.HttpServer.HttpRequestError";
         }
 
-        /// <summary>
-        /// 应用程序配置相关消息
-        /// </summary>
-        public static class ApplicationSettings
-        {
-            /// <summary>
-            /// Configs/app_config.json
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.ConfigFilePath
-            /// 用途: 应用程序配置文件路径
-            /// </remarks>
-            public const string ConfigFilePath = "StartUp.ApplicationSettings.ConfigFilePath";
-
-            /// <summary>
-            /// _
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.LogTypeSeparator
-            /// 用途: 日志类型分隔符
-            /// </remarks>
-            public const string LogTypeSeparator = "StartUp.ApplicationSettings.LogTypeSeparator";
-
-            /// <summary>
-            /// [Warning] {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.WarningMessage
-            /// 用途: 警告消息格式
-            /// 参数: {0} - 警告消息内容
-            /// </remarks>
-            public const string WarningMessage = "StartUp.ApplicationSettings.WarningMessage";
-        }
 
         /// <summary>
         /// TCP服务器相关消息
         /// </summary>
         public static class TcpServer
         {
-            /// <summary>
-            /// 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.ClientDisconnected
-            /// 用途: 当客户端断开连接时记录
-            /// 参数: {0} - 会话ID, {1} - 远程端点, {2} - 断开原因
-            /// </remarks>
-            public const string ClientDisconnected = "StartUp.TcpServer.ClientDisconnected";
-
-            /// <summary>
-            /// 新客户端连接 - 会话ID: {0}, 远程终端: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.NewClientConnection
-            /// 用途: 当新客户端连接时记录
-            /// 参数: {0} - 会话ID, {1} - 远程端点
-            /// </remarks>
-            public const string NewClientConnection = "StartUp.TcpServer.NewClientConnection";
-
-            /// <summary>
-            /// 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.MessageReceived
-            /// 用途: 当接收到消息时记录调试信息
-            /// 参数: {0} - 服务器类型, {1} - 消息内容
-            /// </remarks>
-            public const string MessageReceived = "StartUp.TcpServer.MessageReceived";
-
             /// <summary>
             /// 启动TCP服务器 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
@@ -484,6 +510,16 @@ public static partial class Keys
         public static class WebSocketServer
         {
             /// <summary>
+            /// 已配置 WSS TLS 监听，端口：{0}。
+            /// </summary>
+            /// <remarks>
+            /// WSS TLS listener configured on port {0}.
+            /// 键名: StartUp.WebSocketServer.SecureListenerConfigured
+            /// 参数: {0} - WSS 端口
+            /// </remarks>
+            public const string SecureListenerConfigured = "StartUp.WebSocketServer.SecureListenerConfigured";
+
+            /// <summary>
             /// 启动WebSocket服务器 类型: {0}, 端口: {1}
             /// </summary>
             /// <remarks>
@@ -525,70 +561,54 @@ public static partial class Keys
         }
 
         /// <summary>
-        /// KCP服务器相关消息
+        /// KCP 传输生命周期消息。
+        /// 自旧 KcpServer 键组迁移的生命周期键，供 KCP 接入重写（基于 GameFrameX.SuperSocket.Kcp）复用；
+        /// 当前暂无代码引用，接入落地时按需登记 resx 翻译条目。
         /// </summary>
-        public static class KcpServer
+        public static class Kcp
         {
-            /// <summary>
-            /// 客户端断开连接 - 远程终端: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.KcpServer.ClientDisconnected
-            /// 用途: 当KCP客户端断开连接时记录
-            /// 参数: {0} - 远程端点
-            /// </remarks>
-            public const string ClientDisconnected = "StartUp.KcpServer.ClientDisconnected";
-
-            /// <summary>
-            /// 新客户端连接 - 远程终端: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.KcpServer.NewClientConnection
-            /// 用途: 当新KCP客户端连接时记录
-            /// 参数: {0} - 远程端点
-            /// </remarks>
-            public const string NewClientConnection = "StartUp.KcpServer.NewClientConnection";
-
             /// <summary>
             /// 启动KCP服务器 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartingServer
+            /// 键名: StartUp.Kcp.StartingServer
             /// 用途: 当开始启动KCP服务器时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartingServer = "StartUp.KcpServer.StartingServer";
+            public const string StartingServer = "StartUp.Kcp.StartingServer";
 
             /// <summary>
             /// 启动KCP服务器完成 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartupComplete
+            /// 键名: StartUp.Kcp.StartupComplete
             /// 用途: 当KCP服务器启动完成时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartupComplete = "StartUp.KcpServer.StartupComplete";
+            public const string StartupComplete = "StartUp.Kcp.StartupComplete";
 
             /// <summary>
             /// 启动KCP服务器失败 类型: {0}, 地址: {1}, 端口: {2}, 原因: 端口无效或被占用
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartupFailed
+            /// 键名: StartUp.Kcp.StartupFailed
             /// 用途: 当KCP服务器启动失败时记录警告
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartupFailed = "StartUp.KcpServer.StartupFailed";
+            public const string StartupFailed = "StartUp.Kcp.StartupFailed";
 
             /// <summary>
             /// 启动KCP服务器 类型: {0}, 地址: {1}, 端口: {2}, 原因: KCP服务器被禁用
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.ServerDisabled
+            /// 键名: StartUp.Kcp.ServerDisabled
             /// 用途: 当KCP服务器被禁用时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string ServerDisabled = "StartUp.KcpServer.ServerDisabled";
+            public const string ServerDisabled = "StartUp.Kcp.ServerDisabled";
         }
+
+
 
         /// <summary>
         /// HTTP服务器相关异常消息
@@ -612,15 +632,6 @@ public static partial class Keys
             /// 用途: 当HTTP地址不以/结束时抛出异常
             /// </remarks>
             public const string AddressMustEndWithSlash = "StartUp.HttpExceptions.AddressMustEndWithSlash";
-
-            /// <summary>
-            /// If HTTPS is not implemented, cancel the HTTPS port configuration
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpExceptions.HttpsNotImplemented
-            /// 用途: 当尝试配置HTTPS但HTTPS功能未实现时抛出异常
-            /// </remarks>
-            public const string HttpsNotImplemented = "StartUp.HttpExceptions.HttpsNotImplemented";
         }
 
         /// <summary>
@@ -638,63 +649,6 @@ public static partial class Keys
             public const string EndpointEnabled = "StartUp.HealthCheck.EndpointEnabled";
 
             /// <summary>
-            /// - detailed health checks: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.DetailedEndpointUrl
-            /// 用途: 显示详细健康检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string DetailedEndpointUrl = "StartUp.HealthCheck.DetailedEndpointUrl";
-
-            /// <summary>
-            /// - simple health check: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.SimpleEndpointUrl
-            /// 用途: 显示简单健康检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string SimpleEndpointUrl = "StartUp.HealthCheck.SimpleEndpointUrl";
-
-            /// <summary>
-            /// - OpenTelemetry check: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryEndpointUrl
-            /// 用途: 显示OpenTelemetry检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string OpenTelemetryEndpointUrl = "StartUp.HealthCheck.OpenTelemetryEndpointUrl";
-
-            /// <summary>
-            /// 应用程序运行正常
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.ApplicationWorkingFine
-            /// 用途: 健康检查返回成功状态时的消息
-            /// </remarks>
-            public const string ApplicationWorkingFine = "StartUp.HealthCheck.ApplicationWorkingFine";
-
-            /// <summary>
-            /// OpenTelemetry the configuration is normal
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryConfigurationNormal
-            /// 用途: OpenTelemetry健康检查返回成功状态时的消息
-            /// </remarks>
-            public const string OpenTelemetryConfigurationNormal = "StartUp.HealthCheck.OpenTelemetryConfigurationNormal";
-
-            /// <summary>
-            /// OpenTelemetry is configured normally
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryConfiguredNormally
-            /// 用途: OpenTelemetry健康检查端点返回的配置正常消息
-            /// </remarks>
-            public const string OpenTelemetryConfiguredNormally = "StartUp.HealthCheck.OpenTelemetryConfiguredNormally";
-
-            /// <summary>
             /// OK
             /// </summary>
             /// <remarks>
@@ -709,16 +663,6 @@ public static partial class Keys
         /// </summary>
         public static class Application
         {
-            /// <summary>
-            /// 独立指标服务器已在端口: {0} 启动
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.Application.MetricServerStarted
-            /// 用途: 当独立指标服务器启动时记录
-            /// 参数: {0} - 端口号
-            /// </remarks>
-            public const string MetricServerStarted = "StartUp.Application.MetricServerStarted";
-
             /// <summary>
             /// 监听程序退出消息
             /// </summary>
@@ -785,6 +729,161 @@ public static partial class Keys
             /// 用途: 当接收到SIGTERM信号时记录
             /// </remarks>
             public const string SigtermSignalReceived = "StartUp.Application.SigtermSignalReceived";
+
+            /// <summary>
+            /// 等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ShutdownWaitTimeout
+            /// 用途: 进程退出路径有界等待停机任务超时时记录错误
+            /// 参数: {0} - 超时秒数
+            /// </remarks>
+            public const string ShutdownWaitTimeout = "StartUp.Application.ShutdownWaitTimeout";
+
+            /// <summary>
+            /// 至少需要一个冲突项
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ConflictRequired
+            /// 用途: 构建配置冲突异常消息时冲突集合为空抛出
+            /// </remarks>
+            public const string ConflictRequired = "StartUp.Application.ConflictRequired";
+
+            /// <summary>
+            /// 至少需要一个应用程序启动实例
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.StartupInstanceRequired
+            /// 用途: 应用程序启动入口收到空启动实例集合时抛出
+            /// </remarks>
+            public const string StartupInstanceRequired = "StartUp.Application.StartupInstanceRequired";
+
+            /// <summary>
+            /// 服务器异常停止:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.AbnormalServerStop
+            /// 用途: 当服务器逆序停机过程失败时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string AbnormalServerStop = "StartUp.Application.AbnormalServerStop";
+
+            /// <summary>
+            /// 停止服务器角色 '{0}' 时出错:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.StopServerError
+            /// 用途: 当单个服务器角色停机失败时记录错误
+            /// 参数: {0} - 服务器角色类型, {1} - 异常信息
+            /// </remarks>
+            public const string StopServerError = "StartUp.Application.StopServerError";
+
+            /// <summary>
+            /// 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 — {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.DuplicateStartupPriorities
+            /// 用途: 当检测到重复的启动优先级时记录警告
+            /// 参数: {0} - 优先级冲突表
+            /// </remarks>
+            public const string DuplicateStartupPriorities = "StartUp.Application.DuplicateStartupPriorities";
+
+            /// <summary>
+            /// 未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.NoRegisteredStartupType
+            /// 用途: 当多角色选择中未找到已注册的服务器启动类型时记录警告
+            /// 参数: {0} - 服务器类型名称
+            /// </remarks>
+            public const string NoRegisteredStartupType = "StartUp.Application.NoRegisteredStartupType";
+
+            /// <summary>
+            /// 指定的服务器类型 '{0}' 未注册任何启动类型，拒绝启动（退出码 1）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.RequestedServerTypeNotRegistered
+            /// 用途: 显式指定的 --ServerType 未命中任何已注册启动类型时记录错误并拒启
+            /// 参数: {0} - 请求的服务器类型名称（逗号连接）
+            /// </remarks>
+            public const string RequestedServerTypeNotRegistered = "StartUp.Application.RequestedServerTypeNotRegistered";
+
+
+            /// <summary>
+            /// 服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ServerTypeCommaNotAllowed
+            /// 用途: 注册表发现含逗号的 StartUpTag ServerType 时记警告并拒绝注册
+            /// 参数: {0} - 被拒绝的 ServerType 值
+            /// </remarks>
+            public const string ServerTypeCommaNotAllowed = "StartUp.Application.ServerTypeCommaNotAllowed";
+        }
+
+        /// <summary>
+        /// 通用服务器启动相关消息
+        /// </summary>
+        public static class Server
+        {
+            /// <summary>
+            /// 消息处理器错误: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageHandlerError
+            /// 用途: 当消息处理器执行发生异常时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string MessageHandlerError = "StartUp.Server.MessageHandlerError";
+
+            /// <summary>
+            /// 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.ClientDisconnected
+            /// 用途: 当客户端断开连接时记录（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 会话ID, {1} - 远程端点, {2} - 断开原因
+            /// </remarks>
+            public const string ClientDisconnected = "StartUp.Server.ClientDisconnected";
+
+            /// <summary>
+            /// 新客户端连接 - 会话ID: {0}, 远程终端: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.NewClientConnection
+            /// 用途: 当新客户端连接时记录（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 会话ID, {1} - 远程端点
+            /// </remarks>
+            public const string NewClientConnection = "StartUp.Server.NewClientConnection";
+
+            /// <summary>
+            /// 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageReceived
+            /// 用途: 当接收到消息时记录调试信息（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 服务器类型, {1} - 消息内容
+            /// </remarks>
+            public const string MessageReceived = "StartUp.Server.MessageReceived";
+
+            /// <summary>
+            /// 接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageHandlerNotFound
+            /// 用途: 分发漏斗按消息ID解析消息处理器失败时记录
+            /// 参数: {0} - 消息ID, {1} - 消息类型
+            /// </remarks>
+            public const string MessageHandlerNotFound = "StartUp.Server.MessageHandlerNotFound";
+
+            /// <summary>
+            /// {0}端口[{1}]占用详情: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.PortOccupiedDetails
+            /// 用途: 当服务器端口被占用时记录占用进程详情
+            /// 参数: {0} - 服务器名称, {1} - 端口号, {2} - 占用进程列表
+            /// </remarks>
+            public const string PortOccupiedDetails = "StartUp.Server.PortOccupiedDetails";
         }
     }
 }

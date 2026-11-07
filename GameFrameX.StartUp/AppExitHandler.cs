@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -55,8 +55,8 @@ internal static class AppExitHandler
     /// <remarks>
     /// Exit callback action.
     /// </remarks>
-    /// <value>应用程序退出时要调用的动作 / The action to be called when application exits</value>
-    private static Action<string> _exitCallBack;
+    /// <value>应用程序退出时要调用的动作（返回停机任务，供退出路径有界等待）/ The action to be called when application exits (returns the shutdown task so exit paths can await it with a bound)</value>
+    private static Func<string, Task> _exitCallBack;
 
     /// <summary>
     /// 应用程序设置。
@@ -83,7 +83,19 @@ internal static class AppExitHandler
     /// Indicates whether the application is being killed.
     /// </remarks>
     /// <value>如果应用程序正在被终止则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if the application is being killed; otherwise <c>false</c></value>
-    private static bool _isKill;
+    private static volatile bool _isKill;
+
+    /// <summary>
+    /// 等待异步停机任务完成的总超时时间。
+    /// </summary>
+    /// <remarks>
+    /// The total timeout for waiting on the asynchronous shutdown task to complete.
+    /// 进程退出钩子（<see cref="AppDomain.ProcessExit"/>）与入口收尾（<c>EntryAsync</c> finally）
+    /// 等待停机任务的上限：超时记录错误日志后放行进程退出，防止退出路径无限阻塞；
+    /// 与优雅停机序列内部总超时（C361 <c>GracefulShutdownTotalTimeout</c>）同值 30 秒、语义正交
+    ///（内层防停机挂死 / 外层防等待无界），后合入方统一为单一事实源。
+    /// </remarks>
+    internal static readonly TimeSpan ShutdownWaitTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// 致命异常退出处理器列表。
@@ -101,45 +113,128 @@ internal static class AppExitHandler
     /// Initialize the exit handler.
     /// Sets up various exit signal listeners and exception handlers to ensure the application can respond to various exit conditions.
     /// </remarks>
-    /// <param name="exitCallBack">退出回调动作 / Exit callback action</param>
+    /// <param name="exitCallBack">退出回调动作（返回停机任务供退出路径有界等待）/ Exit callback action (returns the shutdown task for exit paths to await with a bound)</param>
     /// <param name="setting">应用程序设置 / Application settings</param>
-    public static void Init(Action<string> exitCallBack, AppSetting setting)
+    public static void Init(Func<string, Task> exitCallBack, AppSetting setting)
     {
+        ArgumentNullException.ThrowIfNull(exitCallBack);
+        ArgumentNullException.ThrowIfNull(setting);
+        Release();
         _isKill = false;
         _setting = setting;
         _exitCallBack = exitCallBack;
-        var fatalExceptionExitHandlers = AssemblyHelper.GetRuntimeImplementTypeNames<IFatalExceptionExitHandler>();
-        foreach (var exceptionExitHandler in fatalExceptionExitHandlers)
+        try
         {
-            var handler = (IFatalExceptionExitHandler)Activator.CreateInstance(exceptionExitHandler);
-            FatalExceptionExitHandlers.Add(handler);
-        }
+            foreach (var handlerType in AssemblyHelper.GetRuntimeImplementTypeNames<IFatalExceptionExitHandler>())
+            {
+                FatalExceptionExitHandlers.Add((IFatalExceptionExitHandler)Activator.CreateInstance(handlerType));
+            }
 
-        _exitSignalRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ExitSignalRegistrationHandler);
-        //退出监听
-        AppDomain.CurrentDomain.ProcessExit += (s, e) => { _exitCallBack?.Invoke("process exit"); };
-        //卸载监听
-        AssemblyLoadContext.Default.Unloading += DefaultOnUnloading;
-        //Fatal异常监听
-        AppDomain.CurrentDomain.UnhandledException += (s, e) => { HandleFatalException("AppDomain.CurrentDomain.UnhandledException", e.ExceptionObject); };
-        //Task异常监听
-        TaskScheduler.UnobservedTaskException += (s, e) => { HandleFatalException("TaskScheduler.UnobservedTaskException", e.Exception); };
-        //ctrl+c
-        Console.CancelKeyPress += (s, e) => { _exitCallBack?.Invoke("ctrl+c exit"); };
+            _exitSignalRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ExitSignalRegistrationHandler);
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+            AssemblyLoadContext.Default.Unloading += DefaultOnUnloading;
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+            Console.CancelKeyPress += OnCancelKeyPress;
+        }
+        catch
+        {
+            Release();
+            throw;
+        }
+    }
+
+    /// <summary>释放退出监听；正常结束和初始化失败均可重复调用。</summary>
+    internal static void Release()
+    {
+        _isKill = true;
+        Interlocked.Exchange(ref _exitSignalRegistration, null)?.Dispose();
+        AppDomain.CurrentDomain.ProcessExit -= OnProcessExit;
+        AssemblyLoadContext.Default.Unloading -= DefaultOnUnloading;
+        AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+        TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+        Console.CancelKeyPress -= OnCancelKeyPress;
+        FatalExceptionExitHandlers.Clear();
+        _exitCallBack = null;
+        _setting = null;
+    }
+
+    private static void OnProcessExit(object sender, EventArgs arguments)
+    {
+        WaitForExitTaskCompletion(_exitCallBack?.Invoke("process exit"));
+    }
+
+    private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs arguments)
+    {
+        HandleFatalException("AppDomain.CurrentDomain.UnhandledException", arguments.ExceptionObject);
+    }
+
+    private static void OnUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs arguments)
+    {
+        HandleFatalException("TaskScheduler.UnobservedTaskException", arguments.Exception);
+    }
+
+    private static void OnCancelKeyPress(object sender, ConsoleCancelEventArgs arguments)
+    {
+        arguments.Cancel = true;
+        _exitCallBack?.Invoke("cancel key press");
+    }
+
+    private static void ExitSignalRegistrationHandler(PosixSignalContext posixSignalContext)
+    {
+        posixSignalContext.Cancel = true;
+        // Localization: StartUp.Application.SigtermSignalReceived - 接收到SIGTERM信号并注册退出处理程序
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.SigtermSignalReceived));
+        _exitCallBack?.Invoke("SIGTERM exit");
+        //收到退出信号后应用进入退出流程，释放信号注册以避免重复触发并归还底层资源
+        Interlocked.Exchange(ref _exitSignalRegistration, null)?.Dispose();
     }
 
     /// <summary>
-    /// 处理 POSIX 信号注册。
+    /// 有界等待异步停机任务完成（可测核心）。
     /// </summary>
     /// <remarks>
-    /// Handles POSIX signal registration.
-    /// Responds to SIGTERM signal and triggers the application exit flow.
+    /// Waits for the asynchronous shutdown task to complete within the given bound.
+    /// 任务为空或已完成时立即返回；超时记录错误日志后放行，防止进程退出路径无限阻塞；
+    /// 停机任务自身的异常已在 <c>HandleExitAsync</c> 内部记录或由入口观测，此处不重抛，
+    /// 保证钩子与入口收尾有界返回。
     /// </remarks>
-    /// <param name="posixSignalContext">POSIX 信号上下文 / POSIX signal context</param>
-    private static void ExitSignalRegistrationHandler(PosixSignalContext posixSignalContext)
+    /// <param name="exitTask">停机任务 / The shutdown task</param>
+    /// <param name="timeout">等待上限 / The wait bound</param>
+    internal static async Task WaitForExitTaskCompletionAsync(Task exitTask, TimeSpan timeout)
     {
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.SigtermSignalReceived));
-        _exitCallBack?.Invoke("SIGTERM exit");
+        if (exitTask == null || exitTask.IsCompleted)
+        {
+            return;
+        }
+
+        try
+        {
+            await exitTask.WaitAsync(timeout);
+        }
+        catch (TimeoutException)
+        {
+            // Localization: StartUp.Application.ShutdownWaitTimeout - 等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.ShutdownWaitTimeout, timeout.TotalSeconds));
+        }
+        catch (Exception)
+        {
+            // 停机任务异常已在其内部记录（逆序停机失败聚合 / 日志冲刷均在 HandleExitAsync 内处理），等待方不重抛
+        }
+    }
+
+    /// <summary>
+    /// 以缺省 <see cref="ShutdownWaitTimeout"/> 为上限同步等待异步停机任务完成。
+    /// </summary>
+    /// <remarks>
+    /// Synchronously waits for the asynchronous shutdown task to complete under the default
+    /// <see cref="ShutdownWaitTimeout"/> bound. Used by the <see cref="AppDomain.ProcessExit"/>
+    /// hook, which runs on the runtime's exit thread after no other waiter remains.
+    /// </remarks>
+    /// <param name="exitTask">停机任务 / The shutdown task</param>
+    internal static void WaitForExitTaskCompletion(Task exitTask)
+    {
+        WaitForExitTaskCompletionAsync(exitTask, ShutdownWaitTimeout).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -185,13 +280,14 @@ internal static class AppExitHandler
 
         if (FatalExceptionExitHandlers?.Count > 0)
         {
-            foreach (var fatalExceptionExitHandler in FatalExceptionExitHandlers)
+            foreach (var fatalExceptionExitHandler in FatalExceptionExitHandlers.ToArray())
             {
                 fatalExceptionExitHandler.Run(tag, _setting, e?.ToString());
             }
         }
 
         //这里可以发送短信或者钉钉消息通知到运维
+        // Localization: StartUp.Application.GetUnhandledException - 获取未处理异常 标签:{0}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.GetUnhandledException, tag));
         if (e is IEnumerable arr)
         {
@@ -201,11 +297,13 @@ internal static class AppExitHandler
                 sb.Append(ex);
             }
 
+            // Localization: StartUp.Application.AllUnhandledExceptions - 所有未处理异常:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.AllUnhandledExceptions, sb.ToString()));
             _exitCallBack?.Invoke(LocalizationService.GetString(Localization.Keys.StartUp.Application.AllUnhandledExceptions, sb.ToString()));
         }
         else
         {
+            // Localization: StartUp.Application.UnhandledException - 未处理异常:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.UnhandledException, e?.ToString() ?? "Unknown exception"));
             _exitCallBack?.Invoke(LocalizationService.GetString(Localization.Keys.StartUp.Application.UnhandledExceptionCallback, e?.ToString() ?? "Unknown exception"));
         }

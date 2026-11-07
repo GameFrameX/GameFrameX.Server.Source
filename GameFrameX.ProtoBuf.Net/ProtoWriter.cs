@@ -239,39 +239,50 @@ public sealed class ProtoWriter : IDisposable
                     throw new ArgumentException(nameof(length));
                 }
 
-                goto CopyFixedLength; // ugly but effective
+                CopyFixedLengthBytes(data, offset, length, writer);
+                return;
             case WireType.Fixed64:
                 if (length != 8)
                 {
                     throw new ArgumentException(nameof(length));
                 }
 
-                goto CopyFixedLength; // ugly but effective
+                CopyFixedLengthBytes(data, offset, length, writer);
+                return;
             case WireType.String:
-                WriteUInt32Variant((uint)length, writer);
-                writer.WireType = WireType.None;
-                if (length == 0)
-                {
-                    return;
-                }
-
-                if (writer.flushLock != 0 || length <= writer.ioBuffer.Length) // write to the buffer
-                {
-                    goto CopyFixedLength; // ugly but effective
-                }
-
-                // writing data that is bigger than the buffer (and the buffer
-                // isn't currently locked due to a sub-object needing the size backfilled)
-                Flush(writer); // commit any existing data from the buffer
-                // now just write directly to the underlying stream
-                writer.dest.Write(data, offset, length);
-                writer.position64 += length; // since we've flushed offset etc is 0, and remains
-                // zero since we're writing directly to the stream
+                WriteStringBytes(data, offset, length, writer);
                 return;
         }
 
         throw CreateException(writer);
-        CopyFixedLength: // no point duplicating this lots of times, and don't really want another stackframe
+    }
+
+    private static void WriteStringBytes(byte[] data, int offset, int length, ProtoWriter writer)
+    {
+        WriteUInt32Variant((uint)length, writer);
+        writer.WireType = WireType.None;
+        if (length == 0)
+        {
+            return;
+        }
+
+        if (writer.flushLock == 0 && length > writer.ioBuffer.Length)
+        {
+            // writing data that is bigger than the buffer (and the buffer
+            // isn't currently locked due to a sub-object needing the size backfilled)
+            Flush(writer); // commit any existing data from the buffer
+            // now just write directly to the underlying stream
+            writer.dest.Write(data, offset, length);
+            writer.position64 += length; // since we've flushed offset etc is 0, and remains
+            // zero since we're writing directly to the stream
+            return;
+        }
+
+        CopyFixedLengthBytes(data, offset, length, writer);
+    }
+
+    private static void CopyFixedLengthBytes(byte[] data, int offset, int length, ProtoWriter writer)
+    {
         DemandSpace(length, writer);
         Buffer.BlockCopy(data, offset, writer.ioBuffer, writer.ioIndex, length);
         IncrementedAndReset(length, writer);
@@ -495,37 +506,7 @@ public sealed class ProtoWriter : IDisposable
                 buffer[value + 2] = b;
                 break;
             case PrefixStyle.Base128:
-                // string - complicated because we only reserved one byte;
-                // if the prefix turns out to need more than this then
-                // we need to shuffle the existing data
-                len = writer.ioIndex - value - 1;
-                var offset = 0;
-                var tmp = (uint)len;
-                while ((tmp >>= 7) != 0)
-                {
-                    offset++;
-                }
-
-                if (offset == 0)
-                {
-                    writer.ioBuffer[value] = (byte)(len & 0x7F);
-                }
-                else
-                {
-                    DemandSpace(offset, writer);
-                    var blob = writer.ioBuffer;
-                    Buffer.BlockCopy(blob, value + 1, blob, value + 1 + offset, len);
-                    tmp = (uint)len;
-                    do
-                    {
-                        blob[value++] = (byte)((tmp & 0x7F) | 0x80);
-                    } while ((tmp >>= 7) != 0);
-
-                    blob[value - 1] = (byte)(blob[value - 1] & ~0x80);
-                    writer.position64 += offset;
-                    writer.ioIndex += offset;
-                }
-
+                BackfillBase128Length(value, writer);
                 break;
             default:
                 throw new ArgumentOutOfRangeException("style");
@@ -537,6 +518,39 @@ public sealed class ProtoWriter : IDisposable
         {
             Flush(writer);
         }
+    }
+
+    private static void BackfillBase128Length(int value, ProtoWriter writer)
+    {
+        // string - complicated because we only reserved one byte;
+        // if the prefix turns out to need more than this then
+        // we need to shuffle the existing data
+        var len = writer.ioIndex - value - 1;
+        var offset = 0;
+        var tmp = (uint)len;
+        while ((tmp >>= 7) != 0)
+        {
+            offset++;
+        }
+
+        if (offset == 0)
+        {
+            writer.ioBuffer[value] = (byte)(len & 0x7F);
+            return;
+        }
+
+        DemandSpace(offset, writer);
+        var blob = writer.ioBuffer;
+        Buffer.BlockCopy(blob, value + 1, blob, value + 1 + offset, len);
+        tmp = (uint)len;
+        do
+        {
+            blob[value++] = (byte)((tmp & 0x7F) | 0x80);
+        } while ((tmp >>= 7) != 0);
+
+        blob[value - 1] = (byte)(blob[value - 1] & ~0x80);
+        writer.position64 += offset;
+        writer.ioIndex += offset;
     }
 
     /// <summary>
@@ -593,10 +607,10 @@ public sealed class ProtoWriter : IDisposable
 
     void IDisposable.Dispose()
     {
-        Dispose();
+        ReleaseResources();
     }
 
-    private void Dispose()
+    private void ReleaseResources()
     {
         // importantly, this does **not** own the stream, and does not dispose it
         if (dest != null)
@@ -661,7 +675,7 @@ public sealed class ProtoWriter : IDisposable
             throw new InvalidOperationException("Unable to close stream in an incomplete state");
         }
 
-        Dispose();
+        ReleaseResources();
     }
 
     internal void CheckDepthFlushlock()
@@ -1019,12 +1033,7 @@ public sealed class ProtoWriter : IDisposable
     /// <summary>
     /// Writes a double-precision number to the stream; supported wire-types: Fixed32, Fixed64
     /// </summary>
-    public
-#if !FEAT_SAFE
-        unsafe
-#endif
-
-        static void WriteDouble(double value, ProtoWriter writer)
+    public static void WriteDouble(double value, ProtoWriter writer)
     {
         if (writer == null)
         {
@@ -1043,11 +1052,7 @@ public sealed class ProtoWriter : IDisposable
                 WriteSingle(f, writer);
                 return;
             case WireType.Fixed64:
-#if FEAT_SAFE
-                    ProtoWriter.WriteInt64(BitConverter.ToInt64(BitConverter.GetBytes(value), 0), writer);
-#else
-                WriteInt64(*(long*)&value, writer);
-#endif
+                WriteInt64(BitConverter.DoubleToInt64Bits(value), writer);
                 return;
             default:
                 throw CreateException(writer);
@@ -1057,11 +1062,7 @@ public sealed class ProtoWriter : IDisposable
     /// <summary>
     /// Writes a single-precision number to the stream; supported wire-types: Fixed32, Fixed64
     /// </summary>
-    public
-#if !FEAT_SAFE
-        unsafe
-#endif
-        static void WriteSingle(float value, ProtoWriter writer)
+    public static void WriteSingle(float value, ProtoWriter writer)
     {
         if (writer == null)
         {
@@ -1071,11 +1072,7 @@ public sealed class ProtoWriter : IDisposable
         switch (writer.WireType)
         {
             case WireType.Fixed32:
-#if FEAT_SAFE
-                    ProtoWriter.WriteInt32(BitConverter.ToInt32(BitConverter.GetBytes(value), 0), writer);
-#else
-                WriteInt32(*(int*)&value, writer);
-#endif
+                WriteInt32(BitConverter.SingleToInt32Bits(value), writer);
                 return;
             case WireType.Fixed64:
                 WriteDouble(value, writer);

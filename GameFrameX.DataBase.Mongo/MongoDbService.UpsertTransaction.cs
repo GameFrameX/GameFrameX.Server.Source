@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -106,13 +106,19 @@ public sealed partial class MongoDbService
         }
 
         state.UpdateTime = currentTime;
-        state.UpdateCount++;
+        state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        // 使用 ReplaceOne with Upsert - 单次数据库操作
+        // 写库前捕获字节快照（bump 后），ack 后按该快照精确提交基线，
+        // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
+        var persistedData = state.ToBytes();
+
+        // 使用 ReplaceOne with Upsert - 单次数据库操作；类型化集合入口需先完成 ClassMap 懒注册
+        // (typed collection entries need lazy ClassMap registration first).
+        MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
-        await ExecuteWriteWithRetryAsync(token => CurrentDatabase.GetCollection<TState>(typeof(TState).Name).ReplaceOneAsync(filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => ReplaceOneWithAmbientSessionAsync(CurrentDatabase.GetCollection<TState>(typeof(TState).Name), filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
-        state.SaveToDbPostHandler();
+        state.SaveToDbPostHandler(persistedData);
         return state;
     }
 
@@ -124,22 +130,27 @@ public sealed partial class MongoDbService
     /// </remarks>
     /// <typeparam name="TState">数据类型，必须继承自 BaseCacheState / Data type, must inherit from BaseCacheState</typeparam>
     /// <param name="states">数据对象集合 / Collection of data objects</param>
-    /// <returns>返回处理的记录数 / Number of processed records</returns>
+    /// <returns>返回实际确认的记录数 / The actually acknowledged record count</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         return await AddOrUpdateListAsync(states, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 批量增加或更新数据（使用 Upsert 优化，批量数据库操作）。
+    /// 批量增加或更新数据（使用 Upsert 优化，批量数据库操作；无序 BulkWrite 以整批计数判定确认面）。
     /// </summary>
     /// <remarks>
-    /// Batch add or update data (using Upsert optimization, bulk database operation).
+    /// Batch add or update data (using Upsert optimization, bulk database operation). The unordered
+    /// <see cref="MongoDbService.BulkWriteOptions"/> batch may leave some documents unwritten without throwing
+    /// (IsAcknowledged stays true), so the acknowledged surface is decided by batch-level counts: only a fully
+    /// acknowledged batch commits <c>SaveToDbPostHandler</c> for every state and returns the batch size; a
+    /// partially acknowledged batch commits no baseline (unwritten documents stay dirty and re-save next
+    /// round) and returns the actually acknowledged count; an unacknowledged batch returns 0.
     /// </remarks>
     /// <typeparam name="TState">数据类型，必须继承自 BaseCacheState / Data type, must inherit from BaseCacheState</typeparam>
     /// <param name="states">数据对象集合 / Collection of data objects</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>返回处理的记录数 / Number of processed records</returns>
+    /// <returns>返回实际确认的记录数 / The actually acknowledged record count</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -151,8 +162,13 @@ public sealed partial class MongoDbService
         }
 
         var currentTime = GetCurrentTimestamp();
+        // 类型化集合入口需先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
+        // Typed collection entries need lazy ClassMap registration first (with MongoDbContext.GetCollection covering the rest).
+        MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<TState>(typeof(TState).Name);
         var writeModels = new List<WriteModel<TState>>(stateArray.Length);
+        // 写库前逐个捕获字节快照（bump 后），ack 后按快照精确提交基线
+        var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
             if (state.CreatedTime == 0)
@@ -161,28 +177,72 @@ public sealed partial class MongoDbService
             }
 
             state.UpdateTime = currentTime;
-            state.UpdateCount++;
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
             var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
             writeModels.Add(new ReplaceOneModel<TState>(filter, state) { IsUpsert = true, });
+            persistedSnapshots.Add((state, state.ToBytes()));
         }
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         if (result.IsAcknowledged)
         {
-            foreach (var state in stateArray)
+            // 无序 BulkWrite 部分文档失败不必然抛异常（IsAcknowledged 仍 true）：以整批计数判定真实确认面。
+            // An unordered BulkWrite may leave some documents unwritten without throwing (IsAcknowledged
+            // stays true): the batch-level counts define the actually acknowledged surface.
+            var acknowledgedCount = result.MatchedCount + result.Upserts.Count;
+            if (IsFullyAcknowledged(result, stateArray.Length))
             {
-                state.SaveToDbPostHandler();
+                foreach (var (state, persistedData) in persistedSnapshots)
+                {
+                    state.SaveToDbPostHandler(persistedData);
+                }
+
+                return stateArray.Length;
             }
+
+            // 部分确认：全批不提交哈希基线（未落库文档保持脏、下轮回存），返回实际确认数。
+            // Partially acknowledged: commit no hash baseline for the batch (unwritten documents stay dirty
+            // and re-save next round) and return the actually acknowledged count.
+            // Localization: Database.Mongo.BulkWritePartialAcknowledged - MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.BulkWritePartialAcknowledged, nameof(AddOrUpdateListAsync), typeof(TState).Name, stateArray.Length, acknowledgedCount));
+            return acknowledgedCount;
         }
 
-        return stateArray.Length;
+        return 0;
+    }
+
+    /// <summary>
+    /// 判定无序 BulkWrite 整批确认（ReplaceOne+upsert 批次口径：RequestCount 与 Matched+Upserts 均达批大小）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether an unordered BulkWrite batch of ReplaceOne-with-upsert models is fully
+    /// acknowledged: processed requests and matched+upserted documents must both reach the batch size.
+    /// Partial document failures (which keep <c>IsAcknowledged</c> true without throwing) fail this check.
+    /// </remarks>
+    /// <param name="result">BulkWrite 结果 / The bulk write result</param>
+    /// <param name="expectedCount">批大小 / The expected batch size</param>
+    /// <returns>整批确认返回 true / True when the whole batch is acknowledged</returns>
+    private static bool IsFullyAcknowledged(BulkWriteResult result, int expectedCount)
+    {
+        return result.IsAcknowledged
+               && result.RequestCount == expectedCount
+               && result.MatchedCount + result.Upserts.Count == expectedCount;
     }
 
     /// <summary>
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
+    /// <b>action 必须幂等 / The action must be idempotent</b>：TransientTransactionError 时整个事务
+    /// （含 <paramref name="action"/> 委托）会被驱动重试重放；任何非幂等的内存副作用（集合追加、计数器自增等）
+    /// 必须移到本方法成功返回之后执行。
+    /// On a TransientTransactionError the whole transaction — including the <paramref name="action"/>
+    /// delegate — is retried and replayed; any non-idempotent in-memory side effect (list appends,
+    /// counter increments, and similar) must be moved after this method returns successfully.
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
@@ -195,7 +255,16 @@ public sealed partial class MongoDbService
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
+    /// <b>action 必须幂等 / The action must be idempotent</b>：TransientTransactionError 时整个事务
+    /// （含 <paramref name="action"/> 委托）会被驱动重试重放；任何非幂等的内存副作用（集合追加、计数器自增等）
+    /// 必须移到本方法成功返回之后执行。
+    /// On a TransientTransactionError the whole transaction — including the <paramref name="action"/>
+    /// delegate — is retried and replayed; any non-idempotent in-memory side effect (list appends,
+    /// counter increments, and similar) must be moved after this method returns successfully.
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -204,31 +273,59 @@ public sealed partial class MongoDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        ArgumentNullException.ThrowIfNull(action, nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
+        if (AmbientSession != null)
+        {
+            // 嵌套事务壳：加入环境会话事务（提交权归最外层壳）。
+            // Nested shell: join the ambient session's transaction (the outermost shell owns the commit).
+            await action().ConfigureAwait(false);
+            return;
+        }
+
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                using var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                session.StartTransaction();
-                cancellationToken.ThrowIfCancellationRequested();
-                await action().ConfigureAwait(false);
-                await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
-                return;
+                using (var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+                {
+                    session.StartTransaction();
+                    var holder = new AmbientSessionHolder { Session = session, };
+                    _ambientSession.Value = holder;
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await action().ConfigureAwait(false);
+                        await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        // 先清持有对象内部字段（派生异步流共享同一引用，同步看到 null），再清当前流的 AsyncLocal 槽。
+                        // Clear the holder's field first (derived async flows share the same reference and
+                        // observe null immediately), then clear this flow's AsyncLocal slot.
+                        holder.Session = null;
+                        _ambientSession.Value = null;
+                    }
+
+                    return;
+                }
             }
-            catch (MongoCommandException exception) when (exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos"))
+            catch (Exception exception) when (IsStandaloneTransactionUnsupported(exception))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // standalone（非副本集）回退：环境会话已清空，单次直通执行（首轮 session 绑定操作在 standalone 上已失败，无双写）。
+                // Standalone (non-replica-set) fallback: the ambient session is already cleared, so this
+                // single pass is the only execution (the session-bound first attempt failed outright).
                 await action().ConfigureAwait(false);
                 return;
             }
-            catch (Exception exception) when (ShouldRetryTransactionException(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);
-                LogHelper.Warning("MongoDbService.ExecuteInTransactionAsync transient error, retry {attempt}/{maxRetry}. error={error}", attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message);
+                // Localization: Database.Mongo.ExecuteInTransactionTransientError - MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.ExecuteInTransactionTransientError, attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message));
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
@@ -243,17 +340,40 @@ public sealed partial class MongoDbService
     }
 
     /// <summary>
+    /// 判定异常是否为 standalone（非副本集/非 mongos）不支持多文档事务的错误（客户端侧拓扑拒绝与服务端拒绝双形态）。
+    /// </summary>
+    /// <remarks>
+    /// Detects the standalone-server multi-document-transaction rejection in both shapes: the
+    /// driver's client-side topology check (<c>NotSupportedException: Standalone servers do not
+    /// support transactions</c>, raised before any server round-trip) and the server-side rejection
+    /// ("Transaction numbers are only allowed on a replica set member or mongos") surfaced by the
+    /// first session-bound operation or the commit.
+    /// </remarks>
+    /// <param name="exception">待判定异常 / The exception to classify</param>
+    /// <returns>是 standalone 事务不支持错误返回 true / True when the error is the standalone transaction rejection</returns>
+    private static bool IsStandaloneTransactionUnsupported(Exception exception)
+    {
+        return (exception is NotSupportedException && exception.Message.Contains("Standalone servers do not support transactions", StringComparison.Ordinal))
+            || (exception is MongoServerException && exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// 带重试机制的事务提交方法。
     /// </summary>
     /// <remarks>
     /// Commits a transaction with automatic retry mechanism on transient failures.
-    /// Uses exponential backoff with jitter for retry delays.
+    /// Uses exponential backoff with jitter for retry delays. When the commit is finally given
+    /// up (non-retryable error or exhausted retries), the transaction is explicitly aborted
+    /// best-effort instead of relying on the implicit rollback of session disposal.
+    /// 提交最终失败（不可重试错误或重试预算耗尽）时显式尽力而为中止事务，不依赖会话释放时的隐式回滚。
+    /// TransientTransactionError 表示整个事务需要重试，清理后保留原始异常和标签交给外层；
+    /// UnknownTransactionCommitResult 仅重试本次提交，耗尽后不允许外层重放 action。
     /// </remarks>
     /// <param name="session">MongoDB 客户端会话句柄 / MongoDB client session handle</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
     /// <exception cref="DatabaseUnavailableException">当所有重试都失败后抛出 / Thrown when all retry attempts fail</exception>
-    private async Task CommitTransactionWithRetryAsync(IClientSessionHandle session, CancellationToken cancellationToken)
+    internal async Task CommitTransactionWithRetryAsync(IClientSessionHandle session, CancellationToken cancellationToken)
     {
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
@@ -264,11 +384,18 @@ public sealed partial class MongoDbService
                 await session.CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (Exception exception) when (ShouldRetryTransactionCommit(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransactionCommit(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception))
+            {
+                // 事务已失败，需要外层创建新事务；不能在这里重试提交或包装掉官方重试标签。
+                // Preserve the original labeled failure so the outer shell retries the whole transaction.
+                await AbortTransactionAfterCommitFailureAsync(session).ConfigureAwait(false);
+                throw;
             }
             catch (Exception exception)
             {
@@ -277,7 +404,42 @@ public sealed partial class MongoDbService
             }
         }
 
+        // 提交已放弃：显式中止事务，不依赖会话释放时的隐式回滚。
+        // The commit was given up: abort the transaction explicitly instead of relying on the
+        // implicit rollback performed during session disposal.
+        await AbortTransactionAfterCommitFailureAsync(session).ConfigureAwait(false);
+
         // Localization: Database.MongoDb.CommitTransactionFailed - CommitTransaction重试失败，未知异常
         throw new DatabaseUnavailableException(LocalizationService.GetString(Keys.Database.MongoDbCommitTransactionFailed), lastException ?? new InvalidOperationException(LocalizationService.GetString(Keys.Database.MongoDbCommitTransactionFailed)));
+    }
+
+    /// <summary>
+    /// 提交最终失败后尽力而为显式中止事务。
+    /// </summary>
+    /// <remarks>
+    /// Best-effort explicit abort after the commit was given up: the shell must not rely on
+    /// session disposal to roll back, because the driver does not guarantee that the disposal
+    /// itself succeeds. The abort deliberately uses <c>CancellationToken.None</c> — commit
+    /// failures are often caused by an already cancelled caller token, and the cleanup
+    /// round-trip deserves a real chance to reach the server. An abort failure is only logged
+    /// (the server eventually rolls the transaction back on timeout); the original commit
+    /// failure remains the exception that propagates.
+    /// </remarks>
+    /// <param name="session">MongoDB 客户端会话句柄 / MongoDB client session handle</param>
+    /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
+    private static async Task AbortTransactionAfterCommitFailureAsync(IClientSessionHandle session)
+    {
+        try
+        {
+            // 尽力而为的清理不随业务令牌取消（提交失败常因令牌已取消），让中止真正送达服务端。
+            // Best-effort cleanup must not ride the caller's (often already cancelled) token:
+            // the abort round-trip deserves a real chance to reach the server.
+            await session.AbortTransactionAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            // Localization: Database.Mongo.AbortTransactionAfterCommitFailed - MongoDbService.CommitTransactionAsync 提交失败后中止事务失败，事务将由服务端超时回滚。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.AbortTransactionAfterCommitFailed, exception.Message));
+        }
     }
 }

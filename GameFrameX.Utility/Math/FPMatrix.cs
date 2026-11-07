@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 /* Copyright (C) <2009-2011> <Thorben Linneweber, Jitter Physics>
  *
@@ -130,7 +98,7 @@ public struct FPMatrix
     /// </summary>
     public FP M33;
 
-    internal static FPMatrix InternalIdentity;
+    internal static readonly FPMatrix InternalIdentity;
 
     /// <summary>
     /// 单位矩阵。
@@ -431,14 +399,12 @@ public struct FPMatrix
     /// 计算给定矩阵的逆矩阵。
     /// </summary>
     /// <param name="matrix">要计算逆的矩阵。</param>
-    /// <returns>逆矩阵。</returns>
-
-    #region public static JMatrix Inverse(JMatrix matrix)
-
+    /// <returns>逆矩阵；矩阵奇异（行列式为 0）时返回全部元素为 <see cref="FP.PositiveInfinity"/> 的哨兵矩阵。</returns>
+    [Obsolete("请使用 Invert。Inverse 的 1024 缩放会损失 10 位精度；本方法现委托 Invert，下个主版本将移除。")]
     public static FPMatrix Inverse(FPMatrix matrix)
     {
         FPMatrix result;
-        Inverse(ref matrix, out result);
+        Invert(ref matrix, out result);
         return result;
     }
 
@@ -456,10 +422,27 @@ public struct FPMatrix
     /// 计算给定矩阵的逆矩阵。
     /// </summary>
     /// <param name="matrix">要计算逆的矩阵。</param>
-    /// <param name="result">逆矩阵。</param>
+    /// <param name="result">逆矩阵；矩阵奇异（行列式为 0）时填 <see cref="FP.PositiveInfinity"/> 哨兵。</param>
     public static void Invert(ref FPMatrix matrix, out FPMatrix result)
     {
-        var determinantInverse = 1 / matrix.Determinant();
+        var determinant = matrix.Determinant();
+        if (determinant == FP.Zero)
+        {
+            // 定点数没有 NaN/Inf 体系；与 FPMatrix4x4.Inverse 口径一致，
+            // 奇异矩阵输出全 PositiveInfinity 哨兵，避免 1/0 静默产出垃圾值。
+            result.M11 = FP.PositiveInfinity;
+            result.M12 = FP.PositiveInfinity;
+            result.M13 = FP.PositiveInfinity;
+            result.M21 = FP.PositiveInfinity;
+            result.M22 = FP.PositiveInfinity;
+            result.M23 = FP.PositiveInfinity;
+            result.M31 = FP.PositiveInfinity;
+            result.M32 = FP.PositiveInfinity;
+            result.M33 = FP.PositiveInfinity;
+            return;
+        }
+
+        var determinantInverse = FP.One / determinant;
         var m11 = (matrix.M22 * matrix.M33 - matrix.M23 * matrix.M32) * determinantInverse;
         var m12 = (matrix.M13 * matrix.M32 - matrix.M33 * matrix.M12) * determinantInverse;
         var m13 = (matrix.M12 * matrix.M23 - matrix.M22 * matrix.M13) * determinantInverse;
@@ -490,54 +473,11 @@ public struct FPMatrix
     /// </summary>
     /// <param name="matrix">The matrix to invert.</param>
     /// <param name="result">The inverted JMatrix.</param>
+    [Obsolete("请使用 Invert。Inverse 的 1024 缩放会损失 10 位精度；本方法现委托 Invert，下个主版本将移除。")]
     public static void Inverse(ref FPMatrix matrix, out FPMatrix result)
     {
-        var det = 1024 * matrix.M11 * matrix.M22 * matrix.M33 -
-                  1024 * matrix.M11 * matrix.M23 * matrix.M32 -
-                  1024 * matrix.M12 * matrix.M21 * matrix.M33 +
-                  1024 * matrix.M12 * matrix.M23 * matrix.M31 +
-                  1024 * matrix.M13 * matrix.M21 * matrix.M32 -
-                  1024 * matrix.M13 * matrix.M22 * matrix.M31;
-
-        var num11 = 1024 * matrix.M22 * matrix.M33 - 1024 * matrix.M23 * matrix.M32;
-        var num12 = 1024 * matrix.M13 * matrix.M32 - 1024 * matrix.M12 * matrix.M33;
-        var num13 = 1024 * matrix.M12 * matrix.M23 - 1024 * matrix.M22 * matrix.M13;
-
-        var num21 = 1024 * matrix.M23 * matrix.M31 - 1024 * matrix.M33 * matrix.M21;
-        var num22 = 1024 * matrix.M11 * matrix.M33 - 1024 * matrix.M31 * matrix.M13;
-        var num23 = 1024 * matrix.M13 * matrix.M21 - 1024 * matrix.M23 * matrix.M11;
-
-        var num31 = 1024 * matrix.M21 * matrix.M32 - 1024 * matrix.M31 * matrix.M22;
-        var num32 = 1024 * matrix.M12 * matrix.M31 - 1024 * matrix.M32 * matrix.M11;
-        var num33 = 1024 * matrix.M11 * matrix.M22 - 1024 * matrix.M21 * matrix.M12;
-
-        if (det == 0)
-        {
-            result.M11 = FP.PositiveInfinity;
-            result.M12 = FP.PositiveInfinity;
-            result.M13 = FP.PositiveInfinity;
-            result.M21 = FP.PositiveInfinity;
-            result.M22 = FP.PositiveInfinity;
-            result.M23 = FP.PositiveInfinity;
-            result.M31 = FP.PositiveInfinity;
-            result.M32 = FP.PositiveInfinity;
-            result.M33 = FP.PositiveInfinity;
-        }
-        else
-        {
-            result.M11 = num11 / det;
-            result.M12 = num12 / det;
-            result.M13 = num13 / det;
-            result.M21 = num21 / det;
-            result.M22 = num22 / det;
-            result.M23 = num23 / det;
-            result.M31 = num31 / det;
-            result.M32 = num32 / det;
-            result.M33 = num33 / det;
-        }
+        Invert(ref matrix, out result);
     }
-
-    #endregion
 
     /// <summary>
     /// 将矩阵乘以一个缩放因子。
@@ -838,15 +778,20 @@ public struct FPMatrix
     /// <returns>当前矩阵的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return M11.GetHashCode() ^
-               M12.GetHashCode() ^
-               M13.GetHashCode() ^
-               M21.GetHashCode() ^
-               M22.GetHashCode() ^
-               M23.GetHashCode() ^
-               M31.GetHashCode() ^
-               M32.GetHashCode() ^
-               M33.GetHashCode();
+        unchecked
+        {
+            // 顺序混合（乘 397）而非 XOR：分量置换不再同哈希。
+            var hash = M11.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M12.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M13.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M21.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M22.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M23.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M31.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M32.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M33.RawValue.GetHashCode();
+            return hash;
+        }
     }
 
     /// <summary>

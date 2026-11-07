@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -59,11 +59,19 @@ internal sealed class MongoDbContext
     /// </summary>
     /// <remarks>
     /// Gets the MongoDB collection of the specified type.
+    /// 挂载点唯一性说明：本方法是状态文档（BaseCacheState 派生）CRUD 路径唯一的集合获取入口，
+    /// ClassMap 懒注册（忽略多余元素 + 继承）在此完成；其余类型化入口（索引 / Upsert / SaveBulk）各自显式调用
+    /// <see cref="MongoSerializationRegistry.EnsureClassMapRegistered{T}"/>，两处合起来覆盖全部状态文档序列化路径。
+    /// Mount-point note: this is the single collection entry for state-document CRUD paths, where lazy
+    /// ClassMap registration happens; the remaining typed entries (index / upsert / save-bulk) call
+    /// <see cref="MongoSerializationRegistry.EnsureClassMapRegistered{T}"/> explicitly, together covering every
+    /// state-document serialization path.
     /// </remarks>
     /// <typeparam name="T">文档类型 / Document type</typeparam>
     /// <returns>指定类型的 MongoDB 集合 / MongoDB collection of the specified type</returns>
     public IMongoCollection<T> GetCollection<T>() where T : BaseCacheState
     {
+        MongoSerializationRegistry.EnsureClassMapRegistered<T>();
         return _database.GetCollection<T>(typeof(T).Name);
     }
 

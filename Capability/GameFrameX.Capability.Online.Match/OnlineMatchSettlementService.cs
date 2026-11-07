@@ -1,0 +1,184 @@
+//  ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System;
+using System.Threading;
+using System.Linq;
+using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+
+namespace GameFrameX.Capability.Online.Match;
+
+/// <summary>
+/// 结算服务（结算事实先落定，发奖与结果分发解耦）。
+/// <para>
+/// 维护约束（红线）：同一对局只结算一次。两层保证：
+/// (1) <see cref="IOnlineMatchResultStore.CommitAsync"/> 首结果获胜——并发触发也只有一份结果能落地；
+/// (2) 已存在结果时直接复用，不再进入 Actor 的结算阶段（避免二次生成 <c>MatchResultId</c>）。
+/// 因此「两个客户端同时喊结算」或「结算被重试」都不会产生第二份结果。
+/// </para>
+/// <para>
+/// 结算失败（玩法无法产出结果）时把对局转入 <see cref="OnlineMatchState.SettlementFailed"/>——
+/// 这是确定态而非僵尸：它仍会流向 <see cref="OnlineMatchState.Closed"/> 并被 Tick 释放，
+/// 但不会有任何奖励被分发。
+/// </para>
+/// </summary>
+public sealed class OnlineMatchSettlementService
+{
+    /// <summary>对局运行时。</summary>
+    private readonly OnlineMatchRuntime _runtime;
+
+    /// <summary>结算存储（结果幂等边界 + 待发奖 outbox 原子落库面）。</summary>
+    private readonly IOnlineMatchSettlementStore _settlementStore;
+
+    /// <summary>事件发布器（可空）。</summary>
+    private readonly IOnlineEventPublisher _eventPublisher;
+
+    /// <summary>是否随结算落库待发奖记录（false = assets 能力缺席，仅结算不发奖）。</summary>
+    private readonly bool _rewardGrantEnabled;
+
+    /// <summary>
+    /// 初始化结算服务。
+    /// </summary>
+    /// <param name="runtime">对局运行时。</param>
+    /// <param name="settlementStore">结算存储（结果 + 待发奖 outbox）。</param>
+    /// <param name="eventPublisher">事件发布器（可空）。</param>
+    /// <param name="rewardGrantEnabled">是否随结算原子落库待发奖记录（发奖能力缺席时为 false，不建 outbox）。</param>
+    public OnlineMatchSettlementService(OnlineMatchRuntime runtime, IOnlineMatchSettlementStore settlementStore, IOnlineEventPublisher eventPublisher = null, bool rewardGrantEnabled = true)
+    {
+        _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+        _settlementStore = settlementStore ?? throw new ArgumentNullException(nameof(settlementStore));
+        _eventPublisher = eventPublisher;
+        _rewardGrantEnabled = rewardGrantEnabled;
+    }
+
+    /// <summary>
+    /// 对指定对局执行结算（幂等）。
+    /// </summary>
+    /// <param name="matchId">对局标识。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>结算执行结果；失败返回对应错误码。</returns>
+    public async Task<OnlineResult<OnlineMatchSettlementOutcome>> SettleAsync(string matchId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(matchId))
+        {
+            return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "对局标识不能为空");
+        }
+
+        var existing = await _settlementStore.FindByMatchAsync(matchId, cancellationToken).ConfigureAwait(false);
+        if (existing != null)
+        {
+            return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome
+            {
+                Result = existing,
+                IsReplay = true,
+                State = OnlineMatchState.Completed,
+            });
+        }
+
+        var actor = await _runtime.ResolveActorAsync(matchId, cancellationToken).ConfigureAwait(false);
+        if (actor == null)
+        {
+            return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ResourceNotFound, "对局不存在");
+        }
+
+        var built = await actor.BuildResultAsync(nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+        if (!built.IsSuccess)
+        {
+            if (built.Code == OnlineErrorCode.StateNotReady)
+            {
+                return OnlineResult<OnlineMatchSettlementOutcome>.Fail(built.Code, built.Message);
+            }
+
+            await actor.MarkSettlementFailedAsync(nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+            return OnlineResult<OnlineMatchSettlementOutcome>.Fail(built.Code, built.Message);
+        }
+
+        var committed = _rewardGrantEnabled
+            ? await _settlementStore.CommitWithOutboxAsync(built.Data, cancellationToken).ConfigureAwait(false)
+            : await _settlementStore.CommitAsync(built.Data, cancellationToken).ConfigureAwait(false);
+        if (committed == null)
+        {
+            return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ServiceBusy, "结算结果写入失败");
+        }
+
+        var isReplay = !string.Equals(committed.MatchResultId, built.Data.MatchResultId, StringComparison.Ordinal);
+        if (!isReplay)
+        {
+            await CompleteAndPublishAsync(actor, committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+        }
+
+        return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome
+        {
+            Result = committed,
+            IsReplay = isReplay,
+            State = OnlineMatchState.Completed,
+        });
+    }
+
+    /// <summary>
+    /// 首次落定后的收尾（Actor 完成结算 + 结算事件与抑制参与奖风控事件发布）。
+    /// </summary>
+    /// <param name="actor">对局 Actor。</param>
+    /// <param name="committed">已落定的结算结果。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task CompleteAndPublishAsync(OnlineMatchActor actor, OnlineMatchResult committed, long nowUnixMilliseconds, CancellationToken cancellationToken)
+    {
+        await actor.CompleteSettlementAsync(committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+        var entries = committed.Entries == null
+            ? null
+            : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
+        await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+        if (committed.ParticipationRewardsSuppressed)
+        {
+            // 挂机刷奖可疑信号：存在零有效出拳玩家的结算，外发风控事件（发布失败不改变已落定的结算事实）。
+            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// 发布事件（发布器可空；发布失败不改变已落定的结算事实）。
+    /// </summary>
+    /// <param name="onlineEvent">待发布事件。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task PublishAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken)
+    {
+        if (_eventPublisher == null)
+        {
+            return;
+        }
+
+        await _eventPublisher.PublishAsync(onlineEvent, cancellationToken).ConfigureAwait(false);
+    }
+}

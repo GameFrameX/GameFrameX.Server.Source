@@ -1,0 +1,75 @@
+//  ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+namespace GameFrameX.Capability.Online.Foundation.Presence;
+
+/// <summary>
+/// 在线状态存储接口（Presence 事实源的持久化契约）。
+/// <para>
+/// 维护约束：键 = PlayerId——玩家维度唯一（多端并存时以会话域为准，Presence 表达玩家事实）；
+/// 无记录即 Offline（RemoveAsync 即下线）；全量列举供在线计数，在线计数在服务层过滤状态。
+/// </para>
+/// </summary>
+public interface IOnlinePresenceStore
+{
+    /// <summary>写入或覆盖在线状态记录（按 PlayerId 全量写）。</summary>
+    /// <param name="record">在线状态记录。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    Task SetAsync(OnlinePresenceRecord record, CancellationToken cancellationToken = default);
+
+    /// <summary>按 PlayerId 查找在线状态记录。</summary>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>在线状态记录；无记录返回 null（即 Offline）。</returns>
+    Task<OnlinePresenceRecord> FindAsync(long playerId, CancellationToken cancellationToken = default);
+
+    /// <summary>移除在线状态记录（即 Offline）。</summary>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    Task RemoveAsync(long playerId, CancellationToken cancellationToken = default);
+
+    /// <summary>列出全部在线状态记录（在线计数与 Admin 查询输入）。</summary>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>在线状态记录列表。</returns>
+    Task<IReadOnlyList<OnlinePresenceRecord>> ListAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>统计区服内的在线玩家数（聚合谓词下推：State 为 Blocked 的记录不计入，与在线总览口径一致）。</summary>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>在线玩家数。</returns>
+    Task<int> CountOnlineByServerAsync(long serverId, CancellationToken cancellationToken = default);
+
+    /// <summary>列出已到期的清扫候选（Reconnecting 超重连窗 / Online 超空闲阈值），按到期时间升序取头部。</summary>
+    /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒）。</param>
+    /// <param name="idleTimeoutMilliseconds">空闲判定阈值（毫秒；Online 态心跳早于该阈值即到期）。</param>
+    /// <param name="maxCount">最多返回条数（批量清扫的批次大小）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>到期候选记录快照（服务层仍须逐条复核状态与到期条件）；无候选返回空列表。</returns>
+    Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default);
+}

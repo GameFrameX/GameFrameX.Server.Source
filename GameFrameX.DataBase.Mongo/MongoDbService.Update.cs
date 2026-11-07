@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -80,11 +80,11 @@ public sealed partial class MongoDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var isChanged = state.IsModify();
+        var (isChanged, changedData) = state.IsChanged();
         if (isChanged)
         {
             state.UpdateTime = GetCurrentTimestamp();
-            state.UpdateCount++;
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
             var collection = _mongoDbContext.GetCollection<TState>();
             var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
@@ -92,10 +92,11 @@ public sealed partial class MongoDbService
             // 构建更新定义，排除 CreatedTime, CreatedId, Id, IsDeleted, DeleteTime 字段
             var updateDefinition = BuildUpdateDefinition(state);
 
-            var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, updateDefinition, cancellationToken: token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
+            var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, updateDefinition, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                state.SaveToDbPostHandler(changedData);
             }
         }
 
@@ -137,31 +138,34 @@ public sealed partial class MongoDbService
         }
 
         var writeModels = new List<WriteModel<TState>>();
+        // 检查时快照与状态配对，ack 后逐个精确提交：只提交实际送库快照的 hash
+        var changedSnapshots = new List<(TState State, byte[] Data)>();
         var currentTime = GetCurrentTimestamp();
 
         foreach (var state in cacheStates)
         {
-            var isChanged = state.IsModify();
+            var (isChanged, changedData) = state.IsChanged();
             if (isChanged)
             {
                 state.UpdateTime = currentTime;
-                state.UpdateCount++;
+                state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
                 var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
                 var updateDefinition = BuildUpdateDefinition(state);
                 writeModels.Add(new UpdateOneModel<TState>(filter, updateDefinition));
+                changedSnapshots.Add((state, changedData));
             }
         }
 
         if (writeModels.Count > 0)
         {
             var collection = _mongoDbContext.GetCollection<TState>();
-            var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
+            var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
-                foreach (var state in cacheStates)
+                foreach (var (state, changedData) in changedSnapshots)
                 {
-                    state.SaveToDbPostHandler();
+                    state.SaveToDbPostHandler(changedData);
                 }
             }
 
@@ -235,12 +239,16 @@ public sealed partial class MongoDbService
 
         var currentTime = GetCurrentTimestamp();
         updates.Add(Builders<TState>.Update.Set(m => m.UpdateTime, currentTime));
+        // UpdateCount 为 int?（EntityBase）；插入与保存路径已在写库前将其归一为非 null，
+        // 因此这里可以安全使用经典 $inc（$inc 作用于 BSON null 字段会直接报错）。
+        // UpdateCount is int? (EntityBase); insert and save paths normalize it to non-null before
+        // persisting, so the classic $inc below is safe ($inc on a BSON null field errors out).
         updates.Add(Builders<TState>.Update.Inc(m => m.UpdateCount, 1));
 
         var collection = _mongoDbContext.GetCollection<TState>();
-        var update = Builders<TState>.Update.Combine(updates);
         var filter = Builders<TState>.Filter.Eq(m => m.Id, id) & Builders<TState>.Filter.Where(GetDefaultFindExpression<TState>(null));
-        var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, update, cancellationToken: token), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
+        var update = Builders<TState>.Update.Combine(updates);
+        var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, update, token), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 

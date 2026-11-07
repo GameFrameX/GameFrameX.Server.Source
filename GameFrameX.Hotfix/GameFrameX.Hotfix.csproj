@@ -4,8 +4,10 @@
         <ApplicationIcon />
         <StartupObject />
         <IsPackable>false</IsPackable>
+        <!-- 热更新程序集按名字加载（非强名称），且需暴露 internal 给未签名的测试工程 -->
+        <SignAssembly>false</SignAssembly>
+        <PublicSign>false</PublicSign>
     </PropertyGroup>
-
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <OutputPath>..\bin\app_debug\hotfix</OutputPath>
     </PropertyGroup>
@@ -18,12 +20,18 @@
         <ProjectReference Include="..\GameFrameX.Apps\GameFrameX.Apps.csproj" />
         <ProjectReference Include="..\GameFrameX.Config\GameFrameX.Config.csproj" />
         <ProjectReference Include="..\GameFrameX.Core\GameFrameX.Core.csproj" />
-        <ProjectReference Include="..\GameFrameX.NetWork.HTTP\GameFrameX.NetWork.HTTP.csproj" />
-        <ProjectReference Include="..\GameFrameX.StartUp\GameFrameX.StartUp.csproj" />
+        <ProjectReference Include="..\GameFrameX.Network.HTTP\GameFrameX.Network.HTTP.csproj" />
+        <ProjectReference Include="..\GameFrameX.Network.Abstractions\GameFrameX.Network.Abstractions.csproj" />
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
-        <ProjectReference Include="..\GameFrameX.CodeGenerator\GameFrameX.CodeGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Abstractions\GameFrameX.Capability.Online.Abstractions.csproj" />
+        <ProjectReference Include="..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\GameFrameX.Hotfix.WrapperGenerator\GameFrameX.Hotfix.WrapperGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
+    <!-- 暴露 internal 给测试工程：供 MailCampaignRegistryTests 调用 ResetForTest 隔离进程内 registry 状态。 -->
+    <ItemGroup>
+      <InternalsVisibleTo Include="GameFrameX.Hotfix.Tests" />
+    </ItemGroup>
     <!--如需磁盘上生成文件打开以下注释-->
     <!--<PropertyGroup>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>

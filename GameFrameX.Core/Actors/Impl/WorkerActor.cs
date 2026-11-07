@@ -1,0 +1,805 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Threading.Tasks.Dataflow;
+using GameFrameX.Core.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility;
+using GameFrameX.Utility.Setting;
+using Serilog;
+
+namespace GameFrameX.Core.Actors.Impl;
+
+/// <summary>
+/// 工作Actor类,用于处理异步任务队列
+/// </summary>
+public class WorkerActor : IWorkerActor
+{
+    /// <summary>
+    /// 日志记录器实例
+    /// </summary>
+    private static readonly ILogger Log = Serilog.Log.ForContext<WorkWrapper>();
+
+    /// <summary>
+    /// 调用链ID,初始值为当前时间刻度
+    /// </summary>
+    private static long _chainId = DateTime.Now.Ticks;
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="id">Actor的唯一标识,如果为0则自动生成</param>
+    public WorkerActor(long id = 0)
+    {
+        if (id == 0)
+        {
+            id = ActorIdGenerator.GetUniqueId(GlobalConst.WorkerActorIdModuleValue);
+        }
+
+        Id = id;
+        ActionBlock = new ActionBlock<WorkWrapper>(InnerRunAsync, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, });
+    }
+
+    /// <summary>
+    /// 当前调用链ID
+    /// </summary>
+    private long _currentChainId;
+
+    internal long CurrentChainId
+    {
+        get => Volatile.Read(ref _currentChainId);
+        set => Volatile.Write(ref _currentChainId, value);
+    }
+
+    /// <summary>
+    /// 条件重置链 ID：仅当当前值仍为指定链 ID 时才清零。
+    /// 工作单元安全清理用——避免孤儿任务或被拒绝入队的工作单元误清后继消息的链上下文（重入判定依赖该值）。
+    /// </summary>
+    /// <param name="chainId">链 ID</param>
+    internal void ResetChainIdIfCurrent(long chainId)
+    {
+        Interlocked.CompareExchange(ref _currentChainId, 0, chainId);
+    }
+
+    /// <summary>
+    /// 隔离标记（0=正常，1=已隔离）
+    /// </summary>
+    private int _quarantined;
+
+    /// <summary>
+    /// Actor 是否已隔离。
+    /// 孤儿任务超过硬上限仍无结束迹象时置位：串行不变量已无法保证，本 Actor 不再接受与执行任何工作单元，
+    /// 排队中的工作单元以隔离异常快速失败，需经宿主（如 ActorManager 回收重建）恢复。
+    /// </summary>
+    public bool IsQuarantined => Volatile.Read(ref _quarantined) != 0;
+
+    /// <summary>
+    /// 隔离本 Actor：停止接收新工作单元并放弃对孤儿任务的跟踪
+    /// </summary>
+    /// <param name="reason">隔离原因</param>
+    private void Quarantine(string reason)
+    {
+        if (Interlocked.Exchange(ref _quarantined, 1) != 0)
+        {
+            return;
+        }
+
+        // Localization: Core.Actor.WorkerActor.Quarantined - Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}
+        Log.Fatal(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.Quarantined, Id, reason));
+        ActionBlock.Complete();
+    }
+
+    private InvalidOperationException CreateQuarantinedException()
+    {
+        // Localization: CoreExceptions.WorkerActor.Quarantined - WorkerActor已隔离，工作单元被拒绝 actorId:{0}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.Quarantined, Id));
+    }
+
+    private static InvalidOperationException CreateQuarantinedException(WorkWrapper wrapper)
+    {
+        // Localization: CoreExceptions.WorkerActor.QuarantinedWithTrace - WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QuarantinedWithTrace, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+    }
+
+    /// <summary>
+    /// 构建限流规则拒绝异常：拒绝不得伪装成功，等待方必须感知工作单元未执行。
+    /// </summary>
+    private InvalidOperationException CreateCallRejectedException()
+    {
+        // Localization: CoreExceptions.WorkerActor.CallRejectedByLimitRule - WorkerActor工作调用被限流规则拒绝，调用方ActorId:{0} 目标ActorId:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.CallRejectedByLimitRule, RuntimeContext.CurrentActor, Id));
+    }
+
+
+    /// <summary>
+    /// 释放本工作单元持有的 ActorLimit 在飞登记：仅入队时实际登记过的单元递减计数，
+    /// 未登记路径（discard/checkLock 跳过、Tell）不移除他人登记。
+    /// </summary>
+    private static void ReleaseLimitRegistration(WorkWrapper wrapper)
+    {
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Actor的唯一标识
+    /// </summary>
+    internal long Id { get; init; }
+
+    /// <summary>
+    /// 任务执行块,用于串行处理异步任务
+    /// </summary>
+    private ActionBlock<WorkWrapper> ActionBlock { get; }
+
+    /// <summary>
+    /// 判断是否需要将任务加入队列
+    /// chainId == 0说明是新的异步环境
+    /// chainId相等说明是一直await下去的（一种特殊情况是自己入自己的队）
+    /// </summary>
+    /// <returns>返回一个元组(是否需要入队,调用链ID)</returns>
+    public (bool needEnqueue, long chainId) IsNeedEnqueue()
+    {
+        var chainId = RuntimeContext.CurrentChainId;
+        var needEnqueue = chainId == 0 || chainId != CurrentChainId;
+        if (needEnqueue && chainId == 0)
+        {
+            chainId = NextChainId();
+        }
+
+        return (needEnqueue, chainId);
+    }
+
+    /// <summary>
+    /// 内部执行方法,处理工作包装器。
+    /// 超时语义：等待方以 TimeoutException 放行；邮箱继续等待孤儿任务完成（串行不变量），
+    /// 孤儿超过硬上限（<see cref="OrphanHardCapMultiplier"/> × TimeOut）才隔离本 Actor。
+    /// </summary>
+    /// <param name="wrapper">工作包装器</param>
+    private async Task InnerRunAsync(WorkWrapper wrapper)
+    {
+        if (IsQuarantined)
+        {
+            // 工作单元终态：移除本单元持有的 ActorLimit 在飞登记（隔离分支在 try/finally 之外，须自行移除）
+            ReleaseLimitRegistration(wrapper);
+            wrapper.TrySetException(CreateQuarantinedException(wrapper));
+            return;
+        }
+
+        wrapper.BeginExecution();
+        var task = wrapper.DoTaskAsync();
+        var abandoned = false;
+        try
+        {
+            try
+            {
+                if (wrapper.TimeOut > 0)
+                {
+                    await task.WaitAsync(TimeSpan.FromMilliseconds(wrapper.TimeOut));
+                }
+                else
+                {
+                    await task;
+                }
+            }
+            catch (TimeoutException)
+            {
+                // Localization: Core.Actor.WorkerActor.Timeout - 工作单元执行超时 trace:{0}
+                Log.Fatal(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.Timeout, GetTraceSafely(wrapper)));
+                // 等待方以超时异常放行；链上下文留给孤儿任务的 finally 条件清理，不得在此清零
+                wrapper.OnTimeout();
+
+                try
+                {
+                    // 串行不变量：邮箱继续等待孤儿任务完成，期间不取下一条消息
+                    await task.WaitAsync(TimeSpan.FromMilliseconds((long)wrapper.TimeOut * OrphanHardCapMultiplier));
+                }
+                catch (TimeoutException)
+                {
+                    // 孤儿超过硬上限仍无结束迹象：放弃跟踪并隔离本 Actor
+                    abandoned = true;
+                    Quarantine("孤儿任务超过硬上限: " + GetTraceSafely(wrapper));
+                }
+                catch
+                {
+                    // 孤儿已结束（其异常已由 DoTask 传递给等待方），邮箱恢复正常
+                }
+            }
+        }
+        finally
+        {
+            // 工作单元终态：移除本单元持有的 ActorLimit 在飞登记（含超时孤儿与隔离放弃路径）
+            ReleaseLimitRegistration(wrapper);
+            // 孤儿被放弃跟踪时不得释放其执行期取消源（可能仍被持有注册）
+            wrapper.EndExecution(!abandoned);
+        }
+    }
+
+    private static InvalidOperationException CreateQueueRejectedException(WorkWrapper wrapper)
+    {
+        // Localization: CoreExceptions.WorkerActor.QueueRejected - WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueRejected, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+    }
+
+    private static string GetTraceSafely(WorkWrapper wrapper)
+    {
+        try
+        {
+            return wrapper.GetTrace();
+        }
+        catch (Exception exception)
+        {
+            // Localization: CoreExceptions.WorkerActor.TraceUnavailable - trace不可用：{0}
+            return LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.TraceUnavailable, exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// 孤儿任务硬上限倍数：超时放行等待方后，邮箱最多再等待 TimeOut × 该倍数，超过则隔离本 Actor
+    /// </summary>
+    private const long OrphanHardCapMultiplier = 10;
+
+    private void SendToActionBlock(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
+    {
+        // 调用方令牌联动执行期取消：排队期取消投递，执行期与超时合并触发协作式取消
+        wrapper.CallerToken = cancellationToken;
+        var sendTask = ActionBlock.SendAsync(wrapper, cancellationToken);
+        if (sendTask.IsCompleted)
+        {
+            CompleteSendResult(sendTask, wrapper, completeOnFailure);
+            return;
+        }
+
+        _ = CompleteSendResultAsync(sendTask, wrapper, completeOnFailure);
+    }
+
+    private static async Task CompleteSendResultAsync(Task<bool> sendTask, WorkWrapper wrapper, bool completeOnFailure)
+    {
+        try
+        {
+            var accepted = await sendTask.ConfigureAwait(false);
+            if (accepted)
+            {
+                return;
+            }
+
+            CompleteRejectedPost(wrapper, completeOnFailure);
+        }
+        catch (OperationCanceledException exception)
+        {
+            CompleteCanceledPost(wrapper, exception.CancellationToken, completeOnFailure);
+        }
+        catch (Exception exception)
+        {
+            CompleteFailedPost(wrapper, exception, completeOnFailure);
+        }
+    }
+
+    private static void CompleteSendResult(Task<bool> sendTask, WorkWrapper wrapper, bool completeOnFailure)
+    {
+        if (sendTask.IsCanceled)
+        {
+            CompleteCanceledPost(wrapper, CancellationToken.None, completeOnFailure);
+            return;
+        }
+
+        if (sendTask.IsFaulted)
+        {
+            // Localization: CoreExceptions.WorkerActor.QueueFailed - WorkerActor 队列投递失败。actorId:{0} trace:{1}
+            CompleteFailedPost(wrapper, sendTask.Exception?.GetBaseException() ?? new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueFailed, wrapper.Owner?.Id, GetTraceSafely(wrapper))), completeOnFailure);
+            return;
+        }
+
+        if (!sendTask.Result)
+        {
+            CompleteRejectedPost(wrapper, completeOnFailure);
+        }
+    }
+
+    private static void CompleteRejectedPost(WorkWrapper wrapper, bool completeOnFailure)
+    {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
+        var exception = CreateQueueRejectedException(wrapper);
+        if (completeOnFailure)
+        {
+            wrapper.TrySetException(exception);
+            return;
+        }
+
+        // Localization: CoreExceptions.WorkerActor.QueueRejected - WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+        Log.Warning(exception, LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueRejected, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+        wrapper.ForceSetResult();
+    }
+
+    private static void CompleteCanceledPost(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
+    {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
+        if (completeOnFailure)
+        {
+            wrapper.TrySetCanceled(cancellationToken);
+            return;
+        }
+
+        // Localization: CoreExceptions.WorkerActor.QueueCancelled - WorkerActor 队列投递被取消。actorId:{0} trace:{1}
+        Log.Warning(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueCancelled, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+        wrapper.ForceSetResult();
+    }
+
+    private static void CompleteFailedPost(WorkWrapper wrapper, Exception exception, bool completeOnFailure)
+    {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
+        if (completeOnFailure)
+        {
+            wrapper.TrySetException(exception);
+            return;
+        }
+
+        // Localization: CoreExceptions.WorkerActor.QueueFailed - WorkerActor 队列投递失败。actorId:{0} trace:{1}
+        Log.Warning(exception, LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QueueFailed, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+        wrapper.ForceSetResult();
+    }
+
+    /// <summary>
+    /// 生成新的调用链ID
+    /// </summary>
+    /// <returns>返回新生成的调用链ID</returns>
+    public static long NextChainId()
+    {
+        var id = Interlocked.Increment(ref _chainId);
+        if (id == 0)
+        {
+            id = Interlocked.Increment(ref _chainId);
+        }
+
+        return id;
+    }
+
+    #region 勿调用(仅供代码生成器调用)
+
+    /// <summary>
+    /// 将一个同步Action任务压入Actor的任务队列中执行
+    /// </summary>
+    /// <param name="work">要执行的同步Action工作单元</param>
+    /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
+    /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务的令牌</param>
+    /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
+    public Task EnqueueAsync(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
+        if (!discard && !ActorLimit.AllowCall(Id))
+        {
+            return Task.FromException(CreateCallRejectedException());
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorQueueTimeOut;
+        }
+
+        var at = new ActionWrapper(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+        };
+        SendToActionBlock(at, cancellationToken, true);
+        return at.Tcs.Task;
+    }
+
+    /// <summary>
+    /// 将一个有返回值的同步Func任务压入Actor的任务队列中执行
+    /// </summary>
+    /// <typeparam name="T">函数返回值的类型</typeparam>
+    /// <param name="work">要执行的同步Func工作单元</param>
+    /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
+    /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务的令牌</param>
+    /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
+    public Task<T> EnqueueAsync<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
+        if (!discard && !ActorLimit.AllowCall(Id))
+        {
+            return Task.FromException<T>(CreateCallRejectedException());
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorQueueTimeOut;
+        }
+
+        var at = new FuncWrapper<T>(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+        };
+        SendToActionBlock(at, cancellationToken, true);
+        return at.Tcs.Task;
+    }
+
+    /// <summary>
+    /// 将一个异步Task任务压入Actor的任务队列中执行
+    /// </summary>
+    /// <param name="work">要执行的异步Task工作单元</param>
+    /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
+    /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务的令牌</param>
+    /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
+    public Task EnqueueAsync(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
+        if (!discard && !ActorLimit.AllowCall(Id))
+        {
+            return Task.FromException(CreateCallRejectedException());
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorQueueTimeOut;
+        }
+
+        var at = new ActionAsyncWrapper(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+        };
+        SendToActionBlock(at, cancellationToken, true);
+        return at.Tcs.Task;
+    }
+
+    /// <summary>
+    /// 将一个有返回值的异步Task任务压入Actor的任务队列中执行
+    /// </summary>
+    /// <typeparam name="T">异步任务返回值的类型</typeparam>
+    /// <param name="work">要执行的异步Task工作单元</param>
+    /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
+    /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务的令牌</param>
+    /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
+    public Task<T> EnqueueAsync<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
+        if (!discard && !ActorLimit.AllowCall(Id))
+        {
+            return Task.FromException<T>(CreateCallRejectedException());
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorQueueTimeOut;
+        }
+
+        var at = new FuncAsyncWrapper<T>(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+        };
+        SendToActionBlock(at, cancellationToken, true);
+        return at.Tcs.Task;
+    }
+
+    #endregion
+
+    #region 供框架底层调用(逻辑开发人员应尽量避免调用)
+
+    /// <summary>
+    /// 发送无返回值的工作指令到Actor的任务队列中
+    /// </summary>
+    /// <param name="work">要执行的工作内容，以Action委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    public void Tell(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            // Localization: Core.Actor.WorkerActor.QuarantinedTellDropped - Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            Log.Warning(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.QuarantinedTellDropped, Id));
+            return;
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+        }
+
+        var at = new ActionWrapper(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = NextChainId(),
+        };
+        SendToActionBlock(at, cancellationToken, false);
+    }
+
+    /// <summary>
+    /// 发送异步工作指令到Actor的任务队列中，不等待其完成
+    /// </summary>
+    /// <param name="work">要执行的异步工作内容，以Func<Task/>委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    public void Tell(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            // Localization: Core.Actor.WorkerActor.QuarantinedTellDropped - Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            Log.Warning(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.QuarantinedTellDropped, Id));
+            return;
+        }
+
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+        }
+
+        var wrapper = new ActionAsyncWrapper(work)
+        {
+            Owner = this,
+            TimeOut = timeOut,
+            CallChainId = NextChainId(),
+        };
+        SendToActionBlock(wrapper, cancellationToken, false);
+    }
+
+    /// <summary>
+    /// 发送同步工作指令到Actor的任务队列中并等待其完成
+    /// 注意：调用该方法禁止丢弃Task，如需丢弃Task请使用Tell方法
+    /// </summary>
+    /// <param name="work">要执行的同步工作内容，以Action委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    /// <returns>返回表示异步操作的Task对象</returns>
+    public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
+        var (needEnqueue, chainId) = IsNeedEnqueue();
+        if (needEnqueue)
+        {
+            if (!ActorLimit.AllowCall(Id))
+            {
+                return Task.FromException(CreateCallRejectedException());
+            }
+
+            if (timeOut <= 0)
+            {
+                timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+            }
+
+            var at = new ActionWrapper(work)
+            {
+                Owner = this,
+                TimeOut = timeOut,
+                CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+            };
+            SendToActionBlock(at, cancellationToken, true);
+            return at.Tcs.Task;
+        }
+
+        work();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 发送有返回值的同步工作指令到Actor的任务队列中并等待其完成
+    /// </summary>
+    /// <typeparam name="T">返回值的类型</typeparam>
+    /// <param name="work">要执行的同步工作内容，以Func<T/>委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    /// <returns>返回包含执行结果的Task<T/>对象</returns>
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
+        var (needEnqueue, chainId) = IsNeedEnqueue();
+        if (needEnqueue)
+        {
+            if (!ActorLimit.AllowCall(Id))
+            {
+                return Task.FromException<T>(CreateCallRejectedException());
+            }
+
+            if (timeOut <= 0)
+            {
+                timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+            }
+
+            var at = new FuncWrapper<T>(work)
+            {
+                Owner = this,
+                TimeOut = timeOut,
+                CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+            };
+            SendToActionBlock(at, cancellationToken, true);
+            return at.Tcs.Task;
+        }
+
+        return Task.FromResult(work());
+    }
+
+    /// <summary>
+    /// 发送异步工作指令到Actor的任务队列中并等待其完成
+    /// </summary>
+    /// <param name="work">要执行的异步工作内容，以Func<Task/>委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    /// <returns>返回表示异步操作的Task对象</returns>
+    public Task SendAsync(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (timeOut <= 0)
+        {
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+        }
+
+        return SendAsync(work, timeOut, true, cancellationToken);
+    }
+
+    /// <summary>
+    /// 发送异步工作指令到Actor的任务队列中并等待其完成，支持配置是否检查锁
+    /// </summary>
+    /// <param name="work">要执行的异步工作内容，以Func<Task/>委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="checkLock">是否检查Actor调用限制锁，true表示检查，false表示不检查</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    /// <returns>返回表示异步操作的Task对象</returns>
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
+        var (needEnqueue, chainId) = IsNeedEnqueue();
+        if (needEnqueue)
+        {
+            if (checkLock && !ActorLimit.AllowCall(Id))
+            {
+                return Task.FromException(CreateCallRejectedException());
+            }
+
+            if (timeOut <= 0)
+            {
+                timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+            }
+
+            var wrapper = new ActionAsyncWrapper(work)
+            {
+                Owner = this,
+                TimeOut = timeOut,
+                CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+            };
+            SendToActionBlock(wrapper, cancellationToken, true);
+            return wrapper.Tcs.Task;
+        }
+
+        return work();
+    }
+
+    /// <summary>
+    /// 发送有返回值的异步工作指令到Actor的任务队列中并等待其完成
+    /// </summary>
+    /// <typeparam name="T">返回值的类型</typeparam>
+    /// <param name="work">要执行的异步工作内容，以Func<Task/><T/>>委托的形式传入</param>
+    /// <param name="timeOut">任务执行的超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="cancellationToken">用于取消任务执行的令牌</param>
+    /// <returns>返回包含执行结果的Task<T/>对象</returns>
+    public Task<T> SendAsync<T>(Func<Task<T>> work, int timeOut = -1, CancellationToken cancellationToken = default)
+    {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
+        var (needEnqueue, chainId) = IsNeedEnqueue();
+        if (needEnqueue)
+        {
+            if (!ActorLimit.AllowCall(Id))
+            {
+                return Task.FromException<T>(CreateCallRejectedException());
+            }
+
+            if (timeOut <= 0)
+            {
+                timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
+            }
+
+            var wrapper = new FuncAsyncWrapper<T>(work)
+            {
+                Owner = this,
+                TimeOut = timeOut,
+                CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
+            };
+            SendToActionBlock(wrapper, cancellationToken, true);
+            return wrapper.Tcs.Task;
+        }
+
+        return work();
+    }
+
+    #endregion
+}

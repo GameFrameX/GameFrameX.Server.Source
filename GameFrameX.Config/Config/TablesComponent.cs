@@ -7,63 +7,97 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
+using System;
 using GameFrameX.Core.Config;
-using GameFrameX.Config;
-
+using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Config
 {
     public partial class TablesComponent
     {
-        internal Local.TbLocalization TbLocalization { private set; get; }
         internal Tables.TbAchievementConfig TbAchievementConfig { private set; get; }
-        internal Tables.TbItemConfig TbItemConfig { private set; get; }
         internal Tables.TbSoundsConfig TbSoundsConfig { private set; get; }
-    
+        internal Tables.TbItemConfig TbItemConfig { private set; get; }
+        internal Local.TbLocalization TbLocalization { private set; get; }
         private ConfigComponent m_ConfigComponent;
+
+        /// <summary>
+        /// 加载发布版本号：0 表示尚未加载完成，每次成功发布后递增（支持热重载）
+        /// </summary>
+        private int m_LoadedVersion;
 
         public void Init(ConfigComponent configComponent)
         {
             m_ConfigComponent = configComponent;
-            configComponent.RemoveAllConfigs();
         }
 
-        public async System.Threading.Tasks.Task LoadAsync(System.Func<string, System.Threading.Tasks.Task<JsonElement>> loader)
+        /// <summary>
+        /// 是否加载完成（由加载发布版本号派生，热重载成功后保持为 true）
+        /// </summary>
+        public bool IsLoaded
         {
-            //m_ConfigComponent.RemoveAllConfigs();
-            var loadTasks = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
-    
-            TbLocalization = new Local.TbLocalization(() => loader("local_tblocalization"));
-            loadTasks.Add(TbLocalization.LoadAsync());
+            get { return System.Threading.Volatile.Read(ref m_LoadedVersion) > 0; }
+        }
+
+        /// <summary>
+        /// 异步加载配置文件（支持重复调用实现热重载）
+        /// </summary>
+        /// <param name="loader">加载器</param>
+        public async System.Threading.Tasks.Task LoadAsync(System.Func<string, bool, System.Threading.Tasks.Task<ByteBuf>> loader)
+        {
+            // 第一阶段：在局部变量中构建并加载全部新表；任何表加载失败都会直接抛出，已发布数据不受影响
+            var newTbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig", true));
+            var newTbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig", true));
+            var newTbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig", true));
+            var newTbLocalization = new Local.TbLocalization(() => loader("local_tblocalization", true));
+
+            await System.Threading.Tasks.Task.WhenAll(
+                newTbAchievementConfig.LoadAsync(),
+                newTbSoundsConfig.LoadAsync(),
+                newTbItemConfig.LoadAsync(),
+                newTbLocalization.LoadAsync());
+
+            // 全部加载成功后发布；各映射键独立替换，不保证跨表读取属于同一版本。
+            TbAchievementConfig = newTbAchievementConfig;
+            TbSoundsConfig = newTbSoundsConfig;
+            TbItemConfig = newTbItemConfig;
+            TbLocalization = newTbLocalization;
+
+            Refresh();
+
+            // AddConfig 为同键原子替换（upsert）语义，不先清空映射
+            m_ConfigComponent.Add(nameof(Tables.TbAchievementConfig), TbAchievementConfig);
+            m_ConfigComponent.Add(nameof(Tables.TbSoundsConfig), TbSoundsConfig);
+            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
             m_ConfigComponent.Add(nameof(Local.TbLocalization), TbLocalization);
 
-            TbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig"));
-            loadTasks.Add(TbAchievementConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbAchievementConfig), TbAchievementConfig);
-
-            TbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig"));
-            loadTasks.Add(TbItemConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
-
-            TbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig"));
-            loadTasks.Add(TbSoundsConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbSoundsConfig), TbSoundsConfig);
-
-    
-            await System.Threading.Tasks.Task.WhenAll(loadTasks);
-    
-            Refresh();
+            System.Threading.Interlocked.Increment(ref m_LoadedVersion);
         }
 
-        public TablesComponent()
+        /// <summary>
+        /// 设置本地化的适配器
+        /// </summary>
+        /// <param name="translator">适配器对象</param>
+        /// <exception cref="InvalidOperationException">如果未加载完成将抛出此异常</exception>
+        public void SetTranslateText(System.Func<string, string, string> translator)
         {
-            //TablesMemory.BeginRecord();
-    
-            // TbLocalization = new Local.TbLocalization();
-            // TbAchievementConfig = new Tables.TbAchievementConfig();
-            // TbItemConfig = new Tables.TbItemConfig();
-            // TbSoundsConfig = new Tables.TbSoundsConfig();
-            //TablesMemory.EndRecord();
+            if (IsLoaded == false)
+            {
+                // Localization: Config.Table.NotLoaded - 配置表未加载！
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Config.Table.NotLoaded));
+            }
+            TbAchievementConfig.TranslateText(translator);
+            TbSoundsConfig.TranslateText(translator);
+            TbItemConfig.TranslateText(translator);
+            TbLocalization.TranslateText(translator);
+        }
+
+        private void ResolveRef()
+        {
+            TbAchievementConfig.ResolveRef(this);
+            TbSoundsConfig.ResolveRef(this);
+            TbItemConfig.ResolveRef(this);
+            TbLocalization.ResolveRef(this);
+            PostResolveRef();
         }
 
         public void Refresh()
@@ -72,14 +106,7 @@ namespace GameFrameX.Config
             ResolveRef();
         }
 
-        private void ResolveRef()
-        {
-            TbLocalization.ResolveRef(this);
-            TbAchievementConfig.ResolveRef(this);
-            TbItemConfig.ResolveRef(this);
-            TbSoundsConfig.ResolveRef(this);
-        }
-    
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

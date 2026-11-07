@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -31,6 +31,7 @@
 using System.Reflection;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Logger.GrafanaLoki;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Localization.Providers;
 using GameFrameX.Foundation.Options;
@@ -38,10 +39,10 @@ using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Localization;
 using GameFrameX.StartUp.Abstractions;
+using GameFrameX.StartUp.Configuration;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
-using Mapster;
 
 namespace GameFrameX.StartUp;
 
@@ -75,42 +76,102 @@ public static class GameApp
     /// Used to track the execution status of the server startup task.
     /// </remarks>
     private static Task _launchTask;
+    private static int _entryActive;
+
+    /// <summary>
+    /// 命令行参数解析失败时的进程退出码。
+    /// </summary>
+    /// <remarks>
+    /// The process exit code used when launcher argument parsing fails.
+    /// A non-zero code allows systemd / Docker / Kubernetes restart policies to detect the failure and raise alerts.
+    /// </remarks>
+    internal const int InvalidLauncherArgumentsExitCode = 1;
+
+    /// <summary>
+    /// 进程中止动作（<see cref="Environment.Exit(int)"/> 的可替换退出缝）。
+    /// internal static 属性形态（S2223 收口）：保持属性，勿回退为可见可变静态字段。
+    /// </summary>
+    /// <remarks>
+    /// The process abort action (a replaceable seam over <see cref="Environment.Exit(int)"/>).
+    /// The production default terminates the process; tests substitute this delegate to capture the exit code
+    /// instead of killing the test host. Kept as an internal static property for S2223 (do not regress to a
+    /// visible mutable static field); registered in the startup spec static-state red line (C420).
+    /// </remarks>
+    internal static Action<int> AbortProcess { get; set; } = static exitCode => Environment.Exit(exitCode);
 
     /// <summary>
     /// 解析启动器选项。
     /// </summary>
     /// <remarks>
     /// Parse launcher options.
+    /// 解析失败时不再静默回落全缺省实例（C211 fail-soft 语义已随 C363 退役）：错误信息写标准错误流并以非零退出码终止进程，
+    /// 供守护进程重启策略捕获告警 / Parse failures abort the process with a non-zero exit code after writing the
+    /// error to standard error (no silent fallback to an all-defaults instance).
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <returns>解析后的启动器选项 / Parsed launcher options</returns>
-    private static StartupOptions ParseLauncherOptions(string[] args)
+    /// <returns>解析后的启动器选项 / The parsed launcher options</returns>
+    internal static StartupOptions ParseLauncherOptions(string[] args)
     {
         try
         {
-            return OptionsBuilder.CreateWithDebug<StartupOptions>(args);
+            ArgumentNullException.ThrowIfNull(args);
+            var options = OptionsBuilder.CreateWithDebug<StartupOptions>(args);
+            if (options.ServerType?.Contains(',') == true || args.Any(argument =>
+                string.Equals(argument.Split('=')[0].Replace("-", "").Replace("_", ""), "AllInOne", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException("Only one application startup is supported.", nameof(args));
+            }
+
+            return options;
         }
         catch (Exception e)
         {
-            LogHelper.Error(e.Message);
-            return null;
+            AbortStartupForInvalidArguments(e);
+
+            // 中止动作生产实现为 Environment.Exit，本行不可达；仅保持方法返回流完整
+            throw;
         }
     }
 
     /// <summary>
-    /// 配置 Grafana Loki 标签。
+    /// 命令行参数解析失败的中止处理：错误写标准错误流与日志，再以非零退出码终止进程。
     /// </summary>
     /// <remarks>
-    /// Configure Grafana Loki labels.
+    /// Abort handling for launcher argument parsing failures: writes the localized error (carrying the underlying
+    /// parse exception message) to standard error and the log system, then terminates the process with
+    /// <see cref="InvalidLauncherArgumentsExitCode"/>. Standard error is the operations channel: at this point the
+    /// logging system is not configured yet, while container logs / journald capture stderr immediately; the non-zero
+    /// exit code lets systemd / Docker / Kubernetes restart policies detect the misconfiguration instead of the
+    /// server silently running under default configuration.
+    /// </remarks>
+    /// <param name="exception">解析异常 / The parse exception</param>
+    internal static void AbortStartupForInvalidArguments(Exception exception)
+    {
+        // Localization: StartUp.InvalidLauncherArguments - 启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}
+        var message = LocalizationService.GetString(Keys.StartUp.InvalidLauncherArguments, exception.Message, InvalidLauncherArgumentsExitCode);
+        Console.Error.WriteLine(message);
+        LogHelper.Error(message);
+        AbortProcess(InvalidLauncherArgumentsExitCode);
+    }
+
+    /// <summary>
+    /// 收集 Grafana Loki 标签。
+    /// </summary>
+    /// <remarks>
+    /// Collect Grafana Loki labels.
+    /// 标签来源 = <see cref="StartupOptions"/> 属性上 <see cref="GrafanaLokiLabelTagAttribute"/> 标注的反射扫描结果；
+    /// 收集到本地字典返回，由 <see cref="ConfigureLogOptions"/> 注册 Loki sink 时作为 Labels 传入
+    /// （Foundation 5.0.0 起 Loki 参数已随 sink 组件化从 <see cref="LogOptions"/> 移除，不再写入全局日志选项）。
     /// </remarks>
     /// <param name="launcherOptions">启动器选项 / Launcher options</param>
-    private static void ConfigureGrafanaLokiLabels(StartupOptions launcherOptions)
+    /// <returns>标签字典；启动器选项为 null 或标注属性无有效值时返回空字典 / The label dictionary; empty when launcher options is null or no attributed property has a value</returns>
+    internal static Dictionary<string, string> CollectGrafanaLokiLabels(StartupOptions launcherOptions)
     {
-        LogOptions.Default.GrafanaLokiLabels = new Dictionary<string, string>();
+        var labels = new Dictionary<string, string>();
 
         if (launcherOptions == null)
         {
-            return;
+            return labels;
         }
 
         var properties = typeof(StartupOptions).GetProperties();
@@ -128,11 +189,14 @@ public static class GameApp
                 continue;
             }
 
-            if (!LogOptions.Default.GrafanaLokiLabels.TryAdd(property.Name, value))
+            if (!labels.TryAdd(property.Name, value))
             {
+                // Localization: StartUp.GrafanaLokiLabelExists - Grafana Loki标签已存在。标签：{0}。
                 LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.GrafanaLokiLabelExists, property.Name));
             }
         }
+
+        return labels;
     }
 
     /// <summary>
@@ -140,9 +204,14 @@ public static class GameApp
     /// </summary>
     /// <remarks>
     /// Configure log options.
+    /// Grafana Loki 接线（Foundation 5.0.0 sink 组件化后）：仅当 <c>LogIsGrafanaLoki=true</c> 时经
+    /// <see cref="LogOptionsGrafanaLokiExtensions.UseGrafanaLoki(GameFrameX.Foundation.Logger.LogOptions, System.Action{GrafanaLokiSinkOptions})"/> 注册组件 sink——Url/用户名/密码取自启动器 CLI 选项
+    /// （选项面与默认值不变），Labels 取自 <see cref="CollectGrafanaLokiLabels"/> 的反射收集结果；
+    /// 为 false 时不注册任何 Loki sink，等价 4.1.1 <c>IsGrafanaLoki=false</c> 的默认关闭语义。
     /// </remarks>
     /// <param name="launcherOptions">启动器选项 / Launcher options</param>
-    private static void ConfigureLogOptions(StartupOptions launcherOptions)
+    /// <param name="grafanaLokiLabels">反射收集的 Loki 标签字典 / The reflected Loki label dictionary</param>
+    internal static void ConfigureLogOptions(StartupOptions launcherOptions, Dictionary<string, string> grafanaLokiLabels)
     {
         if (launcherOptions == null)
         {
@@ -158,10 +227,19 @@ public static class GameApp
         // 设置日志配置信息
         LogOptions.Default.IsConsole = launcherOptions.LogIsConsole;
         LogOptions.Default.IsWriteToFile = launcherOptions.LogIsWriteToFile;
-        LogOptions.Default.IsGrafanaLoki = launcherOptions.LogIsGrafanaLoki;
-        LogOptions.Default.GrafanaLokiUrl = launcherOptions.LogGrafanaLokiUrl;
-        LogOptions.Default.GrafanaLokiUserName = launcherOptions.LogGrafanaLokiUserName;
-        LogOptions.Default.GrafanaLokiPassword = launcherOptions.LogGrafanaLokiPassword;
+
+        // Foundation 5.0.0 起 Loki sink 组件化拆分：仅显式开启时经 UseGrafanaLoki 注册组件 sink，
+        // LogIsGrafanaLoki=false 时不注册任何 Loki sink（等价 4.1.1 IsGrafanaLoki=false 默认关闭）。
+        if (launcherOptions.LogIsGrafanaLoki)
+        {
+            LogOptions.Default.UseGrafanaLoki(sinkOptions =>
+            {
+                sinkOptions.Url = launcherOptions.LogGrafanaLokiUrl;
+                sinkOptions.UserName = launcherOptions.LogGrafanaLokiUserName;
+                sinkOptions.Password = launcherOptions.LogGrafanaLokiPassword;
+                sinkOptions.Labels = grafanaLokiLabels;
+            });
+        }
         LogOptions.Default.RetainedFileCountLimit = launcherOptions.LogRetainedFileCountLimit;
         LogOptions.Default.IsFileSizeLimit = launcherOptions.LogIsFileSizeLimit;
         LogOptions.Default.FileSizeLimitBytes = launcherOptions.LogFileSizeLimitBytes;
@@ -238,191 +316,194 @@ public static class GameApp
     ///     });
     /// </code>
     /// </example>
-    public static async Task Entry(string[] args, Action initAction, Action<LogOptions> logConfiguration = null)
+    public static async Task EntryAsync(string[] args, Action initAction, Action<LogOptions> logConfiguration = null)
     {
-        LocalizationService.Instance.RegisterProvider(new AssemblyResourceProvider(typeof(Keys).Assembly));
-
-        // 1. 解析启动参数
-        var launcherOptions = ParseLauncherOptions(args);
-
-        // 2. 输出服务器类型日志
-        var serverType = launcherOptions?.ServerType;
-        if (!serverType.IsNullOrEmpty())
+        if (Interlocked.CompareExchange(ref _entryActive, 1, 0) != 0)
         {
-            // LogHelper.Info(LocalizationService.GetString(Keys.StartUp.LaunchServerType, serverType));
+            throw new InvalidOperationException("An application entry is already active.");
         }
 
-        // 3. 配置日志
-        ConfigureGrafanaLokiLabels(launcherOptions);
-        ConfigureLogOptions(launcherOptions);
-        logConfiguration?.Invoke(LogOptions.Default);
-
-        // 4. 初始化
-        GlobalSettings.Load("Configs/app_config.json");
-        initAction?.Invoke();
-
-        // 5. 发现并启动服务器
-        StartUpTypeRegistry.Instance.DiscoverAndRegister();
-        var sortedStartUpTypes = StartUpTypeRegistry.Instance.GetSortedByPriority();
-        TryLaunchServer(args, serverType, sortedStartUpTypes, launcherOptions);
-
-        LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartupOver));
-        ConsoleHelper.ConsoleLogo();
-
-        // 6. 等待启动任务完成
-        if (_launchTask == null)
+        try
         {
-            var message = LocalizationService.GetString(Keys.StartUp.NoStartupTaskFound);
-            LogHelper.Warning(message);
-            return;
-        }
+            LocalizationService.Instance.RegisterProvider(new AssemblyResourceProvider(typeof(Keys).Assembly));
 
-        await _launchTask;
-    }
+            // 1. 解析启动参数
+            var launcherOptions = ParseLauncherOptions(args);
 
-    /// <summary>
-    /// 为指定的服务器类型启动一个启动任务。
-    /// </summary>
-    /// <remarks>
-    /// Launches a startup task for the specified server type.
-    /// This method creates and starts a new server instance task, adding the task to the AppStartUpTasks list
-    /// for subsequent concurrent execution and waiting.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="keyValuePair">包含启动类型及其属性的键值对 / Key-value pair containing the startup type and its attribute</param>
-    /// <param name="appSetting">服务器的应用程序设置 / Application settings for the server</param>
-    private static void Launcher(string[] args, KeyValuePair<Type, StartUpTagAttribute> keyValuePair, AppSetting appSetting = null)
-    {
-        _launchTask = Start(args, keyValuePair.Key, keyValuePair.Value.ServerType, appSetting);
-    }
+            // 2. 配置日志
+            var grafanaLokiLabels = CollectGrafanaLokiLabels(launcherOptions);
+            ConfigureLogOptions(launcherOptions, grafanaLokiLabels);
+            logConfiguration?.Invoke(LogOptions.Default);
 
-    /// <summary>
-    /// 启动特定的服务器实例。
-    /// </summary>
-    /// <remarks>
-    /// Starts a specific server instance.
-    /// This method performs the following steps:
-    /// 1. Create startup class instance
-    /// 2. Initialize startup class
-    /// 3. Log configuration information
-    /// 4. Call AppEnter.Entry to start the server
-    /// If initialization fails, returns a completed task.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="appStartUpType">启动类的类型 / The type of the startup class</param>
-    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
-    /// <param name="setting">服务器的应用程序设置 / Application settings for the server</param>
-    /// <returns>表示服务器启动操作的任务 / A task representing the server startup operation</returns>
-    /// <exception cref="InvalidOperationException">当启动类无法实例化时抛出 / Thrown when startup class cannot be instantiated</exception>
-    /// <exception cref="ArgumentNullException">当 <paramref name="appStartUpType"/> 为 null 时抛出 / Thrown when <paramref name="appStartUpType"/> is null</exception>
-    /// <example>
-    /// <code>
-    /// var task = Start(args, typeof(GameServerStartUp), "GameServer", appSetting);
-    /// await task;
-    /// </code>
-    /// </example>
-    private static Task Start(string[] args, Type appStartUpType, string serverType, AppSetting setting)
-    {
-        var startUp = (IAppStartUp)Activator.CreateInstance(appStartUpType);
-        if (startUp == null)
-        {
-            return Task.CompletedTask;
-        }
+            // 3. 初始化
+            GlobalSettings.Load("Configs/app_config.json");
+            initAction?.Invoke();
 
-        LogOptions.Default.LogType = serverType;
-        LogHandler.Create(LogOptions.Default);
-        var isSuccess = startUp.Init(serverType, setting, args);
-        if (!isSuccess)
-        {
-            return Task.CompletedTask;
-        }
+            // 4. 解析唯一应用配置和启动类型。
+            StartUpTypeRegistry.Instance.DiscoverAndRegister();
+            var sortedStartUpTypes = StartUpTypeRegistry.Instance.GetSortedByPriority();
+            TryLaunchServer(args, sortedStartUpTypes, launcherOptions);
 
-        LogHelper.ShowOption(LocalizationService.GetString(Keys.StartUp.StartingServerWithConfiguration, serverType), startUp.Setting.ToFormatString());
-        // LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartingServerWithConfiguration, serverType));
-        // LogHelper.Info(startUp.Setting.ToFormatString());
-        var task = AppEnter.Entry(startUp);
-        return task;
-    }
+            ConsoleHelper.ConsoleLogo();
 
-    /// <summary>
-    /// 尝试根据指定的服务器类型启动服务器。
-    /// </summary>
-    /// <remarks>
-    /// Attempts to launch a server based on the specified server type.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="serverType">要启动的服务器类型，或为 null 以启动第一个可用的服务器 / The server type to launch, or null to launch the first available</param>
-    /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="launcherOptions">包含默认配置的启动器选项 / Launcher options containing default configuration</param>
-    private static void TryLaunchServer(string[] args, string serverType, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, StartupOptions launcherOptions)
-    {
-        var appSettings = GlobalSettings.GetSettings();
-
-        if (serverType.IsNullOrWhiteSpace())
-        {
-            LogHelper.Error("ServerType 参数不能为空，请通过 --ServerType=xxx 指定服务类型。");
-            return;
-        }
-
-        TryLaunchByServerType(args, serverType, sortedStartUpTypes, appSettings, launcherOptions);
-    }
-
-    /// <summary>
-    /// 尝试按指定的服务器类型启动服务器。
-    /// </summary>
-    /// <remarks>
-    /// Attempts to launch a server by the specified server type.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
-    /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
-    /// <param name="launcherOptions">用于默认配置的启动器选项 / Launcher options for default configuration</param>
-    private static void TryLaunchByServerType(string[] args, string serverType, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions)
-    {
-        var startKv = sortedStartUpTypes.FirstOrDefault(m => m.Value.ServerType == serverType);
-        if (startKv.Value == null)
-        {
-            return;
-        }
-
-        var appSetting = appSettings.FirstOrDefault(m => m.ServerType == serverType);
-        if (appSetting != null)
-        {
-            // LogHelper.Info(LocalizationService.GetString(Keys.StartUp.FindingConfigurationForServerType, startKv.Value.ServerType));
-        }
-        else
-        {
-            // LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, startKv.Value.ServerType));
-            appSetting = launcherOptions.Adapt<AppSetting>();
-        }
-
-        Launcher(args, startKv, appSetting);
-    }
-
-    /// <summary>
-    /// 尝试启动第一个可用的服务器。
-    /// </summary>
-    /// <remarks>
-    /// Attempts to launch the first available server.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
-    private static void TryLaunchFirstAvailable(string[] args, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, IEnumerable<AppSetting> appSettings)
-    {
-        foreach (var keyValuePair in sortedStartUpTypes)
-        {
-            var appSetting = appSettings.FirstOrDefault(setting => keyValuePair.Value.ServerType == setting.ServerType);
-            if (appSetting != null)
+            // 5. 等待启动任务完成
+            if (_launchTask == null)
             {
-                Launcher(args, keyValuePair, appSetting);
+                var message = LocalizationService.GetString(Keys.StartUp.NoStartupTaskFound);
+                LogHelper.Warning(message);
                 return;
             }
 
-            LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, keyValuePair.Value.ServerType));
-            Launcher(args, keyValuePair);
-            return;
+            await _launchTask;
         }
+        finally
+        {
+            _launchTask = null;
+            Volatile.Write(ref _entryActive, 0);
+        }
+    }
+
+    /// <summary>初始化并运行唯一应用；初始化失败也执行有界清理。</summary>
+    private static async Task LaunchAsync(string[] args, Type startUpType, string serverType, AppSetting setting)
+    {
+        var startUp = (IAppStartUp)Activator.CreateInstance(startUpType)
+            ?? throw new InvalidOperationException("Cannot create the application startup.");
+        SetLogTypeOnce(serverType);
+        try
+        {
+            if (!startUp.Init(serverType, setting, args))
+            {
+                throw new InvalidOperationException("Application initialization failed.");
+            }
+        }
+        catch
+        {
+            if (!await AppEnter.StopHostWithTimeoutAsync(startUp, "Application initialization failed", AppEnter.GracefulShutdownTotalTimeout))
+            {
+                LogHelper.Error("Application initialization cleanup timed out.");
+            }
+            throw;
+        }
+
+        LogHelper.ShowOption(LocalizationService.GetString(Keys.StartUp.StartingServerWithConfiguration, serverType), startUp.Setting.ToFormatString());
+        await AppEnter.EntryAsync(startUp);
+    }
+
+    /// <summary>解析单一应用配置；缺省配置保留 Online 命令行投影。</summary>
+    internal static AppSetting ResolveAppSetting(string serverType, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions, bool warnOnMissingConfiguration)
+    {
+        var settings = appSettings?.ToList() ?? new List<AppSetting>();
+        if (settings.Count > 1)
+        {
+            throw new ArgumentException("Only one application configuration is supported.", nameof(appSettings));
+        }
+
+        if (settings.Count == 1)
+        {
+            var setting = settings[0];
+            if (setting == null || setting.ServerType != serverType)
+            {
+                throw new ArgumentException("Configuration ServerType does not match the application.", nameof(appSettings));
+            }
+
+            return setting;
+        }
+
+        if (warnOnMissingConfiguration)
+        {
+            LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, serverType));
+        }
+
+        if (launcherOptions == null)
+        {
+            return null;
+        }
+
+        var applicationSetting = new AppSetting { ServerType = serverType };
+        foreach (var property in typeof(AppSetting).GetProperties())
+        {
+            if (property.CanRead && property.CanWrite && property.Name != nameof(AppSetting.ServerType))
+            {
+                property.SetValue(applicationSetting, property.GetValue(launcherOptions));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(applicationSetting.ServerName))
+        {
+            applicationSetting.ServerName = serverType;
+        }
+
+        var capabilities = launcherOptions.GetOnlineCapabilities();
+        var disabledCapabilities = launcherOptions.GetOnlineDisable();
+        if (capabilities.Length > 0 || disabledCapabilities.Length > 0)
+        {
+            applicationSetting.Online = new OnlineCapabilityOptions
+            {
+                Capabilities = capabilities,
+                Disable = disabledCapabilities,
+            };
+        }
+
+        return applicationSetting;
+    }
+
+    /// <summary>设置本地应用固定日志标识。</summary>
+    internal static void SetLogTypeOnce(string serverType)
+    {
+        if (LogOptions.Default.LogType.IsNullOrEmptyOrWhiteSpace())
+        {
+            LogOptions.Default.LogType = serverType;
+        }
+    }
+
+    private static void TryLaunchServer(string[] args, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> registeredTypes, StartupOptions launcherOptions)
+    {
+        var settings = GlobalSettings.GetSettings();
+        var selected = SelectStartUpTypes(launcherOptions, registeredTypes, settings.SingleOrDefault()?.ServerType);
+        if (selected.Count == 0)
+        {
+            AbortStartupForUnresolvedServerTypes(launcherOptions);
+            throw new InvalidOperationException("No application startup is registered.");
+        }
+
+        var application = selected[0];
+        ConfigStartupValidator.Validate(new[] { application.Value.ServerType }, settings, launcherOptions, args);
+        var setting = ResolveAppSetting(application.Value.ServerType, settings, launcherOptions, true);
+        _launchTask = LaunchAsync(args, application.Key, application.Value.ServerType, setting);
+    }
+
+    internal const int UnresolvedServerTypeExitCode = 1;
+
+    internal static bool ShouldAbortForUnresolvedServerTypes(StartupOptions launcherOptions)
+    {
+        ArgumentNullException.ThrowIfNull(launcherOptions);
+        return !string.IsNullOrWhiteSpace(launcherOptions.ServerType);
+    }
+
+    internal static void AbortStartupForUnresolvedServerTypes(StartupOptions launcherOptions)
+    {
+        var message = LocalizationService.GetString(Keys.StartUp.Application.RequestedServerTypeNotRegistered, launcherOptions.ServerType);
+        Console.Error.WriteLine(message);
+        LogHelper.Error(message);
+        AbortProcess(UnresolvedServerTypeExitCode);
+    }
+
+    /// <summary>选择唯一应用启动类；不按优先级隐式选择多个候选中的一个。</summary>
+    internal static IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> SelectStartUpTypes(StartupOptions launcherOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> registeredTypes, string configuredServerType = null)
+    {
+        ArgumentNullException.ThrowIfNull(launcherOptions);
+        var serverType = string.IsNullOrWhiteSpace(launcherOptions.ServerType) ? configuredServerType : launcherOptions.ServerType.Trim();
+        if (serverType?.Contains(',') == true)
+        {
+            throw new ArgumentException("ServerType must identify one local application.", nameof(launcherOptions));
+        }
+
+        var selected = registeredTypes.Where(pair => string.IsNullOrWhiteSpace(serverType) || pair.Value.ServerType == serverType).ToList();
+        if (selected.Count > 1)
+        {
+            throw new InvalidOperationException("Application startup is ambiguous; configure exactly one ServerType.");
+        }
+
+        return selected;
     }
 }

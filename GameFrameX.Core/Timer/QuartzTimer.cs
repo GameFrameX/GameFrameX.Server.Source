@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,49 +27,16 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Core.Timer.Handler;
-using GameFrameX.Core.Utility;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility;
 using Quartz;
-using Quartz.Impl;
-using Quartz.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GameFrameX.Core.Timer;
 
@@ -80,33 +47,31 @@ namespace GameFrameX.Core.Timer;
 public static class QuartzTimer
 {
     /// <summary>
-    /// 统计工具实例,用于记录定时器的使用情况
-    /// </summary>
-    private static readonly StatisticsTool StatisticsTool = new();
-
-    /// <summary>
     /// 删除指定的定时任务
     /// </summary>
     /// <param name="id">要删除的定时任务ID</param>
-    public static void Remove(long id)
+    /// <returns>任务存在且已删除时返回 true；任务不存在（例如一次性任务已触发并被 Quartz 自动清理）时返回 false</returns>
+    public static async Task<bool> RemoveAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        _scheduler.DeleteJob(JobKey.Create(id.ToString()));
+        return await Scheduler.DeleteJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量删除定时任务
     /// </summary>
     /// <param name="set">要删除的定时任务ID集合</param>
-    public static void Remove(IEnumerable<long> set)
+    public static async Task RemoveAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Remove(id);
+            await RemoveAsync(id);
         }
     }
 
@@ -114,25 +79,28 @@ public static class QuartzTimer
     /// 暂停指定的定时任务
     /// </summary>
     /// <param name="id">要暂停的定时任务ID</param>
-    public static void Pause(long id)
+    /// <returns>任务存在且已暂停时返回 true；任务不存在时返回 false</returns>
+    public static async Task<bool> PauseAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        _scheduler.PauseJob(JobKey.Create(id.ToString()));
+        return await Scheduler.PauseJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量暂停定时任务
     /// </summary>
     /// <param name="set">要暂停的定时任务ID集合</param>
-    public static void Pause(IEnumerable<long> set)
+    public static async Task PauseAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Pause(id);
+            await PauseAsync(id);
         }
     }
 
@@ -140,25 +108,28 @@ public static class QuartzTimer
     /// 恢复指定的定时任务
     /// </summary>
     /// <param name="id">要恢复的定时任务ID</param>
-    public static void Resume(long id)
+    /// <returns>任务存在且已恢复时返回 true；任务不存在时返回 false</returns>
+    public static async Task<bool> ResumeAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        _scheduler.ResumeJob(JobKey.Create(id.ToString()));
+        return await Scheduler.ResumeJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量恢复定时任务
     /// </summary>
     /// <param name="set">要恢复的定时任务ID集合</param>
-    public static void Resume(IEnumerable<long> set)
+    public static async Task ResumeAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Resume(id);
+            await ResumeAsync(id);
         }
     }
 
@@ -174,36 +145,30 @@ public static class QuartzTimer
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
     /// <param name="repeatCount">循环次数,设置为-1表示无限循环执行</param>
     /// <param name="isMissFire">是否允许错过执行</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Schedule<T>(long actorId, TimeSpan delay, TimeSpan interval, GameEventArgs eventArgs = null, int repeatCount = -1, bool isMissFire = true) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> ScheduleAsync<T>(long actorId, TimeSpan delay, TimeSpan interval, GameEventArgs eventArgs = null, int repeatCount = -1, bool isMissFire = true) where T : ITimerHandler
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        TriggerBuilder builder;
+        var schedule = SimpleScheduleBuilder.Create().WithInterval(interval);
         if (repeatCount < 0)
         {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x =>
-            {
-                var scheduleBuilder = x.WithInterval(interval).RepeatForever();
-                if (isMissFire)
-                {
-                    scheduleBuilder.WithMisfireHandlingInstructionIgnoreMisfires();
-                }
-            });
+            schedule = schedule.RepeatForever();
         }
         else
         {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x =>
-            {
-                var scheduleBuilder = x.WithInterval(interval).WithRepeatCount(repeatCount);
-                if (isMissFire)
-                {
-                    scheduleBuilder.WithMisfireHandlingInstructionIgnoreMisfires();
-                }
-            });
+            schedule = schedule.WithRepeatCount(repeatCount);
         }
 
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), builder.Build());
+        if (isMissFire)
+        {
+            // 与旧版 WithMisfireHandlingInstructionIgnoreMisfires 行为一致
+            // Matches the previous WithMisfireHandlingInstructionIgnoreMisfires behavior
+            schedule = schedule.WithMisfireInstruction(SimpleTriggerMisfireInstruction.IgnoreMisfires);
+        }
+
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(schedule).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -214,13 +179,13 @@ public static class QuartzTimer
     /// <param name="actorId">Actor的唯一标识,用于定位执行任务的Actor</param>
     /// <param name="delay">延迟执行的时间</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Delay<T>(long actorId, TimeSpan delay, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> DelayAsync<T>(long actorId, TimeSpan delay, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        var trigger = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x => x.WithMisfireHandlingInstructionNextWithRemainingCount()).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(SimpleScheduleBuilder.Create().WithMisfireInstruction(SimpleTriggerMisfireInstruction.NextWithRemainingCount)).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -231,12 +196,12 @@ public static class QuartzTimer
     /// <param name="actorId">Actor的唯一标识,用于定位执行任务的Actor</param>
     /// <param name="cronExpression">标准的Cron表达式,用于配置复杂的执行时间规则</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long WithCronExpression<T>(long actorId, string cronExpression, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WithCronExpressionAsync<T>(long actorId, string cronExpression, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithCronSchedule(cronExpression).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create(cronExpression)).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -248,18 +213,18 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentOutOfRangeException">当hour或minute参数超出有效范围时抛出</exception>
-    public static long Daily<T>(long actorId, int hour, int minute, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> DailyAsync<T>(long actorId, int hour, int minute, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         if (hour < 0 || hour >= 24 || minute < 0 || minute >= 60)
         {
-            throw new ArgumentOutOfRangeException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(hour)}:{hour} {nameof(minute)}:{minute}");
+            // Localization: CoreExceptions.Timer.InvalidParameters - 定时器参数错误 TimerHandler:{0} {1}:{2} {3}:{4}
+            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.InvalidParameters, typeof(T).FullName, nameof(hour), hour, nameof(minute), minute));
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} * * ?")).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -272,18 +237,19 @@ public static class QuartzTimer
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
     /// <param name="dayOfWeeks">指定要执行的星期几,可以指定多个</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentNullException">当dayOfWeeks参数为空或长度为0时抛出</exception>
-    public static long WithDayOfWeeks<T>(long actorId, int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WithDayOfWeeksAsync<T>(long actorId, int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
     {
         if (dayOfWeeks == null || dayOfWeeks.Length <= 0)
         {
-            throw new ArgumentNullException($"定时每周执行 参数为空：{nameof(dayOfWeeks)} TimerHandler:{typeof(T).FullName} actorId:{actorId} actorType:{ActorIdGenerator.GetActorType(actorId)}");
+            // Localization: CoreExceptions.Timer.DayOfWeeksParameterNull - 定时每周执行 参数为空：{0} TimerHandler:{1} actorId:{2} actorType:{3}
+            throw new ArgumentNullException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.DayOfWeeksParameterNull, nameof(dayOfWeeks), typeof(T).FullName, actorId, ActorIdGenerator.GetActorType(actorId)));
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.AtHourAndMinuteOnGivenDaysOfWeek(hour, minute, dayOfWeeks)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        var daysOfWeek = string.Join(",", dayOfWeeks.Select(ToCronDayOfWeek));
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {daysOfWeek}")).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -296,12 +262,12 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Weekly<T>(long actorId, DayOfWeek dayOfWeek, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WeeklyAsync<T>(long actorId, DayOfWeek dayOfWeek, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.WeeklyOnDayAndHourAndMinute(dayOfWeek, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {ToCronDayOfWeek(dayOfWeek)}")).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -314,175 +280,48 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentException">当dayOfMonth参数超出有效范围时抛出</exception>
-    public static long Monthly<T>(long actorId, int dayOfMonth, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> MonthlyAsync<T>(long actorId, int dayOfMonth, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
     {
         if (dayOfMonth is < 0 or > 31)
         {
-            throw new ArgumentException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(dayOfMonth)}:{dayOfMonth} actorId:{actorId} actorType:{ActorIdGenerator.GetActorType(actorId)}");
+            // Localization: CoreExceptions.Timer.InvalidDayOfMonth - 定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.InvalidDayOfMonth, typeof(T).FullName, nameof(dayOfMonth), dayOfMonth, actorId, ActorIdGenerator.GetActorType(actorId)));
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.MonthlyOnDayAndHourAndMinute(dayOfMonth, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} {dayOfMonth} * ?")).Build();
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
+    }
+
+    /// <summary>
+    /// 将 System.DayOfWeek 转换为 Quartz Cron 的星期表达式
+    /// </summary>
+    /// <param name="dayOfWeek">星期几 / Day of week</param>
+    /// <returns>Cron 星期表达式（MON-SUN）/ Cron day-of-week token (MON-SUN)</returns>
+    private static string ToCronDayOfWeek(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Sunday => "SUN",
+            DayOfWeek.Monday => "MON",
+            DayOfWeek.Tuesday => "TUE",
+            DayOfWeek.Wednesday => "WED",
+            DayOfWeek.Thursday => "THU",
+            DayOfWeek.Friday => "FRI",
+            _ => "SAT",
+        };
     }
 
     #endregion 热更定时器
 
-    /*
-
-    #region 非热更定时器
-
-    /// <summary>
-    /// 每隔一段时间执行一次
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="delay"></param>
-    /// <param name="interval"></param>
-    /// <param name="param"></param>
-    /// <param name="repeatCount"> -1 表示永远 </param>
-    /// <returns></returns>
-    public static long Schedule<T>(TimeSpan delay, TimeSpan interval, Param param = null, int repeatCount = -1) where T : NotHotfixTimerHandler
-    {
-        var            nextId          = NextId();
-        var            firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        TriggerBuilder builder;
-        if (repeatCount < 0)
-        {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x => x.WithInterval(interval).RepeatForever());
-        }
-        else
-        {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x => x.WithInterval(interval).WithRepeatCount(repeatCount));
-        }
-
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), builder.Build());
-        return nextId;
-    }
-
-    /// <summary>
-    /// 基于时间delay
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="delay"></param>
-    /// <param name="param"></param>
-    /// <returns></returns>
-    public static long Delay<T>(TimeSpan delay, Param param = null) where T : NotHotfixTimerHandler
-    {
-        var nextId          = NextId();
-        var firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        var trigger         = TriggerBuilder.Create().StartAt(firstTimeOffset).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    /// <summary>
-    /// 基于cron表达式
-    /// </summary>
-    /// <param name="cronExpression"></param>
-    /// <param name="param"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    public static long WithCronExpression<T>(string cronExpression, Param param = null) where T : NotHotfixTimerHandler
-    {
-        var nextId  = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithCronSchedule(cronExpression).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    /// <summary>
-    /// 每日
-    /// </summary>
-    /// <param name="hour"></param>
-    /// <param name="minute"></param>
-    /// <param name="param"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    /// <exception cref="ArgumentOutOfRangeException"></exception>
-    public static long Daily<T>(int hour, int minute, Param param = null) where T : NotHotfixTimerHandler
-    {
-        if (hour < 0 || hour >= 24 || minute < 0 || minute >= 60)
-        {
-            throw new ArgumentOutOfRangeException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(hour)}:{hour} {nameof(minute)}:{minute}");
-        }
-
-        var nextId  = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    /// <summary>
-    /// 每周某些天
-    /// </summary>
-    /// <param name="hour"></param>
-    /// <param name="minute"></param>
-    /// <param name="param"></param>
-    /// <param name="dayOfWeeks"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    /// <exception cref="ArgumentNullException"></exception>
-    public static long WithDayOfWeeks<T>(int hour, int minute, Param param, params DayOfWeek[] dayOfWeeks) where T : NotHotfixTimerHandler
-    {
-        if (dayOfWeeks == null || dayOfWeeks.Length <= 0)
-        {
-            throw new ArgumentNullException($"定时每周执行 参数为空：{nameof(dayOfWeeks)} TimerHandler:{typeof(T).FullName}");
-        }
-
-        var nextId  = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.AtHourAndMinuteOnGivenDaysOfWeek(hour, minute, dayOfWeeks)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    /// <summary>
-    /// 每周某天
-    /// </summary>
-    /// <param name="dayOfWeek"></param>
-    /// <param name="hour"></param>
-    /// <param name="minute"></param>
-    /// <param name="param"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    public static long Weekly<T>(DayOfWeek dayOfWeek, int hour, int minute, Param param = null) where T : NotHotfixTimerHandler
-    {
-        var nextId  = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.WeeklyOnDayAndHourAndMinute(dayOfWeek, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    /// <summary>
-    /// 每月某天
-    /// </summary>
-    /// <param name="dayOfMonth"></param>
-    /// <param name="hour"></param>
-    /// <param name="minute"></param>
-    /// <param name="param"></param>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    /// <exception cref="ArgumentException"></exception>
-    public static long Monthly<T>(int dayOfMonth, int hour, int minute, Param param = null) where T : NotHotfixTimerHandler
-    {
-        if (dayOfMonth is < 0 or > 31)
-        {
-            throw new ArgumentException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(dayOfMonth)}:{dayOfMonth}");
-        }
-
-        var nextId  = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.MonthlyOnDayAndHourAndMinute(dayOfMonth, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, param), trigger);
-        return nextId;
-    }
-
-    #endregion 非热更定时器
-
-    */
-
     #region 调度
+
+    /// <summary>
+    /// Quartz调度器实例
+    /// </summary>
+    private static readonly Lazy<Task<IScheduler>> SchedulerInitializer = new(CreateSchedulerAsync);
 
     /// <summary>
     /// Quartz调度器实例
@@ -490,13 +329,38 @@ public static class QuartzTimer
     private static IScheduler _scheduler;
 
     /// <summary>
-    /// 静态构造函数
-    /// 用于初始化调度器,确保只初始化一次
+    /// 已启动的 Quartz 调度器实例。
     /// </summary>
-    static QuartzTimer()
+    private static IScheduler Scheduler
     {
-        Init().Wait();
-        Start().Wait();
+        get
+        {
+            if (_scheduler == null)
+            {
+                // Localization: CoreExceptions.Timer.StartNotAwaited - 使用定时器操作前必须先等待 QuartzTimer.StartAsync 完成
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.StartNotAwaited));
+            }
+
+            return _scheduler;
+        }
+    }
+
+    /// <summary>
+    /// 调度器是否已启动且未关闭。
+    /// </summary>
+    /// <remarks>
+    /// Actor 回收清理名下定时任务前据此判定：调度器未启动时不存在任何任务，已关闭时任务随调度器一并失效，
+    /// 两种情况都无需（也无法）逐个删除，直接访问 <see cref="Scheduler"/> 会抛出。
+    /// Whether the scheduler has been started and not shut down. Actor recycling checks this before
+    /// deleting its jobs: none exist before start, and all are gone after shutdown.
+    /// </remarks>
+    internal static bool IsSchedulerRunning
+    {
+        get
+        {
+            var scheduler = _scheduler;
+            return scheduler != null && scheduler.Status is not (SchedulerStatus.Shutdown or SchedulerStatus.ShuttingDown);
+        }
     }
 
     /// <summary>
@@ -505,11 +369,18 @@ public static class QuartzTimer
     /// <remarks>
     /// 设置日志提供程序并创建调度器实例
     /// </remarks>
-    private static async Task Init()
+    private static async Task<IScheduler> CreateSchedulerAsync()
     {
-        LogProvider.SetCurrentLogProvider(new ConsoleLogProvider());
-        var factory = new StdSchedulerFactory();
-        _scheduler = await factory.GetScheduler();
+        // Quartz 4 移除了 Quartz.Logging 抽象与 StdSchedulerFactory：
+        // 日志改经 Microsoft.Extensions.Logging 桥接到 LogHelper，调度器改由 QuartzSchedulerBuilder 构建，
+        // 并把容器内日志与无法注入日志的站点统一指向 Quartz.Diagnostics.LogProvider
+        // (Quartz 4 removed Quartz.Logging and StdSchedulerFactory; logging now bridges to LogHelper via
+        // Microsoft.Extensions.Logging, the scheduler is built by QuartzSchedulerBuilder, and both the
+        // container's loggers and non-injectable sites point at Quartz.Diagnostics.LogProvider).
+        Quartz.Diagnostics.LogProvider.SetLogProvider(new QuartzLogBridge());
+        var factory = QuartzSchedulerBuilder.Create(builder => builder.Services.AddSingleton<ILoggerFactory>(new QuartzLogBridge()))
+            .Build();
+        return await factory.GetScheduler();
     }
 
     /// <summary>
@@ -519,9 +390,13 @@ public static class QuartzTimer
     /// <remarks>
     /// 启动调度器,使其开始处理已安排的任务
     /// </remarks>
-    public static async Task Start()
+    public static async Task StartAsync()
     {
-        await _scheduler.Start();
+        _scheduler = await SchedulerInitializer.Value;
+        if (_scheduler.Status != SchedulerStatus.Running)
+        {
+            await _scheduler.Start();
+        }
     }
 
     /// <summary>
@@ -531,9 +406,23 @@ public static class QuartzTimer
     /// <remarks>
     /// 关闭调度器,停止所有正在运行的任务,并阻止新任务的触发
     /// </remarks>
-    public static Task Stop()
+    public static Task StopAsync()
     {
-        return _scheduler.Shutdown();
+        if (!SchedulerInitializer.IsValueCreated && _scheduler == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return StopCoreAsync();
+    }
+
+    private static async Task StopCoreAsync()
+    {
+        var scheduler = _scheduler ?? await SchedulerInitializer.Value;
+        if (scheduler.Status is not (SchedulerStatus.Shutdown or SchedulerStatus.ShuttingDown))
+        {
+            await scheduler.Shutdown();
+        }
     }
 
     /// <summary>
@@ -559,31 +448,49 @@ public static class QuartzTimer
         /// <summary>
         /// 执行定时任务
         /// </summary>
-        /// <param name="context">任务执行上下文</param>
-        /// <returns>表示异步操作的任务</returns>
-        public async Task Execute(IJobExecutionContext context)
+        /// <remarks>
+        /// 只向内存中的 Actor 投递：反查组件代理固定 <c>isNew: false</c>，绝不因定时器触发而重建已回收的 Actor
+        /// （否则周期任务会反复拉起 Actor 并重新读库，形成复活循环）。目标 Actor 不在内存时记 Warning 并删除
+        /// 当前作业自愈——正常情况下 Actor 回收时已删除其名下任务，走到这里说明任务泄漏。
+        /// Only dispatches to in-memory actors: the agent lookup uses <c>isNew: false</c>, so a timer firing
+        /// never recreates a recycled actor. When the target actor is gone, the job deletes itself.
+        /// </remarks>
+        /// <param name="context">任务执行上下文 / Job execution context</param>
+        /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+        /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+        public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var handlerType = context.JobDetail.JobDataMap.GetString(TimerKey);
             try
             {
-                var eventArgs = context.JobDetail.JobDataMap.Get(ParamKey) as GameEventArgs;
-                var handler = HotfixManager.GetInstance<ITimerHandler>(handlerType);
-                if (handler != null)
+                if (context.JobDetail.JobDataMap.TryGetValue(ParamKey, out var param))
                 {
-                    var actorId = context.JobDetail.JobDataMap.GetLong(ActorIdKey);
-                    var baseType = handler.GetType().BaseType;
-                    if (baseType != null && baseType.GenericTypeArguments.Length > 0)
+                    var handler = HotfixManager.Resolver.GetInstance<ITimerHandler>(handlerType);
+                    if (handler != null)
                     {
-                        var agentType = baseType.GenericTypeArguments[0];
-                        var componentAgent = await ActorManager.GetComponentAgent(actorId, agentType);
-                        if (componentAgent != null)
+                        var actorId = context.JobDetail.JobDataMap.GetLong(ActorIdKey);
+                        var baseType = handler.GetType().BaseType;
+                        if (baseType != null && baseType.GenericTypeArguments.Length > 0)
                         {
-                            componentAgent.Tell(() => handler.InnerHandleTimer(componentAgent, eventArgs));
+                            var agentType = baseType.GenericTypeArguments[0];
+                            var componentAgent = await ActorManager.GetComponentAgentAsync(actorId, agentType, isNew: false);
+                            if (componentAgent != null)
+                            {
+                                GameEventArgs eventArgs = param as GameEventArgs;
+                                componentAgent.Tell(() => handler.InnerHandleTimerAsync(componentAgent, eventArgs));
+                                return;
+                            }
+
+                            // Localization: Core.Timer.TargetActorNotFoundJobRemoved - 定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}
+                            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.Timer.TargetActorNotFoundJobRemoved, context.JobDetail.Key, actorId, handlerType));
+                            await context.Scheduler.DeleteJob(context.JobDetail.Key, cancellationToken);
                             return;
                         }
                     }
                 }
 
+                // Localization: Core.Timer.InvalidHandlerType - 错误的ITimerHandler类型，回调失败 type:{0}
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.InvalidHandlerType, handlerType));
             }
             catch (Exception e)
@@ -620,13 +527,18 @@ public static class QuartzTimer
     private static IJobDetail GetJobDetail<T>(long id, long actorId, GameEventArgs eventArgs) where T : ITimerHandler
     {
         var handlerType = typeof(T);
-        StatisticsTool.Count(handlerType.FullName);
-        if (handlerType.Assembly != HotfixManager.HotfixAssembly)
+        if (handlerType.Assembly != HotfixManager.Resolver.HotfixAssembly)
         {
-            throw new Exception("定时器代码需要在热更项目里");
+            // Localization: CoreExceptions.Timer.CodeMustBeInHotfix - 定时器代码需要在热更项目里
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.CodeMustBeInHotfix));
         }
 
         var job = JobBuilder.Create<TimerJobHelper>().WithIdentity(id + string.Empty).Build();
+        if (eventArgs == null)
+        {
+            eventArgs = TimerEmptyEventArgs.EmptyEventArgs;
+        }
+
         job.JobDataMap.Add(ParamKey, eventArgs);
         job.JobDataMap.Add(ActorIdKey, actorId);
         job.JobDataMap.Add(TimerKey, handlerType.FullName);
@@ -634,82 +546,97 @@ public static class QuartzTimer
     }
 
     /// <summary>
-    /// 创建非热更新定时任务的作业详情
+    /// Quartz 日志桥接工厂（Quartz 4 使用 Microsoft.Extensions.Logging 记录日志）。
+    /// 将 Warning 及以上级别路由到 LogHelper，低于 Warning 的级别忽略，保持原有日志行为。
+    /// Quartz log bridge factory (Quartz 4 logs via Microsoft.Extensions.Logging).
+    /// Routes Warning and above to LogHelper and ignores lower levels, preserving the previous behavior.
     /// </summary>
-    /// <typeparam name="T">定时器处理器类型</typeparam>
-    /// <param name="id">任务ID</param>
-    /// <param name="gameEventArgs">任务参数</param>
-    /// <returns>作业详情对象</returns>
-    private static IJobDetail GetJobDetail<T>(long id, GameEventArgs gameEventArgs) where T : NotHotfixTimerHandler
-    {
-        StatisticsTool.Count(typeof(T).FullName);
-        var job = JobBuilder.Create<T>().WithIdentity(id + string.Empty).Build();
-        job.JobDataMap.Add(ParamKey, gameEventArgs);
-        return job;
-    }
-
-    /// <summary>
-    /// 控制台日志提供程序
-    /// 用于处理Quartz的日志输出
-    /// </summary>
-    private class ConsoleLogProvider : ILogProvider
+    private sealed class QuartzLogBridge : ILoggerFactory
     {
         /// <summary>
-        /// 获取日志记录器
+        /// 创建日志桥接实例
         /// </summary>
-        /// <param name="name">日志记录器名称</param>
-        /// <returns>日志记录委托</returns>
-        public Logger GetLogger(string name)
+        /// <param name="categoryName">日志类别名称 / Log category name</param>
+        /// <returns>日志桥接实例 / Log bridge instance</returns>
+        public ILogger CreateLogger(string categoryName)
         {
-            return (level, func, exception, parameters) =>
+            return new BridgeLogger();
+        }
+
+        /// <summary>
+        /// 添加日志提供程序（桥接场景无需处理）
+        /// </summary>
+        /// <param name="provider">日志提供程序 / Log provider</param>
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+        }
+
+        /// <summary>
+        /// 日志桥接，将 MEL 级别映射到 LogHelper
+        /// </summary>
+        private sealed class BridgeLogger : ILogger
+        {
+            /// <summary>
+            /// 开始日志作用域（不支持）
+            /// </summary>
+            /// <typeparam name="TState">状态类型 / State type</typeparam>
+            /// <param name="state">作用域状态 / Scope state</param>
+            /// <returns>始终返回 null / Always returns null</returns>
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull
             {
-                if (func != null)
+                return null;
+            }
+
+            /// <summary>
+            /// 判断日志级别是否启用（Warning 及以上）
+            /// </summary>
+            /// <param name="logLevel">日志级别 / Log level</param>
+            /// <returns>Warning 及以上返回 true / true for Warning and above</returns>
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return logLevel >= LogLevel.Warning;
+            }
+
+            /// <summary>
+            /// 写入日志，按级别路由到 LogHelper
+            /// </summary>
+            /// <typeparam name="TState">状态类型 / State type</typeparam>
+            /// <param name="logLevel">日志级别 / Log level</param>
+            /// <param name="eventId">事件 ID / Event ID</param>
+            /// <param name="state">日志状态 / Log state</param>
+            /// <param name="exception">异常信息 / Exception information</param>
+            /// <param name="formatter">格式化函数 / Formatter function</param>
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                if (!IsEnabled(logLevel))
                 {
-                    if (level < LogLevel.Warn)
-                    {
-                        // if (level == LogLevel.Debug)
-                        // {
-                        //     LogHelper.Debug(func(), parameters);
-                        // }
-                        // else
-                        // {
-                        //     LogHelper.Info(func(), parameters);
-                        // }
-                    }
-                    else if (level == LogLevel.Warn)
-                    {
-                        LogHelper.Warning(func(), parameters);
-                    }
-                    else
-                    {
-                        LogHelper.Error(func(), parameters);
-                    }
+                    return;
                 }
 
-                return true;
-            };
-        }
+                var message = formatter(state, exception);
+                if (logLevel == LogLevel.Warning)
+                {
+                    LogHelper.Warning(message);
+                    return;
+                }
 
-        /// <summary>
-        /// 打开映射上下文
-        /// </summary>
-        /// <param name="key">键</param>
-        /// <param name="value">值</param>
-        /// <param name="destructure">是否解构</param>
-        /// <returns>可释放的对象</returns>
-        public IDisposable OpenMappedContext(string key, object value, bool destructure = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 打开嵌套上下文
-        /// </summary>
-        /// <param name="message">消息</param>
-        /// <returns>可释放的对象</returns>
-        public IDisposable OpenNestedContext(string message)
-        {
-            throw new NotImplementedException();
+                if (exception != null)
+                {
+                    // Localization: Core.Timer.LogError - {0}\n{1}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LogError, message, exception));
+                }
+                else
+                {
+                    LogHelper.Error(message);
+                }
+            }
         }
     }
 

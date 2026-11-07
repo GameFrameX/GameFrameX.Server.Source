@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -53,8 +53,8 @@ public static partial class GameDb
     /// <returns>成功删除的文档数量 / Number of successfully deleted documents</returns>
     public static Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(filter);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteAsync(filter);
     }
 
     /// <summary>
@@ -69,8 +69,8 @@ public static partial class GameDb
     /// <returns>成功删除的文档数量 / Number of successfully deleted documents</returns>
     public static Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(filter, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteAsync(filter, cancellationToken);
     }
 
     /// <summary>
@@ -84,8 +84,8 @@ public static partial class GameDb
     /// <returns>成功删除的文档数量 / Number of successfully deleted documents</returns>
     public static Task<long> DeleteAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(state);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteAsync(state);
     }
 
     /// <summary>
@@ -100,8 +100,8 @@ public static partial class GameDb
     /// <returns>成功删除的文档数量 / Number of successfully deleted documents</returns>
     public static Task<long> DeleteAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(state, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -115,8 +115,8 @@ public static partial class GameDb
     /// <returns>返回修改的记录数 / Number of modified records</returns>
     public static Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListAsync<TState>(filter);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteListAsync<TState>(filter);
     }
 
     /// <summary>
@@ -131,8 +131,8 @@ public static partial class GameDb
     /// <returns>返回修改的记录数 / Number of modified records</returns>
     public static Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListAsync<TState>(filter, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteListAsync<TState>(filter, cancellationToken);
     }
 
     /// <summary>
@@ -146,8 +146,8 @@ public static partial class GameDb
     /// <returns>返回修改的记录数 / Number of modified records</returns>
     public static Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListIdAsync<TState>(ids);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteListIdAsync<TState>(ids);
     }
 
     /// <summary>
@@ -162,8 +162,8 @@ public static partial class GameDb
     /// <returns>返回修改的记录数 / Number of modified records</returns>
     public static Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListIdAsync<TState>(ids, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.DeleteListIdAsync<TState>(ids, cancellationToken);
     }
 
     /// <summary>
@@ -177,8 +177,8 @@ public static partial class GameDb
     /// <returns>返回删除的记录数 / Number of deleted records</returns>
     public static Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.HardDeleteAsync<TState>(filter);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.HardDeleteAsync<TState>(filter);
     }
 
     /// <summary>
@@ -193,8 +193,8 @@ public static partial class GameDb
     /// <returns>返回删除的记录数 / Number of deleted records</returns>
     public static Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.HardDeleteAsync<TState>(filter, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.HardDeleteAsync<TState>(filter, cancellationToken);
     }
 
     /// <summary>
@@ -208,8 +208,8 @@ public static partial class GameDb
     /// <returns>返回恢复的记录数 / Number of restored records</returns>
     public static Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.RestoreAsync<TState>(filter);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.RestoreAsync<TState>(filter);
     }
 
     /// <summary>
@@ -224,7 +224,7 @@ public static partial class GameDb
     /// <returns>返回恢复的记录数 / Number of restored records</returns>
     public static Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.RestoreAsync<TState>(filter, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.RestoreAsync<TState>(filter, cancellationToken);
     }
 }

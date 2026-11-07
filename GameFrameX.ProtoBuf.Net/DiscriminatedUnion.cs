@@ -44,21 +44,6 @@ public readonly struct DiscriminatedUnionObject
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct DiscriminatedUnion64
 {
-#if !FEAT_SAFE
-    static unsafe DiscriminatedUnion64()
-    {
-        if (sizeof(DateTime) > 8)
-        {
-            throw new InvalidOperationException(nameof(DateTime) + " was unexpectedly too big for " + nameof(DiscriminatedUnion64));
-        }
-
-        if (sizeof(TimeSpan) > 8)
-        {
-            throw new InvalidOperationException(nameof(TimeSpan) + " was unexpectedly too big for " + nameof(DiscriminatedUnion64));
-        }
-    }
-#endif
-
     /// <summary>The value typed as Int64</summary>
     [FieldOffset(8)] public readonly long Int64;
 
@@ -172,26 +157,6 @@ public readonly struct DiscriminatedUnion64
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct DiscriminatedUnion128Object
 {
-#if !FEAT_SAFE
-    static unsafe DiscriminatedUnion128Object()
-    {
-        if (sizeof(DateTime) > 16)
-        {
-            throw new InvalidOperationException(nameof(DateTime) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128Object));
-        }
-
-        if (sizeof(TimeSpan) > 16)
-        {
-            throw new InvalidOperationException(nameof(TimeSpan) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128Object));
-        }
-
-        if (sizeof(Guid) > 16)
-        {
-            throw new InvalidOperationException(nameof(Guid) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128Object));
-        }
-    }
-#endif
-
     /// <summary>The value typed as Int64</summary>
     [FieldOffset(8)] public readonly long Int64;
 
@@ -323,26 +288,6 @@ public readonly struct DiscriminatedUnion128Object
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct DiscriminatedUnion128
 {
-#if !FEAT_SAFE
-    static unsafe DiscriminatedUnion128()
-    {
-        if (sizeof(DateTime) > 16)
-        {
-            throw new InvalidOperationException(nameof(DateTime) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128));
-        }
-
-        if (sizeof(TimeSpan) > 16)
-        {
-            throw new InvalidOperationException(nameof(TimeSpan) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128));
-        }
-
-        if (sizeof(Guid) > 16)
-        {
-            throw new InvalidOperationException(nameof(Guid) + " was unexpectedly too big for " + nameof(DiscriminatedUnion128));
-        }
-    }
-#endif
-
     /// <summary>The value typed as Int64</summary>
     [FieldOffset(8)] public readonly long Int64;
 
@@ -465,21 +410,6 @@ public readonly struct DiscriminatedUnion128
 [StructLayout(LayoutKind.Explicit)]
 public readonly struct DiscriminatedUnion64Object
 {
-#if !FEAT_SAFE
-    static unsafe DiscriminatedUnion64Object()
-    {
-        if (sizeof(DateTime) > 8)
-        {
-            throw new InvalidOperationException(nameof(DateTime) + " was unexpectedly too big for " + nameof(DiscriminatedUnion64Object));
-        }
-
-        if (sizeof(TimeSpan) > 8)
-        {
-            throw new InvalidOperationException(nameof(TimeSpan) + " was unexpectedly too big for " + nameof(DiscriminatedUnion64Object));
-        }
-    }
-#endif
-
     /// <summary>The value typed as Int64</summary>
     [FieldOffset(8)] public readonly long Int64;
 

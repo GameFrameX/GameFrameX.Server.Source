@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Abstractions.Agent;
@@ -142,7 +110,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示预处理成功且是首次执行
     /// - false：表示已经执行过预处理
     /// </returns>
-    public virtual Task<bool> BeforeActivation()
+    public virtual Task<bool> BeforeActivationAsync()
     {
         if (IsInvokedBeforeActivation)
         {
@@ -167,7 +135,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示激活成功且是首次执行
     /// - false：表示组件已经被激活过
     /// </returns>
-    public virtual Task<bool> Active()
+    public virtual Task<bool> ActiveAsync()
     {
         if (IsInvokedActivation)
         {
@@ -192,7 +160,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示后处理成功且是首次执行
     /// - false：表示已经执行过后处理
     /// </returns>
-    public virtual Task<bool> AfterActivation()
+    public virtual Task<bool> AfterActivationAsync()
     {
         if (IsInvokedAfterActivation)
         {
@@ -217,7 +185,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示预处理成功且是首次执行
     /// - false：表示已经执行过预处理
     /// </returns>
-    public virtual Task<bool> BeforeInActivation()
+    public virtual Task<bool> BeforeInActivationAsync()
     {
         if (IsInvokedBeforeInActivation)
         {
@@ -236,7 +204,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// 返回一个已完成的 Task 对象。
     /// 注意：此方法不检查执行状态，可以多次调用
     /// </returns>
-    public virtual Task Inactive()
+    public virtual Task InactiveAsync()
     {
         return Task.CompletedTask;
     }
@@ -254,7 +222,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示后处理成功且是首次执行
     /// - false：表示已经执行过后处理
     /// </returns>
-    public virtual Task<bool> AfterInActivation()
+    public virtual Task<bool> AfterInActivationAsync()
     {
         if (IsInvokedAfterInActivation)
         {
@@ -272,9 +240,9 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// <param name="agentType">要获取的代理类型</param>
     /// <param name="isNew">是否创建新的实例，true表示创建新实例，false表示获取已存在的实例</param>
     /// <returns>返回一个异步任务，该任务完成时将返回指定类型的组件代理实例</returns>
-    public Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
+    public Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true)
     {
-        return Actor.GetComponentAgent(agentType, isNew);
+        return Actor.GetComponentAgentAsync(agentType, isNew);
     }
 
     /// <summary>
@@ -283,58 +251,58 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// <typeparam name="T">要获取的组件代理类型，必须实现IComponentAgent接口</typeparam>
     /// <param name="isNew">是否创建新的实例，true表示创建新实例，false表示获取已存在的实例</param>
     /// <returns>返回一个异步任务，该任务完成时将返回指定泛型类型的组件代理实例</returns>
-    public Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent
+    public Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent
     {
-        return Actor.GetComponentAgent<T>(isNew);
+        return Actor.GetComponentAgentAsync<T>(isNew);
     }
 
     /// <summary>
     /// 发送无返回值的工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的工作内容，以Action委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
-    public void Tell(Action work, int timeout = -1, CancellationToken cancellationToken = default)
+    public void Tell(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        Actor.Tell(work, timeout, cancellationToken);
+        Actor.Tell(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 发送异步工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的异步工作内容，以 Func&lt;Task&gt; 委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
-    public void Tell(Func<Task> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public void Tell(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        Actor.Tell(work, timeout, cancellationToken);
+        Actor.Tell(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 异步发送无返回值的工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的工作内容，以Action委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task SendAsync(Action work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, cancellationToken);
+        return Actor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
@@ -342,35 +310,35 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// </summary>
     /// <typeparam name="T">返回结果的类型</typeparam>
     /// <param name="work">要执行的工作内容，以Func&lt;T&gt;委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>包含执行结果的 Task&lt;T&gt; 对象</returns>
-    public Task<T> SendAsync<T>(Func<T> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, cancellationToken);
+        return Actor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 异步发送有返回值的工作指令到Actor，支持锁检查
     /// </summary>
     /// <param name="work">要执行的异步工作内容，以Func&lt;Task&gt;委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="checkLock">是否检查Actor的锁状态，默认为true</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task SendAsync(Func<Task> work, int timeout = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, checkLock, cancellationToken);
+        return Actor.SendAsync(work, timeOut, checkLock, cancellationToken);
     }
 
     /// <summary>
@@ -405,8 +373,8 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// </summary>
     /// <param name="serverDay">服务器运行的天数，从启动开始计数</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task ActorCrossDay(int serverDay)
+    public Task ActorCrossDayAsync(int serverDay)
     {
-        return Actor.CrossDay(serverDay);
+        return Actor.CrossDayAsync(serverDay);
     }
 }

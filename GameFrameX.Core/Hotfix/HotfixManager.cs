@@ -3,389 +3,229 @@
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository:    https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:      https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
-using System.Collections.Concurrent;
 using System.Reflection;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Events;
+using GameFrameX.Core.Abstractions.Hotfix;
 using GameFrameX.Core.Components;
-using GameFrameX.Foundation.Utility;
-using GameFrameX.NetWork.HTTP;
-using GameFrameX.Utility;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Hotfix;
 
 /// <summary>
-/// 热更新管理器
+/// 热更新管理器静态便捷层（过渡保留：转发 <see cref="HotfixRuntime.ProcessDefault"/>，公共成员已标记过时并指向注入面）。
 /// </summary>
+/// <remarks>
+/// The static convenience layer of the hotfix manager (transitional: forwards to
+/// <see cref="HotfixRuntime.ProcessDefault"/>; the public members are marked obsolete, pointing at
+/// the injection seam). 组合根 / 宿主模块应注入 <see cref="HotfixRuntime"/> 实例；Core 子系统解析路由
+/// 仍经内部 <see cref="Resolver"/> 缝（转发同核）；后续收敛版本迁移调用点后移除本层。
+/// Compositions inject the <see cref="HotfixRuntime"/> instance; Core-subsystem resolution routing
+/// keeps riding the internal <see cref="Resolver"/> seam (same core); the layer is removed once
+/// later convergence versions migrate the call sites.
+/// </remarks>
 public static class HotfixManager
 {
     /// <summary>
-    /// 标识是否正在进行热更新操作
+    /// 热更解析契约注入缝（静态便捷层：转发 <see cref="HotfixRuntime.Resolver"/>；Core 子系统与测试替身依赖该契约）。
+    /// The hotfix resolution-contract seam (static forward of <see cref="HotfixRuntime.Resolver"/>).
     /// </summary>
-    internal static volatile bool DoingHotfix;
+    internal static IHotfixResolver Resolver
+    {
+        get { return HotfixRuntime.ProcessDefault.Resolver; }
+    }
 
     /// <summary>
-    /// 当前使用的热更新模块
+    /// 注入/复原解析契约实现（测试专用；静态便捷层转发 <see cref="HotfixRuntime.SetResolverForTesting"/>）。
+    /// Injects/restores the resolution-contract implementation (testing only; static forward).
     /// </summary>
-    private static volatile HotfixModule _module;
+    /// <param name="resolver">替身实现；<c>null</c> 复原 / The substitute; <c>null</c> restores.</param>
+    internal static void SetResolverForTesting(IHotfixResolver resolver)
+    {
+        HotfixRuntime.ProcessDefault.SetResolverForTesting(resolver);
+    }
 
     /// <summary>
-    /// 基础配置信息
+    /// 热更新程序集（静态便捷层：转发 <see cref="HotfixRuntime.HotfixAssembly"/>）。
+    /// The hotfix assembly (static forward).
     /// </summary>
-    private static AppSetting _baseSetting;
-
-    /// <summary>
-    /// 存储旧的热更新模块的映射表，用于处理热更新过渡期间的请求
-    /// </summary>
-    private static readonly ConcurrentDictionary<int, HotfixModule> OldModuleMap = new();
-
-    /// <summary>
-    /// 空的事件监听器列表，用于在找不到监听器时返回
-    /// </summary>
-    private static readonly List<IEventListener> EmptyListenerList = new();
-
-    /// <summary>
-    /// 热更新程序集
-    /// </summary>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static Assembly HotfixAssembly
     {
-        get { return _module?.HotfixAssembly; }
+        get { return HotfixRuntime.ProcessDefault.HotfixAssembly; }
     }
 
     /// <summary>
-    /// 最近一次热更新重载的时间
+    /// 最近一次热更新重载的时间（静态便捷层：转发 <see cref="HotfixRuntime.ReloadTime"/>）。
+    /// The time of the most recent hot reload (static forward).
     /// </summary>
-    public static DateTime ReloadTime { get; private set; }
-
-
-    /// <summary>
-    /// 加载热更新模块
-    /// </summary>
-    /// <param name="setting">应用程序配置</param>
-    /// <param name="dllPath">热更新程序集路径，默认为hotfix</param>
-    /// <param name="hotfixDllName">热更新程序集名称</param>
-    /// <param name="dllVersion">Dll版本.当不为空的时候会优先加载指定的Dll.替换 dllPath 参数</param>
-    /// <returns>返回是否加载成功</returns>
-    public static bool LoadHotfix(AppSetting setting, string dllVersion = "", string dllPath = "hotfix", string hotfixDllName = "GameFrameX.Hotfix.dll")
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static DateTime ReloadTime
     {
-        ArgumentException.ThrowIfNullOrEmpty(dllPath, nameof(dllPath));
-        ArgumentException.ThrowIfNullOrEmpty(hotfixDllName, nameof(hotfixDllName));
-        if (setting != null)
-        {
-            _baseSetting = setting;
-        }
-
-        var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
-        var hotfixModule = new HotfixModule(path);
-        var reload = _module != null;
-        // 起服时失败会有异常抛出
-        var success = hotfixModule.Init(reload);
-        if (!success)
-        {
-            return false;
-        }
-
-        _module = hotfixModule;
-        return true;
+        get { return HotfixRuntime.ProcessDefault.ReloadTime; }
     }
 
     /// <summary>
-    /// 加载热更新模块
+    /// 加载热更新模块（同步入口；静态便捷层：转发 <see cref="HotfixRuntime.LoadHotfix"/>）。
+    /// Loads the hotfix module (synchronous entry; static forward).
     /// </summary>
-    /// <param name="setting">应用程序配置</param>
-    /// <param name="dllPath">热更新程序集路径，默认为hotfix</param>
-    /// <param name="hotfixDllName">热更新程序集名称</param>
-    /// <param name="dllVersion">Dll版本.当不为空的时候会优先加载指定的Dll.替换 dllPath 参数</param>
-    /// <returns>返回是否加载成功</returns>
-    public static async Task<bool> LoadHotfixModule(AppSetting setting, string dllVersion = "", string dllPath = "hotfix", string hotfixDllName = "GameFrameX.Hotfix.dll")
+    /// <param name="setting">应用程序配置 / The application setting.</param>
+    /// <param name="options">装载参数 / Load options.</param>
+    /// <returns>返回是否加载成功 / Whether the load succeeded.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static bool LoadHotfix(AppSetting setting, HotfixLoadOptions options = null)
     {
-        ArgumentException.ThrowIfNullOrEmpty(dllPath, nameof(dllPath));
-        ArgumentException.ThrowIfNullOrEmpty(hotfixDllName, nameof(hotfixDllName));
-        if (setting != null)
-        {
-            _baseSetting = setting;
-        }
-
-        var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
-        var hotfixModule = new HotfixModule(path);
-        var reload = _module != null;
-        // 起服时失败会有异常抛出
-        var success = hotfixModule.Init(reload);
-        if (!success)
-        {
-            return false;
-        }
-
-        return await Load(hotfixModule, _baseSetting, reload);
+        return HotfixRuntime.ProcessDefault.LoadHotfix(setting, options);
     }
 
     /// <summary>
-    /// 加载新的热更新模块
+    /// 加载热更新模块（重载入口；静态便捷层：转发 <see cref="HotfixRuntime.LoadHotfixModuleAsync"/>）。
+    /// Loads the hotfix module (reload entry; static forward).
     /// </summary>
-    /// <param name="newModule">新的热更新模块</param>
-    /// <param name="setting">应用程序配置</param>
-    /// <param name="reload">是否为重新加载</param>
-    /// <returns>返回加载是否成功</returns>
-    private static async Task<bool> Load(HotfixModule newModule, AppSetting setting, bool reload)
+    /// <param name="setting">应用程序配置 / The application setting.</param>
+    /// <param name="options">装载参数 / Load options.</param>
+    /// <returns>返回是否加载成功 / Whether the load succeeded.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static Task<bool> LoadHotfixModuleAsync(AppSetting setting, HotfixLoadOptions options = null)
     {
-        ReloadTime = TimerHelper.GetNowWithUtc();
-        if (reload)
-        {
-            var oldModule = _module;
-            DoingHotfix = true;
-            var oldModuleHash = oldModule.GetHashCode();
-            OldModuleMap.TryAdd(oldModuleHash, oldModule);
-            // 延迟10分钟后清理旧模块
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(10));
-                OldModuleMap.TryRemove(oldModuleHash, out _);
-                oldModule.Unload();
-                DoingHotfix = !OldModuleMap.IsEmpty;
-            });
-        }
-
-        _module = newModule;
-        if (_module.HotfixBridge != null)
-        {
-            return await _module.HotfixBridge.OnLoadSuccess(setting, reload);
-        }
-
-        return true;
+        return HotfixRuntime.ProcessDefault.LoadHotfixModuleAsync(setting, options);
     }
 
     /// <summary>
-    /// 停止热更新模块
+    /// 停止热更新模块（静态便捷层：转发 <see cref="HotfixRuntime.StopAsync"/>）。
+    /// Stops the hotfix module (static forward).
     /// </summary>
-    /// <param name="message">停止原因</param>
-    /// <returns></returns>
-    public static Task Stop(string message = "")
+    /// <param name="message">停止原因 / The stop reason.</param>
+    /// <returns>停止任务 / The stop task.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static Task StopAsync(string message = "")
     {
-        return _module?.HotfixBridge?.Stop(message) ?? Task.CompletedTask;
+        return HotfixRuntime.ProcessDefault.StopAsync(message);
     }
 
     /// <summary>
-    /// 获取组件对应的代理类型
+    /// 获取组件的代理实例（静态便捷层：转发 <see cref="HotfixRuntime.GetAgent{T}"/>）。
+    /// Gets the agent instance for a component (static forward).
     /// </summary>
-    internal static Type GetAgentType(Type compType)
-    {
-        if (OldModuleMap.IsEmpty)
-        {
-            return _module.GetAgentType(compType);
-        }
-
-        var compTypeAssembly = compType.Assembly;
-        foreach (var kv in OldModuleMap)
-        {
-            var old = kv.Value;
-            if (compTypeAssembly == old.HotfixAssembly)
-            {
-                return old.GetAgentType(compType);
-            }
-        }
-
-        return _module.GetAgentType(compType);
-    }
-
-    /// <summary>
-    /// 获取代理对应的组件类型
-    /// </summary>
-    internal static Type GetComponentType(Type agentType)
-    {
-        if (OldModuleMap.IsEmpty)
-        {
-            return _module.GetComponentType(agentType);
-        }
-
-        var agentTypeAssembly = agentType.Assembly;
-        foreach (var kv in OldModuleMap)
-        {
-            var old = kv.Value;
-            if (agentTypeAssembly == old.HotfixAssembly)
-            {
-                return old.GetComponentType(agentType);
-            }
-        }
-
-        return _module.GetComponentType(agentType);
-    }
-
-    /// <summary>
-    /// 获取组件的代理实例
-    /// </summary>
-    /// <param name="component">组件实例</param>
-    /// <param name="refAssemblyType">引用程序集类型</param>
-    /// <typeparam name="T">代理类型</typeparam>
-    /// <returns>返回代理实例</returns>
+    /// <param name="component">组件实例 / The component instance.</param>
+    /// <param name="refAssemblyType">引用程序集类型 / A type from the caller's hotfix assembly.</param>
+    /// <typeparam name="T">代理类型 / The agent type.</typeparam>
+    /// <returns>返回代理实例 / The agent instance.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static T GetAgent<T>(BaseComponent component, Type refAssemblyType) where T : class, IComponentAgent
     {
-        if (OldModuleMap.IsEmpty)
-        {
-            return _module.GetAgent<T>(component);
-        }
-
-        var assembly = typeof(T).Assembly;
-        var refAssembly = refAssemblyType?.Assembly;
-        foreach (var kv in OldModuleMap)
-        {
-            var old = kv.Value;
-            if (assembly == old.HotfixAssembly || refAssembly == old.HotfixAssembly)
-            {
-                return old.GetAgent<T>(component);
-            }
-        }
-
-        return _module.GetAgent<T>(component);
+        return HotfixRuntime.ProcessDefault.GetAgent<T>(component, refAssemblyType);
     }
 
     /// <summary>
-    /// 获取RPC处理器实例。
+    /// 获取RPC处理器实例（静态便捷层：转发 <see cref="HotfixRuntime.GetRpcHandler"/>）。
+    /// Gets the RPC handler instance (static forward).
     /// </summary>
-    /// <param name="type">请求消息的类型。</param>
-    /// <returns>对应的 <see cref="IMessageHandler"/> 实例，如果未找到则返回 null。</returns>
+    /// <param name="type">请求消息的类型 / The request message type.</param>
+    /// <returns>对应的 <see cref="IMessageHandler"/> 实例，如果未找到则返回 null / The matching handler, or null when absent.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static IMessageHandler GetRpcHandler(Type type)
     {
-        return _module.GetRpcHandler(type);
+        return HotfixRuntime.ProcessDefault.GetRpcHandler(type);
     }
 
     /// <summary>
-    /// 获取TCP消息处理器
+    /// 获取消息处理器（静态便捷层：转发 <see cref="HotfixRuntime.GetMessageHandler"/>）。
+    /// Gets the message handler (static forward).
     /// </summary>
-    /// <param name="msgId">消息ID</param>
-    /// <returns>返回对应的消息处理器</returns>
-    public static IMessageHandler GetTcpHandler(int msgId)
+    /// <param name="msgId">消息ID / The message identifier.</param>
+    /// <returns>返回对应的消息处理器 / The matching handler.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static IMessageHandler GetMessageHandler(int msgId)
     {
-        return _module.GetTcpHandler(msgId);
+        return HotfixRuntime.ProcessDefault.GetMessageHandler(msgId);
     }
 
     /// <summary>
-    /// 获取HTTP消息处理器
+    /// 获取HTTP消息处理器（静态便捷层：转发 <see cref="HotfixRuntime.GetHttpHandler"/>）。
+    /// Gets the HTTP handler (static forward).
     /// </summary>
-    /// <param name="cmd">HTTP命令</param>
-    /// <returns>返回对应的HTTP处理器</returns>
+    /// <param name="cmd">HTTP命令 / The HTTP command.</param>
+    /// <returns>返回对应HTTP处理器 / The matching HTTP handler.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static BaseHttpHandler GetHttpHandler(string cmd)
     {
-        return _module.GetHttpHandler(cmd);
+        return HotfixRuntime.ProcessDefault.GetHttpHandler(cmd);
     }
 
     /// <summary>
-    /// 获取所有HTTP消息处理器列表
+    /// 获取所有HTTP消息处理器列表（静态便捷层：转发 <see cref="HotfixRuntime.GetListHttpHandler"/>）。
+    /// Gets the list of all HTTP handlers (static forward).
     /// </summary>
-    /// <returns>返回HTTP处理器列表</returns>
+    /// <returns>返回HTTP处理器列表 / The HTTP handler list.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static List<BaseHttpHandler> GetListHttpHandler()
     {
-        return _module.GetListHttpHandler();
+        return HotfixRuntime.ProcessDefault.GetListHttpHandler();
     }
 
     /// <summary>
-    /// 获取指定Actor类型和事件ID的事件监听器列表
+    /// 获取指定Actor类型和事件参数类型的事件监听器列表（静态便捷层：转发 <see cref="HotfixRuntime.FindListeners(ushort, Type)"/>）。
+    /// Gets event listeners for the given actor type and event-args type (static forward).
     /// </summary>
-    /// <param name="actorType">Actor类型</param>
-    /// <param name="eventId">事件ID</param>
-    /// <returns>返回监听器列表，如果没有则返回空列表</returns>
-    public static List<IEventListener> FindListeners(ushort actorType, int eventId)
+    /// <param name="actorType">Actor类型 / The actor type.</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键） / The event-args type (the event binding key).</param>
+    /// <returns>返回监听器列表，如果没有则空列表 / The listener list; empty when none.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
     {
-        return _module.FindListeners(actorType, eventId) ?? EmptyListenerList;
+        return HotfixRuntime.ProcessDefault.FindListeners(actorType, eventArgsType);
     }
 
     /// <summary>
-    /// 获取指定事件ID的事件监听器列表
+    /// 获取指定事件参数类型的事件监听器列表（静态便捷层：转发 <see cref="HotfixRuntime.FindListeners(Type)"/>）。
+    /// Gets event listeners for the given event-args type (static forward).
     /// </summary>
-    /// <param name="eventId">事件ID</param>
-    /// <returns>返回监听器列表，如果没有则返回空列表</returns>
-    public static List<IEventListener> FindListeners(int eventId)
+    /// <param name="eventArgsType">事件参数类型（事件绑定键） / The event-args type (the event binding key).</param>
+    /// <returns>返回监听器列表，如果没有则空列表 / The listener list; empty when none.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
+    public static List<IEventListener> FindListeners(Type eventArgsType)
     {
-        return _module.FindListeners(eventId) ?? EmptyListenerList;
+        return HotfixRuntime.ProcessDefault.FindListeners(eventArgsType);
     }
 
     /// <summary>
-    /// 获取指定类型的实例
-    /// 主要用于获取Event,Timer, Schedule的Handler实例
+    /// 获取指定类型的实例（静态便捷层：转发 <see cref="HotfixRuntime.GetInstance{T}"/>）。
+    /// Gets an instance of the given type (static forward).
     /// </summary>
-    /// <typeparam name="T">实例类型</typeparam>
-    /// <param name="typeName">类型名称</param>
-    /// <param name="refAssemblyType">引用程序集类型</param>
-    /// <returns>返回指定类型的实例，如果类型名称为空则返回默认值</returns>
+    /// <typeparam name="T">实例类型 / The instance type.</typeparam>
+    /// <param name="typeName">类型名称 / The type name.</param>
+    /// <param name="refAssemblyType">引用程序集类型 / A type from the caller's hotfix assembly.</param>
+    /// <returns>返回指定类型的实例，如果类型名称为空则返回默认值 / The instance, or default for an empty type name.</returns>
+    [Obsolete("静态便捷层过渡保留：请改用注入的 HotfixRuntime 实例（进程缺省 HotfixRuntime.ProcessDefault）。Static convenience layer kept for transition; use the injected HotfixRuntime instance (process default HotfixRuntime.ProcessDefault) instead.", false)]
     public static T GetInstance<T>(string typeName, Type refAssemblyType = null)
     {
-        if (string.IsNullOrEmpty(typeName))
-        {
-            return default;
-        }
-
-        if (OldModuleMap.IsEmpty)
-        {
-            return _module.GetInstance<T>(typeName);
-        }
-
-        var asb = refAssemblyType?.Assembly;
-        foreach (var kv in OldModuleMap)
-        {
-            var old = kv.Value;
-            if (asb == old.HotfixAssembly)
-            {
-                return old.GetInstance<T>(typeName);
-            }
-        }
-
-        return _module.GetInstance<T>(typeName);
+        return HotfixRuntime.ProcessDefault.GetInstance<T>(typeName, refAssemblyType);
     }
 }

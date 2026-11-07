@@ -1,0 +1,100 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+using System;
+using System.Collections.Generic;
+using GameFrameX.Apps.Player.Mail;
+using GameFrameX.Apps.Player.Mail.Entity;
+using GameFrameX.Hotfix.Logic.Player.Mail;
+
+namespace GameFrameX.Hotfix.Logic.Http.Mail
+{
+    /// <summary>
+    /// Admin 预览 / 校验 Campaign 参数（不落库）。
+    /// 路由：POST /api/mailCampaign/preview。
+    /// 用于发布前确认多语言文案、附件、过滤条件是否合法，并返回预估命中规模。
+    /// </summary>
+    [HttpMessageMapping(typeof(PreviewMailCampaignHttpHandler), typeof(PreviewMailCampaignRequest), typeof(PreviewMailCampaignResponse))]
+    [RequireHttpSignature]
+    [Description("Admin 预览 / 校验运营邮件 Campaign")]
+    public sealed class PreviewMailCampaignHttpHandler : BaseHttpHandler
+    {
+        /// <summary>
+        /// 处理预览 / 校验运营邮件 Campaign 参数的 HTTP 请求（不落库）。构造 Campaign 状态并校验，校验通过后执行预览并返回预估命中规模；校验失败或参数非法（ArgumentException）时返回对应错误码的 JSON 响应。
+        /// </summary>
+        /// <remarks>
+        /// Handles the HTTP request for previewing / validating a mail campaign (without persistence). Builds the campaign state and validates it, then runs the preview and returns the estimated hit count; returns a JSON response with the corresponding error code when validation fails or a parameter is invalid (ArgumentException).
+        /// </remarks>
+        /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
+        /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
+        public override async Task<string> ActionAsync(HttpActionContext context)
+        {
+            var previewRequest = (PreviewMailCampaignRequest)context.Request;
+            var response = new PreviewMailCampaignResponse();
+
+            var state = new MailCampaignState
+            {
+                MailType = previewRequest.MailType,
+                MinLevel = previewRequest.MinLevel,
+                MaxLevel = previewRequest.MaxLevel,
+                Titles = previewRequest.Titles ?? new List<MailLocalizedContent>(),
+                Contents = previewRequest.Contents ?? new List<MailLocalizedContent>(),
+                Attachments = previewRequest.Attachments ?? new List<MailAttachmentState>(),
+                ServerIds = previewRequest.ServerIds ?? new List<int>(),
+                ChannelIds = previewRequest.ChannelIds ?? new List<int>(),
+                ExpireAttachmentPolicy = previewRequest.ExpireAttachmentPolicy,
+                ExpireAt = previewRequest.ExpireAt,
+            };
+
+            var code = MailCampaignRegistry.Validate(state);
+            if (code != MailCampaignErrorCode.Ok)
+            {
+                response.Code = code;
+                response.Message = "参数校验失败";
+                return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+            }
+
+            try
+            {
+                MailCampaignRegistry.Preview(state, out var estimatedHitCount);
+                response.Code = MailCampaignErrorCode.Ok;
+                response.EstimatedHitCount = estimatedHitCount;
+                response.Message = "参数校验通过";
+                return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+            }
+            catch (ArgumentException ex)
+            {
+                response.Code = MailCampaignErrorCode.InvalidCampaignParameter;
+                response.Message = ex.Message;
+                return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+            }
+        }
+    }
+}

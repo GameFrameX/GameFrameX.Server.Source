@@ -1,85 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-    <!-- Extensions module exception messages -->
-    <data name="Extensions.Exceptions.OffsetCountExceedBufferLength" xml:space="preserve">
-    <value>Offset and count exceed buffer length. Buffer length: {0}, offset: {1}, count: {2}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.IndexCountExceedBufferLength" xml:space="preserve">
-    <value>Index and count exceed buffer length. Buffer length: {0}, index: {1}, count: {2}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.BufferWriteOutOfRange" xml:space="preserve">
-    <value>Buffer write position out of range. Buffer length: {0}, write position: {1}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.StringLengthExceedMaxValue" xml:space="preserve">
-    <value>String length exceeds maximum value. Actual length: {0}, maximum length: {1}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ByteArrayLengthMustEqual" xml:space="preserve">
-    <value>Byte array lengths must be equal. First array length: {0}, second array length: {1}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ListCannotBeEmpty" xml:space="preserve">
-    <value>List cannot be empty.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.TargetTypeMustBeInterface" xml:space="preserve">
-    <value>Target type must be an interface type. Target type: {0}.</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ObjectTypeMismatch" xml:space="preserve">
-    <value>Object type mismatch. Object type: {0}, target type: {1}.</value>
-  </data>
-
-    <!-- Log messages -->
-    <data name="Extensions.Logs.CollectionProcessed" xml:space="preserve">
-    <value>Collection processing completed. Collection type: {0}, element count: {1}.</value>
-  </data>
-
-    <data name="Extensions.Logs.ByteConversionCompleted" xml:space="preserve">
-    <value>Byte conversion completed. Source format: {0}, target format: {1}, byte count: {2}.</value>
-  </data>
-
-    <data name="Extensions.Logs.TypeConversionCompleted" xml:space="preserve">
-    <value>Type conversion completed. Source type: {0}, target type: {1}.</value>
-  </data>
-
-    <!-- Status messages -->
-    <data name="Extensions.Status.ExtensionsInitialized" xml:space="preserve">
-    <value>{0} extensions module initialized successfully.</value>
-  </data>
-
-    <data name="Extensions.Status.BufferOperationSuccessful" xml:space="preserve">
-    <value>Buffer operation completed successfully. Operation type: {0}, byte count: {1}.</value>
-  </data>
-
-    <!-- Validation messages -->
-    <data name="Extensions.Validation.NotNullRequired" xml:space="preserve">
-    <value>Parameter cannot be null. Parameter name: {0}.</value>
-  </data>
-
-    <data name="Extensions.Validation.RangeCheckFailed" xml:space="preserve">
-    <value>Value exceeds allowed range. Value: {0}, minimum value: {1}, maximum value: {2}.</value>
-  </data>
-
-    <data name="Extensions.Validation.TypeCheckFailed" xml:space="preserve">
-    <value>Type validation failed. Actual type: {0}, expected type: {1}.</value>
-  </data>
-
-    <!-- Performance messages -->
-    <data name="Extensions.Performance.OperationExecutionTime" xml:space="preserve">
-    <value>Operation execution time. Operation name: {0}, execution time: {1} ms.</value>
-  </data>
-
-    <data name="Extensions.Performance.MemoryUsage" xml:space="preserve">
-    <value>Memory usage. Operation name: {0}, memory usage: {1} bytes.</value>
-  </data>
-
     <!-- Utility module exception keys -->
     <data name="Utility.Exceptions.ActorIdLessThanMinServerId" xml:space="preserve">
-    <value>actorId is less than min server id</value>
+    <value>actorId is less than min server id, min server id: {0}</value>
   </data>
     <data name="Utility.Exceptions.ActorIdLessThanMinServerIdDetail" xml:space="preserve">
     <value>actorId: {0} is less than min server id: {1}</value>
@@ -93,12 +16,21 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>serverId is less than or equal to 0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>serverId {0} exceeds the maximum server id {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>serverId {0} parsed from ActorId is outside [{1}, {2}]; the ActorId bit layout may be corrupted</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>actor type is invalid</value>
   </data>
     <data name="Utility.Exceptions.ModuleInvalid" xml:space="preserve">
     <value>module is invalid</value>
   </data>
+    <data name="Utility.Exceptions.ActorIdClockMovedBackwards" xml:space="preserve">
+        <value>The system clock moved backwards by {0} seconds, exceeding the tolerance limit of {1} seconds; refusing to generate an ID.</value>
+    </data>
     <data name="Utility.Exceptions.RadixOutOfRange" xml:space="preserve">
     <value>Radix must be between 2 and 36</value>
   </data>
@@ -160,20 +92,16 @@
   </data>
 
     <!-- Events module log keys -->
-    <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>No listeners found for event ID: {0}</value>
+<data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
+    <value>Event listener:{0} the bound type {1} must be a subclass of GameEventArgs</value>
   </data>
-
     <!-- Storage module log keys -->
     <data name="Storage.CacheHashEquals" xml:space="preserve">
     <value>CacheHash equals ToSaveHash before calling AfterSaveToDB: {0}</value>
   </data>
 
     <!-- Database module log keys -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB service initialized successfully, ConnectionString: {0}, DatabaseName: {1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
+<data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
     <value>MongoDB service initialization failed, ConnectionString: {0}, DatabaseName: {1}</value>
   </data>
     <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
@@ -188,19 +116,15 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0} failed with unknown retry exception.</value>
   </data>
-
-    <!-- LNumber module log and error keys -->
+<!-- LNumber module log and error keys -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
     <value>Xnumber creation failed! {0}.{1}</value>
   </data>
     <data name="Utility.LNumber.DataExceedsLimit" xml:space="preserve">
     <value>Number data exceeds limit {0} {1}</value>
   </data>
-    <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber multiplication overflow > {0}</value>
-  </data>
-    <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
-    <value>LNumber division overflow > {0}</value>
+<data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
+    <value>LNumber division overflow &gt; {0}</value>
   </data>
 
     <!-- Network module error keys -->
@@ -213,160 +137,117 @@
     <value>Sensitive word initialization completed in {0}ms, active count: {1}</value>
   </data>
 
-    <!-- Settings module log and error keys -->
-    <data name="Utility.Settings.AppAlreadyExited" xml:space="preserve">
-    <value>AppRunning has already been set to exit, cannot be enabled again...</value>
-  </data>
-    <data name="Utility.Settings.SaveDataIntervalTooSmall" xml:space="preserve">
-    <value>SaveDataInterval is less than 5000 milliseconds, using default value: {0} milliseconds</value>
-  </data>
-
-    <!-- NetWork.Message module log and error keys -->
-    <data name="NetWork.Message.MessageDecodeFatalError" xml:space="preserve">
+<!-- Network.Message module log and error keys -->
+    <data name="Network.Message.MessageDecodeFatalError" xml:space="preserve">
     <value>Fatal exception occurred during message decoding: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeError" xml:space="preserve">
-    <value>Message object encoding exception, please check error logs</value>
-  </data>
-    <data name="NetWork.Message.MessageEncodeException" xml:space="preserve">
-    <value>Message encoding exception: {0}</value>
-  </data>
-    <data name="NetWork.Message.MessageObjectNull" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNull" xml:space="preserve">
     <value>Message object is null, encoding exception</value>
   </data>
-    <data name="NetWork.Message.MessageObjectEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectEncodeException" xml:space="preserve">
     <value>Message object encoding exception, please check error logs</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNullEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNullEncodeException" xml:space="preserve">
     <value>Message object is null, encoding exception</value>
   </data>
 
-    <!-- NetWork.Http module log and error keys -->
-    <data name="NetWork.Http.ParameterDuplicate" xml:space="preserve">
+    <!-- Network.Http module log and error keys -->
+    <data name="Network.Http.ParameterDuplicate" xml:space="preserve">
     <value>Parameter duplicate: {0}</value>
   </data>
-    <data name="NetWork.Http.UnsupportedContentType" xml:space="preserve">
+    <data name="Network.Http.UnsupportedContentType" xml:space="preserve">
     <value>Unsupported Content Type: {0}</value>
   </data>
-    <data name="NetWork.Http.RequestParameters" xml:space="preserve">
+    <data name="Network.Http.RequestParameters" xml:space="preserve">
     <value>Request parameters: {0}</value>
   </data>
-    <data name="NetWork.Http.ServerStatusError" xml:space="preserve">
+    <data name="Network.Http.ServerStatusError" xml:space="preserve">
     <value>Server status error [server starting/shutting down]</value>
   </data>
-    <data name="NetWork.Http.CommandHandlerNotFound" xml:space="preserve">
+    <data name="Network.Http.CommandHandlerNotFound" xml:space="preserve">
     <value>HTTP cmd handler not found: {0}</value>
   </data>
-    <data name="NetWork.Http.ExecutionTime" xml:space="preserve">
+    <data name="Network.Http.ExecutionTime" xml:space="preserve">
     <value>{0}, execution time: {1}ms, result: {2}</value>
   </data>
-    <data name="NetWork.Http.ExceptionOccurred" xml:space="preserve">
+    <data name="Network.Http.ExceptionOccurred" xml:space="preserve">
     <value>{0}, exception occurred. {1} {2}</value>
   </data>
-    <data name="NetWork.Http.MessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
     <value>Message type {0} must inherit from HttpMessageRequestBase</value>
   </data>
-    <data name="NetWork.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
     <value>Message type {0} must inherit from HttpMessageResponseBase</value>
   </data>
-    <data name="NetWork.Http.ClassMustBeSealed" xml:space="preserve">
+    <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} must be marked as sealed class</value>
   </data>
-    <data name="NetWork.Http.ClassMustEndWithSuffix" xml:space="preserve">
+    <data name="Network.Http.ClassMustEndWithSuffix" xml:space="preserve">
     <value>{0} must end with {1}</value>
   </data>
-    <data name="NetWork.Http.RequestLogHeader" xml:space="preserve">
+    <data name="Network.Http.RequestLogHeader" xml:space="preserve">
     <value>[HTTPServer] TraceIdentifier:[{0}], Source[{1}], url:[{2}]</value>
   </data>
-    <data name="NetWork.Http.RequestMethod" xml:space="preserve">
+    <data name="Network.Http.RequestMethod" xml:space="preserve">
     <value>{0}, Request Method:[{1}]</value>
   </data>
-    <data name="NetWork.Http.MessageEncodingException" xml:space="preserve">
+    <data name="Network.Http.MessageEncodingException" xml:space="preserve">
     <value>Message object encoding exception, please check error logs</value>
   </data>
-    <data name="NetWork.Http.HttpHeaderContentTypeNull" xml:space="preserve">
+    <data name="Network.Http.HttpHeaderContentTypeNull" xml:space="preserve">
     <value>http header content type is null</value>
   </data>
-    <data name="NetWork.Http.DataVerificationFailed" xml:space="preserve">
+    <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>data verification failed</value>
   </data>
-    <data name="NetWork.Http.SwaggerRequestParameters" xml:space="preserve">
-    <value>Request Parameters</value>
+    <data name="Network.Http.RequestBodyNotJsonObject" xml:space="preserve">
+    <value>request body must be a JSON object</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseStatusCode" xml:space="preserve">
-    <value>Response Status Code</value>
-  </data>
-    <data name="NetWork.Http.SwaggerResponseMessage" xml:space="preserve">
-    <value>Response Message</value>
-  </data>
-    <data name="NetWork.Http.SwaggerSuccessResponse" xml:space="preserve">
-    <value>Success Response</value>
-  </data>
-    <data name="NetWork.Http.ApplicationJsonContentType" xml:space="preserve">
-    <value>application/json</value>
-  </data>
-    <data name="NetWork.Http.ApplicationProtoBufContentType" xml:space="preserve">
-    <value>application/x-protobuf</value>
-  </data>
-    <data name="NetWork.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
+    <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http command missing validation parameters {0} and {1}</value>
   </data>
-    <data name="NetWork.Http.UndefinedCommand" xml:space="preserve">
+    <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>undefined command</value>
   </data>
-    <data name="NetWork.Http.NotFoundCommand" xml:space="preserve">
-    <value>not found command</value>
-  </data>
-    <data name="NetWork.Http.CheckFailedCommand" xml:space="preserve">
-    <value>check failed command</value>
-  </data>
-    <data name="NetWork.Http.ServerError" xml:space="preserve">
+    <data name="Network.Http.ServerError" xml:space="preserve">
     <value>server error</value>
   </data>
 
-    <!-- NetWork.Abstractions module log and error keys -->
-    <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
-    <value>MessageId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <!-- Network.Abstractions module log and error keys -->
+    <data name="Network.Abstractions.MessageIdDuplicate" xml:space="preserve">
+    <value>MessageId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
-    <value>Heartbeat message duplicate==>Type:{0}</value>
+    <data name="Network.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
+    <value>Heartbeat message duplicate==&gt;Type:{0}</value>
   </data>
-    <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
-    <value>RequestId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <data name="Network.Abstractions.RequestIdDuplicate" xml:space="preserve">
+    <value>RequestId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
-    <value>ResponseId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <data name="Network.Abstractions.ResponseIdDuplicate" xml:space="preserve">
+    <value>ResponseId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
 
-    <!-- NetWork module log and error keys -->
-    <data name="NetWork.MessageSent" xml:space="preserve">
+    <!-- Network module log and error keys -->
+    <data name="Network.MessageSent" xml:space="preserve">
     <value>---Send {0}</value>
   </data>
-    <data name="NetWork.MessageSendTimeout" xml:space="preserve">
+    <data name="Network.MessageSendTimeout" xml:space="preserve">
     <value>Message send timeout canceled:{0}</value>
   </data>
-    <data name="NetWork.TypeMustImplementInterface" xml:space="preserve">
+    <data name="Network.TypeMustImplementInterface" xml:space="preserve">
     <value>Type {0} must implement {1} interface</value>
   </data>
-    <data name="NetWork.TypeMustBeClass" xml:space="preserve">
+    <data name="Network.TypeMustBeClass" xml:space="preserve">
     <value>Type {0} must be a class</value>
   </data>
-    <data name="NetWork.TypeMustHaveParameterlessConstructor" xml:space="preserve">
+    <data name="Network.TypeMustHaveParameterlessConstructor" xml:space="preserve">
     <value>Type {0} must have a parameterless constructor</value>
   </data>
-    <data name="NetWork.CannotFindCreateMethod" xml:space="preserve">
+    <data name="Network.CannotFindCreateMethod" xml:space="preserve">
     <value>Cannot find Create method on ObjectPoolProvider</value>
   </data>
-    <data name="NetWork.FailedToCreateObjectPool" xml:space="preserve">
+    <data name="Network.FailedToCreateObjectPool" xml:space="preserve">
     <value>Failed to create object pool for type {0}</value>
-  </data>
-
-    <data name="NetWork.RpcCallTimeout" xml:space="preserve">
-    <value>RPC call timeout! Message is: {0}</value>
-  </data>
-
-    <data name="NetWork.MessageEncodingError" xml:space="preserve">
-    <value>If the message object is encoded abnormally, check the error log, exception: {0}</value>
   </data>
 
     <!-- Launcher module log and error keys -->
@@ -394,12 +275,6 @@
     <data name="Launcher.ComponentRegisterEnd" xml:space="preserve">
     <value>Component registration completed...</value>
   </data>
-    <data name="Launcher.HotfixModuleLoadBegin" xml:space="preserve">
-    <value>Starting hotfix module loading...</value>
-  </data>
-    <data name="Launcher.HotfixModuleLoadEnd" xml:space="preserve">
-    <value>Hotfix module loading completed...</value>
-  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>
@@ -421,41 +296,6 @@
     <data name="Launcher.ReceiveMessage" xml:space="preserve">
     <value>---Received[{0} To {1}]  {2}</value>
   </data>
-    <data name="Launcher.PlayerRegisterSuccess" xml:space="preserve">
-    <value>Player registration successful: {0}  {1}</value>
-  </data>
-    <data name="Launcher.PlayerUnregisterSuccess" xml:space="preserve">
-    <value>Player unregistration successful: {0}  {1}</value>
-  </data>
-    <data name="Launcher.ServiceRegisterSuccess" xml:space="preserve">
-    <value>Service registration successful: {0}  {1}  {2}</value>
-  </data>
-    <data name="Launcher.ServiceUnregisterSuccess" xml:space="preserve">
-    <value>Service unregistration successful: {0}  {1}</value>
-  </data>
-    <data name="Launcher.ExternalServiceConnected" xml:space="preserve">
-    <value>External service connected to discovery center successfully. Connection info: SessionID:{0} RemoteEndPoint:{1}</value>
-  </data>
-    <data name="Launcher.ExternalServiceDisconnected" xml:space="preserve">
-    <value>External service disconnected from discovery center. Connection info: Disconnect reason:{0}</value>
-  </data>
-
-    <data name="Launcher.PlayerOfflineCallback" xml:space="preserve">
-    <value>Player offline callback, notify other servers: {0}</value>
-  </data>
-
-    <data name="Launcher.PlayerOnlineCallback" xml:space="preserve">
-    <value>Player online callback, notify other servers: {0}</value>
-  </data>
-
-    <data name="Launcher.ServiceOfflineCallback" xml:space="preserve">
-    <value>Service offline callback, notify other servers: {0}</value>
-  </data>
-
-    <data name="Launcher.ServiceOnlineCallback" xml:space="preserve">
-    <value>Service online callback, notify other servers: {0}</value>
-  </data>
-
     <!-- StartUp module log and error keys -->
     <data name="StartUp.ServerStopped" xml:space="preserve">
     <value>Server type: {0} stopped! Termination reason: {1} Configuration: {2}</value>
@@ -468,9 +308,6 @@
   </data>
     <data name="StartUp.PrometheusMetricsEndpointEnabled" xml:space="preserve">
     <value>Independent Prometheus metrics endpoint enabled: http://{0}:{1}/metrics</value>
-  </data>
-    <data name="StartUp.MetricsHealthCheckEndpointEnabled" xml:space="preserve">
-    <value>Independent Metrics health check endpoint: http://{0}:{1}/health</value>
   </data>
     <data name="StartUp.HttpServer.HandlePostRequest" xml:space="preserve">
     <value>Handle POST request</value>
@@ -508,13 +345,13 @@
     <data name="StartUp.HttpServer.SwaggerUiAccess" xml:space="preserve">
     <value>Swagger UI can be accessed via http://{0}:{1}/swagger</value>
   </data>
-    <data name="StartUp.TcpServer.ClientDisconnected" xml:space="preserve">
+    <data name="StartUp.Server.ClientDisconnected" xml:space="preserve">
     <value>Client disconnects - SessionID: {0}, remote terminal: {1}, disconnect cause: {2}</value>
   </data>
-    <data name="StartUp.TcpServer.NewClientConnection" xml:space="preserve">
+    <data name="StartUp.Server.NewClientConnection" xml:space="preserve">
     <value>New client connection - SessionID: {0}, remote terminal: {1}</value>
   </data>
-    <data name="StartUp.TcpServer.MessageReceived" xml:space="preserve">
+    <data name="StartUp.Server.MessageReceived" xml:space="preserve">
     <value>Message received - server type: [{0}], message content: {1}</value>
   </data>
     <data name="StartUp.TcpServer.StartingServer" xml:space="preserve">
@@ -541,9 +378,6 @@
     <data name="StartUp.WebSocketServer.ServiceNotEnabled" xml:space="preserve">
     <value>Start WebSocket server start failed type: {0}, port: {1}, cause: WebSocket service is not enabled</value>
   </data>
-    <data name="StartUp.Application.MetricServerStarted" xml:space="preserve">
-    <value>The standalone metric server is started on the port: {0}</value>
-  </data>
     <data name="StartUp.Application.ListeningExitMessage" xml:space="preserve">
     <value>Listen to the exit message from the program</value>
   </data>
@@ -565,6 +399,9 @@
     <data name="StartUp.Application.SigtermSignalReceived" xml:space="preserve">
     <value>SIGTERM signal received and exit handler registered</value>
   </data>
+  <data name="StartUp.Application.ShutdownWaitTimeout" xml:space="preserve">
+    <value>Timed out after {0} seconds waiting for the shutdown task to complete; the process will exit before graceful shutdown finishes</value>
+  </data>
 
     <!-- Core module log messages -->
     <!-- Actor related messages -->
@@ -584,17 +421,13 @@
     <value>Actor recycle process exception actorId:{0} actorType:{1} exception:\n{2}</value>
   </data>
 
-    <data name="Core.Actor.Recycled" xml:space="preserve">
-    <value>actor recycled id:{0} type:{1}</value>
-  </data>
-
-    <!-- Actor limit related messages -->
+<!-- Actor limit related messages -->
     <data name="Core.ActorLimit.UnsupportedRuleType" xml:space="preserve">
     <value>Unsupported rule type:{0}</value>
   </data>
 
     <data name="Core.ActorLimit.InvalidCallPath" xml:space="preserve">
-    <value>Invalid call path:{0}==>{1}</value>
+    <value>Invalid call path:{0}==&gt;{1}</value>
   </data>
 
     <data name="Core.ActorLimit.CrossDeadlock" xml:space="preserve">
@@ -630,6 +463,10 @@
     <value>Idle Actor recycle completed time:{0}</value>
   </data>
 
+    <data name="Core.Timer.LoopIterationError" xml:space="preserve">
+    <value>GlobalTimer.LoopAsync iteration failed, skipping this iteration\n{0}</value>
+  </data>
+
     <data name="Core.Timer.GlobalTimerStopStart" xml:space="preserve">
     <value>Stopping global timer...</value>
   </data>
@@ -641,104 +478,23 @@
     <data name="Core.Timer.InvalidHandlerType" xml:space="preserve">
     <value>Invalid ITimerHandler type, callback failed type:{0}</value>
   </data>
+  <data name="Core.Timer.TargetActorNotFoundJobRemoved" xml:space="preserve">
+    <value>Timer job target actor is not in memory, job removed jobKey:{0} actorId:{1} handler:{2}</value>
+  </data>
 
     <!-- Actor manager related messages -->
-    <data name="Core.ActorManager.SaveAllStateTime" xml:space="preserve">
-    <value>save all state, use: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.SaveAllStateError" xml:space="preserve">
-    <value>save all state error\n{0}</value>
-  </data>
-
-    <data name="Core.ActorManager.TimerSaveStateError" xml:space="preserve">
-    <value>timer save state error</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalActorCrossDay" xml:space="preserve">
-    <value>Global Actor:{0} cross day execution</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayTimeout" xml:space="preserve">
-    <value>Global comp cross day takes too long, will not block other comp cross day, current elapsed {0} seconds</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayComplete" xml:space="preserve">
-    <value>Global comp cross day completed duration: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayTimeout" xml:space="preserve">
-    <value>Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {0} seconds</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayComplete" xml:space="preserve">
-    <value>Non-player comp cross day completed duration: {0}ms</value>
-  </data>
-
-    <!-- Component registration related messages -->
+<!-- Component registration related messages -->
     <data name="Core.ComponentRegister.InitializationComplete" xml:space="preserve">
     <value>initialize component registration complete</value>
   </data>
 
-    <data name="Core.ComponentRegister.AgentNotImplemented" xml:space="preserve">
-    <value>{0} Agent not implemented, please check if business code is correct</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
-    <value>Activate global component: {0} {1}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalActor" xml:space="preserve">
-    <value>activate the global actor: {0}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckComplete" xml:space="preserve">
-    <value>Activate the global component and check if the components all contain the Agent implementation completion</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckFailed" xml:space="preserve">
-    <value>Activate the global component and detect if the components all contain the agent implementation failed</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActorNotBelongToThis" xml:space="preserve">
-    <value>get an actor that doesn't belong to this actor: [{0}] components</value>
-  </data>
-
-    <!-- State component related messages -->
-    <data name="Core.StateComponent.SaveAllStateTime" xml:space="preserve">
-    <value>save all state, use: {0}ms</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveAllStateError" xml:space="preserve">
-    <value>save all state error\n{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.TimerSaveStateError" xml:space="preserve">
-    <value>timer save state error</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveStateFailed" xml:space="preserve">
-    <value>StateComp.SaveState.Failed.StateId:{0},{1}</value>
-  </data>
-
-    <data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
+<!-- State component related messages -->
+<data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
     <value>[StateComp] state save back {0} count:{1}</value>
   </data>
 
-    <data name="Core.StateComponent.SaveDataFailed" xml:space="preserve">
-    <value>Save data failed, type:{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveDataException" xml:space="preserve">
-    <value>Save data exception, type:{0}, {1}</value>
-  </data>
-
     <!-- Message handler related messages -->
-    <data name="Core.MessageHandler.ExecutionTimeout" xml:space="preserve">
-    <value>Execution timeout:{0}</value>
-  </data>
-
-    <data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
+<data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
     <value>Message handler:{0},UniqueId:{1} execution duration: {2} ms</value>
   </data>
 
@@ -748,10 +504,6 @@
 
     <data name="Core.MessageHandler.ActorIdIsZero" xml:space="preserve">
     <value>ActorId is 0, can not get component，{0}, close channel</value>
-  </data>
-
-    <data name="Core.MessageHandler.CacheComponentIsNull" xml:space="preserve">
-    <value>CacheComponent is null, can not get component, close channel</value>
   </data>
 
     <data name="Core.MessageHandler.InnerActionError" xml:space="preserve">
@@ -785,6 +537,37 @@
     <value>Timer code must be in hotfix project</value>
   </data>
 
+    <!-- WorkerActor work unit related exceptions -->
+    <data name="CoreExceptions.WorkerActor.Timeout" xml:space="preserve">
+    <value>WorkerActor work unit timed out ({0}ms) actorId:{1} trace:{2}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.Quarantined" xml:space="preserve">
+    <value>WorkerActor quarantined, work rejected. actorId:{0}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QuarantinedWithTrace" xml:space="preserve">
+    <value>WorkerActor quarantined, work rejected. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.TraceUnavailable" xml:space="preserve">
+    <value>trace unavailable: {0}</value>
+  </data>
+
+      <data name="CoreExceptions.WorkerActor.CallRejectedByLimitRule" xml:space="preserve">
+      <value>WorkerActor work call rejected by limit rule, caller actorId:{0} target actorId:{1}</value>
+      </data>
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor queue rejected work. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor queue post was cancelled. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor queue post failed. actorId:{0} trace:{1}</value>
+  </data>
     <!-- Component related exceptions -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>component:[{0}] the actor type is not bound</value>
@@ -808,8 +591,8 @@
     <value>HTTP processor command repeatedly registers, command:{0}</value>
   </data>
 
-    <data name="CoreExceptions.Hotfix.WrongTcpProcessorType" xml:space="preserve">
-    <value>wrong tcp processor type:{0}</value>
+    <data name="CoreExceptions.Hotfix.WrongMessageHandlerType" xml:space="preserve">
+    <value>wrong message handler type:{0}</value>
   </data>
 
     <data name="CoreExceptions.Hotfix.ClassMustBeSealed" xml:space="preserve">
@@ -836,52 +619,64 @@
     <value>component:[{0}] there are multiple agents</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
+    <value>{0} must be a non-abstract closed type implementing {1} with a public parameterless constructor</value>
+  </data>
+
+      <data name="CoreExceptions.HotfixModule.AgentBaseTypeInvalid" xml:space="preserve">
+      <value>Component agent base type is invalid, can not resolve the component type: {0}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered" xml:space="preserve">
+      <value>RPC handler repeatedly registers, request message type:{0} handler type:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered" xml:space="preserve">
+      <value>Message id repeatedly registers, message id:{0} handler type:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.AssemblyHashMismatch" xml:space="preserve">
+      <value>Hotfix assembly hash mismatch, path:{0} expected SHA-256:{1} actual SHA-256:{2}</value>
+      </data>
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version contains forbidden path characters: {0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>Type not found: {0}</value>
+  </data>
     <!-- Attribute related exceptions -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>Invalid component type {0}, value should be greater than {1} and less than {2} and not equal to {3}</value>
   </data>
 
     <!-- Apps module log messages -->
-    <!-- BSON class mapping helper related messages -->
-    <data name="Apps.BsonClassMapHelper.InitializationFailed" xml:space="preserve">
-    <value>BSON class mapping initialization failed</value>
-  </data>
-
     <!-- Session management related messages -->
     <data name="Apps.SessionManager.AccountAlreadyLoggedIn" xml:space="preserve">
     <value>Your account is already logged in on another device</value>
   </data>
 
     <!-- CodeGenerator module error messages -->
-    <!-- Agent generator related error messages -->
-    <data name="CodeGenerator.AgentGenerator.CannotSetTimeoutForThreadSafeAttribute" xml:space="preserve">
-    <value>{0}.{1} cannot specify timeout for function marked with [{2}]</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.TimeoutAttributeMustBeUsedWithApiOrDiscard" xml:space="preserve">
-    <value>{0}.{1} [{2}] attribute can only be used with [{3}] or [{4}]</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.NonThreadSafeApiMustBeAsync" xml:space="preserve">
-    <value>{0}.{1}, non-[{2}] [{3}] interface can only be async function</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.MarkedFunctionMustBeVirtual" xml:space="preserve">
-    <value>{0}.{1} function marked with [{2}][{3}][{4}] attribute must be declared as virtual</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.DiscardAttributeRequiresTaskOrValueTask" xml:space="preserve">
-    <value>{0}.{1} only functions with Task or ValueTask return type can add [{2}] attribute</value>
-  </data>
-
     <!-- Utility.RandomHelper related error messages -->
     <data name="Utility.RandomHelper.CantRepeatRandomArgError" xml:space="preserve">
     <value>Cannot repeat random argument error, requested count: {0} is greater than ID count: {1}</value>
   </data>
 
-    <!-- Utility.ActorIdGenerator related error messages -->
-    <data name="Utility.ActorIdGenerator.InputIsGlobalId" xml:space="preserve">
-    <value>Input is a global ID: {0}</value>
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>Weight must not be negative, actual weight: {0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>Total weight must be greater than zero</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>Total weight {0} exceeds the supported 32-bit range</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>Weight index {0} is out of range for an entry with {1} element(s)</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>Cannot pick {0} distinct weighted items, only {1} item(s) have a positive weight</value>
   </data>
 
     <!-- Utility.BigIntegerDebug related log messages -->
@@ -934,221 +729,21 @@
     <value>Data length: {0}</value>
   </data>
 
-    <!-- Utility.AppSettings related messages -->
-    <data name="Utility.AppSettings.SetAppRunningFalse" xml:space="preserve">
-    <value>Set AppRunning false...</value>
-  </data>
-
-    <!-- Utility.GlobalSettings related messages -->
-    <data name="Utility.GlobalSettings.SettingAlreadyExists" xml:space="preserve">
-    <value>The current setting already exists, cannot be set again, and this setting has been ignored.</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefault" xml:space="preserve">
-    <value>HttpUrl is empty and uses the default value of : /game/api/</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.NetworkTimeoutTooShort" xml:space="preserve">
-    <value>NetWorkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.ActorRecycleTimeTooShort" xml:space="preserve">
-    <value>ActorRecycleTime is less than 1 minute, and the default value is 5 minutes</value>
-  </data>
-
-    <!-- Utility.ExceptionLogs related messages -->
-    <data name="Utility.ExceptionLogs.ExceptionDetails" xml:space="preserve">
-    <value>Exception details: {0}</value>
-  </data>
-
-
-  <data name="Exceptions.BigInteger.ConstructorByteOverflow" xml:space="preserve">
+<!-- Utility.ExceptionLogs related messages -->
+<data name="Exceptions.BigInteger.ConstructorByteOverflow" xml:space="preserve">
     <value>BigInteger constructor byte overflow.</value>
-  </data>
-
-  <data name="Exceptions.BigInteger.ConstructorOverflow" xml:space="preserve">
-    <value>BigInteger constructor overflow. Value: {0}.</value>
-  </data>
-
-  <data name="Exceptions.BigInteger.ConstructorUnderflow" xml:space="preserve">
-    <value>BigInteger constructor underflow. Value: {0}.</value>
-  </data>
-
-  <data name="Exceptions.BigInteger.InvalidString" xml:space="preserve">
-    <value>BigInteger invalid string. String: {0}.</value>
-  </data>
-
-  <data name="Exceptions.Database.StartFailed" xml:space="preserve">
-    <value>Database start failed. Database type: {0}, error: {1}.</value>
-  </data>
-
-  <data name="Exceptions.Handler.NotInitialized" xml:space="preserve">
-    <value>Handler not initialized. Handler type: {0}.</value>
-  </data>
-
-  <data name="Exceptions.Network.InvalidIpFormat" xml:space="preserve">
-    <value>Invalid IP address format. IP: {0}.</value>
-  </data>
-
-  <data name="Exceptions.Timer.CodeInHotfix" xml:space="preserve">
-    <value>Timer code cannot be used in hotfix assembly.</value>
   </data>
 
   <data name="Exceptions.Timer.InvalidParameters" xml:space="preserve">
     <value>Timer invalid parameters. Parameter: {0}, value: {1}.</value>
   </data>
 
-  <data name="Exceptions.Timer.Weekly.EmptyDays" xml:space="preserve">
-    <value>Weekly timer execution days cannot be empty.</value>
-  </data>
-
-  <data name="Logs.Client.Connected.Success" xml:space="preserve">
-    <value>Client connected successfully. Server: {0}.</value>
-  </data>
-
-  <data name="Logs.Client.Connecting" xml:space="preserve">
-    <value>Connecting to server. Server: {0}.</value>
-  </data>
-
-  <data name="Logs.Client.Disconnected" xml:space="preserve">
-    <value>Client disconnected. Server: {0}.</value>
-  </data>
-
-  <data name="Logs.Client.ErrorOccurred" xml:space="preserve">
-    <value>Client error occurred. Error: {0}.</value>
-  </data>
-
-  <data name="Logs.Client.MaxRetryReached" xml:space="preserve">
-    <value>Maximum retry count reached. Max retries: {0}.</value>
-  </data>
-
-  <data name="Logs.Client.RetryConnect" xml:space="preserve">
-    <value>Retrying connection. Attempt: {0}, max: {1}.</value>
-  </data>
-
-  <data name="Logs.Database.Init.Success" xml:space="preserve">
-    <value>Database initialized successfully. Connection string: {0}, database name: {1}.</value>
-  </data>
-
-  <data name="Logs.Discovery.ExternalService.Connect" xml:space="preserve">
-    <value>External service connected. Service: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.ExternalService.Disconnect" xml:space="preserve">
-    <value>External service disconnected. Service: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.Player.Register.Success" xml:space="preserve">
-    <value>Player registered successfully. Player ID: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.Player.Unregister.Success" xml:space="preserve">
-    <value>Player unregistered successfully. Player ID: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.Server.Exception" xml:space="preserve">
-    <value>Discovery server exception. Error: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.Service.Register.Success" xml:space="preserve">
-    <value>Service registered successfully. Service: {0}.</value>
-  </data>
-
-  <data name="Logs.Discovery.Service.Unregister.Success" xml:space="preserve">
-    <value>Service unregistered successfully. Service: {0}.</value>
-  </data>
-
-  <data name="Logs.Game.Server.ConfigActor.End" xml:space="preserve">
-    <value>Game server config actor initialization completed.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Database.End" xml:space="preserve">
-    <value>Game server database initialization completed.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Exit.Start" xml:space="preserve">
-    <value>Game server starting shutdown process.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Exit.Success" xml:space="preserve">
-    <value>Game server shutdown completed.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Hotfix.End" xml:space="preserve">
-    <value>Game server hotfix initialization completed.</value>
-  </data>
-
-  <data name="Logs.Game.Server.MainLoop" xml:space="preserve">
-    <value>Game server main loop started.</value>
-  </data>
-
-  <data name="Logs.Game.Server.RegisterComponents.Start" xml:space="preserve">
-    <value>Game server starting component registration.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Start" xml:space="preserve">
-    <value>Game server starting. Server ID: {0}.</value>
-  </data>
-
-  <data name="Logs.Game.Server.Start.Complete" xml:space="preserve">
-    <value>Game server startup completed. Server ID: {0}.</value>
-  </data>
-
-  <data name="Logs.Network.Client.Connect" xml:space="preserve">
-    <value>Network client connected. Remote endpoint: {0}.</value>
-  </data>
-
-  <data name="Logs.Network.Client.Disconnect" xml:space="preserve">
-    <value>Network client disconnected. Remote endpoint: {0}.</value>
-  </data>
-
-  <data name="Logs.Server.Start.DefaultConfig" xml:space="preserve">
-    <value>Using default configuration for server startup.</value>
-  </data>
-
-  <data name="Logs.Server.Start.FindConfig" xml:space="preserve">
-    <value>Finding configuration for server type: {0}.</value>
-  </data>
-
-  <data name="Logs.Server.Starting" xml:space="preserve">
-    <value>Server starting. Server type: {0}.</value>
-  </data>
-
-  <data name="Logs.Server.Stopped.NoTasks" xml:space="preserve">
-    <value>Server stopped. No running tasks.</value>
-  </data>
-
-  <data name="Logs.Warning.ConsoleMessage" xml:space="preserve">
-    <value>Warning: {0}.</value>
-  </data>
-
-  <data name="StartUp.ApplicationSettings.ConfigFilePath" xml:space="preserve">
-    <value>Configuration file path: {0}.</value>
-  </data>
-
-  <data name="StartUp.ApplicationSettings.LogTypeSeparator" xml:space="preserve">
-    <value>Log type separator: {0}.</value>
-  </data>
-
-  <data name="StartUp.ApplicationSettings.WarningMessage" xml:space="preserve">
-    <value>Warning: {0}.</value>
-  </data>
-
-
-  <data name="StartUp.FindingConfigurationForServerType" xml:space="preserve">
-    <value>Finding configuration for server type: {0}.</value>
-  </data>
 
   <data name="StartUp.GrafanaLokiLabelExists" xml:space="preserve">
     <value>Grafana Loki label already exists. Label: {0}.</value>
   </data>
-
-  <data name="StartUp.HealthCheck.ApplicationWorkingFine" xml:space="preserve">
-    <value>Application is working fine.</value>
-  </data>
-
-  <data name="StartUp.HealthCheck.DetailedEndpointUrl" xml:space="preserve">
-    <value>Detailed health check endpoint: {0}.</value>
+  <data name="StartUp.InvalidLauncherArguments" xml:space="preserve">
+    <value>Startup argument parsing failed; refusing to start with default configuration (exit code {1}). Error: {0}</value>
   </data>
 
   <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
@@ -1159,22 +754,6 @@
     <value>OK</value>
   </data>
 
-  <data name="StartUp.HealthCheck.OpenTelemetryConfigurationNormal" xml:space="preserve">
-    <value>OpenTelemetry configuration is normal.</value>
-  </data>
-
-  <data name="StartUp.HealthCheck.OpenTelemetryConfiguredNormally" xml:space="preserve">
-    <value>OpenTelemetry configured normally. Endpoint: {0}.</value>
-  </data>
-
-  <data name="StartUp.HealthCheck.OpenTelemetryEndpointUrl" xml:space="preserve">
-    <value>OpenTelemetry endpoint URL: {0}.</value>
-  </data>
-
-  <data name="StartUp.HealthCheck.SimpleEndpointUrl" xml:space="preserve">
-    <value>Simple health check endpoint: {0}.</value>
-  </data>
-
   <data name="StartUp.HttpExceptions.AddressMustEndWithSlash" xml:space="preserve">
     <value>Address must end with slash. Address: {0}.</value>
   </data>
@@ -1183,28 +762,40 @@
     <value>Address must start with slash. Address: {0}.</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS is not implemented yet.</value>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP signature validation is enabled but HttpSignSecret is not configured; every request is rejected (fail-closed).</value>
+  </data>
+
+  <data name="Network.Http.SignSecretTooWeak" xml:space="preserve">
+    <value>HttpSignSecret is shorter than {0} characters and can be brute-forced offline; replace it with a strong random secret.</value>
+  </data>
+
+  <data name="Network.Http.SignNonceInvalid" xml:space="preserve">
+    <value>HTTP signature nonce is missing or already used within the validity window (possible replay); the request was rejected.</value>
+  </data>
+
+  <data name="Network.Http.SignVersionOneDeprecated" xml:space="preserve">
+    <value>HTTP signature still uses the legacy v1 (timestamp-only) scheme, which does not protect against tampering or replay; migrate to HttpSignVersion=2.</value>
+  </data>
+
+  <data name="StartUp.HttpServer.SignDisabledWarning" xml:space="preserve">
+    <value>HTTP server started with HttpRequireSign=false: signature validation is disabled, exposing publicly deployed endpoints to captured-request replay; enable signature validation with a strong secret in production.</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
-    <value>API contact name: {0}.</value>
+    <value>Blank</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiDescription" xml:space="preserve">
-    <value>API description: {0}.</value>
+    <value>GameFrameX HTTP API Documentation</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiLicenseName" xml:space="preserve">
-    <value>API license name: {0}.</value>
+    <value>GameFrameX</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiTitle" xml:space="preserve">
-    <value>API title: {0}.</value>
-  </data>
-
-  <data name="StartUp.HttpServer.OpenTelemetryServiceType" xml:space="preserve">
-    <value>OpenTelemetry service type: {0}.</value>
+    <value>GameFrameX API</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
@@ -1220,7 +811,7 @@
   </data>
 
   <data name="StartUp.HttpServer.SwaggerRoutePrefix" xml:space="preserve">
-    <value>Swagger route prefix: {0}.</value>
+    <value>swagger</value>
   </data>
 
   <data name="StartUp.LaunchServerType" xml:space="preserve">
@@ -1228,15 +819,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>No configuration found, using default values.</value>
+    <value>No configuration found for server type '{0}', using default values.</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus metrics endpoint enabled inline.</value>
-  </data>
-
-  <data name="StartUp.PrometheusMetricsServiceOnStandalonePort" xml:space="preserve">
-    <value>Prometheus metrics service running on standalone port: {0}.</value>
+    <value>Prometheus metrics endpoint enabled inline: http://{0}:{1}/metrics.</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
@@ -1247,24 +834,12 @@
     <value>Server startup completed.</value>
   </data>
 
-  <data name="Utility.CompressionHelper.ExceptionError" xml:space="preserve">
-    <value>Compression helper exception. Error: {0}.</value>
-  </data>
-
-  <data name="Utility.Exceptions.ClockMovedBackwards" xml:space="preserve">
+<data name="Utility.Exceptions.ClockMovedBackwards" xml:space="preserve">
     <value>System clock moved backwards. Refusing to generate id for {0} milliseconds.</value>
   </data>
 
   <data name="Utility.Exceptions.ConstructorByteOverflow" xml:space="preserve">
     <value>BigInteger constructor byte overflow.</value>
-  </data>
-
-  <data name="Utility.Exceptions.DatacenterIdOutOfRange" xml:space="preserve">
-    <value>Datacenter ID out of range. Must be between 0 and {0}.</value>
-  </data>
-
-  <data name="Utility.Exceptions.InputIsGlobalId" xml:space="preserve">
-    <value>Input is a global ID, cannot extract server ID.</value>
   </data>
 
   <data name="Utility.Exceptions.LnValueNonPositive" xml:space="preserve">
@@ -1275,16 +850,8 @@
     <value>Cannot calculate square root of negative value.</value>
   </data>
 
-  <data name="Utility.Exceptions.TimestampOutOfRange" xml:space="preserve">
-    <value>Timestamp out of range. Cannot generate ID.</value>
-  </data>
-
   <data name="Utility.Exceptions.ValueOutOfRange" xml:space="preserve">
-    <value>Value out of range. Value: {0}, min: {1}, max: {2}.</value>
-  </data>
-
-  <data name="Utility.Exceptions.WorkerIdOutOfRange" xml:space="preserve">
-    <value>Worker ID out of range. Must be between 0 and {0}.</value>
+    <value>Value must be between -FP.One and FP.One.</value>
   </data>
 
   <data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">
@@ -1299,4 +866,1319 @@
     <value>Failed to load configuration. Configuration file: {0}.</value>
   </data>
 
+  <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
+    <value>KCP server is disabled for {0} on {1}:{2}. Skipping listener setup (opt-in via IsEnableKcp).</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
+    <value>Starting KCP server for {0} on {1}:{2}.</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
+    <value>KCP server for {0} started successfully on {1}:{2}.</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
+    <value>KCP server for {0} failed to start on {1}:{2}. Port unavailable or out of range.</value>
+  </data>
+
+
+
+
+
+
+
+<data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+    <value>PostgreSqlService initialization failed. Connection target: {0}, registered name: {1}</value>
+  </data>
+    <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
+    <value>PostgreSqlDbService is unavailable. Open() has not completed successfully.</value>
+  </data>
+    <data name="Database.PostgreSql.ExecuteInTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync failed with unknown retry exception.</value>
+  </data>
+    <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} failed after all retries with unknown exception.</value>
+  </data>
+  <data name="Apps.Attribute.UnknownAttributeSlot" xml:space="preserve">
+    <value>A known attribute value slot must be provided.</value>
+  </data>
+  <data name="CoreExceptions.Timer.StartNotAwaited" xml:space="preserve">
+    <value>QuartzTimer.StartAsync must be awaited before using timer operations.</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.ExceedMaxSize" xml:space="preserve">
+    <value>exceed max size</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.SegmentDataNotEnough" xml:space="preserve">
+    <value>segment data not enough</value>
+  </data>
+  <data name="Database.Registry.NotRegistered" xml:space="preserve">
+    <value>No database named '{0}' is registered. Registered names: [{1}]</value>
+  </data>
+  <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
+    <value>The default database is already set to '{0}' (set-once); changing it to '{1}' is not allowed. Registered names: [{2}]</value>
+  </data>
+  <data name="Database.Provider.NotSupported" xml:space="preserve">
+    <value>The database provider '{0}' has no resolution mapping configured. Supported providers: [{1}]. Register its implementation type in the DbProviderResolver mapping table when adding a new DatabaseProviderType member.</value>
+  </data>
+  <data name="Database.Provider.NotInstalled" xml:space="preserve">
+    <value>Failed to resolve the implementation type '{1}' for database provider '{0}': the host process probably does not reference the corresponding provider project (the assembly name is the one embedded in the type name above). Add the project reference, or use the generic GameDb.Init&lt;T&gt;(...) overload to specify the implementation type explicitly (also the AOT/trimming escape hatch).</value>
+  </data>
+  <data name="Database.Provider.ActivationFailed" xml:space="preserve">
+    <value>Failed to create an instance of the database provider type '{0}' (cause: {1}). Verify the implementation exposes a public parameterless constructor.</value>
+  </data>
+  <data name="Database.Provider.NotDatabaseService" xml:space="preserve">
+    <value>The database provider type '{0}' does not implement the IDatabaseService interface.</value>
+  </data>
+  <data name="Database.Provider.SqliteBoundaryWarning" xml:space="preserve">
+    <value>SQLite boundary warning: (1) complex conditional queries are client-evaluated and may full-scan; (2) the write path is single-connection serialized; (3) intended for single-process embedded storage; (4) availability monitoring always reports Healthy. Production-scale usage is at the operator's own risk.</value>
+  </data>
+  <data name="Database.Provider.SqliteBanner" xml:space="preserve">
+    <value>Database provider=Sqlite (embedded, single-process topology, startup boundary warning).</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfo" xml:space="preserve">
+    <value>SQLite data file: {0} (directory writable ✓ / file read-write ✓).</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfoMemory" xml:space="preserve">
+    <value>SQLite in-memory mode: no data file and nothing is persisted — all data is lost when the process exits.</value>
+  </data>
+  <data name="Database.Provider.SqliteDataSourceMissing" xml:space="preserve">
+    <value>The SQLite connection string is missing 'Data Source=' (examples: Data Source=:memory: or Data Source=/abs/path/game.db). Current connection string: {0}</value>
+  </data>
+  <data name="Database.Provider.SqlitePathNotAccessible" xml:space="preserve">
+    <value>The SQLite data file path is not accessible: {0} (failing stage: {1}).</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync batch not acknowledged. State name: {0}, batch index: {1}, batch count: {2}</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchFailed" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync batch failed. State name: {0}, batch index: {1}, batch count: {2}, error: {3}</value>
+  </data>
+  <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
+    <value>SqliteDbService is not open yet (call Open first).</value>
+  </data>
+  <data name="Database.Sqlite.TransactionGateWaitTimeout" xml:space="preserve">
+    <value>Timed out ({0} seconds) waiting for the SQLite connection gate. Most common cause: awaiting a method of the same SqliteDbService instance that bypasses the ambient transaction (e.g. OpenAsync/CloseAsync) inside an ExecuteInTransactionAsync action — the SemaphoreSlim gate is not reentrant and this deadlocks.</value>
+  </data>
+  <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
+    <value>SqliteDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+  <data name="Database.Sqlite.OperationRetryFailed" xml:space="preserve">
+    <value>SqliteDbService.{0} failed after all retries with unknown exception.</value>
+  </data>
+  <data name="Database.BatchSizeInvalid" xml:space="preserve">
+    <value>Batch size must be greater than zero.</value>
+  </data>
+  <data name="Database.ConditionalWrite.StateIdMismatch" xml:space="preserve">
+    <value>The state Id ({0}) does not match the target id ({1}).</value>
+  </data>
+  <data name="Database.ConditionalWrite.SequenceNameRequired" xml:space="preserve">
+    <value>The sequence name must not be null or whitespace.</value>
+  </data>
+  <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
+    <value>PostgreSqlDbContext: document type '{0}' declares dictionary property '{1}' ({2}). EF owned JSON columns cannot map dictionaries in a compatible shape; restructure it as a collection of owned entries or a scalar payload.</value>
+  </data>
+  <data name="Hotfix.MailCampaign.PublishedOrRevokedImmutable" xml:space="preserve">
+    <value>Campaign has already been published or revoked; core fields cannot be modified (B1). CampaignId={0}</value>
+  </data>
+  <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
+    <value>Login message type {0} is missing {1}.</value>
+  </data>
+  <data name="Capability.Hosting.OptionsInvalid" xml:space="preserve">
+    <value>Capability host options are invalid (scope triple or scheduler interval).</value>
+  </data>
+  <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
+    <value>Duplicate capability registration for id: {0}</value>
+  </data>
+  <data name="Capability.Hosting.DeploymentAssemblyLoadFailed" xml:space="preserve">
+    <value>Failed to load a deployment capability assembly matched by the naming convention: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.ModuleTypeScanFailed" xml:space="preserve">
+    <value>Failed to scan capability assembly types: {0} ({1} type load failures)</value>
+  </data>
+  <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
+    <value>Assembly filter references an unknown capability id: {0}</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action name must not be null or empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>Admin API prefix must not be empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>Inner response JSON must not be null or empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
+    <value>Capability {1} declares action {0} but it is not registered.</value>
+  </data>
+  <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
+    <value>No capability plane is enabled: both EnableRuntime and EnableAdminApi are false; enable at least one of them.</value>
+  </data>
+  <data name="Capability.Hosting.Composition.HostModulesRequired" xml:space="preserve">
+    <value>The family-less composition requires at least one host infrastructure module; declare one via AddHostModule.</value>
+  </data>
+  <data name="Capability.Hosting.Composition.AdminApiPlaneRequiresFamily" xml:space="preserve">
+    <value>The admin API plane factory must be used with a capability family; clear it for the family-less host composition.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
+    <value>Admin API listening options are invalid (port / prefix).</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning" xml:space="preserve">
+    <value>Admin API plane enabled: it currently has no authentication and listens on all network interfaces (port {0}); keep it on trusted networks only (restrict with a firewall / security group or disable it).</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
+    <value>Capability assembly started: {0} discovered, {1} enabled, {2} excluded.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Excluded" xml:space="preserve">
+    <value>Excluded {0}: {1}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleNoDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleWithDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyRequired" xml:space="preserve">
+    <value>required {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalListed" xml:space="preserve">
+    <value>optional {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalCounted" xml:space="preserve">
+    <value>optional: {0} assembled, {1} not assembled</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateAssembled" xml:space="preserve">
+    <value>{0}(assembled)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateNotAssembled" xml:space="preserve">
+    <value>{0}(not assembled)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalDependencyMissing" xml:space="preserve">
+    <value>{0} optional dependency {1} is not assembled ({2}): feature "{3}" is missing; the remaining features of {0} are unaffected.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Completed" xml:space="preserve">
+    <value>Capability assembly completed: {0} capabilities, {1} features skipped due to missing optional dependencies, none affecting capability operation.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Failed" xml:space="preserve">
+    <value>Capability assembly failed ({0} issue(s)):</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.RequiredDependencyMissing" xml:space="preserve">
+    <value>{0} requires capability {1} which is not assembled ({2}).</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyCycle" xml:space="preserve">
+    <value>Capability requirements form a cycle: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonExcludedByDisableList" xml:space="preserve">
+    <value>configuration disable list</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotInEnableList" xml:space="preserve">
+    <value>not included in the enable list</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotDiscovered" xml:space="preserve">
+    <value>not discovered in the deployment directory</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.HookNotDeclared" xml:space="preserve">
+    <value>Hook {0} is attached but no capability declares it (the owning capability is not assembled or does not declare the hook)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownCapability" xml:space="preserve">
+    <value>The Settings section references an unknown capability: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownField" xml:space="preserve">
+    <value>Options field does not exist or is not configurable: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsFieldTypeMismatch" xml:space="preserve">
+    <value>Options field type mismatch: {0} (expected {1}, actual {2})</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionsValidationFailed" xml:space="preserve">
+    <value>Capability {0} options validation failed: {1}</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
+    <value>match settlement reward granting (settlement results are still recorded)</value>
+  </data>
+  <data name="Capability.Online.UseGameDbStoresUndeclared" xml:space="preserve">
+    <value>Role {0} enables the Online capability family but never declares Online.UseGameDbStores: level-one stores will use the in-process in-memory implementations and data is lost on restart; declare true (persisted) or false (explicitly volatile) in configuration for production.</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>matchmaking domain (420 enqueue / cancel / status query)</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
+    <value>seasons and tournaments</value>
+  </data>
+  <data name="Capability.Online.Leaderboard.OptionalMatchAbsent" xml:space="preserve">
+    <value>leaderboard projection from match settlement</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">
+    <value>operations overview assets section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalSocialAbsent" xml:space="preserve">
+    <value>operations overview social section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchAbsent" xml:space="preserve">
+    <value>operations overview match section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>operations overview matchmaking section</value>
+  </data>
+  <data name="Capability.Hosting.ServiceRegistrationDuplicate" xml:space="preserve">
+    <value>Duplicate capability service registration: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceOverrideDuplicate" xml:space="preserve">
+    <value>Duplicate capability service override: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceNotRegistered" xml:space="preserve">
+    <value>Capability service not registered: {0}</value>
+  </data>
+  <data name="Capability.Hosting.OptionalServiceNotRegistered" xml:space="preserve">
+    <value>Capability {0} resolved optional service {1} but it is not registered while all of its declared optional dependencies are assembled (or none are declared): a present capability did not register the service</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionCycle" xml:space="preserve">
+    <value>Capability service lazy factories form a resolution cycle: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionForbidden" xml:space="preserve">
+    <value>Capability {0} resolved service {1} from an undeclared source ({2}); during Register / lazy factories only self, family infrastructure, host overrides, and directly declared required or present optional dependencies may be resolved</value>
+  </data>
+  <data name="Capability.Hosting.ServicesEnumerationForbidden" xml:space="preserve">
+    <value>GetServices may only be called during Activate: {0} / {1}</value>
+  </data>
+  <data name="Capability.Hosting.HostServiceMissing" xml:space="preserve">
+    <value>Capability {0} declares a host service that was not provided (host Override required): {1}</value>
+  </data>
+  <data name="Capability.Hosting.BridgeDuplicatePublish" xml:space="preserve">
+    <value>Duplicate capability bridge contract publish: {0} ({1} → {2})</value>
+  </data>
+  <data name="Capability.Hosting.BridgeUnavailable" xml:space="preserve">
+    <value>Capability bridge contract retracted or replaced: {0} (consumers map it to 8002)</value>
+  </data>
+  <data name="Capability.Hosting.EventPublishRejected" xml:space="preserve">
+    <value>Event publish rejected before Activate: {0}</value>
+  </data>
+  <data name="Capability.Hosting.EventBus.SubscriberFailed" xml:space="preserve">
+    <value>Capability event subscriber failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.RestartAfterStop" xml:space="preserve">
+    <value>The scheduler cannot be restarted after it has stopped.</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.TickJobFailed" xml:space="preserve">
+    <value>Capability scheduler tick job failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
+    <value>Capability scheduler interval job failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.LoopRoundFaulted" xml:space="preserve">
+    <value>Capability scheduler loop round faulted (loop continues): {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
+    <value>Capability {0} activation failed; {1} activated capabilities were rolled back in reverse order</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.StartFailed" xml:space="preserve">
+    <value>Capability scheduler failed to start; {0} activated capabilities were rolled back in reverse order</value>
+  </data>
+  <data name="Capability.Hosting.DeactivationFailed" xml:space="preserve">
+    <value>Capability {0} deactivation failed (other capabilities continue stopping): {1}</value>
+  </data>
+  <data name="Capability.Hosting.OptionsTypeMismatch" xml:space="preserve">
+    <value>The options root type declared by capability {0} does not match the requested type: {1} ≠ {2}</value>
+  </data>
+  <data name="Capability.Hosting.ConfigureTargetMissing" xml:space="preserve">
+    <value>Code Configure references an options type not declared by any discovered capability: {0}</value>
+  </data>
+  <data name="Capability.Hosting.HookDuplicateDeclaration" xml:space="preserve">
+    <value>Duplicate capability hook declaration: {0} ({1} → {2})</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameDuplicate" xml:space="preserve">
+    <value>Duplicate admin action registration: {0} (capability or source: {1})</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotDeclared" xml:space="preserve">
+    <value>Capability {1} registers action {0} but does not declare it in its manifest.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionOwnerMismatch" xml:space="preserve">
+    <value>Capability {1} declares action {0} but it is registered by capability {2}.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.AdapterMissing" xml:space="preserve">
+    <value>The admin plane is missing a required adapter service: {0} (family infrastructure must register it)</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ReconcileFailed" xml:space="preserve">
+    <value>Admin action reconciliation failed ({0} issue(s)):</value>
+  </data>
+  <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
+    <value>Scope is missing the player identity slot (PlayerId &lt;= 0); cannot derive player context.</value>
+  </data>
+  <data name="Online.Tournament.NotFoundOnSave" xml:space="preserve">
+    <value>Tournament does not exist; it must be created via CreateAsync before saving.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnWrite" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before writing.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnQuery" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before querying.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnReset" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before resetting.</value>
+  </data>
+  <data name="Online.GameEvents.EventIdRequired" xml:space="preserve">
+    <value>Event identifier must not be empty (EventId is the storage idempotency key).</value>
+  </data>
+  <data name="Online.GameEvents.EventNameRequired" xml:space="preserve">
+    <value>Event name must not be empty.</value>
+  </data>
+  <data name="Online.GameEvents.EventVersionInvalid" xml:space="preserve">
+    <value>Event version must start from 1.</value>
+  </data>
+  <data name="Online.Season.NotFoundOnSave" xml:space="preserve">
+    <value>Season does not exist; it must be created via CreateAsync before saving.</value>
+  </data>
+  <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
+    <value>Reconciliation must be bound to a player identity slot.</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountOverflow" xml:space="preserve">
+    <value>Ledger entry amount overflow: AmountBefore ({0}) + Delta ({1}) exceeds the long range.</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountInconsistent" xml:space="preserve">
+    <value>Ledger entry inconsistent: AmountBefore ({0}) + Delta ({1}) != AmountAfter ({2}).</value>
+  </data>
+  <data name="Online.Session.SessionTerminal" xml:space="preserve">
+    <value>The session has already reached a terminal state.</value>
+  </data>
+  <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
+    <value>PlayerId must be a positive value (wire form: string).</value>
+  </data>
+  <data name="Online.AdminApi.NonEmptyStringRequired" xml:space="preserve">
+    <value>{0} must be a non-empty string.</value>
+  </data>
+  <data name="Online.AdminApi.ServiceNoResult" xml:space="preserve">
+    <value>Service returned no result.</value>
+  </data>
+  <data name="Online.AdminApi.PositiveNumberRequired" xml:space="preserve">
+    <value>{0} must be a positive number.</value>
+  </data>
+  <data name="Online.AdminApi.ConfigKindInvalid" xml:space="preserve">
+    <value>ConfigKind must be a number in [1,4] (RemoteConfig/Announcement/DeviceGroup/ScheduledTask).</value>
+  </data>
+  <data name="Online.AdminApi.RolloutPercentInvalid" xml:space="preserve">
+    <value>Percent must be a rollout percentage in [0,100].</value>
+  </data>
+  <data name="Online.AdminApi.AbnormalKindInvalid" xml:space="preserve">
+    <value>AbnormalKind must be a number in [1,3] (LongWaiting/RepeatedCancel/Orphan).</value>
+  </data>
+  <data name="Online.AdminApi.MatchTicketNotFound" xml:space="preserve">
+    <value>Match ticket not found: {0}</value>
+  </data>
+  <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
+    <value>Ending an abnormal match is not available on the admin plane; the game process owns match lifecycle.</value>
+  </data>
+  <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
+    <value>Direction must be 'Apply' or 'Lift'.</value>
+  </data>
+  <data name="Online.AdminApi.StatusInvalid" xml:space="preserve">
+    <value>Status must be a number in [1,4] (Pending/Handling/Resolved/Rejected).</value>
+  </data>
+  <data name="Online.AdminApi.TransactionNotFound" xml:space="preserve">
+    <value>Transaction not found: {0}</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemsEmpty" xml:space="preserve">
+    <value>GrantItems must contain at least one entry.</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
+    <value>GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).</value>
+  </data>
+  <data name="Online.AdminApi.CompensationQueueNotConfigured" xml:space="preserve">
+    <value>The compensation queue is not configured (the host has not registered a cross-server grant compensation queue).</value>
+  </data>
+  <data name="Online.AdminApi.CompensationEntryNotFound" xml:space="preserve">
+    <value>Compensation entry not found or not in manual review: {0}</value>
+  </data>
+  <data name="Online.AdminApi.CompensationResolveActionInvalid" xml:space="preserve">
+    <value>Compensation resolve Action only supports Retry or Discard: {0}</value>
+  </data>
+
+
+  <data name="StartUp.Application.StartupInstanceRequired" xml:space="preserve">
+    <value>At least one application startup instance is required.</value>
+  </data>
+
+  <data name="Apps.Attribute.UnknownFinalAttribute" xml:space="preserve">
+    <value>A known final attribute must be provided.</value>
+  </data>
+
+  <data name="Client.Bot.PostFailed" xml:space="preserve">
+    <value>Failed to post data. Status code: {0}</value>
+  </data>
+
+  <data name="Config.Table.NotLoaded" xml:space="preserve">
+    <value>Table is not loaded!</value>
+  </data>
+
+  <data name="CoreConfig.ByteBuf.ExceedMaxSegmentSize" xml:space="preserve">
+    <value>exceed max segment size</value>
+  </data>
+
+  <data name="CoreExceptions.Timer.InvalidDayOfMonth" xml:space="preserve">
+    <value>Timer parameter error TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}</value>
+  </data>
+
+  <data name="Database.Registry.AlreadyRegistered" xml:space="preserve">
+    <value>A database named '{0}' is already registered. Registered names: [{1}]</value>
+  </data>
+
+
+  <data name="Exceptions.Hotfix.ComponentAgentMapNotFound" xml:space="preserve">
+    <value>Component agent mapping entry not found: {0} ===&gt; {1}</value>
+  </data>
+
+  <data name="Hotfix.MailCampaign.InvalidParameter" xml:space="preserve">
+    <value>Invalid campaign parameter, code={0}</value>
+  </data>
+
+  <data name="Network.SessionTypeCastInvalid" xml:space="preserve">
+    <value>Session type '{0}' can not be cast to '{1}'.</value>
+  </data>
+
+  <data name="Online.HotfixRollback.TargetVersionNotRegistered" xml:space="preserve">
+    <value>Target version is not registered; refusing to switch active version: {0}</value>
+  </data>
+
+
+  <data name="StartUp.Application.ConflictRequired" xml:space="preserve">
+    <value>At least one conflict is required.</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginFailed" xml:space="preserve">
+    <value>Bot-{0} account login failed, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginSuccess" xml:space="preserve">
+    <value>Bot-{0} account verified successfully, id: {1}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectFailed" xml:space="preserve">
+    <value>Disconnect failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectSimulated" xml:space="preserve">
+    <value>Bot-{0} disconnecting actively to simulate offline.</value>
+  </data>
+
+  <data name="Client.Bot.EntryAsyncError" xml:space="preserve">
+    <value>EntryAsync Error: {0}| Thread ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.FriendAddFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - add friend failed, Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendAddSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - friend added successfully, fetching friend list.</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - delete friend failed, Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - friend deleted successfully, fetching friend list again.</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - fetch list failed, ErrorCode:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFirstSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - first list fetched, count: {1}, starting friend deletion.</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
+    <value>Bot-{0} friend scenario completed, second list count: {1}.</value>
+  </data>
+  <data name="Client.Bot.RpsScenarioInvalidOptions" xml:space="preserve">
+    <value>Bot-{0} RPS scenario failed to start, invalid playerId: {1}, gestures count: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsRoomCreated" xml:space="preserve">
+    <value>Bot-{0} RPS scenario room created, roomId: {1}, waiting for opponent to join.</value>
+  </data>
+  <data name="Client.Bot.RpsCreateRoomFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario create room failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsJoinerWaiting" xml:space="preserve">
+    <value>Bot-{0} RPS scenario starts polling joinable rock-paper-scissors rooms.</value>
+  </data>
+  <data name="Client.Bot.RpsJoinedRoom" xml:space="preserve">
+    <value>Bot-{0} RPS scenario joined room: {1}, waiting for game start.</value>
+  </data>
+  <data name="Client.Bot.RpsJoinRoomFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario join room failed, roomId: {1}, errorCode: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsStartGameFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario start game failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameStarted" xml:space="preserve">
+    <value>Bot-{0} RPS scenario game started, roomId: {1}.</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitGesture" xml:space="preserve">
+    <value>Bot-{0} RPS scenario round {1} gesture: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario submit gesture failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinished" xml:space="preserve">
+    <value>Bot-{0} RPS scenario game finished, rounds: {1}, winnerPlayerId: {2}, players: {3}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinishedByRoomStatus" xml:space="preserve">
+    <value>Bot-{0} RPS scenario finished by room status: {1}, rounds: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsPollNoProgress" xml:space="preserve">
+    <value>Bot-{0} RPS scenario aborted after {1} polls without progress.</value>
+  </data>
+  <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
+    <value>Bot-{0} RPS scenario poll loop error: {1}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinerWaiting" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario started polling for joinable ConnectFour rooms.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinedRoom" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario joined room {1}, waiting for the game to start.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinRoomFailed" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario failed to join room {1}, error code: {2}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourGameStarted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario game started, room {1}.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourMoveSubmitted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario round {1} dropped in column {2} (move #{3})</value>
+  </data>
+  <data name="Client.Bot.ConnectFourRoundFinished" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario round {1} finished, winner {2}, draw {3}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourScenarioCompleted" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario completed ({1} rounds).</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollNoProgress" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario aborted after {1} consecutive polls without progress.</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollLoopError" xml:space="preserve">
+    <value>Bot-{0} ConnectFour scenario poll loop error: {1}</value>
+  </data>
+  <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
+    <value>Bot-{0} match scenario started (1v1, rating 1000)</value>
+  </data>
+  <data name="Client.Bot.MatchEnqueue" xml:space="preserve">
+    <value>Bot-{0} enqueue response MatchId={1} ErrorCode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchPush" xml:space="preserve">
+    <value>Bot-{0} received match-made push MatchId={1} Mode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchStatus" xml:space="preserve">
+    <value>Bot-{0} status poll Queuing={1} MatchId={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchEnter" xml:space="preserve">
+    <value>Bot-{0} enter response MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchPollError" xml:space="preserve">
+    <value>Bot-{0} match scenario - status poll error: {1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
+    <value>Bot-{0} friend scenario failed to start, invalid player ID: {1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioNoTarget" xml:space="preserve">
+    <value>Bot-{0} friend scenario failed to start, no available friend target found.</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioStarted" xml:space="preserve">
+    <value>Bot-{0} starting friend scenario, target player: {1}</value>
+  </data>
+
+  <data name="Client.Bot.Http.ResponseTypeInvalid" xml:space="preserve">
+    <value>Response message type is invalid. Expected '{0}', actual '{1}'.</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectProbeFailed" xml:space="preserve">
+    <value>KCP connect probe failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectingTimeoutAbandonSession" xml:space="preserve">
+    <value>IsInConnecting timeout ({0}ms), abandoning session</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ReceiveError" xml:space="preserve">
+    <value>KCP receive error: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.SendToServerFailed" xml:space="preserve">
+    <value>SendToServer failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Metrics" xml:space="preserve">
+    <value>[METRICS] connect={0} auth={1} list={2} create={3} login={4} total={5}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreateFailed" xml:space="preserve">
+    <value>Bot-{0} failed to create character, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreated" xml:space="preserve">
+    <value>Created character Id:{0}-Name:{1}-Level:{2}-State:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListEmpty" xml:space="preserve">
+    <value>Bot-{0} player list is empty, starting character creation.</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListFailed" xml:space="preserve">
+    <value>Bot-{0} failed to request player list, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListItem" xml:space="preserve">
+    <value>Player list Id:{0}-Name:{1}-Level:{2}-State:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerLoginSuccess" xml:space="preserve">
+    <value>Bot-{0} logged in successfully, id: {1}</value>
+  </data>
+
+  <data name="Client.Bot.SendAccountLoginError" xml:space="preserve">
+    <value>SendAccountLoginMessage Error: {0}| Thread ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.Tcp.ConnectingTimeoutRecreateSession" xml:space="preserve">
+    <value>IsInConnecting timeout ({0}ms), recreating session</value>
+  </data>
+
+  <data name="Client.Program.BotOptions" xml:space="preserve">
+    <value>Bot options: bot-count={0}, tcp={1}:{2}, scenario={3}, disconnect-loop={4}, disconnect-after-login-seconds={5}, run-seconds={6}</value>
+  </data>
+
+  <data name="Config.Table.ConfigNotFound" xml:space="preserve">
+    <value>Config table {0} is not registered or not loaded</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
+    <value>Load Config End...</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigStart" xml:space="preserve">
+    <value>Load Config Start...</value>
+  </data>
+
+  <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
+    <value>Actor active component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.InactiveComponentFailed" xml:space="preserve">
+    <value>Actor inactive component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
+    <value>work unit execution timed out trace:{0}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Quarantined" xml:space="preserve">
+    <value>Actor quarantined (orphan task exceeded hard cap, tracking abandoned) actorId:{0} reason:{1}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.QuarantinedTellDropped" xml:space="preserve">
+    <value>Actor quarantined, Tell work unit dropped actorId:{0}</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync, CrossDay actor, actorId: {0}, actorType: {1}, message: Global Actor:{2} cross day execution</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
+    <value>ActorManager.ActorForEach, error, actorId: {0}, actorType: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.RemoveSaveStateFailed" xml:space="preserve">
+    <value>ActorManager.RemoveAsync, save state before removal failed, actorId: {0}, actorType: {1}, exception:\n{2}</value>
+  </data>
+
+  <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
+    <value>ActorManager.CheckIdleAsync, Actor recycled, actorId: {0}, actorType: {1}, message: actor recycled id:{2} type:{3}</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync, GlobalCompCrossDayComplete, cost: {0}ms, message: Global comp cross day completed duration: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync, GlobalCompCrossDayTimeout, timeout: {0} seconds, message: Global comp cross day takes too long, will not block other comp cross day, current elapsed {1} seconds</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync, NonPlayerCompCrossDayComplete, cost: {0}ms, message: Non-player comp cross day completed duration: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync, NonPlayerCompCrossDayTimeout, timeout: {0} seconds, message: Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {1} seconds</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateErrorLog" xml:space="preserve">
+    <value>ActorManager.SaveAllAsync, Save all actor state, message: save all state error\n{0}, error: {1}</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateTimeLog" xml:space="preserve">
+    <value>ActorManager.SaveAllAsync, Save all actor state time: {0} ms, message: save all state, use: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>ActorManager.TimerSaveAsync, Timer save all actor state error, message: timer save state error, error: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , ComponentType: {1} , Exception: {2}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GetNotBelongComponent" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , Message: get an actor that doesn't belong to this actor: [{1}] components</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalActorActivated" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents ActorType: {0} , Message: activate the global actor: {1}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents ActorType: {0} , Message: {1} Agent not implemented, please check if business code is correct</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckComplete" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Message: Activate the global component and check if the components all contain the Agent implementation completion</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Message: Activate the global component and detect if the components all contain the agent implementation failed , Exception: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , ComponentType: {1} Agent not implemented, activation skipped</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentsFailedSummary" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , Failed component activation count: {1} , Component list: [{2}]</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchError" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} {2}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} type: {1} no listeners found for event type: {2}</value>
+  </data>
+
+
+
+  <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} event type: {1} listener {2} owner actor is not in memory, skipped</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.GetComponentAgentAsync, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentFailed" xml:space="preserve">
+    <value>BaseComponentHandler.InitAsync, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.InnerActionAsync, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionException" xml:space="preserve">
+    <value>BaseMessageHandler.InnerActionAsync, Execution exception, message type: {0}, exception: {1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionTimeout" xml:space="preserve">
+    <value>BaseMessageHandler.InnerActionAsync, Execution timeout, message type: {0}, timeout: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeDebug" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeWarning" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeout" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync RequestMessage: {0} Message: Execution timeout:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.GetComponentAgentAsync, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentFailed" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InitAsync, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+  </data>
+
+      <data name="Core.MessageHandler.RpcComponentExecutionTimeout" xml:space="preserve">
+      <value>BaseRpcComponentHandler component rpc execution timeout, request type:{0} timeout:{1}ms</value>
+      </data>
+  <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InnerActionAsync, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionException" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: {2}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateErrorLog" xml:space="preserve">
+    <value>StateComponent.SaveAllAsync save all state error\n{0}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateTimeLog" xml:space="preserve">
+    <value>StateComponent.SaveAllAsync save all state, use: {0}ms</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveDataFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveDataFailed StateName: {0} , Message: Save data failed, type:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveStateFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveStateAsync Failed StateId: {0} , Error: {1} , Message: StateComp.SaveState.Failed.StateId:{2},{3}</value>
+  </data>
+
+  <data name="Core.StateComponent.StateSaveBackDetail" xml:space="preserve">
+    <value>StateComponent.StateSaveBack StateName: {0} , Count: {1}</value>
+  </data>
+
+  <data name="Core.StateComponent.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>StateComponent.TimerSaveAsync timer save state error, exception: {0}</value>
+  </data>
+
+  <data name="Core.Timer.LogError" xml:space="preserve">
+    <value>{0}\n{1}</value>
+  </data>
+
+  <data name="Database.GameDb.ImplicitDefaultBindingWarningLog" xml:space="preserve">
+    <value>GameDb.ImplicitDefaultBinding Multiple databases are registered ({0}) but none is nominated as the facade default (DbOptions.IsDefault); the static facade currently targets the first registered database. Nominate the business database at Init via DbOptions.IsDefault = true (default), or call GameDb.SetDefault(businessDatabaseName) explicitly.</value>
+  </data>
+
+
+  <data name="Database.Mongo.BulkWritePartialAcknowledged" xml:space="preserve">
+    <value>MongoDbService.{0} unordered bulk write partially acknowledged. StateName: {1} , Expected: {2} , Acknowledged: {3} ; unacknowledged documents keep their dirty hash baselines</value>
+  </data>
+  <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>MongoDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
+  </data>
+
+  <data name="Database.Mongo.AbortTransactionAfterCommitFailed" xml:space="preserve">
+    <value>MongoDbService.CommitTransactionAsync abort after commit failure failed; the transaction will be rolled back by the server on timeout. error={0}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
+    <value>MongoDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionFatal" xml:space="preserve">
+    <value>MongoDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>MongoDbService.Open {0} {1} MongoDB service initialized successfully, ConnectionString: {2}, DatabaseName: {3}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenRetryWarning" xml:space="preserve">
+    <value>MongoDbService.Open Retry {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.Mongo.OperationTransientError" xml:space="preserve">
+    <value>MongoDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+
+  <data name="Database.Mongo.ReadFallback" xml:space="preserve">
+    <value>MongoDbService.ReadFallback {0} state={1}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchFailed" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync batch failed. StateName: {0} , BatchIndex: {1} , BatchCount: {2} , Error: {3}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync batch not acknowledged. StateName: {0} , BatchIndex: {1} , BatchCount: {2}</value>
+  </data>
+
+  <data name="Database.Mongo.StateTransition" xml:space="preserve">
+    <value>MongoDbService.StateTransition {0} -&gt; {1}. reason={2}</value>
+  </data>
+
+  <data name="Database.Mongo.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>MongoDbService.TryReconnectAndPingAsync failed. error={0}</value>
+  </data>
+
+
+  <data name="Database.PostgreSql.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionError" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionFatal" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlDbService.Open {0} {1} PostgreSQL service initialized successfully. Connection target: {2}, registered name: {3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenRetryWarning" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Retry {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OperationTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.ReadFallback" xml:space="preserve">
+    <value>PostgreSqlDbService.ReadFallback {0} state={1}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync batch failed. StateName: {0} , BatchIndex: {1} , BatchCount: {2} , Error: {3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync batch not acknowledged. StateName: {0} , BatchIndex: {1} , BatchCount: {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.StateTransition" xml:space="preserve">
+    <value>PostgreSqlDbService.StateTransition {0} -&gt; {1}. reason={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.TryReconnectAndPingAsync failed. error={0}</value>
+  </data>
+
+
+
+
+
+
+  <data name="Hotfix.Bag.OfflineNotifySendFailed" xml:space="preserve">
+    <value>ReqPlayerSendItemHttpHandler offline notification send failed, playerId: {0}, status: {1}, error: {2}, traceId: {3}</value>
+  </data>
+
+
+
+
+
+
+  <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
+    <value>The match bridge is unavailable (not published or retracted), ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeFailed" xml:space="preserve">
+    <value>The match bridge returned a failure, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeException" xml:space="preserve">
+    <value>The match bridge call threw an exception, ActorId: {0}</value>
+  </data>
+
+
+  <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
+    <value>agent is null</value>
+  </data>
+
+  <data name="Hotfix.Server.CrossDayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.CrossDayTimeHandler.Cross-day timer executed {0}</value>
+  </data>
+
+  <data name="Hotfix.Server.TestDelayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestDelayTimer.Delay 3 seconds. Execute once</value>
+  </data>
+
+  <data name="Hotfix.Server.TestScheduleTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestSchedueTimer.Delay 1 second. Execute every 10 seconds</value>
+  </data>
+
+  <data name="Hotfix.StartUp.ClientDisconnected" xml:space="preserve">
+    <value>Client disconnected. SessionID: {0}, Reason: {1}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerNotFound" xml:space="preserve">
+    <value>Data Package Receive: Can not find handler for message id: {0}, message type: {1}</value>
+  </data>
+
+  <data name="Hotfix.Unified.DeliveryFailed" xml:space="preserve">
+    <value>SendToPlayerInnerHandler delivery failed, PlayerId:{0}</value>
+  </data>
+
+  <data name="Network.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+    <value>Failed to close authentication-timeout session: SessionId: {0}, exception: {1}</value>
+  </data>
+
+  <data name="Network.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>Error happened when closing authentication timeout sessions: {0}</value>
+  </data>
+
+  <data name="Network.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+    <value>Failed to close unauthenticated session: SessionId: {0}, exception: {1}</value>
+  </data>
+
+  <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
+    <value>Create NetworkMessagePackage Error {0} {1} {2}</value>
+  </data>
+
+  <data name="Network.FormatMessageError" xml:space="preserve">
+    <value>FormatMessage Error {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
+    <value>{0}, execution time: {1}ms</value>
+  </data>
+
+  <data name="Network.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+    <value>Message encoding exception: {0}</value>
+  </data>
+
+  <data name="Network.MessageObjectEncodeException" xml:space="preserve">
+    <value>MessageObjectEncodeException {0} {1} {2}</value>
+  </data>
+
+  <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>Error happened when scanning authentication timeout sessions: {0}</value>
+  </data>
+
+  <data name="Network.SendHeartBeatMessage" xml:space="preserve">
+    <value>Send HeartBeat Message:{0} {1}</value>
+  </data>
+
+  <data name="Network.SendMessage" xml:space="preserve">
+    <value>Send Message:{0} {1} {2}</value>
+  </data>
+
+  <data name="Network.SendMessageError" xml:space="preserve">
+    <value>Send Message Error:{0} {1}</value>
+  </data>
+
+  <data name="Network.SendMessageTimeout" xml:space="preserve">
+    <value>Send Message Timeout:{0} {1}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationRejected" xml:space="preserve">
+    <value>Session authentication rejected and closing: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialRejected" xml:space="preserve">
+    <value>Session credential validation failed, closing session: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialError" xml:space="preserve">
+    <value>Session credential validator threw an exception: SessionId: {0}, MessageId: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
+    <value>Session authentication timeout, closing: SessionId: {0}, RemoteEndPoint: {1}</value>
+  </data>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <data name="StartUp.Application.AbnormalServerStop" xml:space="preserve">
+    <value>abnormal server stop:{0}</value>
+  </data>
+
+  <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
+    <value>Duplicate startup priorities detected; multi-role launch order is unstable between these roles — {0}</value>
+  </data>
+
+  <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">
+    <value>No registered startup type found for server type '{0}' (multi-role selection); skipped it.</value>
+  </data>
+
+  <data name="StartUp.Application.RequestedServerTypeNotRegistered" xml:space="preserve">
+    <value>The requested server type '{0}' matches no registered startup type; refusing to start (exit code 1).</value>
+  </data>
+
+  <data name="StartUp.Application.ServerTypeCommaNotAllowed" xml:space="preserve">
+    <value>Server type '{0}' contains a comma and was not registered; role names are identifiers and must not contain commas (the --ServerType list separator).</value>
+  </data>
+
+
+  <data name="StartUp.Application.StopServerError" xml:space="preserve">
+    <value>error while stopping server role '{0}':{1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.HttpRequestError" xml:space="preserve">
+    <value>HTTP request error: {0}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedDetails" xml:space="preserve">
+    <value>HTTP port [{0}] occupation details: {1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedNoProcessDetails" xml:space="preserve">
+    <value>HTTP port [{0}] is occupied, but the details of the occupying process could not be obtained.</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
+    <value>Message handler error: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerNotFound" xml:space="preserve">
+    <value>Message received: handler not found, message id: {0}, message type: {1}</value>
+  </data>
+
+  <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">
+    <value>{0} port [{1}] occupation details: {2}</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompression failed. Error: {0}.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress input data is truncated; decompression cannot complete.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompressed output exceeds the maximum allowed length: {0}.</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting ActorRecycleTime is less than 1 minute, and the default value is 5 minutes</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting HttpUrl is empty and uses the default value of : /game/api/</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting SaveDataInterval is less than 5000 milliseconds, using default value: {0} milliseconds</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
+    <value>IllegalWordDetection.Init Exception details: {0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init is already in progress; the new init request is rejected</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection bad-word table corrupted: invalid field length {0} at offset {1}, data length {2}</value>
+  </data>
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost retire cleanup failed: {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber division by zero</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
+    <value>LNumber.DivisionOverflow LNumber division overflow &gt; {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
+    <value>LNumber.MultiplicationOverflow LNumber multiplication overflow &gt; {0}</value>
+  </data>
+    
+    
+    
+    
+    
+    
+    
+    
+      <data name="Hotfix.Friend.DomainBridgeUnavailable" xml:space="preserve">
+    <value>The friend-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeFailed" xml:space="preserve">
+    <value>The friend-domain bridge returned a failure, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
+    <value>The friend-domain bridge call threw an exception, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeUnavailable" xml:space="preserve">
+    <value>The match-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeFailed" xml:space="preserve">
+    <value>The match-domain bridge returned a failure, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
+    <value>The match-domain bridge call threw an exception, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
+    <value>The session-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.IssueFailed" xml:space="preserve">
+    <value>Failed to issue the session recovery credential at login, Code: {0}, PlayerId: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeRequested" xml:space="preserve">
+    <value>Session resume requested, SessionId: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeSucceeded" xml:space="preserve">
+    <value>Session resumed, PlayerId: {0}, NewSessionId: {1}, MatchRecovered: {2}, MatchId: {3}, ServerSequence: {4}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeFailed" xml:space="preserve">
+    <value>Session resume failed, Code: {0}, Message: {1}, SessionId: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectCoordination" xml:space="preserve">
+    <value>Disconnect coordination, PlayerId: {0}, session-domain: {1}, match-domain: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
+    <value>Stale disconnect callback skipped online coordination (player already holds a newer session), PlayerId: {0}</value>
+  </data>
+  <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
+    <value>Bot-{0} entered the match; disconnect drill scheduled in {1} seconds (match recovery scenario)</value>
+  </data>
+  <data name="Client.Bot.SessionResumeRequested" xml:space="preserve">
+    <value>Bot-{0} sent the session-resume request with the login credential</value>
+  </data>
+  <data name="Client.Bot.SessionResumeResponse" xml:space="preserve">
+    <value>Bot-{0} session-resume response PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}</value>
+  </data>
+  <data name="Client.Bot.SessionResumeReplayRejected" xml:space="preserve">
+    <value>Bot-{0} replay of the rotated credential was rejected (ErrorCode={1}, as expected)</value>
+  </data>
+  <data name="Client.Bot.MatchResumeEnterResponse" xml:space="preserve">
+    <value>Bot-{0} post-resume re-enter response MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="StartUp.Certificates.PathMissing" xml:space="preserve">
+    <value>{0} is enabled but certificate path setting {1} is empty.</value>
+  </data>
+  <data name="StartUp.Certificates.FileNotFound" xml:space="preserve">
+    <value>{0} certificate file does not exist: {1}.</value>
+  </data>
+  <data name="StartUp.Certificates.KeyPathMissing" xml:space="preserve">
+    <value>{0} PEM certificate requires a separate private key path in {1}.</value>
+  </data>
+  <data name="StartUp.Certificates.KeyFileNotFound" xml:space="preserve">
+    <value>{0} PEM private key file does not exist: {1}.</value>
+  </data>
+  <data name="StartUp.Certificates.PrivateKeyMissing" xml:space="preserve">
+    <value>{0} certificate has no private key: {1}.</value>
+  </data>
+  <data name="StartUp.Certificates.LoadFailed" xml:space="preserve">
+    <value>{0} certificate failed to load (invalid certificate or key, incorrect password, or mismatched private key): {1}.</value>
+  </data>
+  <data name="StartUp.Certificates.TraditionalEncryptedKeyUnsupported" xml:space="preserve">
+    <value>{0} private key uses the legacy OpenSSL encrypted format (Proc-Type/DEK-Info headers), which is not supported; convert it to encrypted PKCS#8 with openssl pkcs8 -topk8 first: {1}.</value>
+  </data>
+  <data name="StartUp.WebSocketServer.SecureListenerConfigured" xml:space="preserve">
+    <value>WSS TLS listener configured on port {0}.</value>
+  </data>
 </root>

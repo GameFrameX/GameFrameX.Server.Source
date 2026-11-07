@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -86,14 +86,60 @@ public static partial class Keys
             public const string RecycleFailed = "Core.Actor.RecycleFailed";
 
             /// <summary>
-            /// actor回收 id:{0} type:{1}
+            /// Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.Actor.Recycled
-            /// 用途: Actor被回收时记录
-            /// 参数: {0} - Actor ID, {1} - Actor类型
+            /// 键名: Core.Actor.ActiveComponentFailed
+            /// 用途: Actor激活组件失败时记录
+            /// 参数: {0} - Actor ID, {1} - 组件类型, {2} - 异常信息
             /// </remarks>
-            public const string Recycled = "Core.Actor.Recycled";
+            public const string ActiveComponentFailed = "Core.Actor.ActiveComponentFailed";
+
+            /// <summary>
+            /// Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.InactiveComponentFailed
+            /// 用途: Actor反激活时单个组件抛异常（记录后继续反激活其余组件）
+            /// 参数: {0} - Actor ID, {1} - 组件类型, {2} - 异常信息
+            /// </remarks>
+            public const string InactiveComponentFailed = "Core.Actor.InactiveComponentFailed";
+
+            /// <summary>
+            /// WorkerActor工作单元相关消息
+            /// </summary>
+            public static class WorkerActor
+            {
+            /// <summary>
+            /// 工作单元执行超时 trace:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.Timeout
+            /// 用途: Actor工作单元执行超时（等待方以超时异常放行）时记录
+            /// 参数: {0} - 调用链追踪信息
+            /// </remarks>
+            public const string Timeout = "Core.Actor.WorkerActor.Timeout";
+
+            /// <summary>
+            /// Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.Quarantined
+            /// 用途: 孤儿任务超过硬上限、Actor被隔离时记录
+            /// 参数: {0} - Actor ID, {1} - 隔离原因
+            /// </remarks>
+            public const string Quarantined = "Core.Actor.WorkerActor.Quarantined";
+
+            /// <summary>
+            /// Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.QuarantinedTellDropped
+            /// 用途: 隔离后的Tell（fire-and-forget）工作单元被丢弃时记录
+            /// 参数: {0} - Actor ID
+            /// </remarks>
+            public const string QuarantinedTellDropped = "Core.Actor.WorkerActor.QuarantinedTellDropped";
+            }
         }
 
         /// <summary>
@@ -206,6 +252,16 @@ public static partial class Keys
             public const string ActorRecycleEnd = "Core.Timer.ActorRecycleEnd";
 
             /// <summary>
+            /// 全局定时器本轮执行异常，跳过本轮\n{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.LoopIterationError
+            /// 用途: 全局定时循环单轮执行异常时记录，异常被捕获后循环继续
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string LoopIterationError = "Core.Timer.LoopIterationError";
+
+            /// <summary>
             /// 停止全局定时开始...
             /// </summary>
             /// <remarks>
@@ -232,6 +288,26 @@ public static partial class Keys
             /// 参数: {0} - 处理器类型
             /// </remarks>
             public const string InvalidHandlerType = "Core.Timer.InvalidHandlerType";
+
+            /// <summary>
+            /// 定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.TargetActorNotFoundJobRemoved
+            /// 用途: 定时任务触发时目标Actor已回收，不重建Actor并删除该任务
+            /// 参数: {0} - 任务键, {1} - Actor ID, {2} - 处理器类型
+            /// </remarks>
+            public const string TargetActorNotFoundJobRemoved = "Core.Timer.TargetActorNotFoundJobRemoved";
+
+            /// <summary>
+            /// {0}\n{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.LogError
+            /// 用途: Quartz日志桥接输出错误日志时记录
+            /// 参数: {0} - 日志消息, {1} - 异常信息
+            /// </remarks>
+            public const string LogError = "Core.Timer.LogError";
         }
 
         /// <summary>
@@ -239,85 +315,116 @@ public static partial class Keys
         /// </summary>
         public static class ActorManager
         {
-            /// <summary>
-            /// save all state, use: {0}ms
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.ActorManager.SaveAllStateTime
-            /// 用途: 保存所有状态时记录耗时
-            /// 参数: {0} - 耗时(毫秒)
-            /// </remarks>
-            public const string SaveAllStateTime = "Core.ActorManager.SaveAllStateTime";
 
             /// <summary>
-            /// save all state error
-            /// {0}
+            /// ActorManager.CheckIdleAsync Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.SaveAllStateError
-            /// 用途: 保存所有状态出错时记录
+            /// 键名: Core.ActorManager.CheckIdleRecycled
+            /// 用途: 空闲检查回收Actor时记录
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - Actor ID, {3} - Actor类型
+            /// </remarks>
+            public const string CheckIdleRecycled = "Core.ActorManager.CheckIdleRecycled";
+
+            /// <summary>
+            /// ActorManager.SaveAllAsync 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.SaveAllStateTimeLog
+            /// 用途: 保存所有Actor状态记录耗时时记录
+            /// 参数: {0} - 耗时(毫秒), {1} - 耗时(毫秒)
+            /// </remarks>
+            public const string SaveAllStateTimeLog = "Core.ActorManager.SaveAllStateTimeLog";
+
+            /// <summary>
+            /// ActorManager.SaveAllAsync 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.SaveAllStateErrorLog
+            /// 用途: 保存所有Actor状态出错时记录
+            /// 参数: {0} - 异常信息, {1} - 异常信息
+            /// </remarks>
+            public const string SaveAllStateErrorLog = "Core.ActorManager.SaveAllStateErrorLog";
+
+            /// <summary>
+            /// ActorManager.TimerSaveAsync 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.TimerSaveStateErrorLog
+            /// 用途: 定时保存所有Actor状态出错时记录
             /// 参数: {0} - 异常信息
             /// </remarks>
-            public const string SaveAllStateError = "Core.ActorManager.SaveAllStateError";
+            public const string TimerSaveStateErrorLog = "Core.ActorManager.TimerSaveStateErrorLog";
 
             /// <summary>
-            /// timer save state error
+            /// ActorManager.CrossDayAsync Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.TimerSaveStateError
-            /// 用途: 定时器保存状态出错时记录
-            /// </remarks>
-            public const string TimerSaveStateError = "Core.ActorManager.TimerSaveStateError";
-
-            /// <summary>
-            /// 全局Actor：{0}执行跨天
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.ActorManager.GlobalActorCrossDay
+            /// 键名: Core.ActorManager.ActorCrossDayLog
             /// 用途: 全局Actor执行跨天时记录
-            /// 参数: {0} - Actor类型
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - Actor类型
             /// </remarks>
-            public const string GlobalActorCrossDay = "Core.ActorManager.GlobalActorCrossDay";
+            public const string ActorCrossDayLog = "Core.ActorManager.ActorCrossDayLog";
 
             /// <summary>
-            /// 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{0}秒
+            /// ActorManager.CrossDayAsync 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.GlobalCompCrossDayTimeout
+            /// 键名: Core.ActorManager.GlobalCompCrossDayTimeoutLog
             /// 用途: 全局组件跨天超时时记录
-            /// 参数: {0} - 超时秒数
+            /// 参数: {0} - 超时秒数, {1} - 超时秒数
             /// </remarks>
-            public const string GlobalCompCrossDayTimeout = "Core.ActorManager.GlobalCompCrossDayTimeout";
+            public const string GlobalCompCrossDayTimeoutLog = "Core.ActorManager.GlobalCompCrossDayTimeoutLog";
 
             /// <summary>
-            /// 全局comp跨天完成 耗时：{0}ms
+            /// ActorManager.CrossDayAsync 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.GlobalCompCrossDayComplete
+            /// 键名: Core.ActorManager.GlobalCompCrossDayCompleteLog
             /// 用途: 全局组件跨天完成时记录
-            /// 参数: {0} - 耗时(毫秒)
+            /// 参数: {0} - 耗时(毫秒), {1} - 耗时(毫秒)
             /// </remarks>
-            public const string GlobalCompCrossDayComplete = "Core.ActorManager.GlobalCompCrossDayComplete";
+            public const string GlobalCompCrossDayCompleteLog = "Core.ActorManager.GlobalCompCrossDayCompleteLog";
 
             /// <summary>
-            /// 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{0}秒
+            /// ActorManager.CrossDayAsync 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.NonPlayerCompCrossDayTimeout
+            /// 键名: Core.ActorManager.NonPlayerCompCrossDayTimeoutLog
             /// 用途: 非玩家组件跨天超时时记录
-            /// 参数: {0} - 超时秒数
+            /// 参数: {0} - 超时秒数, {1} - 超时秒数
             /// </remarks>
-            public const string NonPlayerCompCrossDayTimeout = "Core.ActorManager.NonPlayerCompCrossDayTimeout";
+            public const string NonPlayerCompCrossDayTimeoutLog = "Core.ActorManager.NonPlayerCompCrossDayTimeoutLog";
 
             /// <summary>
-            /// 非玩家comp跨天完成 耗时：{0}ms
+            /// ActorManager.CrossDayAsync 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ActorManager.NonPlayerCompCrossDayComplete
+            /// 键名: Core.ActorManager.NonPlayerCompCrossDayCompleteLog
             /// 用途: 非玩家组件跨天完成时记录
-            /// 参数: {0} - 耗时(毫秒)
+            /// 参数: {0} - 耗时(毫秒), {1} - 耗时(毫秒)
             /// </remarks>
-            public const string NonPlayerCompCrossDayComplete = "Core.ActorManager.NonPlayerCompCrossDayComplete";
+            public const string NonPlayerCompCrossDayCompleteLog = "Core.ActorManager.NonPlayerCompCrossDayCompleteLog";
+
+            /// <summary>
+            /// ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.ActorForEachError
+            /// 用途: 遍历Actor执行回调出错时记录
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
+            /// </remarks>
+            public const string ActorForEachError = "Core.ActorManager.ActorForEachError";
+
+            /// <summary>
+            /// 显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.RemoveSaveStateFailed
+            /// 用途: RemoveAsync/RemoveAllAsync 在反激活前强制回存失败时记录（移除继续执行）
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
+            /// </remarks>
+            public const string RemoveSaveStateFailed = "Core.ActorManager.RemoveSaveStateFailed";
         }
 
         /// <summary>
@@ -335,62 +442,83 @@ public static partial class Keys
             public const string InitializationComplete = "Core.ComponentRegister.InitializationComplete";
 
             /// <summary>
-            /// {0}未实现Agent,请检查业务代码是否正确
+            /// ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ComponentRegister.AgentNotImplemented
-            /// 用途: 组件未实现Agent时记录
-            /// 参数: {0} - 组件类型
-            /// </remarks>
-            public const string AgentNotImplemented = "Core.ComponentRegister.AgentNotImplemented";
-
-            /// <summary>
-            /// 激活全局组件：{0} {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.ComponentRegister.ActivateGlobalComponent
-            /// 用途: 激活全局组件时记录
+            /// 键名: Core.ComponentRegister.GlobalComponentAgentNotImplemented
+            /// 用途: 激活全局组件未实现Agent时记录
             /// 参数: {0} - Actor类型, {1} - 组件类型
             /// </remarks>
-            public const string ActivateGlobalComponent = "Core.ComponentRegister.ActivateGlobalComponent";
+            public const string GlobalComponentAgentNotImplemented = "Core.ComponentRegister.GlobalComponentAgentNotImplemented";
 
             /// <summary>
-            /// activate the global actor: {0}
+            /// ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ComponentRegister.ActivateGlobalActor
+            /// 键名: Core.ComponentRegister.GlobalActorActivated
             /// 用途: 激活全局Actor时记录
-            /// 参数: {0} - Actor类型
+            /// 参数: {0} - Actor类型, {1} - Actor类型
             /// </remarks>
-            public const string ActivateGlobalActor = "Core.ComponentRegister.ActivateGlobalActor";
+            public const string GlobalActorActivated = "Core.ComponentRegister.GlobalActorActivated";
 
             /// <summary>
-            /// Activate the global component and check if the components all contain the Agent implementation completion
+            /// ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检查所有组件是否都包含Agent实现完成
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ComponentRegister.ActivateGlobalComponentCheckComplete
+            /// 键名: Core.ComponentRegister.GlobalComponentCheckComplete
             /// 用途: 全局组件激活检查完成时记录
             /// </remarks>
-            public const string ActivateGlobalComponentCheckComplete = "Core.ComponentRegister.ActivateGlobalComponentCheckComplete";
+            public const string GlobalComponentCheckComplete = "Core.ComponentRegister.GlobalComponentCheckComplete";
 
             /// <summary>
-            /// Activate the global component and detect if the components all contain the agent implementation failed
+            /// ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检测所有组件是否包含Agent实现失败 , 异常: {0}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ComponentRegister.ActivateGlobalComponentCheckFailed
+            /// 键名: Core.ComponentRegister.GlobalComponentCheckFailed
             /// 用途: 全局组件激活检查失败时记录
+            /// 参数: {0} - 异常信息
             /// </remarks>
-            public const string ActivateGlobalComponentCheckFailed = "Core.ComponentRegister.ActivateGlobalComponentCheckFailed";
+            public const string GlobalComponentCheckFailed = "Core.ComponentRegister.GlobalComponentCheckFailed";
 
             /// <summary>
-            /// get an actor that doesn't belong to this actor: [{0}] components
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.ComponentRegister.ActorNotBelongToThis
-            /// 用途: 当尝试获取不属于当前Actor的组件时记录
-            /// 参数: {0} - Actor类型
+            /// 键名: Core.ComponentRegister.ActivateComponentFailed
+            /// 用途: 激活组件失败时记录
+            /// 参数: {0} - Actor类型, {1} - 组件类型, {2} - 异常信息
             /// </remarks>
-            public const string ActorNotBelongToThis = "Core.ComponentRegister.ActorNotBelongToThis";
+            public const string ActivateComponentFailed = "Core.ComponentRegister.ActivateComponentFailed";
+
+            /// <summary>
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ComponentRegister.GetNotBelongComponent
+            /// 用途: 尝试获取不属于当前Actor的组件时记录
+            /// 参数: {0} - Actor类型, {1} - Actor类型
+            /// </remarks>
+            public const string GetNotBelongComponent = "Core.ComponentRegister.GetNotBelongComponent";
+
+            /// <summary>
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} 未实现Agent，已跳过激活
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ComponentRegister.ComponentAgentNotImplemented
+            /// 用途: 激活组件时发现组件未实现Agent，跳过激活并告警
+            /// 参数: {0} - Actor类型, {1} - 组件类型
+            /// </remarks>
+            public const string ComponentAgentNotImplemented = "Core.ComponentRegister.ComponentAgentNotImplemented";
+
+            /// <summary>
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 激活失败组件数:{1} , 组件清单:[{2}]
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ComponentRegister.ActivateComponentsFailedSummary
+            /// 用途: 组件激活循环结束后汇总输出失败清单
+            /// 参数: {0} - Actor类型, {1} - 失败组件数, {2} - 失败组件全名清单
+            /// </remarks>
+            public const string ActivateComponentsFailedSummary = "Core.ComponentRegister.ActivateComponentsFailedSummary";
         }
 
         /// <summary>
@@ -398,45 +526,6 @@ public static partial class Keys
         /// </summary>
         public static class StateComponent
         {
-            /// <summary>
-            /// save all state, use: {0}ms
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.StateComponent.SaveAllStateTime
-            /// 用途: 状态组件保存所有状态时记录耗时
-            /// 参数: {0} - 耗时(毫秒)
-            /// </remarks>
-            public const string SaveAllStateTime = "Core.StateComponent.SaveAllStateTime";
-
-            /// <summary>
-            /// save all state error
-            /// {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.StateComponent.SaveAllStateError
-            /// 用途: 状态组件保存所有状态出错时记录
-            /// 参数: {0} - 异常信息
-            /// </remarks>
-            public const string SaveAllStateError = "Core.StateComponent.SaveAllStateError";
-
-            /// <summary>
-            /// timer save state error
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.StateComponent.TimerSaveStateError
-            /// 用途: 状态组件定时器保存状态出错时记录
-            /// </remarks>
-            public const string TimerSaveStateError = "Core.StateComponent.TimerSaveStateError";
-
-            /// <summary>
-            /// StateComp.SaveState.Failed.StateId:{0},{1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.StateComponent.SaveStateFailed
-            /// 用途: 状态组件保存状态失败时记录
-            /// 参数: {0} - 状态ID, {1} - 异常信息
-            /// </remarks>
-            public const string SaveStateFailed = "Core.StateComponent.SaveStateFailed";
 
             /// <summary>
             /// [StateComp] 状态回存 {0} count:{1}
@@ -449,24 +538,64 @@ public static partial class Keys
             public const string StateSaveBack = "Core.StateComponent.StateSaveBack";
 
             /// <summary>
-            /// 保存数据失败，类型:{0}
+            /// StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
             /// </summary>
             /// <remarks>
-            /// 键名: Core.StateComponent.SaveDataFailed
-            /// 用途: 保存数据失败时记录
-            /// 参数: {0} - 数据类型
+            /// 键名: Core.StateComponent.SaveAllStateTimeLog
+            /// 用途: 状态组件保存所有状态记录耗时时记录
+            /// 参数: {0} - 耗时(毫秒)
             /// </remarks>
-            public const string SaveDataFailed = "Core.StateComponent.SaveDataFailed";
+            public const string SaveAllStateTimeLog = "Core.StateComponent.SaveAllStateTimeLog";
 
             /// <summary>
-            /// 保存数据异常，类型:{0}，{1}
+            /// StateComponent.SaveAllAsync 保存所有状态错误\n{0}
             /// </summary>
             /// <remarks>
-            /// 键名: Core.StateComponent.SaveDataException
-            /// 用途: 保存数据异常时记录
-            /// 参数: {0} - 数据类型, {1} - 异常信息
+            /// 键名: Core.StateComponent.SaveAllStateErrorLog
+            /// 用途: 状态组件保存所有状态出错时记录
+            /// 参数: {0} - 异常信息
             /// </remarks>
-            public const string SaveDataException = "Core.StateComponent.SaveDataException";
+            public const string SaveAllStateErrorLog = "Core.StateComponent.SaveAllStateErrorLog";
+
+            /// <summary>
+            /// StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.StateComponent.TimerSaveStateErrorLog
+            /// 用途: 状态组件定时保存状态出错时记录
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string TimerSaveStateErrorLog = "Core.StateComponent.TimerSaveStateErrorLog";
+
+            /// <summary>
+            /// StateComponent.SaveStateAsync Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.StateComponent.SaveStateFailedLog
+            /// 用途: 状态组件保存状态失败时记录
+            /// 参数: {0} - 状态ID, {1} - 异常信息, {2} - 状态ID, {3} - 异常信息
+            /// </remarks>
+            public const string SaveStateFailedLog = "Core.StateComponent.SaveStateFailedLog";
+
+            /// <summary>
+            /// StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.StateComponent.StateSaveBackDetail
+            /// 用途: 状态回存时记录状态名称与数量
+            /// 参数: {0} - 状态名称, {1} - 数量
+            /// </remarks>
+            public const string StateSaveBackDetail = "Core.StateComponent.StateSaveBackDetail";
+
+            /// <summary>
+            /// StateComponent.SaveDataFailed 状态名称:{0} , 消息: 保存数据失败，类型:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.StateComponent.SaveDataFailedLog
+            /// 用途: 保存数据失败时记录
+            /// 参数: {0} - 状态名称, {1} - 数据类型
+            /// </remarks>
+            public const string SaveDataFailedLog = "Core.StateComponent.SaveDataFailedLog";
         }
 
         /// <summary>
@@ -474,15 +603,6 @@ public static partial class Keys
         /// </summary>
         public static class MessageHandler
         {
-            /// <summary>
-            /// 执行超时:{0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.MessageHandler.ExecutionTimeout
-            /// 用途: 消息处理器执行超时时记录
-            /// 参数: {0} - 超时消息
-            /// </remarks>
-            public const string ExecutionTimeout = "Core.MessageHandler.ExecutionTimeout";
 
             /// <summary>
             /// 消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms
@@ -515,15 +635,6 @@ public static partial class Keys
             public const string ActorIdIsZero = "Core.MessageHandler.ActorIdIsZero";
 
             /// <summary>
-            /// CacheComponent is null, can not get component, close channel
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.MessageHandler.CacheComponentIsNull
-            /// 用途: 当缓存组件为空时记录
-            /// </remarks>
-            public const string CacheComponentIsNull = "Core.MessageHandler.CacheComponentIsNull";
-
-            /// <summary>
             /// InnerAction error: {0} {1}
             /// </summary>
             /// <remarks>
@@ -532,12 +643,142 @@ public static partial class Keys
             /// 参数: {0} - 请求消息类型, {1} - 请求消息
             /// </remarks>
             public const string InnerActionError = "Core.MessageHandler.InnerActionError";
+
+            /// <summary>
+            /// BaseComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.GetComponentFailed
+            /// 用途: 组件处理器初始化获取组件失败时记录
+            /// 参数: {0} - Actor ID, {1} - 组件代理类型, {2} - 异常信息
+            /// </remarks>
+            public const string GetComponentFailed = "Core.MessageHandler.GetComponentFailed";
+
+            /// <summary>
+            /// BaseRpcComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcGetComponentFailed
+            /// 用途: RPC组件处理器初始化获取组件失败时记录
+            /// 参数: {0} - Actor ID, {1} - 组件代理类型, {2} - 异常信息
+            /// </remarks>
+            public const string RpcGetComponentFailed = "Core.MessageHandler.RpcGetComponentFailed";
+
+            /// <summary>
+            /// BaseRpcComponentHandler 组件RPC处理器执行超时，消息类型:{0} 超时:{1}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcComponentExecutionTimeout
+            /// 用途: 组件RPC处理器业务核心超时时记录并回写超时响应
+            /// 参数: {0} - 请求消息类型, {1} - 超时时间(毫秒)
+            /// </remarks>
+            public const string RpcComponentExecutionTimeout = "Core.MessageHandler.RpcComponentExecutionTimeout";
+
+            /// <summary>
+            /// BaseComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.InnerActionCacheComponentNull
+            /// 用途: 组件处理器内部执行缓存组件为空时记录
+            /// 参数: {0} - 消息类型
+            /// </remarks>
+            public const string InnerActionCacheComponentNull = "Core.MessageHandler.InnerActionCacheComponentNull";
+
+            /// <summary>
+            /// BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.GetComponentAgentCacheComponentNull
+            /// 用途: 组件处理器获取组件代理缓存组件为空时记录
+            /// 参数: {0} - 消息类型
+            /// </remarks>
+            public const string GetComponentAgentCacheComponentNull = "Core.MessageHandler.GetComponentAgentCacheComponentNull";
+
+            /// <summary>
+            /// BaseRpcComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcInnerActionCacheComponentNull
+            /// 用途: RPC组件处理器内部执行缓存组件为空时记录
+            /// 参数: {0} - 消息类型
+            /// </remarks>
+            public const string RpcInnerActionCacheComponentNull = "Core.MessageHandler.RpcInnerActionCacheComponentNull";
+
+            /// <summary>
+            /// BaseRpcComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull
+            /// 用途: RPC组件处理器获取组件代理缓存组件为空时记录
+            /// 参数: {0} - 消息类型
+            /// </remarks>
+            public const string RpcGetComponentAgentCacheComponentNull = "Core.MessageHandler.RpcGetComponentAgentCacheComponentNull";
+
+            /// <summary>
+            /// BaseMessageHandler.InnerActionAsync 执行超时，消息类型:{0}，超时:{1}，异常:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.InnerActionTimeout
+            /// 用途: 消息处理器内部执行超时时记录
+            /// 参数: {0} - 消息类型, {1} - 超时时间(毫秒), {2} - 异常信息
+            /// </remarks>
+            public const string InnerActionTimeout = "Core.MessageHandler.InnerActionTimeout";
+
+            /// <summary>
+            /// BaseMessageHandler.InnerActionAsync 执行异常，消息类型:{0}，异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.InnerActionException
+            /// 用途: 消息处理器内部执行异常时记录
+            /// 参数: {0} - 消息类型, {1} - 异常信息
+            /// </remarks>
+            public const string InnerActionException = "Core.MessageHandler.InnerActionException";
+
+            /// <summary>
+            /// BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcExecutionTimeout
+            /// 用途: RPC消息处理器内部执行超时时记录
+            /// 参数: {0} - 请求消息, {1} - 超时异常消息
+            /// </remarks>
+            public const string RpcExecutionTimeout = "Core.MessageHandler.RpcExecutionTimeout";
+
+            /// <summary>
+            /// BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 异常:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcInnerActionException
+            /// 用途: RPC消息处理器内部执行异常时记录
+            /// 参数: {0} - 处理器名称, {1} - 请求消息, {2} - 异常信息
+            /// </remarks>
+            public const string RpcInnerActionException = "Core.MessageHandler.RpcInnerActionException";
+
+            /// <summary>
+            /// BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcExecutionTimeWarning
+            /// 用途: RPC消息处理器执行耗时过长时记录
+            /// 参数: {0} - 处理器全名, {1} - 请求消息, {2} - 处理器名称, {3} - 消息唯一ID, {4} - 耗时(毫秒)
+            /// </remarks>
+            public const string RpcExecutionTimeWarning = "Core.MessageHandler.RpcExecutionTimeWarning";
+
+            /// <summary>
+            /// BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcExecutionTimeDebug
+            /// 用途: 调试模式下记录RPC消息处理器执行耗时
+            /// 参数: {0} - 处理器全名, {1} - 请求消息, {2} - 处理器名称, {3} - 消息唯一ID, {4} - 耗时(毫秒)
+            /// </remarks>
+            public const string RpcExecutionTimeDebug = "Core.MessageHandler.RpcExecutionTimeDebug";
         }
 
         /// <summary>
         /// 热更新相关消息
         /// </summary>
-        public static class Hotfix
+        public static class HotfixModule
         {
             /// <summary>
             /// the hot change dll initialization succeeds: {0}
@@ -570,6 +811,50 @@ public static partial class Keys
             /// </remarks>
             public const string DllUninstall = "Core.Hotfix.DllUninstall";
         }
+
+        /// <summary>
+        /// 事件分发器相关消息
+        /// </summary>
+        public static class EventDispatcher
+        {
+            /// <summary>
+            /// EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.EventDispatcher.DispatchNoListeners
+            /// 用途: 事件分发未找到监听者时记录
+            /// 参数: {0} - Actor ID, {1} - Actor 类型, {2} - 事件参数类型
+            /// </remarks>
+            public const string DispatchNoListeners = "Core.EventDispatcher.DispatchNoListeners";
+
+            /// <summary>
+            /// EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.EventDispatcher.DispatchError
+            /// 用途: 事件分发处理异常时记录
+            /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 异常信息
+            /// </remarks>
+            public const string DispatchError = "Core.EventDispatcher.DispatchError";
+
+            /// <summary>
+            /// EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.EventDispatcher.DispatchOwnerActorNotLoaded
+            /// 用途: 全局分发时监听器所属 Actor 不在内存中（玩家段类型或全局 Actor 未创建）跳过记录
+            /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 监听器类型全名
+            /// </remarks>
+            public const string DispatchOwnerActorNotLoaded = "Core.EventDispatcher.DispatchOwnerActorNotLoaded";
+        }
+
+        /// <summary>
+        /// 会话管理相关资源键
+        /// </summary>
+        public static class Session
+        {
+
+        }
     }
 
     /// <summary>
@@ -577,6 +862,90 @@ public static partial class Keys
     /// </summary>
     public static class CoreExceptions
     {
+
+        /// <summary>
+        /// WorkerActor工作单元相关异常
+        /// </summary>
+        public static class WorkerActor
+        {
+            /// <summary>
+            /// WorkerActor工作单元执行超时({0}ms) actorId:{1} trace:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.Timeout
+            /// 用途: 工作单元超时、以异常放行等待方时使用
+            /// 参数: {0} - 超时时间(毫秒), {1} - Actor ID, {2} - 调用链追踪信息
+            /// </remarks>
+            public const string Timeout = "CoreExceptions.WorkerActor.Timeout";
+
+            /// <summary>
+            /// WorkerActor已隔离，工作单元被拒绝 actorId:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.Quarantined
+            /// 用途: 已隔离的Actor收到新工作单元时抛出
+            /// 参数: {0} - Actor ID
+            /// </remarks>
+            public const string Quarantined = "CoreExceptions.WorkerActor.Quarantined";
+
+            /// <summary>
+            /// WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QuarantinedWithTrace
+            /// 用途: 已隔离的Actor排出排队中的工作单元时抛出
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QuarantinedWithTrace = "CoreExceptions.WorkerActor.QuarantinedWithTrace";
+
+            /// <summary>
+            /// trace不可用：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.TraceUnavailable
+            /// 用途: 构建超时消息时获取调用链追踪信息失败的后备内容
+            /// 参数: {0} - 获取追踪信息时发生的异常消息
+            /// </remarks>
+            public const string TraceUnavailable = "CoreExceptions.WorkerActor.TraceUnavailable";
+
+            /// <summary>
+            /// WorkerActor work call rejected by limit rule, caller actorId:{0} target actorId:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.CallRejectedByLimitRule
+            /// 用途: 工作单元被Actor调用限制规则拒绝时以异常返回给等待方
+            /// 参数: {0} - 调用方Actor ID, {1} - 目标Actor ID
+            /// </remarks>
+            public const string CallRejectedByLimitRule = "CoreExceptions.WorkerActor.CallRejectedByLimitRule";
+            /// WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueRejected
+            /// 用途: 队列拒绝工作单元（邮箱满/停止）时作为异常消息与告警日志
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueRejected = "CoreExceptions.WorkerActor.QueueRejected";
+
+            /// <summary>
+            /// WorkerActor 队列投递被取消。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueCancelled
+            /// 用途: 队列投递工作单元被取消时记录
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueCancelled = "CoreExceptions.WorkerActor.QueueCancelled";
+
+            /// <summary>
+            /// WorkerActor 队列投递失败。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueFailed
+            /// 用途: 队列投递工作单元抛出异常时作为后备异常消息与告警日志
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueFailed = "CoreExceptions.WorkerActor.QueueFailed";
+        }
         /// <summary>
         /// 定时器相关异常
         /// </summary>
@@ -610,6 +979,25 @@ public static partial class Keys
             /// 用途: 定时器代码不在热更项目时抛出异常
             /// </remarks>
             public const string CodeMustBeInHotfix = "CoreExceptions.Timer.CodeMustBeInHotfix";
+
+            /// <summary>
+            /// 定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Timer.InvalidDayOfMonth
+            /// 用途: 每月定时任务的dayOfMonth参数超出有效范围时抛出异常
+            /// 参数: {0} - 处理器类型, {1} - 参数名, {2} - 参数值, {3} - Actor ID, {4} - Actor类型
+            /// </remarks>
+            public const string InvalidDayOfMonth = "CoreExceptions.Timer.InvalidDayOfMonth";
+
+            /// <summary>
+            /// 使用定时器操作前必须先等待 QuartzTimer.StartAsync 完成
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Timer.StartNotAwaited
+            /// 用途: 定时器调度器尚未启动就使用定时器操作时抛出异常
+            /// </remarks>
+            public const string StartNotAwaited = "CoreExceptions.Timer.StartNotAwaited";
         }
 
         /// <summary>
@@ -666,7 +1054,7 @@ public static partial class Keys
         /// <summary>
         /// 热更新相关异常
         /// </summary>
-        public static class Hotfix
+        public static class HotfixModule
         {
             /// <summary>
             /// HTTP processor command repeatedly registers, command:{0}
@@ -679,14 +1067,14 @@ public static partial class Keys
             public const string HttpProcessorRepeatedlyRegistered = "CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered";
 
             /// <summary>
-            /// wrong tcp processor type:{0}
+            /// wrong message handler type:{0}
             /// </summary>
             /// <remarks>
-            /// 键名: CoreExceptions.Hotfix.WrongTcpProcessorType
-            /// 用途: TCP处理器类型错误时抛出异常
+            /// 键名: CoreExceptions.Hotfix.WrongMessageHandlerType
+            /// 用途: 消息处理器类型错误时抛出异常
             /// 参数: {0} - 处理器类型
             /// </remarks>
-            public const string WrongTcpProcessorType = "CoreExceptions.Hotfix.WrongTcpProcessorType";
+            public const string WrongMessageHandlerType = "CoreExceptions.Hotfix.WrongMessageHandlerType";
 
             /// <summary>
             /// {0} must be a class marked as sealed
@@ -729,6 +1117,16 @@ public static partial class Keys
             public const string NoEventsToListen = "CoreExceptions.Hotfix.NoEventsToListen";
 
             /// <summary>
+            /// Event listener:{0} the bound type {1} must be a subclass of GameEventArgs
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.EventArgsTypeInvalid
+            /// 用途: 事件监听器绑定的类型不是 GameEventArgs 子类时抛出异常
+            /// 参数: {0} - 监听器类型, {1} - 绑定的事件参数类型
+            /// </remarks>
+            public const string EventArgsTypeInvalid = "CoreExceptions.Hotfix.EventArgsTypeInvalid";
+
+            /// <summary>
             /// the component agent must be based on [{0}] ending，{1}
             /// </summary>
             /// <remarks>
@@ -747,6 +1145,74 @@ public static partial class Keys
             /// 参数: {0} - 组件类型
             /// </remarks>
             public const string MultipleAgents = "CoreExceptions.Hotfix.MultipleAgents";
+
+            /// <summary>
+            /// {0} must be a non-abstract closed type implementing {1} with a public parameterless constructor
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.MissingParameterlessConstructor
+            /// 用途: 热更注册类型缺少公共无参构造函数或不满足可实例化条件时抛出异常
+            /// 参数: {0} - 实现类型全名, {1} - 服务类型全名
+            /// </remarks>
+            public const string MissingParameterlessConstructor = "CoreExceptions.Hotfix.MissingParameterlessConstructor";
+
+            /// <summary>
+            /// Component agent base type is invalid, can not resolve the component type: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.AgentBaseTypeInvalid
+            /// 用途: 从代理/监听器类型反推组件类型时基类为空/非泛型/无泛型参数抛出异常
+            /// 参数: {0} - 代理类型全名
+            /// </remarks>
+            public const string AgentBaseTypeInvalid = "CoreExceptions.HotfixModule.AgentBaseTypeInvalid";
+
+            /// <summary>
+            /// RPC handler repeatedly registers, request message type:{0} handler type:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered
+            /// 用途: 同一请求消息类型重复注册RPC处理器时抛出异常
+            /// 参数: {0} - 请求消息类型全名, {1} - 处理器类型全名
+            /// </remarks>
+            public const string RpcHandlerRepeatedlyRegistered = "CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered";
+
+            /// <summary>
+            /// Message id repeatedly registers, message id:{0} handler type:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered
+            /// 用途: 同一消息号重复注册消息处理器时抛出异常
+            /// 参数: {0} - 消息号, {1} - 处理器类型全名
+            /// </remarks>
+            public const string MessageIdRepeatedlyRegistered = "CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered";
+
+            /// <summary>
+            /// Hotfix assembly hash mismatch, path:{0} expected SHA-256:{1} actual SHA-256:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.AssemblyHashMismatch
+            /// 用途: 热更程序集装载前SHA-256哈希校验失败时抛出异常
+            /// 参数: {0} - 程序集路径, {1} - 期望SHA-256, {2} - 实际SHA-256
+            /// </remarks>
+            public const string AssemblyHashMismatch = "CoreExceptions.HotfixModule.AssemblyHashMismatch";
+            /// Version 含非法路径字符：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.InvalidVersionChars
+            /// 用途: 热更版本号含路径分隔符或「..」段被拒绝装载时抛出异常
+            /// 参数: {0} - 被拒绝的版本号
+            /// </remarks>
+            public const string InvalidVersionChars = "CoreExceptions.Hotfix.InvalidVersionChars";
+
+            /// <summary>
+            /// 未找到类型：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.TypeNotFound
+            /// 用途: 按类型全名在热更程序集创建实例未命中时抛出异常
+            /// 参数: {0} - 类型全名
+            /// </remarks>
+            public const string TypeNotFound = "CoreExceptions.Hotfix.TypeNotFound";
         }
 
         /// <summary>

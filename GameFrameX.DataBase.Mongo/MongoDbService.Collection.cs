@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -100,10 +100,15 @@ public sealed partial class MongoDbService
     /// <returns>指定类型的MongoDB集合 / MongoDB collection of the specified type</returns>
     private IMongoCollection<TState> GetCollection<TState>(MongoCollectionSettings settings = null) where TState : class, ICacheState, new()
     {
+        // 类型化入口只做 ClassMap 懒注册与集合解析；属性索引引导由数据/索引调用方显式异步完成
+        // （CreateIndexesAsync 单飞，见 ConditionalWrite 与泛型索引 API），不在同步属性索引入口内做驱动 I/O。
+        // Typed entries only perform lazy ClassMap registration and collection resolution here;
+        // attribute-index bootstrap is an explicit asynchronous step at the data / index call sites
+        // (single-flighted by CreateIndexesAsync — see ConditionalWrite and the generic index APIs),
+        // keeping this synchronous property out of any driver I/O.
+        MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collectionName = typeof(TState).Name;
-        var collection = CurrentDatabase.GetCollection<TState>(collectionName, settings);
-        CreateIndexes(collection);
-        return collection;
+        return CurrentDatabase.GetCollection<TState>(collectionName, settings);
     }
 
     /// <summary>

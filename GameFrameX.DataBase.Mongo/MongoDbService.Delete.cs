@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -95,7 +95,7 @@ public sealed partial class MongoDbService
             .Set(x => x.IsDeleted, state.IsDeleted)
             .Set(x => x.DeleteTime, state.DeleteTime);
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(mongoFilter, update, cancellationToken: token), cancellationToken, nameof(DeleteAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, mongoFilter, update, token), cancellationToken, nameof(DeleteAsync), true).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 
@@ -149,7 +149,7 @@ public sealed partial class MongoDbService
             writeModels.Add(new UpdateOneModel<TState>(mongoFilter, update));
         }
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(DeleteListAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(DeleteListAsync), true).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 
@@ -200,7 +200,7 @@ public sealed partial class MongoDbService
             writeModels.Add(new UpdateOneModel<TState>(mongoFilter, update));
         }
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 
@@ -241,7 +241,7 @@ public sealed partial class MongoDbService
             .Set(x => x.IsDeleted, state.IsDeleted)
             .Set(x => x.DeleteTime, state.DeleteTime);
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, update, cancellationToken: token), cancellationToken, nameof(DeleteAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, update, token), cancellationToken, nameof(DeleteAsync), true).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 
@@ -275,7 +275,7 @@ public sealed partial class MongoDbService
         EnsureInitialized();
         var collection = _mongoDbContext.GetCollection<TState>();
         var deleteFilter = filter ?? (_ => true);
-        var result = await ExecuteWriteWithRetryAsync(token => collection.DeleteManyAsync(deleteFilter, token), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => DeleteManyWithAmbientSessionAsync(collection, deleteFilter, token), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
         return result.DeletedCount;
     }
 
@@ -313,7 +313,7 @@ public sealed partial class MongoDbService
         var update = Builders<TState>.Update
             .Set(x => x.IsDeleted, false)
             .Unset(x => x.DeleteTime);
-        var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateManyAsync(mongoFilter, update, cancellationToken: token), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => UpdateManyWithAmbientSessionAsync(collection, mongoFilter, update, token), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 }

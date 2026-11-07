@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -52,8 +52,8 @@ public static partial class GameDb
     /// <returns>保存操作的结果 / Result of the save operation</returns>
     public static Task SaveOneAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddAsync(state);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddAsync(state);
     }
 
     /// <summary>
@@ -68,8 +68,8 @@ public static partial class GameDb
     /// <returns>保存操作的结果 / Result of the save operation</returns>
     public static Task SaveOneAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddAsync(state, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -83,8 +83,8 @@ public static partial class GameDb
     /// <returns>保存或更新后的文档 / The saved or updated document</returns>
     public static Task<TState> AddOrUpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateAsync(state);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddOrUpdateAsync(state);
     }
 
     /// <summary>
@@ -99,8 +99,8 @@ public static partial class GameDb
     /// <returns>保存或更新后的文档 / The saved or updated document</returns>
     public static Task<TState> AddOrUpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateAsync(state, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddOrUpdateAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -114,8 +114,8 @@ public static partial class GameDb
     /// <returns>处理记录数 / Number of processed records</returns>
     public static Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateListAsync(states);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddOrUpdateListAsync(states);
     }
 
     /// <summary>
@@ -130,8 +130,8 @@ public static partial class GameDb
     /// <returns>处理记录数 / Number of processed records</returns>
     public static Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateListAsync(states, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddOrUpdateListAsync(states, cancellationToken);
     }
 
     /// <summary>
@@ -145,8 +145,8 @@ public static partial class GameDb
     /// <returns>保存操作的任务 / Task representing the save operation</returns>
     public static Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddListAsync(states);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddListAsync(states);
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ public static partial class GameDb
     /// <returns>保存操作的任务 / Task representing the save operation</returns>
     public static Task AddListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddListAsync(states, cancellationToken);
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.AddListAsync(states, cancellationToken);
     }
 }

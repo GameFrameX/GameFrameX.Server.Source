@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "GameFrameX",
+  "classifications": [
+    "GameFrameX",
+    "Game",
+    "Starter"
+  ],
+  "identity": "GameFrameX.GameStarter",
+  "name": "GameFrameX 游戏起点工程",
+  "shortName": "gfx-game",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "description": "生成通过 2.0.0 NuGet 包引用 Online 能力的独立单进程起点工程。包含 Foundation、Social、Match、Assets、Leaderboard、Competition；真实玩法和玩家目录由应用接入。还原前须准备 nuget.config 中的 ../LocalPackages 包源或替换为可用包源。",
+  "symbols": {
+    "Name": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "游戏工程名（PascalCase，如 MyGame）；参与工程名/目录与 Program 装配代码替换",
+      "isRequired": true,
+      "replaces": "{{Name}}",
+      "fileRename": "{{Name}}"
+    }
+  },
+  "primaryOutputs": [
+    {
+      "path": "{{Name}}\\{{Name}}.csproj"
+    }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "condition": "(HostIdentifier != \"dotnetcli\" && HostIdentifier != \"dotnetcli-preview\") || (HostIdentifier == \"dotnetcli\" && SkipRestore != true)",
+      "description": "还原工程引用的 NuGet 包",
+      "manualInstructions": [
+        {
+          "text": "dotnet restore"
+        }
+      ],
+      "actionId": "210D431B-A78B-4D2F-B762-DFEA895BB429"
+    }
+  ]
+}

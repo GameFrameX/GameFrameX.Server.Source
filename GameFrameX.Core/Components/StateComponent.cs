@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,50 +27,14 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using System.Collections.Concurrent;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Timer;
-using GameFrameX.Core.Utility;
 using GameFrameX.DataBase;
-using GameFrameX.DataBase.Mongo;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
-using MongoDB.Bson;
-using MongoDB.Driver;
 
 namespace GameFrameX.Core.Components;
 
@@ -79,20 +43,39 @@ namespace GameFrameX.Core.Components;
 /// </summary>
 public sealed class StateComponent
 {
-    private static readonly ConcurrentBag<Func<bool, bool, Task>> SaveFuncMap = new();
+    /// <summary>
+    /// 回存委托注册表：以程序集简单名称与状态类型全名为键，同键至多一个委托，跨装载代次保持稳定。
+    /// 注册即替换（upsert）——热重载后同一状态类型的静态构造再次注册时替换旧委托而非追加，
+    /// 关服/定时回存不会对同一批状态叠加执行，注册表不随热更次数无界增长。
+    /// Shutdown-save registry keyed by assembly simple name and full type name, holding at most one
+    /// delegate per key: registration replaces in place (upsert), so a hot reload re-registering the
+    /// same state type swaps the old delegate instead of appending, keeping saves from stacking up
+    /// and the registry from growing unboundedly with each reload.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, Func<bool, bool, Task>> SaveFuncMap = new ConcurrentDictionary<string, Func<bool, bool, Task>>(StringComparer.Ordinal);
 
     /// <summary>
-    /// 统计工具
+    /// <see cref="SaveAllAsync"/> 整体等待上限：超时后放弃等待、由既有异常日志记录，防止单个悬挂的
+    /// 回存委托无限阻塞关服流程。internal static 属性供测试注入缩短超时，生产恒为 120 秒（S2223 收口：保持属性形态，勿回退为可见可变静态字段）。
+    /// Overall wait cap for <see cref="SaveAllAsync"/>: on timeout the wait is abandoned and logged
+    /// by the existing error handler, so one hanging save delegate can no longer block shutdown forever.
+    /// internal static property lets tests inject a shorter timeout; production value is always 120 seconds.
     /// </summary>
-    public static readonly StatisticsTool StatisticsTool = new();
+    internal static TimeSpan ShutdownSaveTimeout { get; set; } = TimeSpan.FromSeconds(120);
 
     /// <summary>
-    /// 注册回存
+    /// 注册回存。以 <paramref name="stateType"/> 的稳定名称替换既有注册：同一状态类型重复注册（含热重载后
+    /// 静态构造再次注册）时旧委托被替换，不会叠加执行；不同状态类型互不影响。
+    /// Register a shutdown save func, replacing any existing registration for the same
+    /// <paramref name="stateType"/>: re-registering a state type (including the static constructor
+    /// firing again after a hot reload) swaps the old delegate instead of stacking executions;
+    /// distinct state types stay independent.
     /// </summary>
-    /// <param name="shutdown"></param>
-    public static void AddShutdownSaveFunc(Func<bool, bool, Task> shutdown)
+    /// <param name="stateType">状态类型（typeof(TState)），幂等注册的键 / The state type (typeof(TState)), the idempotent registration key.</param>
+    /// <param name="shutdown">回存委托 / The save delegate.</param>
+    public static void AddShutdownSaveFunc(Type stateType, Func<bool, bool, Task> shutdown)
     {
-        SaveFuncMap.Add(shutdown);
+        SaveFuncMap[stateType.Assembly.GetName().Name + ":" + stateType.FullName] = shutdown;
     }
 
     /// <summary>
@@ -101,277 +84,92 @@ public sealed class StateComponent
     /// </summary>
     /// <param name="force"></param>
     /// <returns></returns>
-    public static async Task SaveAll(bool force = false)
+    public static async Task SaveAllAsync(bool force = false)
     {
         try
         {
-            var begin = DateTime.Now;
-            var tasks = new List<Task>();
-            foreach (var saveFunc in SaveFuncMap)
-            {
-                tasks.Add(saveFunc(true, force));
-            }
-
-            await Task.WhenAll(tasks);
-            LogHelper.Info<string>("StateComponent.SaveAll StateTime {time}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTime, (DateTime.Now - begin).TotalMilliseconds));
+            await SaveAllForShutdownAsync(force);
         }
         catch (Exception e)
         {
-            LogHelper.Error<string>("StateComponent.SaveAll StateError {error}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateError, e));
+            // Localization: Core.StateComponent.SaveAllStateErrorLog - StateComponent.SaveAllAsync 保存所有状态错误\n{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateErrorLog, e));
         }
+    }
+
+    /// <summary>执行有界停机回存，保留原始回存错误及超时，交由宿主汇总失败并关闭数据库。</summary>
+    /// <remarks>
+    /// 每个已注册委托都尝试一次，同步抛错不阻断其它委托；多个回存错误一起传播。
+    /// 超时只结束等待，不保证尚未完成的回存已持久化，也不取消正在执行的业务。
+    /// Attempts each registered save once and propagates original failures, including multiple failures.
+    /// The timeout bounds waiting only; it does not establish durability or cancel unfinished work.
+    /// </remarks>
+    /// <param name="force">是否强制保存。Whether to force saving.</param>
+    /// <returns>全部回存完成时结束，失败或超时以异常返回。Completes after saving, or faults on failure or timeout.</returns>
+    internal static async Task SaveAllForShutdownAsync(bool force)
+    {
+        var begin = DateTime.Now;
+        var tasks = new List<Task>();
+        async Task SaveAsync(Func<bool, bool, Task> save)
+        {
+            await save(true, force);
+        }
+
+        foreach (var save in SaveFuncMap.Values)
+        {
+            tasks.Add(SaveAsync(save));
+        }
+
+        var allSaves = Task.WhenAll(tasks);
+        try
+        {
+            await allSaves.WaitAsync(ShutdownSaveTimeout);
+        }
+        catch (Exception exception)
+        {
+            // await WhenAll 只抛其中一个错误；从各任务保留全部已发生的原始错误。
+            var failures = tasks.Where(task => task.IsFaulted)
+                .SelectMany(task => task.Exception.InnerExceptions).ToList();
+            if (!failures.Contains(exception))
+            {
+                failures.Add(exception);
+            }
+
+            throw new AggregateException(failures);
+        }
+
+        // Localization: Core.StateComponent.SaveAllStateTimeLog - StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds));
     }
 
     /// <summary>
     /// 定时回存所有数据
     /// </summary>
-    public static async Task TimerSave()
+    /// <remarks>
+    /// 每个状态类型的回存委托单独隔离：某一类型回存抛异常时以 Error 级记录后继续回存其余类型，
+    /// 避免一个持续失败的状态类型让其后注册的所有类型长期不落库。关服（<see cref="GlobalTimer.IsWorking"/> 为 false）
+    /// 时在当前委托完成后停止，剩余数据由关服回存兜底。
+    /// Each state type's save delegate is isolated: a failure is logged as Error and the remaining
+    /// types are still saved. Stops after the current delegate once shutdown has begun.
+    /// </remarks>
+    public static async Task TimerSaveAsync()
     {
-        try
+        foreach (var func in SaveFuncMap.Values)
         {
-            foreach (var func in SaveFuncMap)
+            try
             {
                 await func(false, false);
-                if (!GlobalTimer.IsWorking)
-                {
-                    return;
-                }
             }
-        }
-        catch (Exception e)
-        {
-            LogHelper.Info<string>("StateComponent.TimerSave StateError {error}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateError, e));
-        }
-    }
-}
-
-/// <summary>
-/// 数据状态组件
-/// </summary>
-/// <typeparam name="TState"></typeparam>
-public abstract class StateComponent<TState> : BaseComponent where TState : BaseCacheState, new()
-{
-    private static readonly ConcurrentDictionary<long, TState> StateDic = new ConcurrentDictionary<long, TState>();
-
-    static StateComponent()
-    {
-        StateComponent.AddShutdownSaveFunc(SaveAll);
-    }
-
-    /// <summary>
-    /// 数据对象
-    /// </summary>
-    public TState State { get; private set; }
-
-    /// <summary>
-    /// 判断组件是否准备好进入非激活状态
-    /// 当State为空或State未被修改时返回true,表示可以进入非激活状态
-    /// </summary>
-    internal override bool ReadyToInactive
-    {
-        get { return State == null || !State.IsModify(); }
-    }
-
-    /// <summary>
-    /// 激活状态的时候异步读取数据
-    /// </summary>
-    /// <returns>返回查询的数据结果对象，没有数据返回null</returns>
-    protected virtual Task<TState> ActiveReadStateAsync()
-    {
-        return Task.FromResult<TState>(null);
-    }
-
-    /// <summary>
-    /// 是否创建默认数据
-    /// </summary>
-    protected virtual bool IsCreateDefaultState { get; set; } = true;
-
-    /// <summary>
-    /// 准备并读取状态数据
-    /// 子类不要重写该函数，而是重写ActiveReadStateAsync函数
-    /// </summary>
-    /// <returns>异步任务</returns>
-    public override async Task ReadStateAsync()
-    {
-        try
-        {
-            State = await ActiveReadStateAsync();
-        }
-        catch (Exception e)
-        {
-            LogHelper.Error(e);
-        }
-
-        if (State.IsNull())
-        {
-            State = await GameDb.FindAsync<TState>(ActorId, default, IsCreateDefaultState);
-        }
-
-        if (State.IsNotNull())
-        {
-            StateDic.TryRemove(State.Id, out _);
-            StateDic.TryAdd(State.Id, State);
-        }
-    }
-
-    /// <summary>
-    /// 激活组件，如果状态为空则读取状态数据
-    /// </summary>
-    /// <returns>异步任务</returns>
-    public override async Task Active()
-    {
-        await base.Active();
-        if (State != null)
-        {
-            return;
-        }
-
-        await ReadStateAsync();
-    }
-
-    /// <summary>
-    /// 反激活组件，从状态字典中移除当前Actor的状态
-    /// </summary>
-    /// <returns>异步任务</returns>
-    public override Task Inactive()
-    {
-        StateDic.TryRemove(ActorId, out _);
-        return base.Inactive();
-    }
-
-    /// <summary>
-    /// 保存状态到数据库
-    /// </summary>
-    /// <returns>异步任务</returns>
-    protected async Task SaveState()
-    {
-        try
-        {
-            if (State.IsNotNull())
+            catch (Exception e)
             {
-                await GameDb.UpdateAsync(State);
-            }
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal("StateComponent.SaveState Failed StateId: {stateId} , Error: {error} , Message: {message}", State.Id, e, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveStateFailed, State.Id, e));
-        }
-    }
-
-    /// <summary>
-    /// 异步写入状态到数据库
-    /// </summary>
-    /// <returns>异步任务</returns>
-    public override async Task WriteStateAsync()
-    {
-        await SaveState();
-    }
-
-    #region 仅DBModel.Mongodb调用
-
-    /// <summary>
-    /// 保存所有状态数据到数据库
-    /// </summary>
-    /// <param name="shutdown">是否为关服保存</param>
-    /// <param name="force">是否强制保存所有数据</param>
-    /// <returns>异步任务</returns>
-    public static async Task SaveAll(bool shutdown, bool force = false)
-    {
-        var idList = new List<long>();
-        var writeList = new List<ReplaceOneModel<BsonDocument>>();
-        if (shutdown)
-        {
-            foreach (var state in StateDic.Values)
-            {
-                if (state.IsModify())
-                {
-                    var bsonDoc = state.ToBsonDocument();
-                    lock (writeList)
-                    {
-                        var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
-                        writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
-                        idList.Add(state.Id);
-                    }
-                }
-            }
-        }
-        else
-        {
-            var tasks = new List<Task>();
-
-            foreach (var state in StateDic.Values)
-            {
-                var actor = ActorManager.GetActor(state.Id);
-                if (actor != null)
-                {
-                    tasks.Add(actor.SendAsync(() =>
-                    {
-                        if (!force && !state.IsModify())
-                        {
-                            return;
-                        }
-
-                        var bsonDoc = state.ToBsonDocument();
-                        lock (writeList)
-                        {
-                            var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
-                            writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
-                            idList.Add(state.Id);
-                        }
-                    }, GlobalSettings.CurrentSetting.SaveDataBatchTimeOut));
-                }
+                // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateErrorLog, e));
             }
 
-            await Task.WhenAll(tasks);
-        }
-
-        if (!writeList.IsNullOrEmpty())
-        {
-            var stateName = typeof(TState).Name;
-            StateComponent.StatisticsTool.Count(stateName, writeList.Count);
-            LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, writeList.Count);
-            var currentDatabase = GameDb.As<MongoDbService>().CurrentDatabase;
-            var collection = currentDatabase.GetCollection<BsonDocument>(stateName);
-            for (var idx = 0; idx < writeList.Count; idx += GlobalSettings.CurrentSetting.SaveDataBatchCount)
+            if (!GlobalTimer.IsWorking)
             {
-                var docs = writeList.GetRange(idx, Math.Min(GlobalSettings.CurrentSetting.SaveDataBatchCount, writeList.Count - idx));
-                var ids = idList.GetRange(idx, docs.Count);
-
-                var save = false;
-                try
-                {
-                    var result = await collection.BulkWriteAsync(docs, MongoDbService.BulkWriteOptions);
-                    if (result.IsAcknowledged)
-                    {
-                        foreach (var id in ids)
-                        {
-                            StateDic.TryGetValue(id, out var state);
-                            if (state == null)
-                            {
-                                continue;
-                            }
-
-                            state.SaveToDbPostHandler();
-                        }
-
-                        save = true;
-                    }
-                    else
-                    {
-                        LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogHelper.Error("StateComponent.SaveDataException StateName: {stateName} , Error: {error} , Message: {message}", stateName, ex, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataException, typeof(TState).FullName, ex));
-                }
-
-                if (!save && shutdown)
-                {
-                    LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
-                }
+                return;
             }
         }
     }
-
-    #endregion
 }

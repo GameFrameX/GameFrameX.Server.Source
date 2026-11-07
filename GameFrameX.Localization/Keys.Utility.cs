@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -40,86 +40,11 @@ public static partial class Keys
     /// </summary>
     public static class Utility
     {
-        /// <summary>
-        /// actorId小于最小服务器ID，最小服务器ID为{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorIdLessThanMinServerId
-        /// 用途: 当传入的ActorId小于最小服务器ID时使用
-        /// 参数: {0} - 最小服务器ID值
-        /// </remarks>
-        public const string ActorIdLessThanMinServerId = "Utility.Exceptions.ActorIdLessThanMinServerId";
-
-        /// <summary>
-        /// actorId：{0}小于最小服务器ID：{1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorIdLessThanMinServerIdDetail
-        /// 用途: 当传入的ActorId小于最小服务器ID时使用，包含具体的ActorId值
-        /// 参数: {0} - ActorId值, {1} - 最小服务器ID值
-        /// </remarks>
-        public const string ActorIdLessThanMinServerIdDetail = "Utility.Exceptions.ActorIdLessThanMinServerIdDetail";
-
-        /// <summary>
-        /// 输入Actor类型错误：{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorTypeError
-        /// 用途: 当传入的Actor类型无效时使用
-        /// 参数: {0} - 错误的Actor类型值
-        /// </remarks>
-        public const string ActorTypeError = "Utility.Exceptions.ActorTypeError";
-
-        /// <summary>
-        /// 服务器ID为负数的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ServerIdNegative
-        /// 用途: 当服务器ID为负数时使用
-        /// 参数: {0} - 负数的服务器ID值
-        /// </remarks>
-        public const string ServerIdNegative = "Utility.Exceptions.ServerIdNegative";
-
-        /// <summary>
-        /// 服务器ID小于等于0的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ServerIdLessThanOrEqualZero
-        /// 用途: 当服务器ID小于等于0时使用
-        /// </remarks>
-        public const string ServerIdLessThanOrEqualZero = "Utility.Exceptions.ServerIdLessThanOrEqualZero";
-
-        /// <summary>
-        /// Actor类型无效的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorTypeInvalid
-        /// 用途: 当Actor类型超出有效范围时使用
-        /// </remarks>
-        public const string ActorTypeInvalid = "Utility.Exceptions.ActorTypeInvalid";
-
-        /// <summary>
-        /// 模块ID无效的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ModuleInvalid
-        /// 用途: 当模块ID超出有效范围时使用
-        /// </remarks>
-        public const string ModuleInvalid = "Utility.Exceptions.ModuleInvalid";
-
-        /// <summary>
-        /// 构造函数溢出的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ConstructorOverflow
-        /// 用途: 当构造函数发生正溢出时使用
-        /// </remarks>
-        public const string ConstructorOverflow = "Utility.Exceptions.ConstructorOverflow";
 
         /// <summary>
         /// 异常消息资源键
         /// </summary>
-        public static class Exceptions
+        public static class ExceptionMessages
         {
             /// <summary>
             /// actorId小于最小服务器ID，最小服务器ID为{0}
@@ -140,16 +65,6 @@ public static partial class Keys
             /// 参数: {0} - ActorId值, {1} - 最小服务器ID值
             /// </remarks>
             public const string ActorIdLessThanMinServerIdDetail = "Utility.Exceptions.ActorIdLessThanMinServerIdDetail";
-
-            /// <summary>
-            /// 输入为全局ID的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.InputIsGlobalId
-            /// 用途: 当尝试对全局ID执行不允许的操作时使用
-            /// 参数: {0} - 全局ID值
-            /// </remarks>
-            public const string InputIsGlobalId = "Utility.Exceptions.InputIsGlobalId";
 
             /// <summary>
             /// Actor类型错误的错误消息
@@ -181,6 +96,26 @@ public static partial class Keys
             public const string ServerIdLessThanOrEqualZero = "Utility.Exceptions.ServerIdLessThanOrEqualZero";
 
             /// <summary>
+            /// 服务器ID超出最大值的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ServerIdExceedsMax
+            /// 用途: 当服务器ID超出最大服务器ID时使用
+            /// 参数: {0} - 超界的serverId值, {1} - 最大服务器ID值
+            /// </remarks>
+            public const string ServerIdExceedsMax = "Utility.Exceptions.ServerIdExceedsMax";
+
+            /// <summary>
+            /// ActorId解析出的服务器ID不在合法域内的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ActorIdServerIdInvalidLayout
+            /// 用途: 当GetServerId/GetActorType解析出的服务器ID不在[MinServerId, MaxServerId]内时使用，表明位布局可能已损坏
+            /// 参数: {0} - 解析出的serverId值, {1} - 最小服务器ID值, {2} - 最大服务器ID值
+            /// </remarks>
+            public const string ActorIdServerIdInvalidLayout = "Utility.Exceptions.ActorIdServerIdInvalidLayout";
+
+            /// <summary>
             /// Actor类型无效的错误消息
             /// </summary>
             /// <remarks>
@@ -197,6 +132,16 @@ public static partial class Keys
             /// 用途: 当模块ID超出有效范围时使用
             /// </remarks>
             public const string ModuleInvalid = "Utility.Exceptions.ModuleInvalid";
+
+            /// <summary>
+            /// ActorIdGenerator 序列时钟回拨超过容忍上限的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ActorIdClockMovedBackwards
+            /// 用途: 当 ActorIdGenerator 序列检测到的系统时钟回拨量超过可容忍上限时使用
+            /// 参数: {0} - 回拨秒数, {1} - 可容忍的最大回拨秒数
+            /// </remarks>
+            public const string ActorIdClockMovedBackwards = "Utility.Exceptions.ActorIdClockMovedBackwards";
 
             /// <summary>
             /// 基数超出范围的错误消息
@@ -325,15 +270,6 @@ public static partial class Keys
             public const string ConstructorInvalidString = "Utility.Exceptions.ConstructorInvalidString";
 
             /// <summary>
-            /// 时间戳超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.TimestampOutOfRange
-            /// 用途: 当传入的时间戳无法转换为有效的DateTime时使用
-            /// </remarks>
-            public const string TimestampOutOfRange = "Utility.Exceptions.TimestampOutOfRange";
-
-            /// <summary>
             /// 系统时钟回退的错误消息
             /// </summary>
             /// <remarks>
@@ -342,26 +278,6 @@ public static partial class Keys
             /// 参数: {0} - 回退的毫秒数
             /// </remarks>
             public const string ClockMovedBackwards = "Utility.Exceptions.ClockMovedBackwards";
-
-            /// <summary>
-            /// Worker ID 超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.WorkerIdOutOfRange
-            /// 用途: 当创建IdWorker时传入的WorkerId超出有效范围时使用
-            /// 参数: {0} - 最大允许的WorkerId值
-            /// </remarks>
-            public const string WorkerIdOutOfRange = "Utility.Exceptions.WorkerIdOutOfRange";
-
-            /// <summary>
-            /// Datacenter ID 超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.DatacenterIdOutOfRange
-            /// 用途: 当创建IdWorker时传入的DatacenterId超出有效范围时使用
-            /// 参数: {0} - 最大允许的DatacenterId值
-            /// </remarks>
-            public const string DatacenterIdOutOfRange = "Utility.Exceptions.DatacenterIdOutOfRange";
 
             /// <summary>
             /// 传递给 Ln 的值为非正数的错误消息
@@ -417,16 +333,6 @@ public static partial class Keys
             public const string DataExceedsLimit = "Utility.LNumber.DataExceedsLimit";
 
             /// <summary>
-            /// LNumber乘法越界的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.LNumber.MultiplicationOverflow
-            /// 用途: 当LNumber乘法运算越界时记录
-            /// 参数: {0} - 计算结果
-            /// </remarks>
-            public const string MultiplicationOverflow = "Utility.LNumber.MultiplicationOverflow";
-
-            /// <summary>
             /// LNumber除法越界的错误消息
             /// </summary>
             /// <remarks>
@@ -435,6 +341,35 @@ public static partial class Keys
             /// 参数: {0} - 计算结果
             /// </remarks>
             public const string DivisionOverflow = "Utility.LNumber.DivisionOverflow";
+
+            /// <summary>
+            /// LNumber乘法越界的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.MultiplicationOverflowLog
+            /// 用途: 当LNumber乘法运算越界时记录完整日志
+            /// 参数: {0} - 计算结果
+            /// </remarks>
+            public const string MultiplicationOverflowLog = "Utility.LNumber.MultiplicationOverflowLog";
+
+            /// <summary>
+            /// LNumber除法越界的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.DivisionOverflowLog
+            /// 用途: 当LNumber除法运算越界时记录完整日志
+            /// 参数: {0} - 计算结果
+            /// </remarks>
+            public const string DivisionOverflowLog = "Utility.LNumber.DivisionOverflowLog";
+
+            /// <summary>
+            /// LNumber除数为零的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.DivisionByZero
+            /// 用途: 当LNumber除法运算的除数为零时抛出
+            /// </remarks>
+            public const string DivisionByZero = "Utility.LNumber.DivisionByZero";
         }
 
         /// <summary>
@@ -451,23 +386,58 @@ public static partial class Keys
             /// 参数: {0} - 需求的数量, {1} - 数组长度
             /// </remarks>
             public const string CantRepeatRandomArgError = "Utility.RandomHelper.CantRepeatRandomArgError";
-        }
 
-        /// <summary>
-        /// ActorId生成器相关错误消息资源键
-        /// </summary>
-        public static class ActorIdGenerator
-        {
             /// <summary>
-            /// 输入为全局ID的错误消息
+            /// 权重为负数
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.ActorIdGenerator.InputIsGlobalId
-            /// 用途: 当尝试对全局ID执行不允许的操作时使用
-            /// 参数: {0} - 全局ID值
+            /// 键名: Utility.RandomHelper.NegativeWeight
+            /// 用途: 权重随机入参包含负权重时抛出异常
+            /// 参数: {0} - 非法权重值
             /// </remarks>
-            public const string InputIsGlobalId = "Utility.ActorIdGenerator.InputIsGlobalId";
+            public const string NegativeWeight = "Utility.RandomHelper.NegativeWeight";
+
+            /// <summary>
+            /// 全部权重为 0
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.ZeroTotalWeight
+            /// 用途: 参与随机的权重总和为 0（无可选目标）时抛出异常
+            /// 参数: 无
+            /// </remarks>
+            public const string ZeroTotalWeight = "Utility.RandomHelper.ZeroTotalWeight";
+
+            /// <summary>
+            /// 权重总和超出 int 上限
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightSumOverflow
+            /// 用途: 权重求和超出随机源可表达的 32 位范围时抛出异常
+            /// 参数: {0} - 实际总权重
+            /// </remarks>
+            public const string WeightSumOverflow = "Utility.RandomHelper.WeightSumOverflow";
+
+            /// <summary>
+            /// 权重索引越界
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightIndexOutOfRange
+            /// 用途: weightIndex 超出权重条目长度时抛出异常
+            /// 参数: {0} - 权重索引, {1} - 条目长度
+            /// </remarks>
+            public const string WeightIndexOutOfRange = "Utility.RandomHelper.WeightIndexOutOfRange";
+
+            /// <summary>
+            /// 不可重复抽样时正权重条目不足
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.InsufficientPositiveWeights
+            /// 用途: 不可重复抽取的目标数大于权重为正的条目数时抛出异常
+            /// 参数: {0} - 需求数量, {1} - 正权重条目数
+            /// </remarks>
+            public const string InsufficientPositiveWeights = "Utility.RandomHelper.InsufficientPositiveWeights";
         }
+
 
         /// <summary>
         /// BigInteger调试相关日志消息资源键
@@ -595,20 +565,6 @@ public static partial class Keys
             public const string DataLength = "Utility.BigIntegerDebug.DataLength";
         }
 
-        /// <summary>
-        /// 应用设置相关消息资源键
-        /// </summary>
-        public static class AppSettings
-        {
-            /// <summary>
-            /// 设置应用程序运行状态为false的消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.AppSettings.SetAppRunningFalse
-            /// 用途: 当应用程序运行状态设置为false时记录日志
-            /// </remarks>
-            public const string SetAppRunningFalse = "Utility.AppSettings.SetAppRunningFalse";
-        }
 
         /// <summary>
         /// 全局设置相关消息资源键
@@ -630,47 +586,46 @@ public static partial class Keys
             /// <remarks>
             /// 键名: Utility.GlobalSettings.LoadGlobalSettingsFailed
             /// 用途: 当加载全局设置配置失败时显示错误标题
+            /// 参数: {0} - 配置文件路径
             /// </remarks>
             public const string LoadGlobalSettingsFailed = "Utility.GlobalSettings.LoadGlobalSettingsFailed";
 
             /// <summary>
-            /// 设置已存在无法重复设置的警告消息
+            /// 设置SaveDataInterval过小的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.SettingAlreadyExists
-            /// 用途: 当尝试重复设置已存在的配置时记录警告
+            /// 键名: Utility.GlobalSettings.SaveDataIntervalTooSmallLog
+            /// 用途: 在SetCurrentSetting中SaveDataInterval小于5000毫秒时记录警告
+            /// 参数: {0} - 使用的默认值(毫秒)
             /// </remarks>
-            public const string SettingAlreadyExists = "Utility.GlobalSettings.SettingAlreadyExists";
+            public const string SaveDataIntervalTooSmallLog = "Utility.GlobalSettings.SaveDataIntervalTooSmallLog";
 
             /// <summary>
-            /// HttpUrl为空使用默认值的警告消息
+            /// HttpUrl为空的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.HttpUrlEmptyUseDefault
-            /// 用途: 当HttpUrl为空时记录使用默认值的警告
-            /// 参数: {0} - 使用的默认值
+            /// 键名: Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog
+            /// 用途: 在SetCurrentSetting中HttpUrl为空时记录警告
             /// </remarks>
-            public const string HttpUrlEmptyUseDefault = "Utility.GlobalSettings.HttpUrlEmptyUseDefault";
+            public const string HttpUrlEmptyUseDefaultLog = "Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog";
 
             /// <summary>
-            /// 网络发送超时时间过短的警告消息
+            /// 网络发送超时时间过短的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.NetworkTimeoutTooShort
-            /// 用途: 当网络发送超时时间小于1秒时记录警告
-            /// 参数: {0} - 使用的默认值(秒)
+            /// 键名: Utility.GlobalSettings.NetworkTimeoutTooShortLog
+            /// 用途: 在SetCurrentSetting中网络发送超时时间小于1秒时记录警告
             /// </remarks>
-            public const string NetworkTimeoutTooShort = "Utility.GlobalSettings.NetworkTimeoutTooShort";
+            public const string NetworkTimeoutTooShortLog = "Utility.GlobalSettings.NetworkTimeoutTooShortLog";
 
             /// <summary>
-            /// Actor回收时间过短的警告消息
+            /// Actor回收时间过短的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.ActorRecycleTimeTooShort
-            /// 用途: 当Actor回收时间小于1分钟时记录警告
-            /// 参数: {0} - 使用的默认值(分钟)
+            /// 键名: Utility.GlobalSettings.ActorRecycleTimeTooShortLog
+            /// 用途: 在SetCurrentSetting中Actor回收时间小于1分钟时记录警告
             /// </remarks>
-            public const string ActorRecycleTimeTooShort = "Utility.GlobalSettings.ActorRecycleTimeTooShort";
+            public const string ActorRecycleTimeTooShortLog = "Utility.GlobalSettings.ActorRecycleTimeTooShortLog";
         }
 
         /// <summary>
@@ -678,21 +633,12 @@ public static partial class Keys
         /// </summary>
         public static class ExceptionLogs
         {
-            /// <summary>
-            /// 异常详情的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.ExceptionLogs.ExceptionDetails
-            /// 用途: 记录异常详细信息的通用日志
-            /// 参数: {0} - 异常详细信息
-            /// </remarks>
-            public const string ExceptionDetails = "Utility.ExceptionLogs.ExceptionDetails";
         }
 
         /// <summary>
         /// 网络模块相关错误消息资源键
         /// </summary>
-        public static class Network
+        public static class NetworkModule
         {
             /// <summary>
             /// 无效IP地址格式的错误消息
@@ -718,6 +664,51 @@ public static partial class Keys
             /// 参数: {0} - 耗时(毫秒), {1} - 有效数量
             /// </remarks>
             public const string InitializationComplete = "Utility.IllegalWordDetection.InitializationComplete";
+
+            /// <summary>
+            /// 敏感词检测器初始化异常的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.InitException
+            /// 用途: 当敏感词检测器初始化发生异常时记录完整日志
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string InitException = "Utility.IllegalWordDetection.InitException";
+
+            /// <summary>
+            /// 敏感词检测器初始化已在进行中的日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.InitAlreadyInProgress
+            /// 用途: 当新的Init与正在进行的注册并发时拒绝后者并记录
+            /// </remarks>
+            public const string InitAlreadyInProgress = "Utility.IllegalWordDetection.InitAlreadyInProgress";
+
+            /// <summary>
+            /// 敏感词表数据损坏的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.BadWordTableCorrupted
+            /// 用途: 当敏感词配置表解析出非法字段长度（负数或越过表末尾）时抛出
+            /// 参数: {0} - 非法长度, {1} - 当前偏移, {2} - 数据总长度
+            /// </remarks>
+            public const string BadWordTableCorrupted = "Utility.IllegalWordDetection.BadWordTableCorrupted";
+        }
+
+        /// <summary>
+        /// 热更模块宿主相关日志消息资源键
+        /// </summary>
+        public static class Hotload
+        {
+            /// <summary>
+            /// 退役模块清理失败的错误日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Hotload.RetireModuleFailed
+            /// 用途: 当退役链清理（宽限等待/卸载/释放验证）抛出异常时记录
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string RetireModuleFailed = "Utility.Hotload.RetireModuleFailed";
         }
 
         /// <summary>
@@ -725,15 +716,35 @@ public static partial class Keys
         /// </summary>
         public static class CompressionHelper
         {
+
             /// <summary>
-            /// 异常错误消息
+            /// 数据解压失败的异常消息
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.CompressionHelper.ExceptionError
-            /// 用途: 记录压缩操作中发生的异常
-            /// 参数: {0} - 异常消息
+            /// 键名: Utility.CompressionHelper.DecompressFailed
+            /// 用途: 解压失败（SharpZipLib 异常包装为 InvalidDataException）时的异常消息
+            /// 参数: {0} - 异常详情
             /// </remarks>
-            public const string ExceptionError = "Utility.CompressionHelper.ExceptionError";
+            public const string DecompressFailed = "Utility.CompressionHelper.DecompressFailed";
+
+            /// <summary>
+            /// 压缩数据被截断的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressInputTruncated
+            /// 用途: 解压时检测到输入数据被截断（Inflate 返回 0 且需要更多输入），主动抛出防止 SharpZipLib 空转死循环
+            /// </remarks>
+            public const string DecompressInputTruncated = "Utility.CompressionHelper.DecompressInputTruncated";
+
+            /// <summary>
+            /// 解压输出超过上限的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressedSizeExceedsLimit
+            /// 用途: 解压累积输出超过调用方声明的上限（解压炸弹防线），膨胀过程立即中止并抛出
+            /// 参数: {0} - 允许的最大解压输出字节数
+            /// </remarks>
+            public const string DecompressedSizeExceedsLimit = "Utility.CompressionHelper.DecompressedSizeExceedsLimit";
         }
 
         /// <summary>
@@ -741,24 +752,6 @@ public static partial class Keys
         /// </summary>
         public static class Settings
         {
-            /// <summary>
-            /// 应用程序已退出，不能再次开启的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Settings.AppAlreadyExited
-            /// 用途: 当尝试开启已经退出的应用程序时记录
-            /// </remarks>
-            public const string AppAlreadyExited = "Utility.Settings.AppAlreadyExited";
-
-            /// <summary>
-            /// 保存数据间隔过小的警告消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Settings.SaveDataIntervalTooSmall
-            /// 用途: 当SaveDataInterval小于5000毫秒时记录警告
-            /// 参数: {0} - 使用的默认值(毫秒)
-            /// </remarks>
-            public const string SaveDataIntervalTooSmall = "Utility.Settings.SaveDataIntervalTooSmall";
 
             /// <summary>
             /// 加载配置文件失败的错误消息
@@ -766,6 +759,7 @@ public static partial class Keys
             /// <remarks>
             /// 键名: Utility.Settings.LoadConfigurationFailed
             /// 用途: 当配置文件加载失败时记录日志
+            /// 参数: {0} - 配置文件路径
             /// </remarks>
             public const string LoadConfigurationFailed = "Utility.Settings.LoadConfigurationFailed";
         }

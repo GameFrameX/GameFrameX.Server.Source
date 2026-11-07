@@ -1,0 +1,642 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Network.HTTP;
+using GameFrameX.Utility;
+using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Utility;
+using GameFrameX.Utility.Setting;
+using GameFrameX.StartUp.ServiceDefaults;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi;
+using Serilog;
+
+namespace GameFrameX.StartUp;
+
+/// <summary>
+/// 程序启动器基类 - 提供服务器的基础功能实现。
+/// </summary>
+/// <remarks>
+/// Application startup base class - provides server basic functionality implementation.
+/// This partial class specifically handles HTTP server startup and configuration functionality.
+/// </remarks>
+public abstract partial class AppStartUpBase
+{
+    /// <summary>
+    /// 当前 HTTP 服务器宿主实例（启动路径保存引用，供停机路径停止与释放；<see langword="null"/> 表示未启动或已停止）。
+    /// </summary>
+    /// <remarks>
+    /// The current HTTP server host instance (kept by the startup path so the shutdown path can stop and dispose it;
+    /// <see langword="null"/> when the HTTP server was never started or has already stopped).
+    /// Mirrors the socket host field <c>_gameServer</c>: assigned right after build and before start, cleared by
+    /// <see cref="StopHttpServerAsync"/> so repeated shutdown calls stay idempotent. Instance-level (not static) on
+    /// purpose — every role owns its own <c>AppStartUpBase</c> instance in a multi-role process.
+    /// </remarks>
+    private WebApplication _webApplication;
+
+    /// <summary>
+    /// 启动 HTTP 服务器。
+    /// </summary>
+    /// <remarks>
+    /// Start HTTP server.
+    /// This method is responsible for configuring and starting the HTTP server, including Swagger documentation, health checks, exception handling, and other features.
+    /// </remarks>
+    /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
+    /// <param name="httpFactory">HTTP 处理器工厂，根据命令标识符创建对应的处理器实例 / HTTP handler factory that creates corresponding handler instances based on command identifiers</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    /// <exception cref="ArgumentException">当 HTTP URL 格式不正确时抛出 / Thrown when HTTP URL format is incorrect</exception>
+    /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
+    private async Task StartHttpServerAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
+    {
+        // 前置校验：启用状态与 HTTP URL 格式
+        if (!EnsureHttpServerEnabled())
+        {
+            return;
+        }
+
+        // Localization: StartUp.HttpServer.StartingServer - 启动 [HTTP] 服务器...
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartingServer));
+
+        if (!Setting.HttpRequireSign)
+        {
+            // Localization: StartUp.HttpServer.SignDisabledWarning - HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SignDisabledWarning));
+        }
+        if (!Setting.HttpPort.IsRange(5000, ushort.MaxValue - 1))
+        {
+            // Localization: StartUp.HttpServer.PortOutOfRange - 启动 [HTTP] 服务器端口 [{0}] 超出范围 [{1}-{2}]，HTTP服务无法启动，启动已忽略
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOutOfRange, Setting.HttpPort, 5000, ushort.MaxValue - 1));
+            return;
+        }
+
+        // 检查端口是否可用：不可用则记录占用详情后返回
+        if (!NetHelper.PortIsAvailable(Setting.HttpPort))
+        {
+            LogHttpPortOccupied();
+            return;
+        }
+
+        await RunHttpServerAsync(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+    }
+
+    /// <summary>
+    /// 校验 HTTP 服务器是否启用及 URL 格式是否合法。
+    /// </summary>
+    /// <remarks>Validate whether the HTTP server is enabled and the URL format is valid. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <returns>启用且 URL 合法返回 true；未启用返回 false；URL 不合法时抛出 <see cref="ArgumentException"/> / Returns true if enabled and URL is valid; returns false if disabled; throws <see cref="ArgumentException"/> for invalid URL</returns>
+    /// <exception cref="ArgumentException">当 HTTP URL 格式不正确时抛出 / Thrown when HTTP URL format is incorrect</exception>
+    private bool EnsureHttpServerEnabled()
+    {
+        // 检查是否启用HTTP服务
+        if (!Setting.IsEnableHttp)
+        {
+            // Localization: StartUp.HttpServer.ServiceDisabled - HTTP服务已禁用，启动已忽略
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ServiceDisabled));
+            return false;
+        }
+
+        // 验证HTTP URL格式
+        if (!Setting.HttpUrl.StartsWith('/'))
+        {
+            // Localization: StartUp.HttpExceptions.AddressMustStartWithSlash - 地址必须以斜杠开头。地址：{0}。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustStartWithSlash, Setting.HttpUrl), nameof(Setting.HttpUrl));
+        }
+
+        if (!Setting.HttpUrl.EndsWith('/'))
+        {
+            // Localization: StartUp.HttpExceptions.AddressMustEndWithSlash - 地址必须以斜杠结尾。地址：{0}。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustEndWithSlash, Setting.HttpUrl), nameof(Setting.HttpUrl));
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 记录 HTTP 端口被占用时的占用进程详情。
+    /// </summary>
+    /// <remarks>Log the occupying process details when the HTTP port is occupied. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    private void LogHttpPortOccupied()
+    {
+        // Localization: StartUp.HttpServer.PortOccupied - HTTP服务器端口被占用。端口：{0}。
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupied, Setting.HttpPort));
+        var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.HttpPort);
+        if (occupiedProcesses.Count > 0)
+        {
+            // Localization: StartUp.HttpServer.PortOccupiedDetails - HTTP端口[{0}]占用详情: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupiedDetails, Setting.HttpPort, string.Join(" | ", occupiedProcesses)));
+        }
+        else
+        {
+            // Localization: StartUp.HttpServer.PortOccupiedNoProcessDetails - HTTP端口[{0}]已被占用，但未能获取占用进程详情。
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupiedNoProcessDetails, Setting.HttpPort));
+        }
+    }
+
+    /// <summary>
+    /// 构建、配置并启动 HTTP 服务器。
+    /// </summary>
+    /// <remarks>Build, configure and start the HTTP server. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
+    /// <param name="httpFactory">HTTP 处理器工厂，根据命令标识符创建对应的处理器实例 / HTTP handler factory that creates corresponding handler instances based on command identifiers</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
+    private async Task RunHttpServerAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, LogLevel minimumLevelLogLevel)
+    {
+        // 确定是否为开发环境；开发环境名必须在构建前经 WebApplicationOptions 传入——
+        // CreateBuilder 按当时环境名加载 appsettings.{Environment}.json，构建后改写
+        // EnvironmentName 只改判定不改已加载配置，会造成环境状态与配置源不一致。
+        var development = Setting.HttpIsDevelopment || EnvironmentHelper.IsDevelopment();
+        var builder = development
+            ? WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development })
+            : WebApplication.CreateBuilder();
+
+        // 显式开发开关（HttpIsDevelopment / 本机开发环境判定）驱动 Web 宿主环境：
+        // /health、/alive 等默认端点仅在 Development 环境映射（ServiceDefaults 的安全默认——
+        // 非开发环境暴露健康端点有安全影响），开关开启而环境未标注时健康端点将 404，
+        // 与开关语义及 README 健康检查指引相悖，这里在构建期对齐环境名。
+
+        var openApiInfo = GetOpenApiInfo();
+
+        var corsAllowedOrigins = ResolveHttpCorsAllowedOrigins(Setting.HttpCorsAllowedOrigins, development);
+
+        ConfigureHttpBuilder(builder, baseHandler, development, openApiInfo, corsAllowedOrigins, minimumLevelLogLevel);
+
+        var app = builder.Build();
+        // 宿主引用落字段（构建后、启动前，对齐 socket 宿主 _gameServer 模式）：停机路径 StopHttpServerAsync 依赖它执行 StopAsync/DisposeAsync
+        _webApplication = app;
+        app.MapDefaultEndpoints();
+
+        ConfigureHttpApplication(app, development, openApiInfo, corsAllowedOrigins, baseHandler, httpFactory, aopHandlerTypes);
+
+        await app.StartAsync();
+        // Localization: StartUp.HttpServer.StartupComplete - HTTP服务器启动完成 - 端口: {0}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartupComplete, Setting.HttpPort));
+    }
+
+    /// <summary>
+    /// 停止并释放 HTTP 服务器宿主（停机时 Kestrel 端口等系统资源的确定性释放）。
+    /// </summary>
+    /// <remarks>
+    /// Stops and disposes the HTTP server host so Kestrel listeners and other system resources are
+    /// deterministically released during shutdown. Null-guarded no-op when the HTTP server was never
+    /// started (disabled or skipped) — those processes keep byte-identical stop behavior. Called by
+    /// <c>StopServerAsync</c> after the socket host (<c>_gameServer</c>) has stopped, i.e. after the
+    /// role's actor and business services have already shut down (the Launcher role template stops the
+    /// capability family before delegating to the base stop flow), so no new shutdown race is introduced.
+    /// The stop has a hard 5-second budget; the reference is cleared afterwards so repeated shutdown
+    /// calls stay idempotent.
+    /// </remarks>
+    private async Task StopHttpServerAsync()
+    {
+        if (_webApplication == null)
+        {
+            return;
+        }
+
+        await _webApplication.StopAsync(TimeSpan.FromSeconds(5));
+        await _webApplication.DisposeAsync();
+        _webApplication = null;
+    }
+
+    /// <summary>
+    /// 配置 HTTP 服务器的 <see cref="WebApplicationBuilder"/> 侧服务（CORS、Swagger、Kestrel、日志、OpenTelemetry）。
+    /// </summary>
+    /// <remarks>Configure the builder-side services of the HTTP server (CORS, Swagger, Kestrel, logging, OpenTelemetry). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="builder">Web 应用程序构建器 / Web application builder</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
+    /// <param name="corsAllowedOrigins">允许的跨域来源 / Allowed CORS origins</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别 / Minimum level for logging</param>
+    private void ConfigureHttpBuilder(WebApplicationBuilder builder, List<BaseHttpHandler> baseHandler, bool development, OpenApiInfo openApiInfo, string[] corsAllowedOrigins, LogLevel minimumLevelLogLevel)
+    {
+        if (corsAllowedOrigins.Length > 0)
+        {
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.WithOrigins(corsAllowedOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+        }
+
+        // 在开发环境下配置Swagger
+        if (development)
+        {
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc(openApiInfo.Version, openApiInfo);
+                options.SchemaFilter<PreservePropertyCasingSchemaFilter>();
+                options.OperationFilter<SwaggerOperationFilter>(baseHandler);
+                options.CustomSchemaIds(type => type.Name);
+            });
+        }
+
+        // 配置Web主机
+        var httpsCertificate = Setting.HttpsPort > 0 ? LoadHttpsCertificate(Setting) : null;
+        var hostBuilder = builder.WebHost.UseKestrel(options =>
+        {
+            options.Limits.MaxRequestBodySize = Setting.HttpMaxRequestBodyBytes;
+            options.ListenAnyIP(Setting.HttpPort);
+
+            if (httpsCertificate != null)
+            {
+                // HTTPS 真监听：证书在 Kestrel 配置回调外预加载并 fail-fast；
+                // 端口被占用时由 Kestrel bind 失败直接阻断启动，不再静默跳过（静默降级面移除）。
+                options.ListenAnyIP(Setting.HttpsPort, listenOptions => listenOptions.UseHttps(httpsCertificate));
+            }
+
+            ConfigureMetricsPortListen(options);
+        });
+
+        hostBuilder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddSerilog(Log.Logger);
+            logging.SetMinimumLevel(minimumLevelLogLevel);
+        });
+        builder.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing);
+    }
+
+    /// <summary>
+    /// 为 Kestrel 追加独立指标抓取端口（MetricsPort）监听。
+    /// </summary>
+    /// <remarks>
+    /// 承载端口契约语义：对外宣称的独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑实现（对齐 HttpsPort 条件监听先例），
+    /// 不新增第二个 HTTP 服务器组件；仅 OTel 双开关开启且端口未被占用时追加监听，被占用时记 Warning 跳过附加监听、不阻断主服务。
+    /// Append the standalone metrics scraping port (MetricsPort) listener to the main HTTP host;
+    /// skipped with a Warning when the port is occupied so the main service is never blocked.
+    /// </remarks>
+    /// <param name="options">Kestrel 服务器选项 / Kestrel server options</param>
+    private void ConfigureMetricsPortListen(KestrelServerOptions options)
+    {
+        if (!Setting.IsOpenTelemetry || !Setting.IsOpenTelemetryMetrics || Setting.MetricsPort == 0)
+        {
+            return;
+        }
+
+        // 端口被占用：跳过附加监听，/metrics 端点因 RequireHost 端口限定随之失配，主服务继续运行
+        if (!NetHelper.PortIsAvailable(Setting.MetricsPort))
+        {
+            // Localization: StartUp.MetricsPortInUse - 指标端口 [{0}] 被占用，无法启动独立指标服务器
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.MetricsPortInUse, Setting.MetricsPort));
+            return;
+        }
+
+        options.ListenAnyIP(Setting.MetricsPort);
+    }
+
+    /// <summary>
+    /// 加载 HTTPS 的 PFX 或 PEM 证书，在 Kestrel 监听前校验证书配置。
+    /// </summary>
+    /// <remarks>Loads the HTTPS PFX or PEM certificate and validates configuration before Kestrel listens.</remarks>
+    /// <param name="setting">应用配置 / Application setting</param>
+    /// <returns>包含私钥的证书 / Certificate with its private key</returns>
+    /// <exception cref="InvalidOperationException">证书配置或加载失败 / Certificate configuration or loading failed</exception>
+    internal static X509Certificate2 LoadHttpsCertificate(AppSetting setting)
+    {
+        return ServerCertificateLoader.Load("HTTPS", setting.HttpsCertPath, setting.HttpsCertificateKeyPath,
+            setting.HttpsCertPassword, nameof(setting.HttpsCertPath), nameof(setting.HttpsCertificateKeyPath));
+    }
+
+    /// <summary>
+    /// 配置 HTTP 服务器的 <see cref="WebApplication"/> 请求管道（Swagger UI、CORS、异常处理、Prometheus、路由）。
+    /// </summary>
+    /// <remarks>Configure the request pipeline of the HTTP server (Swagger UI, CORS, exception handling, Prometheus, routing). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
+    /// <param name="corsAllowedOrigins">允许的跨域来源 / Allowed CORS origins</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
+    private void ConfigureHttpApplication(WebApplication app, bool development, OpenApiInfo openApiInfo, string[] corsAllowedOrigins, List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes)
+    {
+        var ipList = NetHelper.GetLocalIpList();
+
+        // 开发环境下的Swagger UI配置
+        if (development)
+        {
+            // 添加 Swagger 中间件
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                var swaggerEndpoint = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerEndpointFormat, openApiInfo.Version);
+                options.SwaggerEndpoint(swaggerEndpoint, openApiInfo.Title);
+                options.RoutePrefix = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerRoutePrefix);
+            });
+
+            foreach (var ip in ipList)
+            {
+                // Localization: StartUp.HttpServer.SwaggerUiAccess - Swagger UI 可通过 http://{0}:{1}/swagger 访问
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerUiAccess, ip, Setting.HttpPort));
+            }
+        }
+
+        if (corsAllowedOrigins.Length > 0)
+        {
+            app.UseCors();
+        }
+
+        // 配置全局异常处理
+        app.UseExceptionHandler(ExceptionHandler);
+
+        ConfigureHttpPrometheusEndpoint(app, ipList);
+
+        RegisterHandlerRoutes(app, baseHandler, httpFactory, aopHandlerTypes, development);
+    }
+
+    /// <summary>
+    /// 配置 OpenTelemetry Prometheus 指标端点（内联形态或 MetricsPort 端口限定形态）。
+    /// </summary>
+    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline form or the MetricsPort host-restricted form). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="ipList">本机 IP 列表 / Local IP list</param>
+    private void ConfigureHttpPrometheusEndpoint(WebApplication app, List<string> ipList)
+    {
+        // 内联形态：未配置独立指标端口时，/metrics 挂主 API 端口
+        if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort == 0)
+        {
+            app.MapPrometheusScrapingEndpoint();
+            foreach (var ip in ipList)
+            {
+                // Localization: StartUp.PrometheusMetricsEndpointEnabledInline - Prometheus指标端点已内联启用。
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabledInline, ip, Setting.HttpPort));
+            }
+        }
+        else if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort > 0)
+        {
+            // 端口契约：独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑承载（ConfigureMetricsPortListen 追加监听），
+            // /metrics 以 RequireHost("*:MetricsPort") 限定仅指标端口应答，主 API 端口不暴露指标面。
+            // Port contract: /metrics only answers on MetricsPort (RequireHost host:port matching); the main API port does not expose it.
+            app.MapPrometheusScrapingEndpoint().RequireHost($"*:{Setting.MetricsPort}");
+            foreach (var ip in ipList)
+            {
+                // Localization: StartUp.PrometheusMetricsEndpointEnabled - 独立普罗米修斯指标端点已启用: http://{0}:{1}/metrics
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabled, ip, Setting.MetricsPort));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 注册全部 HTTP 处理器路由（驼峰与下划线两种格式）。
+    /// </summary>
+    /// <remarks>Register routes for all HTTP handlers (both camelCase and underscore forms). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    private static void RegisterHandlerRoutes(WebApplication app, List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, bool development)
+    {
+        var registeredRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var handler in baseHandler)
+        {
+            var handlerType = handler.GetType();
+            var mappingAttribute = handlerType.GetCustomAttribute<HttpMessageMappingAttribute>();
+            if (mappingAttribute == null)
+            {
+                continue;
+            }
+
+            // 注册驼峰格式路由
+            RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.OriginalCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
+
+            // 注册下划线格式路由（如果与驼峰格式不同）
+            if (mappingAttribute.OriginalCmd != mappingAttribute.StandardCmd)
+            {
+                RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.StandardCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 获取或创建 Swagger 信息。
+    /// </summary>
+    /// <remarks>
+    /// Get or create Swagger information.
+    /// Used to configure basic information for Swagger documentation, including title, version, contact information, etc.
+    /// </remarks>
+    /// <returns>包含 API 文档详细信息的 OpenAPI 信息对象 / OpenAPI information object containing API documentation details</returns>
+    private OpenApiInfo GetOpenApiInfo()
+    {
+        // 添加 Swagger 服务
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        if (version == null)
+        {
+            version = new Version(1, 0, 0);
+        }
+
+        var openApiInfo = new OpenApiInfo
+        {
+            Title = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ApiTitle),
+            Version = $"v{version.Major}.{version.Minor}",
+            TermsOfService = new Uri("https://gameframex.doc.alianblank.com"),
+            Contact = new OpenApiContact { Url = new Uri("https://gameframex.doc.alianblank.com"), Name = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ApiContactName), Email = "wangfj11@foxmail.com", },
+            License = new OpenApiLicense { Name = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ApiLicenseName), Url = new Uri("https://github.com/GameFrameX/GameFrameX"), },
+            Description = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ApiDescription),
+        };
+        return openApiInfo;
+    }
+
+    private static string[] ResolveHttpCorsAllowedOrigins(string allowedOrigins, bool development)
+    {
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        {
+            return allowedOrigins.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                                 .ToArray();
+        }
+
+        if (!development)
+        {
+            return Array.Empty<string>();
+        }
+
+        return new[]
+        {
+            "http://localhost",
+            "https://localhost",
+            "http://127.0.0.1",
+            "https://127.0.0.1",
+        };
+    }
+
+    /// <summary>
+    /// 异常处理器，用于处理 HTTP 请求中的未处理异常。
+    /// </summary>
+    /// <remarks>
+    /// Exception handler for processing unhandled exceptions in HTTP requests.
+    /// Provides a global exception handling mechanism to ensure all unhandled exceptions are properly handled and returned to the client.
+    /// </remarks>
+    /// <param name="errorContext">用于配置错误处理管道的应用程序构建器 / Application builder for configuring error handling pipeline</param>
+    private static void ExceptionHandler(IApplicationBuilder errorContext)
+    {
+        errorContext.Run(async context =>
+        {
+            // 获取异常信息
+            var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+
+            // 记录详细错误日志
+            // Localization: StartUp.HttpServer.HttpRequestError - HTTP请求错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HttpRequestError, exceptionHandlerPathFeature?.Error.ToString() ?? "No exception available"));
+
+            // 返回通用错误消息，避免泄露敏感信息
+            await context.Response.WriteAsync("An error occurred while processing your request.");
+        });
+    }
+
+    /// <summary>
+    /// 获取 HTTP 方法的摘要描述。
+    /// </summary>
+    /// <remarks>
+    /// Gets the summary description for the HTTP method.
+    /// </remarks>
+    /// <param name="httpMethod">HTTP 方法类型 / HTTP method type</param>
+    /// <returns>摘要描述 / Summary description</returns>
+    private static string GetHttpMethodSummary(HttpMethodType httpMethod)
+    {
+        switch (httpMethod)
+        {
+            case HttpMethodType.GET:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleGetRequest);
+            case HttpMethodType.PUT:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandlePutRequest);
+            case HttpMethodType.DELETE:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleDeleteRequest);
+            default:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandlePostRequest);
+        }
+    }
+
+    /// <summary>
+    /// 获取 HTTP 方法的详细描述。
+    /// </summary>
+    /// <remarks>
+    /// Gets the detailed description for the HTTP method.
+    /// </remarks>
+    /// <param name="httpMethod">HTTP 方法类型 / HTTP method type</param>
+    /// <returns>详细描述 / Detailed description</returns>
+    private static string GetHttpMethodDescription(HttpMethodType httpMethod)
+    {
+        switch (httpMethod)
+        {
+            case HttpMethodType.GET:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleGameClientGetRequest);
+            case HttpMethodType.PUT:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleGameClientPutRequest);
+            case HttpMethodType.DELETE:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleGameClientDeleteRequest);
+            default:
+                return LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HandleGameClientPostRequest);
+        }
+    }
+
+    /// <summary>
+    /// 注册单个 HTTP 处理器路由。
+    /// </summary>
+    /// <remarks>
+    /// Registers a single HTTP handler route.
+    /// Registers the route based on the HTTP method - using different Map methods according to HttpMethod.
+    /// In development environment, configures API documentation.
+    /// </remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="mappingAttribute">HTTP 消息映射特性 / HTTP message mapping attribute</param>
+    /// <param name="cmd">命令标识符（用于构建 API 路径）/ Command identifier (used to build API path)</param>
+    /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="registeredRouteKeys">已注册路由键集合，用于去重 / The set of registered route keys, used for deduplication</param>
+    private static void RegisterHandlerRoute(WebApplication app, HttpMessageMappingAttribute mappingAttribute, string cmd, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, bool development, ISet<string> registeredRouteKeys)
+    {
+        var apiPath = $"{GlobalSettings.CurrentSetting.HttpUrl}{cmd}";
+        var httpMethod = mappingAttribute.HttpMethod;
+        if (!TryAddRouteKey(httpMethod, apiPath, registeredRouteKeys))
+        {
+            return;
+        }
+
+        IEndpointConventionBuilder route;
+        switch (httpMethod)
+        {
+            case HttpMethodType.GET:
+                route = app.MapGet(apiPath, async (HttpContext context) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
+                break;
+            case HttpMethodType.PUT:
+                route = app.MapPut(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
+                break;
+            case HttpMethodType.DELETE:
+                route = app.MapDelete(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
+                break;
+            default:
+                route = app.MapPost(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
+                break;
+        }
+
+        // 开发环境下配置API文档
+        if (development)
+        {
+            route.WithSummary(GetHttpMethodSummary(httpMethod));
+            route.WithDescription(GetHttpMethodDescription(httpMethod));
+        }
+    }
+
+    /// <summary>
+    /// 尝试添加路由唯一键，避免大小写差异导致重复注册。
+    /// </summary>
+    /// <param name="httpMethod">HTTP方法</param>
+    /// <param name="apiPath">API路径</param>
+    /// <param name="registeredRouteKeys">已注册路由键集合</param>
+    /// <returns>添加成功返回 true，已存在返回 false</returns>
+    private static bool TryAddRouteKey(HttpMethodType httpMethod, string apiPath, ISet<string> registeredRouteKeys)
+    {
+        var routeKey = $"{httpMethod}:{apiPath}";
+        return registeredRouteKeys.Add(routeKey);
+    }
+}

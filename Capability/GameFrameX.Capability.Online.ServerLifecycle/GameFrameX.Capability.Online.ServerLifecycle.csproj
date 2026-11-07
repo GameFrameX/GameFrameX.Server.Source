@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.ServerLifecycle,GFX Online 区服生命周期能力包:开服锚点(ServerId 登记/开服日历/ServerOpened 能力事件)+ 合服原语(幂等可 dry-run 的归并计划/PlayerRoute 重指向/区服域行键重写/榜单封档/在途对局强制结算/资产归属列重写 + IServerMergeParticipant 玩法钩子)+ admin handlers(register_server_open/query_server_calendar/plan_server_merge/dry_run_server_merge/execute_server_merge). Server lifecycle capability package for the GFX Online family: server-open anchors with calendar and the ServerOpened capability event, plus idempotent dry-run-first server-merge primitives (merge plan, player-route repointing, server-domain row-key rewrite, leaderboard sealing, in-flight match settlement, asset home-server column rewrite) with the IServerMergeParticipant gameplay hook and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,ServerLifecycle,ServerMerge,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
+    </ItemGroup>
+
+</Project>

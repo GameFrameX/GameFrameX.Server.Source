@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,141 +27,146 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Foundation.Logger;
+using System.Diagnostics;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
+using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.StartUp;
 
-/// <summary>
-/// 应用程序入口。
-/// </summary>
-/// <remarks>
-/// App entry point.
-/// Provides a unified entry and exit handling mechanism for the application, responsible for managing the application lifecycle.
-/// </remarks>
+/// <summary>单宿主运行、就绪等待与幂等退出。</summary>
 internal static class AppEnter
 {
-    /// <summary>
-    /// 指示是否已调用退出方法。
-    /// </summary>
-    /// <remarks>
-    /// Indicates whether the exit method has been called.
-    /// </remarks>
-    /// <value>如果已调用退出则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if exit has been called; otherwise <c>false</c></value>
-    private static volatile bool _exitCalled;
-
-    /// <summary>
-    /// 主游戏循环任务。
-    /// </summary>
-    /// <remarks>
-    /// The main game loop task.
-    /// </remarks>
-    /// <value>表示游戏循环执行的任务 / The task representing the game loop execution</value>
+    private static readonly object ExitGate = new();
     private static volatile Task _gameLoopTask;
-
-    /// <summary>
-    /// 应用程序启动实例。
-    /// </summary>
-    /// <remarks>
-    /// The application startup instance.
-    /// </remarks>
-    /// <value>用于管理应用程序生命周期的启动实例 / The startup instance used to manage application lifecycle</value>
+    private static volatile Task _exitTask;
     private static volatile IAppStartUp _appStartUp;
 
-    /// <summary>
-    /// 应用程序启动入口点。
-    /// </summary>
-    /// <remarks>
-    /// Application startup entry point.
-    /// Initializes the application, sets up exit handlers, and starts the main game loop.
-    /// </remarks>
-    /// <param name="appStartUp">应用程序启动实例 / Application startup instance</param>
-    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    /// <exception cref="ArgumentNullException">当 <paramref name="appStartUp"/> 为 null 时抛出 / Thrown when <paramref name="appStartUp"/> is null</exception>
-    internal static async Task Entry(IAppStartUp appStartUp)
+    internal static readonly TimeSpan GracefulShutdownTotalTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>运行唯一宿主，启动失败和正常结束都必须执行清理。</summary>
+    internal static async Task EntryAsync(IAppStartUp appStartUp)
     {
-        ArgumentNullException.ThrowIfNull(appStartUp, nameof(appStartUp));
+        ArgumentNullException.ThrowIfNull(appStartUp);
+        lock (ExitGate)
+        {
+            if (_appStartUp != null)
+            {
+                throw new InvalidOperationException("An application host is already running.");
+            }
+
+            _appStartUp = appStartUp;
+            _exitTask = null;
+        }
 
         try
         {
-            _appStartUp = appStartUp;
             AppExitHandler.Init(HandleExit, appStartUp.Setting);
             _gameLoopTask = appStartUp.StartAsync();
-            await _gameLoopTask;
-        }
-        catch (Exception e)
-        {
-            string error;
-            if (GlobalSettings.IsAppRunning)
+            await WaitForReadyAsync(appStartUp, _gameLoopTask);
+            if (!_gameLoopTask.IsCompleted)
             {
-                error = $"abnormal server runtime:{e}";
-            }
-            else
-            {
-                error = $"failed to start the server:{e}";
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.StartupOver));
             }
 
-            LogHelper.Error(error);
+            await _gameLoopTask;
+        }
+        catch (Exception exception)
+        {
+            LogHelper.Error(exception.ToString());
+            throw;
+        }
+        finally
+        {
+            await AppExitHandler.WaitForExitTaskCompletionAsync(HandleExit("Application host completed"), AppExitHandler.ShutdownWaitTimeout);
+            AppExitHandler.Release();
+            lock (ExitGate)
+            {
+                _appStartUp = null;
+                _gameLoopTask = null;
+            }
         }
     }
 
-    /// <summary>
-    /// 处理应用程序退出。
-    /// </summary>
-    /// <remarks>
-    /// Handles application exit.
-    /// Ensures the application only exits once and performs necessary cleanup operations.
-    /// </remarks>
-    /// <param name="message">退出消息 / Exit message</param>
-    private static void HandleExit(string message)
+    /// <summary>等待本宿主就绪；提前终止和失败均被观测，不留悬挂屏障。</summary>
+    internal static async Task WaitForReadyAsync(IAppStartUp appStartUp, Task runTask)
     {
-        if (_exitCalled)
-        {
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(appStartUp);
+        ArgumentNullException.ThrowIfNull(runTask);
+        var readyTask = appStartUp.StartUpReadyTask ?? throw new InvalidOperationException("Startup ready task is required.");
+        var completed = await Task.WhenAny(readyTask, runTask);
+        await completed;
+    }
 
-        
-        _exitCalled = true;
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ListeningExitMessage));
-        GlobalSettings.IsAppRunning = false;
-        _appStartUp.StopAsync(message).Wait();
-        AppExitHandler.Kill();
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ExecutingExitProcedure));
-        _gameLoopTask?.Wait();
-        LogHelper.FlushAndSave();
+    private static Task HandleExit(string message)
+    {
+        lock (ExitGate)
+        {
+            return _exitTask ??= Task.Run(() => HandleExitAsync(message));
+        }
+    }
+
+    private static async Task HandleExitAsync(string message)
+    {
+        var shutdownClock = Stopwatch.StartNew();
+        try
+        {
+            GameAppRuntime.MarkStopping();
+            if (_appStartUp != null)
+            {
+                try
+                {
+                    if (!await StopHostWithTimeoutAsync(_appStartUp, message, GracefulShutdownTotalTimeout))
+                    {
+                        LogHelper.Error($"Application shutdown timed out after {GracefulShutdownTotalTimeout.TotalSeconds} seconds.");
+                        LogHelper.FlushAndSave();
+                        Environment.Exit(1);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.AbnormalServerStop, exception));
+                }
+            }
+
+            AppExitHandler.Kill();
+            GameAppRuntime.MarkStopped(message);
+            if (_gameLoopTask != null)
+            {
+                var remaining = GracefulShutdownTotalTimeout - shutdownClock.Elapsed;
+                if (remaining <= TimeSpan.Zero && !_gameLoopTask.IsCompleted)
+                {
+                    throw new TimeoutException("Application shutdown exceeded its total timeout.");
+                }
+
+                await _gameLoopTask.WaitAsync(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
+            }
+        }
+        finally
+        {
+            GameAppRuntime.MarkStopped(message);
+            LogHelper.FlushAndSave();
+        }
+    }
+
+    /// <summary>对单宿主停机执行总超时，保留清理失败的异常。</summary>
+    internal static async Task<bool> StopHostWithTimeoutAsync(IAppStartUp appStartUp, string message, TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(appStartUp);
+        // 即使 StopAsync 在返回 Task 前同步阻塞，停机也必须受总超时约束。
+        var stopTask = Task.Run(() => appStartUp.StopAsync(message));
+        try
+        {
+            await stopTask.WaitAsync(timeout);
+            return true;
+        }
+        catch (TimeoutException) when (!stopTask.IsCompleted)
+        {
+            _ = stopTask.ContinueWith(completed => LogHelper.Error(completed.Exception.ToString()),
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            return false;
+        }
     }
 }

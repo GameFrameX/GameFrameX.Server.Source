@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,38 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
+using System.Text.Json;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Json;
 using GameFrameX.Foundation.Logger;
@@ -68,10 +37,12 @@ using GameFrameX.Foundation.Utility.DistributedSystem.Snowflake;
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 全局设置
+/// 全局设置（<see cref="AppSetting"/> 的进程级仓储）。
 /// </summary>
 /// <remarks>
-/// Global settings class that manages application configuration.
+/// 职责边界（CR-L04）：本类是配置「装载 / 当前实例 / 进程级字段同步」的唯一入口，
+/// 不承载常量（归 <see cref="GlobalConst"/> / <see cref="GameServerConst"/>），
+/// 也不承载业务状态。改名为 <c>AppSettingStore</c> 属破坏性变更，留待主版本统一处理。
 /// </remarks>
 public static class GlobalSettings
 {
@@ -94,22 +65,6 @@ public static class GlobalSettings
     public static AppSetting CurrentSetting { get; private set; }
 
     /// <summary>
-    /// 是否运行中
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets whether the application is running.
-    /// </remarks>
-    public static bool IsAppRunning { get; set; }
-
-    /// <summary>
-    /// 启动时间
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the application launch time.
-    /// </remarks>
-    public static DateTime LaunchTime { get; set; }
-
-    /// <summary>
     /// 加载启动配置
     /// </summary>
     /// <remarks>
@@ -130,16 +85,30 @@ public static class GlobalSettings
         LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettings), fullPath);
         if (!File.Exists(path))
         {
-            LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettingsFailed), LocalizationService.GetString(Localization.Keys.Utility.Settings.LoadConfigurationFailed));
+            // Localization: Utility.GlobalSettings.LoadGlobalSettingsFailed - 加载全局设置失败。错误：{0}。
+            // Localization: Utility.Settings.LoadConfigurationFailed - 加载配置文件失败。配置文件：{0}。
+            LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettingsFailed, path), LocalizationService.GetString(Localization.Keys.Utility.Settings.LoadConfigurationFailed, path));
             return;
         }
 
         var configJson = File.ReadAllText(path);
-        var settings = JsonHelper.Deserialize<List<AppSetting>>(configJson) ?? throw new InvalidOperationException();
-
-        foreach (var setting in settings)
+        using (var document = JsonDocument.Parse(configJson))
         {
+            var settings = document.RootElement.ValueKind == JsonValueKind.Array
+                ? JsonHelper.Deserialize<List<AppSetting>>(configJson)
+                : new List<AppSetting> { JsonHelper.Deserialize<AppSetting>(configJson) };
+            if (settings == null || settings.Count != 1 || settings[0] == null)
+            {
+                throw new InvalidOperationException("A single application configuration is required.");
+            }
+
+            var setting = settings[0];
             setting.ServerId.IsRange(GlobalConst.MinServerId, GlobalConst.MaxServerId);
+            if (string.IsNullOrWhiteSpace(setting.ServerType) || setting.ServerType.Contains(','))
+            {
+                throw new InvalidOperationException("ServerType must identify one local application.");
+            }
+
             Settings.Add(setting);
         }
     }
@@ -151,43 +120,39 @@ public static class GlobalSettings
     /// Sets the current application settings.
     /// This method is used to update the global current settings.
     /// Typically called during application startup or when switching configurations.
-    /// Features:
-    /// 1. Can only be set once; repeated settings will log a warning
-    /// 2. Null values are not allowed
-    /// 3. Automatically corrects SaveDataInterval if less than 5000ms
+    /// Normalizes local application defaults before publishing the current configuration.
     /// </remarks>
     /// <param name="setting">要设置的应用程序配置对象 / Application configuration object to set</param>
     /// <exception cref="ArgumentNullException">当传入的setting参数为null时抛出此异常 / Thrown when the setting parameter is null</exception>
     public static void SetCurrentSetting(AppSetting setting)
     {
-        if (CurrentSetting.IsNotNull())
-        {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.SettingAlreadyExists));
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(setting);
 
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
         if (setting.SaveDataInterval < 5000)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.Settings.SaveDataIntervalTooSmall, GlobalConst.SaveIntervalInMilliSeconds));
+            // Localization: Utility.GlobalSettings.SaveDataIntervalTooSmallLog - GlobalSettings.SetCurrentSetting SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.SaveDataIntervalTooSmallLog, GlobalConst.SaveIntervalInMilliSeconds));
             setting.SaveDataInterval = GlobalConst.SaveIntervalInMilliSeconds;
         }
 
         if (setting.HttpUrl.IsNullOrEmptyOrWhiteSpace())
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.HttpUrlEmptyUseDefault, "/game/api/"));
+            // Localization: Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog - GlobalSettings.SetCurrentSetting HttpUrl为空，使用默认值：/game/api/
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog));
             setting.HttpUrl = "/game/api/";
         }
 
-        if (setting.NetWorkSendTimeOutSeconds < 1)
+        if (setting.NetworkSendTimeOutSeconds < 1)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.NetworkTimeoutTooShort, 5));
-            setting.NetWorkSendTimeOutSeconds = 5;
+            // Localization: Utility.GlobalSettings.NetworkTimeoutTooShortLog - GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds小于1秒，使用默认值5秒
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.NetworkTimeoutTooShortLog));
+            setting.NetworkSendTimeOutSeconds = 5;
         }
 
         if (setting.ActorRecycleTime < 1)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.ActorRecycleTimeTooShort, 5));
+            // Localization: Utility.GlobalSettings.ActorRecycleTimeTooShortLog - GlobalSettings.SetCurrentSetting ActorRecycleTime小于1分钟，使用默认值5分钟
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.ActorRecycleTimeTooShortLog));
             setting.ActorRecycleTime = 5;
         }
 
@@ -204,6 +169,17 @@ public static class GlobalSettings
         }
 
         CurrentSetting = setting;
+    }
+
+    /// <summary>
+    /// 重置当前应用程序设置（仅供单元测试隔离静态状态使用）。
+    /// </summary>
+    /// <remarks>
+    /// Resets the current application setting. For unit test isolation of static state only.
+    /// </remarks>
+    internal static void ResetCurrentSetting()
+    {
+        CurrentSetting = null;
     }
 
     /// <summary>
@@ -252,7 +228,7 @@ public static class GlobalSettings
     /// <exception cref="ArgumentNullException">当serverName为null时抛出此异常 / Thrown when serverName is null</exception>
     public static AppSetting GetSettingByServerName<T>(string serverName)
     {
-        ArgumentNullException.ThrowIfNull(serverName, nameof(serverName));
+        ArgumentNullException.ThrowIfNull(serverName);
         foreach (var setting in Settings)
         {
             if (setting.ServerName == serverName)
@@ -299,7 +275,7 @@ public static class GlobalSettings
     /// <exception cref="ArgumentNullException">当tagName为null时抛出此异常 / Thrown when tagName is null</exception>
     public static AppSetting GetSettingByTagName<T>(string tagName)
     {
-        ArgumentNullException.ThrowIfNull(tagName, nameof(tagName));
+        ArgumentNullException.ThrowIfNull(tagName);
         foreach (var setting in Settings)
         {
             if (setting.TagName == tagName)

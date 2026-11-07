@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -43,13 +43,13 @@ namespace GameFrameX.Localization;
 /// - Keys.Database.cs - 数据库相关消息常量 / Database related message constants
 /// - Keys.Exceptions.cs - 异常相关消息常量 / Exceptions related message constants
 /// - Keys.Utility.cs - 工具类相关消息常量 / Utility related message constants
-/// - Keys.NetWorkMessage.cs - 网络消息相关常量 / Network message related constants
+/// - Keys.NetworkMessage.cs - 网络消息相关常量 / Network message related constants
 ///
 /// 其他网络和启动器相关的类可以根据需要继续拆分：
 /// Other network and startup related classes can continue to be split as needed:
-/// - Keys.NetWorkHttp.cs - HTTP网络相关 / HTTP network related
-/// - Keys.NetWorkAbstractions.cs - 网络抽象层相关 / Network abstraction layer related
-/// - Keys.NetWork.cs - 网络核心相关 / Network core related
+/// - Keys.NetworkHttp.cs - HTTP网络相关 / HTTP network related
+/// - Keys.NetworkAbstractions.cs - 网络抽象层相关 / Network abstraction layer related
+/// - Keys.Network.cs - 网络核心相关 / Network core related
 /// - Keys.Launcher.cs - 启动器相关 / Launcher related
 /// - Keys.StartUp.cs - 启动流程相关 / Startup process related
 /// </summary>

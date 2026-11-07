@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 /* Copyright (C) <2009-2011> <Thorben Linneweber, Jitter Physics>
  *
@@ -165,7 +133,7 @@ public struct FPMatrix4x4
     /// </summary>
     public FP M44;
 
-    internal static FPMatrix4x4 InternalIdentity;
+    internal static readonly FPMatrix4x4 InternalIdentity;
 
     /// <summary>
     /// 单位矩阵。
@@ -862,22 +830,26 @@ public struct FPMatrix4x4
     /// <returns>当前矩阵的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return M11.GetHashCode() ^
-               M12.GetHashCode() ^
-               M13.GetHashCode() ^
-               M14.GetHashCode() ^
-               M21.GetHashCode() ^
-               M22.GetHashCode() ^
-               M23.GetHashCode() ^
-               M24.GetHashCode() ^
-               M31.GetHashCode() ^
-               M32.GetHashCode() ^
-               M33.GetHashCode() ^
-               M34.GetHashCode() ^
-               M41.GetHashCode() ^
-               M42.GetHashCode() ^
-               M43.GetHashCode() ^
-               M44.GetHashCode();
+        unchecked
+        {
+            var hash = M11.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M12.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M13.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M14.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M21.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M22.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M23.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M24.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M31.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M32.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M33.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M34.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M41.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M42.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M43.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M44.RawValue.GetHashCode();
+            return hash;
+        }
     }
 
     /// <summary>

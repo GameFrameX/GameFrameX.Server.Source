@@ -1,0 +1,226 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+
+namespace GameFrameX.Architecture.Analyzers;
+
+/// <summary>
+/// GFX0016：非实现层代码不得在类型声明面上引用 MongoDbService / PostgreSqlDbService / MultiDbRegistry。
+/// </summary>
+/// <remarks>
+/// <para>规则：GameFrameX.DataBase*（数据实现层）之外的程序集，
+/// 其类型的声明面（基类、字段、属性、事件、方法签名）不得出现 MongoDbService / PostgreSqlDbService
+/// （含其子类）或 MultiDbRegistry 引用。</para>
+/// <para>原因：统一入口铁律——数据库访问一律经 GameDb 门面（判重用 GameDb.Contains、
+/// 命名连接使用显式 name 参数），直接持有实现类型会绕开门面默认库语义，
+/// 重演门面绑定错位的 split-brain 缺陷。</para>
+/// <para>豁免（声明面天然不可见，故不误报）：Launcher 组合根 GameDb.Init&lt;MongoDbService&gt; /
+/// GameDb.Init&lt;PostgreSqlDbService&gt; 注册泛型实参与方法体内的 GameDb.As&lt;…&gt;(name) 调用
+/// 属于装配而非数据访问；GlobalUsings 的命名空间 using 不产生符号引用。</para>
+/// <para>候选覆盖 class / struct / interface / record / delegate 等全部命名类型种类
+///（仅排除 Error 种类与编译器隐式生成类型）——接口与结构体的声明面同样会外泄实现类型、
+/// 绕开 GameDb 门面默认库语义，故本分析器不走 <see cref="SingleDiagnosticSymbolAnalyzer"/>
+/// 基座（其候选过滤只保留 Class），自行注册 NamedType 符号分析。</para>
+/// </remarks>
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed class MongoImplementationAccessAnalyzer : DiagnosticAnalyzer
+{
+    private static readonly DiagnosticDescriptor SDescriptor = new DiagnosticDescriptor(
+        "GFX0016",
+        "MongoDbService/PostgreSqlDbService/MultiDbRegistry must not be referenced outside database implementation layers",
+        "Type '{0}' in assembly '{1}' references '{2}' in its declaration surface; database access must go through the GameDb facade",
+        ArchitectureAnalyzerConstants.Category,
+        DiagnosticSeverity.Error,
+        true);
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+    {
+        get { return ImmutableArray.Create(SDescriptor); }
+    }
+
+    /// <summary>
+    /// 注册覆盖全部命名类型种类的符号分析。
+    /// </summary>
+    /// <remarks>
+    /// 不走 <see cref="SingleDiagnosticSymbolAnalyzer"/> 基座：基座候选过滤只保留 Class，
+    /// 会漏掉 interface / struct / record / delegate 声明面上的实现层类型引用（CR-M01）。
+    /// 此处仅排除 Error 种类、编译器隐式生成类型与 ShouldIgnoreAssembly 白名单程序集，
+    /// 实现层豁免由 <see cref="AnalyzeNamedType"/> 内的 IsMongoImplementationLayer 承担。
+    /// Registers symbol analysis covering every named type kind.
+    /// </remarks>
+    public override void Initialize(AnalysisContext context)
+    {
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(compilationContext =>
+        {
+            var symbols = ArchitectureSymbols.Create(compilationContext.Compilation);
+            compilationContext.RegisterSymbolAction(symbolContext =>
+            {
+                var type = (INamedTypeSymbol)symbolContext.Symbol;
+                if (type.TypeKind == TypeKind.Error || type.IsImplicitlyDeclared
+                    || ArchitectureSymbolFacts.ShouldIgnoreAssembly(type.ContainingAssembly.Identity.Name))
+                {
+                    return;
+                }
+
+                AnalyzeNamedType(symbolContext, symbols, type);
+            }, SymbolKind.NamedType);
+        });
+    }
+
+    private static void AnalyzeNamedType(SymbolAnalysisContext context, ArchitectureSymbols symbols, INamedTypeSymbol type)
+    {
+        if (symbols.MongoDbService == null && symbols.PostgreSqlDbService == null && symbols.MultiDbRegistry == null)
+        {
+            return;
+        }
+
+        var assemblyName = type.ContainingAssembly.Identity.Name;
+        if (IsMongoImplementationLayer(assemblyName) || ArchitectureSymbolFacts.ShouldIgnoreAssembly(assemblyName))
+        {
+            return;
+        }
+
+        if (IsForbiddenReference(type.BaseType, symbols, out var baseReference))
+        {
+            ReportForbiddenReference(context, type, assemblyName, baseReference);
+            return;
+        }
+
+        foreach (var member in type.GetMembers())
+        {
+            if (TryReportForbiddenMember(context, type, assemblyName, member, symbols))
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 检查单个成员的声明面（字段 / 属性 / 事件 / 方法返回值，以及方法形参类型），
+    /// 命中 Mongo 实现层引用即上报 GFX0016 并返回 true。
+    /// </summary>
+    /// <remarks>
+    /// Checks one member's declaration surface (field / property / event / method return type and
+    /// method parameter types); reports GFX0016 and returns true on the first forbidden reference.
+    /// </remarks>
+    private static bool TryReportForbiddenMember(SymbolAnalysisContext context, INamedTypeSymbol type, string assemblyName, ISymbol member, ArchitectureSymbols symbols)
+    {
+        ITypeSymbol memberType = member switch
+        {
+            IFieldSymbol field => field.Type,
+            IPropertySymbol property => property.Type,
+            IEventSymbol eventSymbol => eventSymbol.Type,
+            IMethodSymbol method => method.ReturnType,
+            _ => null,
+        };
+
+        if (IsForbiddenReference(memberType, symbols, out var memberReference))
+        {
+            ReportForbiddenReference(context, type, assemblyName, memberReference);
+            return true;
+        }
+
+        if (member is IMethodSymbol parameterOwner)
+        {
+            foreach (var parameter in parameterOwner.Parameters)
+            {
+                if (IsForbiddenReference(parameter.Type, symbols, out var parameterReference))
+                {
+                    ReportForbiddenReference(context, type, assemblyName, parameterReference);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 上报一次 GFX0016 诊断：类型声明面引用了 Mongo 实现层类型。
+    /// </summary>
+    /// <remarks>
+    /// Reports one GFX0016 diagnostic: the type's declaration surface references a Mongo implementation type.
+    /// </remarks>
+    private static void ReportForbiddenReference(SymbolAnalysisContext context, INamedTypeSymbol type, string assemblyName, string referenceName)
+    {
+        ArchitectureSymbolFacts.Report(context, SDescriptor, type, type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), assemblyName, referenceName);
+    }
+
+    private static bool IsMongoImplementationLayer(string assemblyName)
+    {
+        return assemblyName.StartsWith("GameFrameX.DataBase", StringComparison.Ordinal);
+    }
+
+    private static bool IsForbiddenReference(ITypeSymbol type, ArchitectureSymbols symbols, out string referenceName)
+    {
+        referenceName = string.Empty;
+        if (type == null)
+        {
+            return false;
+        }
+
+        if (type is IArrayTypeSymbol arrayType)
+        {
+            return IsForbiddenReference(arrayType.ElementType, symbols, out referenceName);
+        }
+
+        if (!(type is INamedTypeSymbol namedType))
+        {
+            return false;
+        }
+
+        if (ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.MongoDbService) || ArchitectureSymbolFacts.InheritsFrom(namedType, symbols.MongoDbService)
+            || ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.PostgreSqlDbService) || ArchitectureSymbolFacts.InheritsFrom(namedType, symbols.PostgreSqlDbService))
+        {
+            referenceName = namedType.Name;
+            return true;
+        }
+
+        if (ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.MultiDbRegistry))
+        {
+            referenceName = namedType.Name;
+            return true;
+        }
+
+        foreach (var typeArgument in namedType.TypeArguments)
+        {
+            if (IsForbiddenReference(typeArgument, symbols, out referenceName))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

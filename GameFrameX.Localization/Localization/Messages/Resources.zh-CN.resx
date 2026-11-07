@@ -1,91 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-    <!-- Extensions 模块异常消息 -->
-    <data name="Extensions.Exceptions.OffsetCountExceedBufferLength" xml:space="preserve">
-    <value>偏移量和计数超出缓冲区长度。缓冲区长度：{0}，偏移量：{1}，计数：{2}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.IndexCountExceedBufferLength" xml:space="preserve">
-    <value>索引和计数超出缓冲区长度。缓冲区长度：{0}，索引：{1}，计数：{2}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.BufferWriteOutOfRange" xml:space="preserve">
-    <value>缓冲区写入位置超出范围。缓冲区长度：{0}，写入位置：{1}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.StringLengthExceedMaxValue" xml:space="preserve">
-    <value>字符串长度超出最大值。实际长度：{0}，最大长度：{1}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ByteArrayLengthMustEqual" xml:space="preserve">
-    <value>字节数组长度必须相等。第一个数组长度：{0}，第二个数组长度：{1}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ListCannotBeEmpty" xml:space="preserve">
-    <value>列表不能为空。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.TargetTypeMustBeInterface" xml:space="preserve">
-    <value>目标类型必须是接口类型。目标类型：{0}。</value>
-  </data>
-
-    <data name="Extensions.Exceptions.ObjectTypeMismatch" xml:space="preserve">
-    <value>对象类型不匹配。对象类型：{0}，目标类型：{1}。</value>
-  </data>
-
-    <!-- 日志消息 -->
-    <data name="Extensions.Logs.CollectionProcessed" xml:space="preserve">
-    <value>集合处理完成。集合类型：{0}，元素数量：{1}。</value>
-  </data>
-
-    <data name="Extensions.Logs.ByteConversionCompleted" xml:space="preserve">
-    <value>字节转换完成。源格式：{0}，目标格式：{1}，字节数：{2}。</value>
-  </data>
-
-    <data name="Extensions.Logs.TypeConversionCompleted" xml:space="preserve">
-    <value>类型转换完成。源类型：{0}，目标类型：{1}。</value>
-  </data>
-
-    <!-- 状态消息 -->
-    <data name="Extensions.Status.ExtensionsInitialized" xml:space="preserve">
-    <value>{0}扩展方法模块初始化成功。</value>
-  </data>
-
-    <data name="Extensions.Status.BufferOperationSuccessful" xml:space="preserve">
-    <value>缓冲区操作成功完成。操作类型：{0}，字节数：{1}。</value>
-  </data>
-
-    <!-- 验证消息 -->
-    <data name="Extensions.Validation.NotNullRequired" xml:space="preserve">
-    <value>参数不能为null。参数名称：{0}。</value>
-  </data>
-
-    <data name="Extensions.Validation.RangeCheckFailed" xml:space="preserve">
-    <value>数值超出允许范围。值：{0}，最小值：{1}，最大值：{2}。</value>
-  </data>
-
-    <data name="Extensions.Validation.TypeCheckFailed" xml:space="preserve">
-    <value>类型验证失败。实际类型：{0}，期望类型：{1}。</value>
-  </data>
-
-    <!-- 性能消息 -->
-    <data name="Extensions.Performance.OperationExecutionTime" xml:space="preserve">
-    <value>操作执行时间。操作名称：{0}，执行时间：{1}毫秒。</value>
-  </data>
-
-    <data name="Extensions.Performance.MemoryUsage" xml:space="preserve">
-    <value>内存使用情况。操作名称：{0}，内存使用量：{1}字节。</value>
-  </data>
-
     <!-- 新的Utility异常键名 -->
     <data name="Utility.Exceptions.ActorIdLessThanMinServerId" xml:space="preserve">
     <value>actorId小于最小服务器ID，最小服务器ID为{0}</value>
   </data>
     <data name="Utility.Exceptions.ActorIdLessThanMinServerIdDetail" xml:space="preserve">
     <value>actorId：{0}小于最小服务器ID：{1}</value>
-  </data>
-    <data name="Utility.Exceptions.InputIsGlobalId" xml:space="preserve">
-    <value>输入为全局ID：{0}</value>
   </data>
     <data name="Utility.Exceptions.ActorTypeError" xml:space="preserve">
     <value>输入Actor类型错误：{0}</value>
@@ -96,12 +16,21 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>服务器ID小于等于0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>服务器ID {0} 超出最大服务器ID {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>从ActorId解析出的服务器ID {0} 不在 [{1}, {2}] 内，ActorId位布局可能已损坏</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>Actor类型无效</value>
   </data>
     <data name="Utility.Exceptions.ModuleInvalid" xml:space="preserve">
     <value>模块无效</value>
   </data>
+    <data name="Utility.Exceptions.ActorIdClockMovedBackwards" xml:space="preserve">
+        <value>系统时钟回拨 {0} 秒，超过容忍上限 {1} 秒，拒绝生成ID。</value>
+    </data>
     <data name="Utility.Exceptions.RadixOutOfRange" xml:space="preserve">
     <value>基数必须在2-36范围内</value>
   </data>
@@ -144,19 +73,9 @@
     <data name="Utility.Exceptions.ConstructorInvalidString" xml:space="preserve">
     <value>构造函数中无效字符串。</value>
   </data>
-    <data name="Utility.Exceptions.TimestampOutOfRange" xml:space="preserve">
-    <value>时间戳超出范围。</value>
-  </data>
     <data name="Utility.Exceptions.ClockMovedBackwards" xml:space="preserve">
     <value>系统时钟回退。拒绝生成ID {0} 毫秒。</value>
   </data>
-    <data name="Utility.Exceptions.WorkerIdOutOfRange" xml:space="preserve">
-    <value>Worker ID不能大于{0}或小于0。</value>
-  </data>
-    <data name="Utility.Exceptions.DatacenterIdOutOfRange" xml:space="preserve">
-    <value>Datacenter ID不能大于{0}或小于0。</value>
-  </data>
-
     <!-- FP数学函数异常消息 -->
     <data name="Utility.Exceptions.LnValueNonPositive" xml:space="preserve">
     <value>传递给 Ln 的值为非正数</value>
@@ -189,20 +108,13 @@
   </data>
 
     <!-- 事件模块日志键名 -->
-    <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>事件ID：{0} 没有找到任何监听者</value>
-  </data>
-
-    <!-- 存储模块日志键名 -->
+<!-- 存储模块日志键名 -->
     <data name="Storage.CacheHashEquals" xml:space="preserve">
     <value>调用AfterSaveToDB前CacheHash已经等于ToSaveHash {0}</value>
   </data>
 
     <!-- 数据库模块日志键名 -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB服务初始化成功，连接字符串：{0}，数据库名称：{1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
+<data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
     <value>MongoDB服务初始化失败，连接字符串：{0}，数据库名称：{1}</value>
   </data>
     <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
@@ -217,19 +129,15 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0}重试失败，未知异常。</value>
   </data>
-
-    <!-- LNumber模块日志和错误键名 -->
+<!-- LNumber模块日志和错误键名 -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
     <value>Xnumber 创建失败！ {0}.{1}</value>
   </data>
     <data name="Utility.LNumber.DataExceedsLimit" xml:space="preserve">
     <value>Number数据超上限了 {0} {1}</value>
   </data>
-    <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber乘法已越界 > {0}</value>
-  </data>
-    <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
-    <value>LNumber除法已越界 > {0}</value>
+<data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
+    <value>LNumber除法已越界 &gt; {0}</value>
   </data>
 
     <!-- 网络模块错误键名 -->
@@ -243,162 +151,121 @@
   </data>
 
     <!-- 设置模块日志和错误键名 -->
-    <data name="Utility.Settings.AppAlreadyExited" xml:space="preserve">
-    <value>AppRunning已经被设置为退出，不能再次开启...</value>
-  </data>
-    <data name="Utility.Settings.SaveDataIntervalTooSmall" xml:space="preserve">
-    <value>SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒</value>
-  </data>
-    <data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
-    <value>加载配置文件失败</value>
+<data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
+    <value>加载配置文件失败。配置文件: {0}。</value>
   </data>
 
-    <!-- NetWork.Message模块日志和错误键名 -->
-    <data name="NetWork.Message.MessageDecodeFatalError" xml:space="preserve">
+    <!-- Network.Message模块日志和错误键名 -->
+    <data name="Network.Message.MessageDecodeFatalError" xml:space="preserve">
     <value>消息解码过程中发生致命异常: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeError" xml:space="preserve">
-    <value>消息对象编码异常,请检查错误日志</value>
-  </data>
-    <data name="NetWork.Message.MessageEncodeException" xml:space="preserve">
-    <value>消息编码异常: {0}</value>
-  </data>
-    <data name="NetWork.Message.MessageObjectNull" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNull" xml:space="preserve">
     <value>消息对象为空，编码异常</value>
   </data>
-    <data name="NetWork.Message.MessageObjectEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectEncodeException" xml:space="preserve">
     <value>消息对象编码异常,请检查错误日志</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNullEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNullEncodeException" xml:space="preserve">
     <value>消息对象为空，编码异常</value>
   </data>
 
-    <!-- NetWork.Http模块日志和错误键名 -->
-    <data name="NetWork.Http.ParameterDuplicate" xml:space="preserve">
+    <!-- Network.Http模块日志和错误键名 -->
+    <data name="Network.Http.ParameterDuplicate" xml:space="preserve">
     <value>参数重复了:{0}</value>
   </data>
-    <data name="NetWork.Http.UnsupportedContentType" xml:space="preserve">
+    <data name="Network.Http.UnsupportedContentType" xml:space="preserve">
     <value>不支持的Content Type: {0}</value>
   </data>
-    <data name="NetWork.Http.RequestParameters" xml:space="preserve">
+    <data name="Network.Http.RequestParameters" xml:space="preserve">
     <value>请求参数:{0}</value>
   </data>
-    <data name="NetWork.Http.ServerStatusError" xml:space="preserve">
+    <data name="Network.Http.ServerStatusError" xml:space="preserve">
     <value>服务器状态错误[正在起/关服]</value>
   </data>
-    <data name="NetWork.Http.CommandHandlerNotFound" xml:space="preserve">
+    <data name="Network.Http.CommandHandlerNotFound" xml:space="preserve">
     <value>http cmd handler 不存在：{0}</value>
   </data>
-    <data name="NetWork.Http.ExecutionTime" xml:space="preserve">
+    <data name="Network.Http.ExecutionTime" xml:space="preserve">
     <value>{0},执行时间：{1}ms, 结果: {2}</value>
   </data>
-    <data name="NetWork.Http.ExceptionOccurred" xml:space="preserve">
+    <data name="Network.Http.ExceptionOccurred" xml:space="preserve">
     <value>{0}, 发生异常. {1} {2}</value>
   </data>
-    <data name="NetWork.Http.MessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
     <value>消息类型 {0} 必须继承自 HttpMessageRequestBase</value>
   </data>
-    <data name="NetWork.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
     <value>消息类型 {0} 必须继承自 HttpMessageResponseBase</value>
   </data>
-    <data name="NetWork.Http.ClassMustBeSealed" xml:space="preserve">
+    <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} 必须是标记为sealed的类</value>
   </data>
-    <data name="NetWork.Http.ClassMustEndWithSuffix" xml:space="preserve">
+    <data name="Network.Http.ClassMustEndWithSuffix" xml:space="preserve">
     <value>{0} 必须以{1}结尾</value>
   </data>
-    <data name="NetWork.Http.RequestLogHeader" xml:space="preserve">
+    <data name="Network.Http.RequestLogHeader" xml:space="preserve">
     <value>[HTTPServer] TraceIdentifier:[{0}], 来源[{1}], url:[{2}]</value>
   </data>
-    <data name="NetWork.Http.RequestMethod" xml:space="preserve">
+    <data name="Network.Http.RequestMethod" xml:space="preserve">
     <value>{0}，请求方式:[{1}]</value>
   </data>
-    <data name="NetWork.Http.MessageEncodingException" xml:space="preserve">
+    <data name="Network.Http.MessageEncodingException" xml:space="preserve">
     <value>消息对象编码异常,请检查错误日志</value>
   </data>
-    <data name="NetWork.Http.HttpHeaderContentTypeNull" xml:space="preserve">
+    <data name="Network.Http.HttpHeaderContentTypeNull" xml:space="preserve">
     <value>HTTP头部Content-Type为空</value>
   </data>
-    <data name="NetWork.Http.DataVerificationFailed" xml:space="preserve">
+    <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>数据验证失败</value>
   </data>
-    <data name="NetWork.Http.SwaggerRequestParameters" xml:space="preserve">
-    <value>请求参数</value>
+    <data name="Network.Http.RequestBodyNotJsonObject" xml:space="preserve">
+    <value>请求体必须是 JSON 对象</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseStatusCode" xml:space="preserve">
-    <value>响应状态码</value>
-  </data>
-    <data name="NetWork.Http.SwaggerResponseMessage" xml:space="preserve">
-    <value>响应消息</value>
-  </data>
-    <data name="NetWork.Http.SwaggerSuccessResponse" xml:space="preserve">
-    <value>成功响应</value>
-  </data>
-    <data name="NetWork.Http.ApplicationJsonContentType" xml:space="preserve">
-    <value>application/json</value>
-  </data>
-    <data name="NetWork.Http.ApplicationProtoBufContentType" xml:space="preserve">
-    <value>application/x-protobuf</value>
-  </data>
-    <data name="NetWork.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
+    <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http命令未包含验证参数{0} 和 {1}</value>
   </data>
-    <data name="NetWork.Http.UndefinedCommand" xml:space="preserve">
+    <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>未定义的命令</value>
   </data>
-    <data name="NetWork.Http.NotFoundCommand" xml:space="preserve">
-    <value>未找到的命令</value>
-  </data>
-    <data name="NetWork.Http.CheckFailedCommand" xml:space="preserve">
-    <value>验证失败的命令</value>
-  </data>
-    <data name="NetWork.Http.ServerError" xml:space="preserve">
+    <data name="Network.Http.ServerError" xml:space="preserve">
     <value>服务器错误</value>
   </data>
 
-    <!-- NetWork.Abstractions模块日志和错误键名 -->
-    <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
-    <value>消息Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <!-- Network.Abstractions模块日志和错误键名 -->
+    <data name="Network.Abstractions.MessageIdDuplicate" xml:space="preserve">
+    <value>消息Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
-    <value>心跳消息重复==>类型:{0}</value>
+    <data name="Network.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
+    <value>心跳消息重复==&gt;类型:{0}</value>
   </data>
-    <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
-    <value>请求Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <data name="Network.Abstractions.RequestIdDuplicate" xml:space="preserve">
+    <value>请求Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
-    <value>返回Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <data name="Network.Abstractions.ResponseIdDuplicate" xml:space="preserve">
+    <value>返回Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
 
-    <!-- NetWork模块日志和错误键名 -->
-    <data name="NetWork.MessageSent" xml:space="preserve">
+    <!-- Network模块日志和错误键名 -->
+    <data name="Network.MessageSent" xml:space="preserve">
     <value>---发送{0}</value>
   </data>
-    <data name="NetWork.MessageSendTimeout" xml:space="preserve">
+    <data name="Network.MessageSendTimeout" xml:space="preserve">
     <value>消息发送超时被取消:{0}</value>
   </data>
-    <data name="NetWork.TypeMustImplementInterface" xml:space="preserve">
+    <data name="Network.TypeMustImplementInterface" xml:space="preserve">
     <value>类型 {0} 必须实现 {1} 接口</value>
   </data>
-    <data name="NetWork.TypeMustBeClass" xml:space="preserve">
+    <data name="Network.TypeMustBeClass" xml:space="preserve">
     <value>类型 {0} 必须是类</value>
   </data>
-    <data name="NetWork.TypeMustHaveParameterlessConstructor" xml:space="preserve">
+    <data name="Network.TypeMustHaveParameterlessConstructor" xml:space="preserve">
     <value>类型 {0} 必须有无参构造函数</value>
   </data>
-    <data name="NetWork.CannotFindCreateMethod" xml:space="preserve">
+    <data name="Network.CannotFindCreateMethod" xml:space="preserve">
     <value>无法在 ObjectPoolProvider 上找到 Create 方法</value>
   </data>
-    <data name="NetWork.FailedToCreateObjectPool" xml:space="preserve">
+    <data name="Network.FailedToCreateObjectPool" xml:space="preserve">
     <value>无法为类型 {0} 创建对象池</value>
-  </data>
-
-    <data name="NetWork.RpcCallTimeout" xml:space="preserve">
-    <value>RPC调用超时！消息为：{0}</value>
-  </data>
-
-    <data name="NetWork.MessageEncodingError" xml:space="preserve">
-    <value>如果消息对象编码异常，请检查错误日志，异常：{0}</value>
   </data>
 
     <!-- Launcher模块日志和错误键名 -->
@@ -426,12 +293,6 @@
     <data name="Launcher.ComponentRegisterEnd" xml:space="preserve">
     <value>注册组件结束...</value>
   </data>
-    <data name="Launcher.HotfixModuleLoadBegin" xml:space="preserve">
-    <value>开始加载热更新模块...</value>
-  </data>
-    <data name="Launcher.HotfixModuleLoadEnd" xml:space="preserve">
-    <value>加载热更新模块结束...</value>
-  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>进入游戏主循环...</value>
   </data>
@@ -453,41 +314,6 @@
     <data name="Launcher.ReceiveMessage" xml:space="preserve">
     <value>---收到[{0} To {1}]  {2}</value>
   </data>
-    <data name="Launcher.PlayerRegisterSuccess" xml:space="preserve">
-    <value>注册玩家成功：{0}  {1}</value>
-  </data>
-    <data name="Launcher.PlayerUnregisterSuccess" xml:space="preserve">
-    <value>注销玩家成功：{0}  {1}</value>
-  </data>
-    <data name="Launcher.ServiceRegisterSuccess" xml:space="preserve">
-    <value>注册服务成功：{0}  {1}  {2}</value>
-  </data>
-    <data name="Launcher.ServiceUnregisterSuccess" xml:space="preserve">
-    <value>注销服务成功：{0}  {1}</value>
-  </data>
-    <data name="Launcher.ExternalServiceConnected" xml:space="preserve">
-    <value>有外部服务连接到中心服务器成功。链接信息：SessionID:{0} RemoteEndPoint:{1}</value>
-  </data>
-    <data name="Launcher.ExternalServiceDisconnected" xml:space="preserve">
-    <value>有外部服务从中心服务器断开。链接信息：断开原因:{0}</value>
-  </data>
-
-    <data name="Launcher.PlayerOfflineCallback" xml:space="preserve">
-    <value>玩家下线回调，通知其他服务器: {0}</value>
-  </data>
-
-    <data name="Launcher.PlayerOnlineCallback" xml:space="preserve">
-    <value>玩家上线回调，通知其他服务器: {0}</value>
-  </data>
-
-    <data name="Launcher.ServiceOfflineCallback" xml:space="preserve">
-    <value>服务下线回调，通知其他服务器: {0}</value>
-  </data>
-
-    <data name="Launcher.ServiceOnlineCallback" xml:space="preserve">
-    <value>服务上线回调，通知其他服务器: {0}</value>
-  </data>
-
     <!-- StartUp模块日志和错误键名 -->
     <data name="StartUp.ServerStopped" xml:space="preserve">
     <value>服务器类型:{0} 停止! 终止原因：{1} 配置信息: {2}</value>
@@ -500,9 +326,6 @@
   </data>
     <data name="StartUp.PrometheusMetricsEndpointEnabled" xml:space="preserve">
     <value>独立普罗米修斯指标端点已启用: http://{0}:{1}/metrics</value>
-  </data>
-    <data name="StartUp.MetricsHealthCheckEndpointEnabled" xml:space="preserve">
-    <value>独立指标健康检查端点: http://{0}:{1}/health</value>
   </data>
     <data name="StartUp.HttpServer.HandlePostRequest" xml:space="preserve">
     <value>处理 POST 请求</value>
@@ -540,13 +363,13 @@
     <data name="StartUp.HttpServer.SwaggerUiAccess" xml:space="preserve">
     <value>Swagger UI 可通过 http://{0}:{1}/swagger 访问</value>
   </data>
-    <data name="StartUp.TcpServer.ClientDisconnected" xml:space="preserve">
+    <data name="StartUp.Server.ClientDisconnected" xml:space="preserve">
     <value>客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}</value>
   </data>
-    <data name="StartUp.TcpServer.NewClientConnection" xml:space="preserve">
+    <data name="StartUp.Server.NewClientConnection" xml:space="preserve">
     <value>新客户端连接 - 会话ID: {0}, 远程终端: {1}</value>
   </data>
-    <data name="StartUp.TcpServer.MessageReceived" xml:space="preserve">
+    <data name="StartUp.Server.MessageReceived" xml:space="preserve">
     <value>接收到消息 - 服务器类型: [{0}], 消息内容: {1}</value>
   </data>
     <data name="StartUp.TcpServer.StartingServer" xml:space="preserve">
@@ -573,9 +396,6 @@
     <data name="StartUp.WebSocketServer.ServiceNotEnabled" xml:space="preserve">
     <value>启动WebSocket服务器失败 类型: {0}, 端口: {1}, 原因: WebSocket服务未启用</value>
   </data>
-    <data name="StartUp.Application.MetricServerStarted" xml:space="preserve">
-    <value>独立指标服务器已在端口: {0} 启动</value>
-  </data>
     <data name="StartUp.Application.ListeningExitMessage" xml:space="preserve">
     <value>监听程序退出消息</value>
   </data>
@@ -597,6 +417,9 @@
     <data name="StartUp.Application.SigtermSignalReceived" xml:space="preserve">
     <value>接收到SIGTERM信号并注册退出处理程序</value>
   </data>
+  <data name="StartUp.Application.ShutdownWaitTimeout" xml:space="preserve">
+    <value>等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出</value>
+  </data>
 
     <!-- Core 模块日志消息 -->
     <!-- Actor 相关消息 -->
@@ -616,17 +439,13 @@
     <value>Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}</value>
   </data>
 
-    <data name="Core.Actor.Recycled" xml:space="preserve">
-    <value>actor回收 id:{0} type:{1}</value>
-  </data>
-
-    <!-- Actor 限制相关消息 -->
+<!-- Actor 限制相关消息 -->
     <data name="Core.ActorLimit.UnsupportedRuleType" xml:space="preserve">
     <value>不支持的rule类型:{0}</value>
   </data>
 
     <data name="Core.ActorLimit.InvalidCallPath" xml:space="preserve">
-    <value>不合法的调用路径:{0}==>{1}</value>
+    <value>不合法的调用路径:{0}==&gt;{1}</value>
   </data>
 
     <data name="Core.ActorLimit.CrossDeadlock" xml:space="preserve">
@@ -662,6 +481,10 @@
     <value>结束回收空闲Actor 时间:{0}</value>
   </data>
 
+    <data name="Core.Timer.LoopIterationError" xml:space="preserve">
+    <value>全局定时器本轮执行异常，跳过本轮\n{0}</value>
+  </data>
+
     <data name="Core.Timer.GlobalTimerStopStart" xml:space="preserve">
     <value>停止全局定时开始...</value>
   </data>
@@ -673,104 +496,23 @@
     <data name="Core.Timer.InvalidHandlerType" xml:space="preserve">
     <value>错误的ITimerHandler类型，回调失败 type:{0}</value>
   </data>
+  <data name="Core.Timer.TargetActorNotFoundJobRemoved" xml:space="preserve">
+    <value>定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}</value>
+  </data>
 
     <!-- Actor 管理器相关消息 -->
-    <data name="Core.ActorManager.SaveAllStateTime" xml:space="preserve">
-    <value>保存所有状态，用时: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.SaveAllStateError" xml:space="preserve">
-    <value>保存所有状态错误\n{0}</value>
-  </data>
-
-    <data name="Core.ActorManager.TimerSaveStateError" xml:space="preserve">
-    <value>定时器保存状态错误</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalActorCrossDay" xml:space="preserve">
-    <value>全局Actor：{0}执行跨天</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayTimeout" xml:space="preserve">
-    <value>全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{0}秒</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayComplete" xml:space="preserve">
-    <value>全局comp跨天完成 耗时：{0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayTimeout" xml:space="preserve">
-    <value>非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{0}秒</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayComplete" xml:space="preserve">
-    <value>非玩家comp跨天完成 耗时：{0}ms</value>
-  </data>
-
-    <!-- 组件注册相关消息 -->
+<!-- 组件注册相关消息 -->
     <data name="Core.ComponentRegister.InitializationComplete" xml:space="preserve">
     <value>组件注册初始化完成</value>
   </data>
 
-    <data name="Core.ComponentRegister.AgentNotImplemented" xml:space="preserve">
-    <value>{0}未实现Agent,请检查业务代码是否正确</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
-    <value>激活全局组件：{0} {1}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalActor" xml:space="preserve">
-    <value>激活全局Actor: {0}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckComplete" xml:space="preserve">
-    <value>激活全局组件并检查所有组件是否都包含Agent实现完成</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckFailed" xml:space="preserve">
-    <value>激活全局组件并检测所有组件是否包含Agent实现失败</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActorNotBelongToThis" xml:space="preserve">
-    <value>获取了一个不属于此Actor的Actor: [{0}] 组件</value>
-  </data>
-
-    <!-- 状态组件相关消息 -->
-    <data name="Core.StateComponent.SaveAllStateTime" xml:space="preserve">
-    <value>保存所有状态，耗时: {0}毫秒</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveAllStateError" xml:space="preserve">
-    <value>保存所有状态错误\n{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.TimerSaveStateError" xml:space="preserve">
-    <value>定时保存状态错误</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveStateFailed" xml:space="preserve">
-    <value>状态组件保存状态失败。状态ID:{0},{1}</value>
-  </data>
-
-    <data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
+<!-- 状态组件相关消息 -->
+<data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
     <value>[StateComp] 状态回存 {0} count:{1}</value>
   </data>
 
-    <data name="Core.StateComponent.SaveDataFailed" xml:space="preserve">
-    <value>保存数据失败，类型:{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveDataException" xml:space="preserve">
-    <value>保存数据异常，类型:{0}，{1}</value>
-  </data>
-
     <!-- 消息处理器相关消息 -->
-    <data name="Core.MessageHandler.ExecutionTimeout" xml:space="preserve">
-    <value>执行超时:{0}</value>
-  </data>
-
-    <data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
+<data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
     <value>消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms</value>
   </data>
 
@@ -780,10 +522,6 @@
 
     <data name="Core.MessageHandler.ActorIdIsZero" xml:space="preserve">
     <value>ActorId为0，无法获取组件，{0}，关闭通道</value>
-  </data>
-
-    <data name="Core.MessageHandler.CacheComponentIsNull" xml:space="preserve">
-    <value>缓存组件为空，无法获取组件，关闭通道</value>
   </data>
 
     <data name="Core.MessageHandler.InnerActionError" xml:space="preserve">
@@ -817,6 +555,37 @@
     <value>定时器代码需要在热更项目里</value>
   </data>
 
+    <!-- WorkerActor 工作单元相关异常 -->
+    <data name="CoreExceptions.WorkerActor.Timeout" xml:space="preserve">
+    <value>WorkerActor工作单元执行超时({0}ms) actorId:{1} trace:{2}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.Quarantined" xml:space="preserve">
+    <value>WorkerActor已隔离，工作单元被拒绝 actorId:{0}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QuarantinedWithTrace" xml:space="preserve">
+    <value>WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.TraceUnavailable" xml:space="preserve">
+    <value>trace不可用：{0}</value>
+  </data>
+
+      <data name="CoreExceptions.WorkerActor.CallRejectedByLimitRule" xml:space="preserve">
+      <value>WorkerActor工作调用被限流规则拒绝，调用方ActorId:{0} 目标ActorId:{1}</value>
+      </data>
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor 队列投递被取消。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor 队列投递失败。actorId:{0} trace:{1}</value>
+  </data>
     <!-- 组件相关异常 -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>组件:[{0}] Actor类型未绑定</value>
@@ -840,8 +609,8 @@
     <value>HTTP处理器命令重复注册，命令:{0}</value>
   </data>
 
-    <data name="CoreExceptions.Hotfix.WrongTcpProcessorType" xml:space="preserve">
-    <value>错误的TCP处理器类型:{0}</value>
+    <data name="CoreExceptions.Hotfix.WrongMessageHandlerType" xml:space="preserve">
+    <value>错误的消息处理器类型:{0}</value>
   </data>
 
     <data name="CoreExceptions.Hotfix.ClassMustBeSealed" xml:space="preserve">
@@ -859,6 +628,9 @@
     <data name="CoreExceptions.Hotfix.NoEventsToListen" xml:space="preserve">
     <value>IEventListener:{0} 没有指定要监听的事件</value>
   </data>
+    <data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
+    <value>事件监听器:{0} 绑定的类型 {1} 必须是 GameEventArgs 的子类</value>
+  </data>
 
     <data name="CoreExceptions.Hotfix.ComponentAgentWrongSuffix" xml:space="preserve">
     <value>组件代理必须以[{0}]结尾，{1}</value>
@@ -868,52 +640,64 @@
     <value>组件:[{0}] 存在多个代理</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
+    <value>{0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数</value>
+  </data>
+
+      <data name="CoreExceptions.HotfixModule.AgentBaseTypeInvalid" xml:space="preserve">
+      <value>组件代理基类型无效，无法推导组件类型: {0}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered" xml:space="preserve">
+      <value>RPC处理器重复注册，请求消息类型:{0} 处理器类型:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered" xml:space="preserve">
+      <value>消息号重复注册，消息号:{0} 处理器类型:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.AssemblyHashMismatch" xml:space="preserve">
+      <value>热更程序集哈希校验失败，路径:{0} 期望SHA-256:{1} 实际SHA-256:{2}</value>
+      </data>
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version 含非法路径字符：{0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>未找到类型：{0}</value>
+  </data>
     <!-- 属性相关异常 -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>无效的组件类型 {0},值应大于{1}且小于{2}和不为{3}</value>
   </data>
 
     <!-- Apps 模块日志消息 -->
-    <!-- BSON类映射辅助相关消息 -->
-    <data name="Apps.BsonClassMapHelper.InitializationFailed" xml:space="preserve">
-    <value>BSON类映射初始化失败</value>
-  </data>
-
     <!-- 会话管理相关消息 -->
     <data name="Apps.SessionManager.AccountAlreadyLoggedIn" xml:space="preserve">
     <value>你的账号已在其他设备上登陆</value>
   </data>
 
     <!-- CodeGenerator 模块错误消息 -->
-    <!-- Agent生成器相关错误消息 -->
-    <data name="CodeGenerator.AgentGenerator.CannotSetTimeoutForThreadSafeAttribute" xml:space="preserve">
-    <value>{0}.{1}无法为标记【{2}】的函数指定超时时间</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.TimeoutAttributeMustBeUsedWithApiOrDiscard" xml:space="preserve">
-    <value>{0}.{1}【{2}】注解只能配合【{3}】或【{4}】使用</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.NonThreadSafeApiMustBeAsync" xml:space="preserve">
-    <value>{0}.{1}, 非【{2}】的【{3}】接口只能是异步函数</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.MarkedFunctionMustBeVirtual" xml:space="preserve">
-    <value>{0}.{1}标记了【{2}】【{3}】【{4}】注解的函数必须申明为virtual</value>
-  </data>
-
-    <data name="CodeGenerator.AgentGenerator.DiscardAttributeRequiresTaskOrValueTask" xml:space="preserve">
-    <value>{0}.{1}只有返回值为Task类型或ValueTask类型才能添加【{2}】注解</value>
-  </data>
-
     <!-- Utility.RandomHelper 相关错误消息 -->
     <data name="Utility.RandomHelper.CantRepeatRandomArgError" xml:space="preserve">
     <value>不能重复随机参数错误，需求数量：{0} 大于ID数量：{1}</value>
   </data>
 
-    <!-- Utility.ActorIdGenerator 相关错误消息 -->
-    <data name="Utility.ActorIdGenerator.InputIsGlobalId" xml:space="preserve">
-    <value>输入为全局ID：{0}</value>
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>权重不能为负数，实际权重：{0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>权重总和必须大于 0</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>权重总和 {0} 超出支持的 32 位范围</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>权重索引 {0} 超出条目长度 {1}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>无法不重复抽取 {0} 个权重目标，只有 {1} 个条目的权重为正</value>
   </data>
 
     <!-- Utility.BigIntegerDebug 相关日志消息 -->
@@ -966,60 +750,10 @@
     <value>数据长度：{0}</value>
   </data>
 
-    <!-- Utility.AppSettings 相关消息 -->
-    <data name="Utility.AppSettings.SetAppRunningFalse" xml:space="preserve">
-    <value>设置 AppRunning false...</value>
-  </data>
-
-    <!-- Utility.GlobalSettings 相关消息 -->
-    <data name="Utility.GlobalSettings.SettingAlreadyExists" xml:space="preserve">
-    <value>当前设置已存在，无法再次设置，此设置已被忽略。</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefault" xml:space="preserve">
-    <value>HttpUrl为空，使用默认值：/game/api/</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.NetworkTimeoutTooShort" xml:space="preserve">
-    <value>NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.ActorRecycleTimeTooShort" xml:space="preserve">
-    <value>ActorRecycleTime小于1分钟，使用默认值5分钟</value>
-  </data>
-
-    <!-- Utility.ExceptionLogs 相关消息 -->
-    <data name="Utility.ExceptionLogs.ExceptionDetails" xml:space="preserve">
-    <value>异常详情：{0}</value>
-  </data>
-
-    <!-- StartUp.HealthCheck 相关消息 -->
+<!-- Utility.ExceptionLogs 相关消息 -->
+<!-- StartUp.HealthCheck 相关消息 -->
     <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
-    <value>健康检查端点已启用:</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.DetailedEndpointUrl" xml:space="preserve">
-    <value>- 详细健康检查: http://{0}:{1}{2}</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.SimpleEndpointUrl" xml:space="preserve">
-    <value>- 简单健康检查: http://{0}:{1}{2}</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.OpenTelemetryEndpointUrl" xml:space="preserve">
-    <value>- OpenTelemetry检查: http://{0}:{1}{2}</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.ApplicationWorkingFine" xml:space="preserve">
-    <value>应用程序运行正常</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.OpenTelemetryConfigurationNormal" xml:space="preserve">
-    <value>OpenTelemetry配置正常</value>
-  </data>
-
-    <data name="StartUp.HealthCheck.OpenTelemetryConfiguredNormally" xml:space="preserve">
-    <value>OpenTelemetry已正常配置</value>
+    <value>健康检查端点已启用: {0}。</value>
   </data>
 
     <data name="StartUp.HealthCheck.Ok" xml:space="preserve">
@@ -1051,23 +785,6 @@
     <value>Blank</value>
   </data>
 
-    <data name="StartUp.HttpServer.OpenTelemetryServiceType" xml:space="preserve">
-    <value>HTTP</value>
-  </data>
-
-    <!-- StartUp.ApplicationSettings 相关消息 -->
-    <data name="StartUp.ApplicationSettings.ConfigFilePath" xml:space="preserve">
-    <value>Configs/app_config.json</value>
-  </data>
-
-    <data name="StartUp.ApplicationSettings.LogTypeSeparator" xml:space="preserve">
-    <value>_</value>
-  </data>
-
-    <data name="StartUp.ApplicationSettings.WarningMessage" xml:space="preserve">
-    <value>[Warning] {0}</value>
-  </data>
-
     <!-- StartUp.HttpServer 相关消息 - 原有缺失的 -->
     <data name="StartUp.HttpServer.StartupComplete" xml:space="preserve">
     <value>HTTP服务器启动完成 - 端口: {0}</value>
@@ -1078,169 +795,16 @@
     <value>BigInteger构造函数字节溢出。</value>
   </data>
 
-  <data name="Exceptions.BigInteger.ConstructorOverflow" xml:space="preserve">
-    <value>BigInteger构造函数溢出。值：{0}。</value>
-  </data>
-
-  <data name="Exceptions.BigInteger.ConstructorUnderflow" xml:space="preserve">
-    <value>BigInteger构造函数下溢。值：{0}。</value>
-  </data>
-
-  <data name="Exceptions.BigInteger.InvalidString" xml:space="preserve">
-    <value>BigInteger无效字符串。字符串：{0}。</value>
-  </data>
-
-  <data name="Exceptions.Database.StartFailed" xml:space="preserve">
-    <value>数据库启动失败。数据库类型：{0}，错误：{1}。</value>
-  </data>
-
-  <data name="Exceptions.Handler.NotInitialized" xml:space="preserve">
-    <value>处理器未初始化。处理器类型：{0}。</value>
-  </data>
-
-  <data name="Exceptions.Network.InvalidIpFormat" xml:space="preserve">
-    <value>无效的IP地址格式。IP：{0}。</value>
-  </data>
-
-  <data name="Exceptions.Timer.CodeInHotfix" xml:space="preserve">
-    <value>计时器代码不能在热更新程序集中使用。</value>
-  </data>
-
   <data name="Exceptions.Timer.InvalidParameters" xml:space="preserve">
     <value>计时器参数无效。参数：{0}，值：{1}。</value>
   </data>
 
-  <data name="Exceptions.Timer.Weekly.EmptyDays" xml:space="preserve">
-    <value>每周计时器执行日期不能为空。</value>
-  </data>
-
-  <data name="Logs.Client.Connected.Success" xml:space="preserve">
-    <value>客户端连接成功。服务器：{0}。</value>
-  </data>
-
-  <data name="Logs.Client.Connecting" xml:space="preserve">
-    <value>正在连接服务器。服务器：{0}。</value>
-  </data>
-
-  <data name="Logs.Client.Disconnected" xml:space="preserve">
-    <value>客户端已断开连接。服务器：{0}。</value>
-  </data>
-
-  <data name="Logs.Client.ErrorOccurred" xml:space="preserve">
-    <value>客户端发生错误。错误：{0}。</value>
-  </data>
-
-  <data name="Logs.Client.MaxRetryReached" xml:space="preserve">
-    <value>已达到最大重试次数。最大重试次数：{0}。</value>
-  </data>
-
-  <data name="Logs.Client.RetryConnect" xml:space="preserve">
-    <value>正在重试连接。尝试次数：{0}，最大：{1}。</value>
-  </data>
-
-  <data name="Logs.Database.Init.Success" xml:space="preserve">
-    <value>数据库初始化成功。连接字符串：{0}，数据库名称：{1}。</value>
-  </data>
-
-  <data name="Logs.Discovery.ExternalService.Connect" xml:space="preserve">
-    <value>外部服务已连接。服务：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.ExternalService.Disconnect" xml:space="preserve">
-    <value>外部服务已断开连接。服务：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.Player.Register.Success" xml:space="preserve">
-    <value>玩家注册成功。玩家ID：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.Player.Unregister.Success" xml:space="preserve">
-    <value>玩家注销成功。玩家ID：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.Server.Exception" xml:space="preserve">
-    <value>发现服务器异常。错误：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.Service.Register.Success" xml:space="preserve">
-    <value>服务注册成功。服务：{0}。</value>
-  </data>
-
-  <data name="Logs.Discovery.Service.Unregister.Success" xml:space="preserve">
-    <value>服务注销成功。服务：{0}。</value>
-  </data>
-
-  <data name="Logs.Game.Server.ConfigActor.End" xml:space="preserve">
-    <value>游戏服务器配置Actor初始化完成。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Database.End" xml:space="preserve">
-    <value>游戏服务器数据库初始化完成。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Exit.Start" xml:space="preserve">
-    <value>游戏服务器开始关闭流程。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Exit.Success" xml:space="preserve">
-    <value>游戏服务器关闭完成。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Hotfix.End" xml:space="preserve">
-    <value>游戏服务器热更新初始化完成。</value>
-  </data>
-
-  <data name="Logs.Game.Server.MainLoop" xml:space="preserve">
-    <value>游戏服务器主循环已启动。</value>
-  </data>
-
-  <data name="Logs.Game.Server.RegisterComponents.Start" xml:space="preserve">
-    <value>游戏服务器开始注册组件。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Start" xml:space="preserve">
-    <value>游戏服务器启动中。服务器ID：{0}。</value>
-  </data>
-
-  <data name="Logs.Game.Server.Start.Complete" xml:space="preserve">
-    <value>游戏服务器启动完成。服务器ID：{0}。</value>
-  </data>
-
-  <data name="Logs.Network.Client.Connect" xml:space="preserve">
-    <value>网络客户端已连接。远程端点：{0}。</value>
-  </data>
-
-  <data name="Logs.Network.Client.Disconnect" xml:space="preserve">
-    <value>网络客户端已断开连接。远程端点：{0}。</value>
-  </data>
-
-  <data name="Logs.Server.Start.DefaultConfig" xml:space="preserve">
-    <value>使用默认配置启动服务器。</value>
-  </data>
-
-  <data name="Logs.Server.Start.FindConfig" xml:space="preserve">
-    <value>正在查找服务器类型配置：{0}。</value>
-  </data>
-
-  <data name="Logs.Server.Starting" xml:space="preserve">
-    <value>服务器启动中。服务器类型：{0}。</value>
-  </data>
-
-  <data name="Logs.Server.Stopped.NoTasks" xml:space="preserve">
-    <value>服务器已停止。没有运行中的任务。</value>
-  </data>
-
-  <data name="Logs.Warning.ConsoleMessage" xml:space="preserve">
-    <value>警告：{0}。</value>
-  </data>
-
-
-  <data name="StartUp.FindingConfigurationForServerType" xml:space="preserve">
-    <value>正在查找服务器类型配置：{0}。</value>
-  </data>
 
   <data name="StartUp.GrafanaLokiLabelExists" xml:space="preserve">
     <value>Grafana Loki标签已存在。标签：{0}。</value>
+  </data>
+  <data name="StartUp.InvalidLauncherArguments" xml:space="preserve">
+    <value>启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}</value>
   </data>
 
   <data name="StartUp.HttpExceptions.AddressMustEndWithSlash" xml:space="preserve">
@@ -1251,8 +815,24 @@
     <value>地址必须以斜杠开头。地址：{0}。</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS尚未实现。</value>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP 签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝（fail-closed）。</value>
+  </data>
+
+  <data name="Network.Http.SignSecretTooWeak" xml:space="preserve">
+    <value>HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥。</value>
+  </data>
+
+  <data name="Network.Http.SignNonceInvalid" xml:space="preserve">
+    <value>HTTP 签名 nonce 缺失或已在时间窗内使用（疑似重放），请求已拒绝。</value>
+  </data>
+
+  <data name="Network.Http.SignVersionOneDeprecated" xml:space="preserve">
+    <value>HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2。</value>
+  </data>
+
+  <data name="StartUp.HttpServer.SignDisabledWarning" xml:space="preserve">
+    <value>HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥。</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
@@ -1264,15 +844,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>未找到配置，使用默认值。</value>
+    <value>未找到服务器类型 '{0}' 的配置，使用默认值。</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus指标端点已内联启用。</value>
-  </data>
-
-  <data name="StartUp.PrometheusMetricsServiceOnStandalonePort" xml:space="preserve">
-    <value>Prometheus指标服务运行在独立端口：{0}。</value>
+    <value>内联 Prometheus 指标端点已启用: http://{0}:{1}/metrics。</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
@@ -1283,11 +859,7 @@
     <value>服务器启动完成。</value>
   </data>
 
-  <data name="Utility.CompressionHelper.ExceptionError" xml:space="preserve">
-    <value>压缩辅助类异常。错误：{0}。</value>
-  </data>
-
-  <data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">
+<data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">
     <value>从配置加载全局设置。</value>
   </data>
 
@@ -1295,4 +867,1314 @@
     <value>加载全局设置失败。错误：{0}。</value>
   </data>
 
+  <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
+    <value>{0} KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableKcp 显式开启）。</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
+    <value>正在启动 {0} KCP 服务，监听 {1}:{2}。</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
+    <value>{0} KCP 服务已成功启动，监听 {1}:{2}。</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
+    <value>{0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
+  </data>
+
+
+
+
+
+
+
+<data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+    <value>PostgreSqlService初始化失败，连接目标：{0}，注册名：{1}</value>
+  </data>
+    <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
+    <value>PostgreSqlDbService不可用，Open()尚未成功完成。</value>
+  </data>
+    <data name="Database.PostgreSql.ExecuteInTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync重试失败，未知异常。</value>
+  </data>
+    <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.{0}重试失败，未知异常。</value>
+  </data>
+  <data name="Apps.Attribute.UnknownAttributeSlot" xml:space="preserve">
+    <value>必须传入已知属性数值槽。</value>
+  </data>
+  <data name="CoreExceptions.Timer.StartNotAwaited" xml:space="preserve">
+    <value>使用定时器操作前必须先等待 QuartzTimer.StartAsync 完成</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.ExceedMaxSize" xml:space="preserve">
+    <value>超出大小上限</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.SegmentDataNotEnough" xml:space="preserve">
+    <value>段数据不足</value>
+  </data>
+  <data name="Database.Registry.NotRegistered" xml:space="preserve">
+    <value>没有名为“{0}”的数据库被注册。已注册名称：[{1}]</value>
+  </data>
+  <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
+    <value>默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]</value>
+  </data>
+  <data name="Database.Provider.NotSupported" xml:space="preserve">
+    <value>数据库提供者枚举值“{0}”未配置解析映射。已支持：[{1}]。新增 DatabaseProviderType 成员时必须同步在 DbProviderResolver 映射表登记实现类型。</value>
+  </data>
+  <data name="Database.Provider.NotInstalled" xml:space="preserve">
+    <value>无法解析数据库提供者“{0}”的实现类型“{1}”：宿主进程可能未引用对应的 Provider 工程（工程名即类型名中的程序集名）。请添加工程引用，或改用泛型 GameDb.Init&lt;T&gt;(...) 显式指定实现类型（AOT/裁剪场景逃生门）。</value>
+  </data>
+  <data name="Database.Provider.ActivationFailed" xml:space="preserve">
+    <value>创建数据库提供者实例失败：类型“{0}”（原因：{1}）。请确认该实现具有公共无参构造函数。</value>
+  </data>
+  <data name="Database.Provider.NotDatabaseService" xml:space="preserve">
+    <value>数据库提供者类型“{0}”未实现 IDatabaseService 接口。</value>
+  </data>
+  <data name="Database.Provider.SqliteBoundaryWarning" xml:space="preserve">
+    <value>SQLite 边界警告：① 复杂条件查询为客户端求值（可能全表扫描）；② 写路径单连接串行；③ 适用于单进程嵌入式存储；④ 可用性监控恒报 Healthy。生产规模化使用风险由使用方自担。</value>
+  </data>
+  <data name="Database.Provider.SqliteBanner" xml:space="preserve">
+    <value>当前数据库提供者 provider=Sqlite（嵌入式，单进程拓扑，启动有边界警告）。</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfo" xml:space="preserve">
+    <value>SQLite 数据文件：{0}（目录可写 ✓ / 文件可读写 ✓）。</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfoMemory" xml:space="preserve">
+    <value>SQLite 内存模式：无数据文件，数据不持久化——进程退出即全部丢失。</value>
+  </data>
+  <data name="Database.Provider.SqliteDataSourceMissing" xml:space="preserve">
+    <value>SQLite 连接串缺少“Data Source=”（示例：Data Source=:memory: 或 Data Source=/abs/path/game.db）。当前连接串：{0}</value>
+  </data>
+  <data name="Database.Provider.SqlitePathNotAccessible" xml:space="preserve">
+    <value>SQLite 数据文件路径不可用：{0}（失败环节：{1}）。</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchFailed" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}</value>
+  </data>
+  <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
+    <value>SqliteDbService 尚未打开（请先调用 Open）。</value>
+  </data>
+  <data name="Database.Sqlite.TransactionGateWaitTimeout" xml:space="preserve">
+    <value>等待 SQLite 连接闸超时（{0} 秒）。最常见根因：在 ExecuteInTransactionAsync 的 action 内 await 同一 SqliteDbService 实例不经环境事务放行的方法（如 OpenAsync/CloseAsync）——SemaphoreSlim 不可重入，会造成死锁。</value>
+  </data>
+  <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
+    <value>SqliteDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+  <data name="Database.Sqlite.OperationRetryFailed" xml:space="preserve">
+    <value>SqliteDbService.{0}重试失败，未知异常。</value>
+  </data>
+  <data name="Database.BatchSizeInvalid" xml:space="preserve">
+    <value>批处理大小必须大于 0。</value>
+  </data>
+  <data name="Database.ConditionalWrite.StateIdMismatch" xml:space="preserve">
+    <value>状态对象的 Id（{0}）与目标 id（{1}）不一致。</value>
+  </data>
+  <data name="Database.ConditionalWrite.SequenceNameRequired" xml:space="preserve">
+    <value>序列名不能为 null 或空白。</value>
+  </data>
+  <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
+    <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>
+  </data>
+  <data name="Hotfix.MailCampaign.PublishedOrRevokedImmutable" xml:space="preserve">
+    <value>Campaign 已发布或已撤回，主体字段不可修改（B1）。CampaignId={0}</value>
+  </data>
+  <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
+    <value>登录消息类型 {0} 缺少 {1}。</value>
+  </data>
+  <data name="Capability.Hosting.OptionsInvalid" xml:space="preserve">
+    <value>能力宿主选项非法（作用域三元组或调度间隔）。</value>
+  </data>
+  <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
+    <value>能力 Id 重复注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.DeploymentAssemblyLoadFailed" xml:space="preserve">
+    <value>部署目录能力程序集加载失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.ModuleTypeScanFailed" xml:space="preserve">
+    <value>能力程序集类型扫描失败：{0}（{1} 个类型加载错误）</value>
+  </data>
+  <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
+    <value>装配过滤器引用了未发现的能力：{0}</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action 名称不能为 null 或为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>admin API 路由前缀不能为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>内层响应 JSON 不能为 null 或为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
+    <value>能力 {1} 声明的 action 未注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
+    <value>未启用任何 Online 能力面：EnableRuntime 与 EnableAdminApi 均为 false,请至少启用其一。</value>
+  </data>
+  <data name="Capability.Hosting.Composition.HostModulesRequired" xml:space="preserve">
+    <value>无族组合至少需要一个宿主基础设施模块：请经 AddHostModule 声明。</value>
+  </data>
+  <data name="Capability.Hosting.Composition.AdminApiPlaneRequiresFamily" xml:space="preserve">
+    <value>管理面工厂需与能力族同用；无族宿主组合不得设置管理面工厂。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
+    <value>管理面监听选项非法（端口 / 前缀）。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.NoAuthAllInterfacesWarning" xml:space="preserve">
+    <value>管理面已启用：当前无鉴权且监听所有网卡（端口 {0}），仅限受信任网络使用（请用防火墙/安全组限制或关闭管理面）。</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
+    <value>能力装配开始：发现 {0} 个，启用 {1} 个，排除 {2} 个</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Excluded" xml:space="preserve">
+    <value>已排除 {0}：{1}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleNoDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleWithDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyRequired" xml:space="preserve">
+    <value>必选 {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalListed" xml:space="preserve">
+    <value>可选 {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalCounted" xml:space="preserve">
+    <value>可选 {0} 个已装配，{1} 个未装配</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateAssembled" xml:space="preserve">
+    <value>{0}(已装配)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateNotAssembled" xml:space="preserve">
+    <value>{0}(未装配)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalDependencyMissing" xml:space="preserve">
+    <value>{0} 可选依赖 {1} 未装配（{2}）：缺失功能「{3}」，不影响 {0} 其余功能运行</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Completed" xml:space="preserve">
+    <value>能力装配完成：{0} 个能力，{1} 项功能因可选依赖缺失未装配，均不影响能力运行</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Failed" xml:space="preserve">
+    <value>能力装配失败（{0} 项）：</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.RequiredDependencyMissing" xml:space="preserve">
+    <value>{0} 必选依赖 {1} 未装配（{2}）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyCycle" xml:space="preserve">
+    <value>依赖成环：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonExcludedByDisableList" xml:space="preserve">
+    <value>配置排除表</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotInEnableList" xml:space="preserve">
+    <value>白名单未收录</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotDiscovered" xml:space="preserve">
+    <value>部署目录未发现</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.HookNotDeclared" xml:space="preserve">
+    <value>钩子 {0} 已挂载但没有任何能力声明（对应能力未装配或未声明该钩子）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownCapability" xml:space="preserve">
+    <value>Settings 配置段出现未发现的能力：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownField" xml:space="preserve">
+    <value>Options 字段不存在或不可配置：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsFieldTypeMismatch" xml:space="preserve">
+    <value>Options 字段类型不符：{0}（期望 {1}，实际 {2}）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionsValidationFailed" xml:space="preserve">
+    <value>能力 {0} Options 校验失败：{1}</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
+    <value>对局结算发奖（结算结果照常记录）</value>
+  </data>
+  <data name="Capability.Online.UseGameDbStoresUndeclared" xml:space="preserve">
+    <value>角色 {0} 已启用 Online 能力族但未声明 Online.UseGameDbStores：一级 store 将使用进程内 InMemory 实现，重启即失数据；生产环境请在配置中显式声明 true（落库）或 false（明确选择易失）。</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>匹配域（420 入队 / 取消 / 状态查询）</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
+    <value>赛季、锦标赛</value>
+  </data>
+  <data name="Capability.Online.Leaderboard.OptionalMatchAbsent" xml:space="preserve">
+    <value>对局结算写榜投影</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">
+    <value>运营总览资产分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalSocialAbsent" xml:space="preserve">
+    <value>运营总览社交分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchAbsent" xml:space="preserve">
+    <value>运营总览对局分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>运营总览匹配分项</value>
+  </data>
+  <data name="Capability.Hosting.ServiceRegistrationDuplicate" xml:space="preserve">
+    <value>能力服务重复注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceOverrideDuplicate" xml:space="preserve">
+    <value>能力服务覆盖重复：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceNotRegistered" xml:space="preserve">
+    <value>能力服务未注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.OptionalServiceNotRegistered" xml:space="preserve">
+    <value>能力 {0} 按可选语义解析服务 {1} 未命中，但其声明的可选依赖均已装配（或未声明任何可选依赖）：能力在场却未注册该服务</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionCycle" xml:space="preserve">
+    <value>能力服务懒工厂循环解析：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionForbidden" xml:space="preserve">
+    <value>能力 {0} 解析了未声明来源的服务 {1}（来源：{2}）；Register/懒工厂期只允许解析 自己/族基建/宿主覆盖/直接声明的必选与在场可选依赖</value>
+  </data>
+  <data name="Capability.Hosting.ServicesEnumerationForbidden" xml:space="preserve">
+    <value>GetServices 只能在 Activate 期调用：{0} / {1}</value>
+  </data>
+  <data name="Capability.Hosting.HostServiceMissing" xml:space="preserve">
+    <value>能力 {0} 声明的宿主服务未提供（需宿主 Override）：{1}</value>
+  </data>
+  <data name="Capability.Hosting.BridgeDuplicatePublish" xml:space="preserve">
+    <value>能力桥契约重复发布：{0}（{1} → {2}）</value>
+  </data>
+  <data name="Capability.Hosting.BridgeUnavailable" xml:space="preserve">
+    <value>能力桥契约已撤销或被替换：{0}（消费方按 8002 处理）</value>
+  </data>
+  <data name="Capability.Hosting.EventPublishRejected" xml:space="preserve">
+    <value>Activate 开始前拒绝发布事件：{0}</value>
+  </data>
+  <data name="Capability.Hosting.EventBus.SubscriberFailed" xml:space="preserve">
+    <value>能力事件订阅处理失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.RestartAfterStop" xml:space="preserve">
+    <value>调度器停止后不可重新启动。</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.TickJobFailed" xml:space="preserve">
+    <value>能力调度逐滴答 job 失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
+    <value>能力调度间隔 job 失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.LoopRoundFaulted" xml:space="preserve">
+    <value>能力调度壳单轮兜底异常（循环继续）：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
+    <value>能力 {0} 激活失败，已逆序回滚 {1} 个已激活能力</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.StartFailed" xml:space="preserve">
+    <value>能力调度器启动失败，已逆序回滚 {0} 个已激活能力</value>
+  </data>
+  <data name="Capability.Hosting.DeactivationFailed" xml:space="preserve">
+    <value>能力 {0} 停止失败（不阻断其余能力停止）：{1}</value>
+  </data>
+  <data name="Capability.Hosting.OptionsTypeMismatch" xml:space="preserve">
+    <value>能力 {0} 声明的 Options 根类型与请求类型不符：{1} ≠ {2}</value>
+  </data>
+  <data name="Capability.Hosting.ConfigureTargetMissing" xml:space="preserve">
+    <value>代码 Configure 引用的 Options 类型未由任何已发现能力声明：{0}</value>
+  </data>
+  <data name="Capability.Hosting.HookDuplicateDeclaration" xml:space="preserve">
+    <value>能力钩子重复声明：{0}（{1} → {2}）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameDuplicate" xml:space="preserve">
+    <value>Admin action 重复注册：{0}（能力或来源：{1}）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotDeclared" xml:space="preserve">
+    <value>能力 {1} 注册的 action 未在其 manifest 声明：{0}</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionOwnerMismatch" xml:space="preserve">
+    <value>能力 {1} 声明的 action {0} 被能力 {2} 注册（跨能力冒名）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.AdapterMissing" xml:space="preserve">
+    <value>管理面缺少必需适配器服务：{0}（族基建须注册）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ReconcileFailed" xml:space="preserve">
+    <value>Admin action 对账失败（{0} 项）：</value>
+  </data>
+  <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
+    <value>作用域缺少玩家主体位（PlayerId &lt;= 0），不能派生玩家上下文。</value>
+  </data>
+  <data name="Online.Tournament.NotFoundOnSave" xml:space="preserve">
+    <value>赛事不存在，保存前必须先经 CreateAsync 建立</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnWrite" xml:space="preserve">
+    <value>榜单不存在或已失效，写入前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnQuery" xml:space="preserve">
+    <value>榜单不存在或已失效，查询前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnReset" xml:space="preserve">
+    <value>榜单不存在或已失效，重置前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.GameEvents.EventIdRequired" xml:space="preserve">
+    <value>事件标识不能为空（EventId 是存储幂等键）</value>
+  </data>
+  <data name="Online.GameEvents.EventNameRequired" xml:space="preserve">
+    <value>事件名不能为空</value>
+  </data>
+  <data name="Online.GameEvents.EventVersionInvalid" xml:space="preserve">
+    <value>事件版本必须从 1 起</value>
+  </data>
+  <data name="Online.Season.NotFoundOnSave" xml:space="preserve">
+    <value>赛季不存在，保存前必须先经 CreateAsync 建立</value>
+  </data>
+  <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
+    <value>对账必须绑定玩家主体位</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountOverflow" xml:space="preserve">
+    <value>账本条目数额溢出：AmountBefore（{0}）+ Delta（{1}）超出 long 范围</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountInconsistent" xml:space="preserve">
+    <value>账本条目不一致：AmountBefore（{0}）+ Delta（{1}）!= AmountAfter（{2}）</value>
+  </data>
+  <data name="Online.Session.SessionTerminal" xml:space="preserve">
+    <value>会话已进入终态</value>
+  </data>
+  <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
+    <value>PlayerId 必须为正数（线缆形态：字符串）。</value>
+  </data>
+  <data name="Online.AdminApi.NonEmptyStringRequired" xml:space="preserve">
+    <value>{0} 必须为非空字符串。</value>
+  </data>
+  <data name="Online.AdminApi.ServiceNoResult" xml:space="preserve">
+    <value>服务未返回任何结果。</value>
+  </data>
+  <data name="Online.AdminApi.PositiveNumberRequired" xml:space="preserve">
+    <value>{0} 必须为正数。</value>
+  </data>
+  <data name="Online.AdminApi.ConfigKindInvalid" xml:space="preserve">
+    <value>ConfigKind 必须是 [1,4] 范围内的数字（RemoteConfig/Announcement/DeviceGroup/ScheduledTask）。</value>
+  </data>
+  <data name="Online.AdminApi.RolloutPercentInvalid" xml:space="preserve">
+    <value>Percent 必须是 [0,100] 范围内的灰度百分比。</value>
+  </data>
+  <data name="Online.AdminApi.AbnormalKindInvalid" xml:space="preserve">
+    <value>AbnormalKind 必须是 [1,3] 范围内的数字（LongWaiting/RepeatedCancel/Orphan）。</value>
+  </data>
+  <data name="Online.AdminApi.MatchTicketNotFound" xml:space="preserve">
+    <value>匹配票据不存在：{0}</value>
+  </data>
+  <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
+    <value>管理面不支持结束异常对局；对局生命周期归游戏进程所有。</value>
+  </data>
+  <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
+    <value>Direction 必须为 'Apply' 或 'Lift'。</value>
+  </data>
+  <data name="Online.AdminApi.StatusInvalid" xml:space="preserve">
+    <value>Status 必须是 [1,4] 范围内的数字（Pending/Handling/Resolved/Rejected）。</value>
+  </data>
+  <data name="Online.AdminApi.TransactionNotFound" xml:space="preserve">
+    <value>交易不存在：{0}</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemsEmpty" xml:space="preserve">
+    <value>GrantItems 必须至少包含一个条目。</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
+    <value>GrantItems 条目要求 ItemOrCurrencyType（字符串）且 Quantity（正数）。</value>
+  </data>
+  <data name="Online.AdminApi.CompensationQueueNotConfigured" xml:space="preserve">
+    <value>补偿队列未装配（宿主未注册跨服补偿队列，无法查看或裁决转人工条目）。</value>
+  </data>
+  <data name="Online.AdminApi.CompensationEntryNotFound" xml:space="preserve">
+    <value>补偿条目不存在或不在转人工状态：{0}</value>
+  </data>
+  <data name="Online.AdminApi.CompensationResolveActionInvalid" xml:space="preserve">
+    <value>补偿裁决 Action 仅支持 Retry 或 Discard：{0}</value>
+  </data>
+
+  <data name="StartUp.Application.StartupInstanceRequired" xml:space="preserve">
+    <value>至少需要一个应用程序启动实例。</value>
+  </data>
+
+  <data name="Apps.Attribute.UnknownFinalAttribute" xml:space="preserve">
+    <value>必须传入已知最终属性。</value>
+  </data>
+
+  <data name="Client.Bot.PostFailed" xml:space="preserve">
+    <value>发送 POST 数据失败。状态码：{0}</value>
+  </data>
+
+  <data name="Config.Table.NotLoaded" xml:space="preserve">
+    <value>配置表未加载！</value>
+  </data>
+
+  <data name="CoreConfig.ByteBuf.ExceedMaxSegmentSize" xml:space="preserve">
+    <value>超出最大段大小</value>
+  </data>
+
+  <data name="CoreExceptions.Timer.InvalidDayOfMonth" xml:space="preserve">
+    <value>定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}</value>
+  </data>
+
+  <data name="Database.Registry.AlreadyRegistered" xml:space="preserve">
+    <value>名为“{0}”的数据库已被注册。已注册名称：[{1}]</value>
+  </data>
+
+
+  <data name="Exceptions.Hotfix.ComponentAgentMapNotFound" xml:space="preserve">
+    <value>组件代理映射中未找到条目：{0} ===> {1}</value>
+  </data>
+
+  <data name="Hotfix.MailCampaign.InvalidParameter" xml:space="preserve">
+    <value>Campaign 参数非法，code={0}</value>
+  </data>
+
+  <data name="Network.SessionTypeCastInvalid" xml:space="preserve">
+    <value>会话类型 '{0}' 无法转换为 '{1}'。</value>
+  </data>
+
+  <data name="Online.HotfixRollback.TargetVersionNotRegistered" xml:space="preserve">
+    <value>目标版本未登记，拒绝切换活跃版本：{0}</value>
+  </data>
+
+
+  <data name="StartUp.Application.ConflictRequired" xml:space="preserve">
+    <value>至少需要一个冲突项。</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginFailed" xml:space="preserve">
+    <value>机器人-{0}账号登录失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginSuccess" xml:space="preserve">
+    <value>机器人-{0}账号验证成功,id:{1}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectFailed" xml:space="preserve">
+    <value>断开连接失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectSimulated" xml:space="preserve">
+    <value>机器人-{0}主动断开连接，模拟离线。</value>
+  </data>
+
+  <data name="Client.Bot.EntryAsyncError" xml:space="preserve">
+    <value>入口方法 EntryAsync 错误: {0}| 线程 ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.FriendAddFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-加好友失败，Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendAddSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-加好友成功，开始拉取好友列表。</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-删好友失败，Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-删好友成功，开始二次拉取好友列表。</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-拉取列表失败，ErrorCode:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFirstSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-首次列表成功，数量:{1}，开始删好友。</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
+    <value>机器人-{0}好友场景执行完成，二次列表数量:{1}。</value>
+  </data>
+  <data name="Client.Bot.RpsScenarioInvalidOptions" xml:space="preserve">
+    <value>机器人-{0}RPS场景启动失败，玩家ID:{1}，出拳序列数量:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsRoomCreated" xml:space="preserve">
+    <value>机器人-{0}RPS场景-创建房间成功，房间ID:{1}，等待对手加入。</value>
+  </data>
+  <data name="Client.Bot.RpsCreateRoomFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-创建房间失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsJoinerWaiting" xml:space="preserve">
+    <value>机器人-{0}RPS场景-开始轮询可加入的石头剪刀布房间。</value>
+  </data>
+  <data name="Client.Bot.RpsJoinedRoom" xml:space="preserve">
+    <value>机器人-{0}RPS场景-已加入房间:{1}，等待开局。</value>
+  </data>
+  <data name="Client.Bot.RpsJoinRoomFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-加入房间失败，房间ID:{1}，错误码:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsStartGameFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-开局失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameStarted" xml:space="preserve">
+    <value>机器人-{0}RPS场景-对局开始，房间ID:{1}。</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitGesture" xml:space="preserve">
+    <value>机器人-{0}RPS场景-第{1}局出拳:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-出拳失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinished" xml:space="preserve">
+    <value>机器人-{0}RPS场景-对局终局，总局数:{1}，胜者玩家ID:{2}，玩家出拳:{3}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinishedByRoomStatus" xml:space="preserve">
+    <value>机器人-{0}RPS场景-房间状态终局:{1}，总局数:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsPollNoProgress" xml:space="preserve">
+    <value>机器人-{0}RPS场景-连续{1}次轮询无进展，终止。</value>
+  </data>
+  <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
+    <value>机器人-{0}RPS场景-轮询循环异常:{1}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinerWaiting" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-开始轮询可加入的四子棋房间。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinedRoom" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-已加入房间:{1}，等待开局。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourJoinRoomFailed" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-加入房间失败，房间ID:{1}，错误码:{2}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourGameStarted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-对局开始，房间ID:{1}。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourMoveSubmitted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-第{1}局落子列:{2}（第{3}手）</value>
+  </data>
+  <data name="Client.Bot.ConnectFourRoundFinished" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-第{1}局终局，胜者:{2}，平局:{3}</value>
+  </data>
+  <data name="Client.Bot.ConnectFourScenarioCompleted" xml:space="preserve">
+    <value>机器人-{0}四子棋场景执行完成（共{1}局）。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollNoProgress" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-连续{1}次轮询无进展，终止。</value>
+  </data>
+  <data name="Client.Bot.ConnectFourPollLoopError" xml:space="preserve">
+    <value>机器人-{0}四子棋场景-轮询循环异常:{1}</value>
+  </data>
+  <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
+    <value>机器人-{0}匹配场景启动（1v1，评分 1000）</value>
+  </data>
+  <data name="Client.Bot.MatchEnqueue" xml:space="preserve">
+    <value>机器人-{0}入队响应 MatchId={1} ErrorCode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchPush" xml:space="preserve">
+    <value>机器人-{0}收到匹配成功推送 MatchId={1} Mode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchStatus" xml:space="preserve">
+    <value>机器人-{0}状态查询 Queuing={1} MatchId={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchEnter" xml:space="preserve">
+    <value>机器人-{0}入场响应 MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchPollError" xml:space="preserve">
+    <value>机器人-{0}匹配场景-状态轮询异常:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
+    <value>机器人-{0}好友场景启动失败，玩家ID非法:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioNoTarget" xml:space="preserve">
+    <value>机器人-{0}好友场景启动失败，未找到可用好友目标。</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioStarted" xml:space="preserve">
+    <value>机器人-{0}开始执行好友场景，目标玩家:{1}</value>
+  </data>
+
+  <data name="Client.Bot.Http.ResponseTypeInvalid" xml:space="preserve">
+    <value>响应消息类型无效。期望“{0}”，实际为“{1}”。</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectProbeFailed" xml:space="preserve">
+    <value>KCP 连接探测失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectingTimeoutAbandonSession" xml:space="preserve">
+    <value>连接中状态超时（{0}毫秒），放弃当前会话</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ReceiveError" xml:space="preserve">
+    <value>KCP 接收错误: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.SendToServerFailed" xml:space="preserve">
+    <value>发送消息到服务器失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Metrics" xml:space="preserve">
+    <value>[指标] connect={0} auth={1} list={2} create={3} login={4} total={5}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreateFailed" xml:space="preserve">
+    <value>机器人-{0}创建角色失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreated" xml:space="preserve">
+    <value>创建角色 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListEmpty" xml:space="preserve">
+    <value>机器人-{0}角色列表为空，开始创建角色。</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListFailed" xml:space="preserve">
+    <value>机器人-{0}请求角色列表失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListItem" xml:space="preserve">
+    <value>角色列表 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerLoginSuccess" xml:space="preserve">
+    <value>机器人-{0}登录成功,id:{1}</value>
+  </data>
+
+  <data name="Client.Bot.SendAccountLoginError" xml:space="preserve">
+    <value>发送账号登录消息错误: {0}| 线程 ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.Tcp.ConnectingTimeoutRecreateSession" xml:space="preserve">
+    <value>连接中状态超时（{0}毫秒），重建会话</value>
+  </data>
+
+  <data name="Client.Program.BotOptions" xml:space="preserve">
+    <value>机器人选项: 机器人数量={0}, tcp={1}:{2}, 场景={3}, 断开循环={4}, 登录后断开秒数={5}, 运行秒数={6}</value>
+  </data>
+
+  <data name="Config.Table.ConfigNotFound" xml:space="preserve">
+    <value>配置表 {0} 未注册或未加载</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
+    <value>配置表加载完成...</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigStart" xml:space="preserve">
+    <value>开始加载配置表...</value>
+  </data>
+
+  <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
+    <value>Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.InactiveComponentFailed" xml:space="preserve">
+    <value>Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
+    <value>工作单元执行超时 trace:{0}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Quarantined" xml:space="preserve">
+    <value>Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.QuarantinedTellDropped" xml:space="preserve">
+    <value>Actor已隔离，丢弃Tell工作单元 actorId:{0}</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
+    <value>ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.RemoveSaveStateFailed" xml:space="preserve">
+    <value>显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}</value>
+  </data>
+
+  <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
+    <value>ActorManager.CheckIdleAsync Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDayAsync 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateErrorLog" xml:space="preserve">
+    <value>ActorManager.SaveAllAsync 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateTimeLog" xml:space="preserve">
+    <value>ActorManager.SaveAllAsync 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>ActorManager.TimerSaveAsync 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GetNotBelongComponent" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalActorActivated" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckComplete" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检查所有组件是否都包含Agent实现完成</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检测所有组件是否包含Agent实现失败 , 异常: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} 未实现Agent，已跳过激活</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentsFailedSummary" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 激活失败组件数:{1} , 组件清单:[{2}]</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchError" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} 异常: {2}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者</value>
+  </data>
+
+
+
+  <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentFailed" xml:space="preserve">
+    <value>BaseComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionException" xml:space="preserve">
+    <value>BaseMessageHandler.InnerActionAsync 执行异常，消息类型:{0}，异常:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionTimeout" xml:space="preserve">
+    <value>BaseMessageHandler.InnerActionAsync 执行超时，消息类型:{0}，超时:{1}，异常:{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeDebug" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeWarning" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeout" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentFailed" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}</value>
+  </data>
+
+      <data name="Core.MessageHandler.RpcComponentExecutionTimeout" xml:space="preserve">
+      <value>BaseRpcComponentHandler组件RPC执行超时，消息类型:{0} 超时:{1}ms</value>
+      </data>
+  <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionException" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 异常:{2}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateErrorLog" xml:space="preserve">
+    <value>StateComponent.SaveAllAsync 保存所有状态错误\n{0}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateTimeLog" xml:space="preserve">
+    <value>StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveDataFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveDataFailed 状态名称:{0} , 消息: 保存数据失败，类型:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveStateFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveStateAsync Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}</value>
+  </data>
+
+  <data name="Core.StateComponent.StateSaveBackDetail" xml:space="preserve">
+    <value>StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}</value>
+  </data>
+
+  <data name="Core.Timer.LogError" xml:space="preserve">
+    <value>{0}\n{1}</value>
+  </data>
+
+  <data name="Database.GameDb.ImplicitDefaultBindingWarningLog" xml:space="preserve">
+    <value>GameDb.ImplicitDefaultBinding 已注册多个数据库（{0}）但无声明式默认库提名（DbOptions.IsDefault 均为 false），静态门面当前指向首个注册库；多库部署请在业务库 Init 时保留缺省 IsDefault = true（或显式调用 GameDb.SetDefault(业务库名)）。</value>
+  </data>
+
+
+  <data name="Database.Mongo.BulkWritePartialAcknowledged" xml:space="preserve">
+    <value>MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线</value>
+  </data>
+  <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
+  </data>
+
+  <data name="Database.Mongo.AbortTransactionAfterCommitFailed" xml:space="preserve">
+    <value>MongoDbService.CommitTransactionAsync 提交失败后中止事务失败，事务将由服务端超时回滚。error={0}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
+    <value>MongoDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionFatal" xml:space="preserve">
+    <value>MongoDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>MongoDbService.Open {0} {1} MongoDB服务初始化成功，连接字符串：{2}，数据库名称：{3}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenRetryWarning" xml:space="preserve">
+    <value>MongoDbService.Open 重试 {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.Mongo.OperationTransientError" xml:space="preserve">
+    <value>MongoDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+
+  <data name="Database.Mongo.ReadFallback" xml:space="preserve">
+    <value>MongoDbService 读降级 {0}，状态={1}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchFailed" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}</value>
+  </data>
+
+  <data name="Database.Mongo.StateTransition" xml:space="preserve">
+    <value>MongoDbService 状态迁移 {0} -&gt; {1}。原因：{2}</value>
+  </data>
+
+  <data name="Database.Mongo.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>MongoDbService.TryReconnectAndPingAsync 失败。error={0}</value>
+  </data>
+
+
+  <data name="Database.PostgreSql.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionError" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionFatal" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenRetryWarning" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 重试 {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OperationTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.ReadFallback" xml:space="preserve">
+    <value>PostgreSqlDbService 读降级 {0}，状态={1}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.StateTransition" xml:space="preserve">
+    <value>PostgreSqlDbService 状态迁移 {0} -&gt; {1}。原因：{2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}</value>
+  </data>
+
+
+
+
+
+
+  <data name="Hotfix.Bag.OfflineNotifySendFailed" xml:space="preserve">
+    <value>ReqPlayerSendItemHttpHandler 离线通知发送失败, playerId: {0}, status: {1}, error: {2}, traceId: {3}</value>
+  </data>
+
+
+
+
+
+
+  <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
+    <value>对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeFailed" xml:space="preserve">
+    <value>对局桥返回失败, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeException" xml:space="preserve">
+    <value>对局桥调用异常, ActorId: {0}</value>
+  </data>
+
+
+  <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
+    <value>代理对象为空</value>
+  </data>
+
+  <data name="Hotfix.Server.CrossDayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{0}</value>
+  </data>
+
+  <data name="Hotfix.Server.TestDelayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次</value>
+  </data>
+
+  <data name="Hotfix.Server.TestScheduleTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestSchedueTimer.延时1秒执行.每隔10秒执行</value>
+  </data>
+
+  <data name="Hotfix.StartUp.ClientDisconnected" xml:space="preserve">
+    <value>客户端断开连接 - 会话ID: {0}, 断开原因: {1}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerNotFound" xml:space="preserve">
+    <value>数据包接收: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}</value>
+  </data>
+
+  <data name="Hotfix.Unified.DeliveryFailed" xml:space="preserve">
+    <value>SendToPlayerInnerHandler 投递失败, PlayerId:{0}</value>
+  </data>
+
+  <data name="Network.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+    <value>关闭认证超时会话失败: 会话Id: {0}, 异常: {1}</value>
+  </data>
+
+  <data name="Network.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>关闭认证超时会话时发生错误: {0}</value>
+  </data>
+
+  <data name="Network.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+    <value>关闭未认证会话失败: 会话Id: {0}, 异常: {1}</value>
+  </data>
+
+  <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
+    <value>创建网络消息包错误 {0} {1} {2}</value>
+  </data>
+
+  <data name="Network.FormatMessageError" xml:space="preserve">
+    <value>格式化消息错误 {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
+    <value>{0},执行时间：{1}ms</value>
+  </data>
+
+  <data name="Network.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+    <value>消息编码异常: {0}</value>
+  </data>
+
+  <data name="Network.MessageObjectEncodeException" xml:space="preserve">
+    <value>消息对象编码异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>扫描认证超时会话时发生错误: {0}</value>
+  </data>
+
+  <data name="Network.SendHeartBeatMessage" xml:space="preserve">
+    <value>发送心跳消息:{0} {1}</value>
+  </data>
+
+  <data name="Network.SendMessage" xml:space="preserve">
+    <value>发送消息:{0} {1} {2}</value>
+  </data>
+
+  <data name="Network.SendMessageError" xml:space="preserve">
+    <value>发送消息错误:{0} {1}</value>
+  </data>
+
+  <data name="Network.SendMessageTimeout" xml:space="preserve">
+    <value>发送消息超时:{0} {1}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationRejected" xml:space="preserve">
+    <value>会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialRejected" xml:space="preserve">
+    <value>会话凭据校验未通过，关闭会话: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialError" xml:space="preserve">
+    <value>会话凭据校验器抛出异常: 会话Id: {0}, 消息Id: {1}, 异常: {2}</value>
+  </data>
+
+
+
+  <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
+    <value>会话认证超时，正在关闭: 会话Id: {0}, 远程端点: {1}</value>
+  </data>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <data name="StartUp.Application.AbnormalServerStop" xml:space="preserve">
+    <value>服务器异常停止:{0}</value>
+  </data>
+
+  <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
+    <value>检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 — {0}</value>
+  </data>
+
+  <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">
+    <value>未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。</value>
+  </data>
+
+  <data name="StartUp.Application.RequestedServerTypeNotRegistered" xml:space="preserve">
+    <value>指定的服务器类型 '{0}' 未注册任何启动类型，拒绝启动（退出码 1）。</value>
+  </data>
+
+  <data name="StartUp.Application.ServerTypeCommaNotAllowed" xml:space="preserve">
+    <value>服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。</value>
+  </data>
+
+
+  <data name="StartUp.Application.StopServerError" xml:space="preserve">
+    <value>停止服务器角色 '{0}' 时出错:{1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.HttpRequestError" xml:space="preserve">
+    <value>HTTP请求错误: {0}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedDetails" xml:space="preserve">
+    <value>HTTP端口[{0}]占用详情: {1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedNoProcessDetails" xml:space="preserve">
+    <value>HTTP端口[{0}]已被占用，但未能获取占用进程详情。</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
+    <value>消息处理器错误: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerNotFound" xml:space="preserve">
+    <value>接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}</value>
+  </data>
+
+  <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">
+    <value>{0}端口[{1}]占用详情: {2}</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压失败。错误：{0}。</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress 输入数据已被截断，无法完成解压。</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压输出超过允许的最大长度：{0}。</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting ActorRecycleTime小于1分钟，使用默认值5分钟</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting HttpUrl为空，使用默认值：/game/api/</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
+    <value>IllegalWordDetection.Init 异常详情：{0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection 敏感词表数据损坏：偏移 {1} 处字段长度非法 {0}，数据总长度 {2}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber 除数为零</value>
+  </data>
+
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost 退役模块清理失败：{0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
+    <value>LNumber.DivisionOverflow LNumber除法已越界 &gt; {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
+    <value>LNumber.MultiplicationOverflow LNumber乘法已越界 &gt; {0}</value>
+  </data>
+
+  <data name="Hotfix.Friend.DomainBridgeUnavailable" xml:space="preserve">
+    <value>好友域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeFailed" xml:space="preserve">
+    <value>好友域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
+    <value>好友域桥调用异常, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeUnavailable" xml:space="preserve">
+    <value>匹配域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeFailed" xml:space="preserve">
+    <value>匹配域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
+    <value>匹配域桥调用异常, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
+    <value>会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.IssueFailed" xml:space="preserve">
+    <value>登录签发会话恢复凭据失败, Code: {0}, PlayerId: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeRequested" xml:space="preserve">
+    <value>会话恢复请求, 会话ID: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeSucceeded" xml:space="preserve">
+    <value>会话恢复成功, PlayerId: {0}, 新会话ID: {1}, 对局恢复: {2}, MatchId: {3}, ServerSequence: {4}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeFailed" xml:space="preserve">
+    <value>会话恢复失败, Code: {0}, Message: {1}, 会话ID: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectCoordination" xml:space="preserve">
+    <value>断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
+    <value>断线跳过协同（旧回调迟到，玩家已有新会话）, PlayerId: {0}</value>
+  </data>
+  <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
+    <value>机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）</value>
+  </data>
+  <data name="Client.Bot.SessionResumeRequested" xml:space="preserve">
+    <value>机器人-{0}会话恢复请求已发送（携带登录凭据）</value>
+  </data>
+  <data name="Client.Bot.SessionResumeResponse" xml:space="preserve">
+    <value>机器人-{0}会话恢复响应 PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}</value>
+  </data>
+  <data name="Client.Bot.SessionResumeReplayRejected" xml:space="preserve">
+    <value>机器人-{0}旧凭据重放被拒（ErrorCode={1}，符合预期）</value>
+  </data>
+  <data name="Client.Bot.MatchResumeEnterResponse" xml:space="preserve">
+    <value>机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="StartUp.Certificates.PathMissing" xml:space="preserve">
+    <value>已启用 {0}，但证书路径配置 {1} 为空。</value>
+  </data>
+  <data name="StartUp.Certificates.FileNotFound" xml:space="preserve">
+    <value>{0} 证书文件不存在：{1}。</value>
+  </data>
+  <data name="StartUp.Certificates.KeyPathMissing" xml:space="preserve">
+    <value>{0} PEM 证书必须配置独立私钥路径 {1}。</value>
+  </data>
+  <data name="StartUp.Certificates.KeyFileNotFound" xml:space="preserve">
+    <value>{0} PEM 私钥文件不存在：{1}。</value>
+  </data>
+  <data name="StartUp.Certificates.PrivateKeyMissing" xml:space="preserve">
+    <value>{0} 证书不包含私钥：{1}。</value>
+  </data>
+  <data name="StartUp.Certificates.LoadFailed" xml:space="preserve">
+    <value>{0} 证书加载失败（证书或私钥损坏、密码错误或私钥不匹配）：{1}。</value>
+  </data>
+  <data name="StartUp.Certificates.TraditionalEncryptedKeyUnsupported" xml:space="preserve">
+    <value>{0} 私钥使用了传统 OpenSSL 加密格式（Proc-Type/DEK-Info 头），不受支持；请先使用 openssl pkcs8 -topk8 转换为加密 PKCS#8 格式：{1}。</value>
+  </data>
+  <data name="StartUp.WebSocketServer.SecureListenerConfigured" xml:space="preserve">
+    <value>已配置 WSS TLS 监听，端口：{0}。</value>
+  </data>
 </root>

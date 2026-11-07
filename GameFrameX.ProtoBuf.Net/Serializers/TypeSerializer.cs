@@ -45,20 +45,7 @@ internal sealed class TypeSerializer : IProtoTypeSerializer
         Helpers.DebugAssert(fieldNumbers.Length == serializers.Length);
 
         Helpers.Sort(fieldNumbers, serializers);
-        var hasSubTypes = false;
-        for (var i = 0; i < fieldNumbers.Length; i++)
-        {
-            if (i != 0 && fieldNumbers[i] == fieldNumbers[i - 1])
-            {
-                throw new InvalidOperationException("Duplicate field-number detected; " +
-                                                    fieldNumbers[i] + " on: " + forType.FullName);
-            }
-
-            if (!hasSubTypes && serializers[i].ExpectedType != forType)
-            {
-                hasSubTypes = true;
-            }
-        }
+        var hasSubTypes = DetectSubTypes(fieldNumbers, serializers, forType);
 
         ExpectedType = forType;
         this.factory = factory;
@@ -100,21 +87,7 @@ internal sealed class TypeSerializer : IProtoTypeSerializer
             throw new ArgumentException("Cannot create a TypeSerializer for nullable types", "forType");
         }
 
-#if COREFX || PROFILE259
-			if (iextensible.IsAssignableFrom(typeInfo))
-            {
-                if (typeInfo.IsValueType || !isRootType || hasSubTypes)
-#else
-        if (model.MapType(iextensible).IsAssignableFrom(forType))
-        {
-            if (forType.IsValueType || !isRootType || hasSubTypes)
-#endif
-            {
-                throw new NotSupportedException("IExtensible is not supported in structs or classes with inheritance");
-            }
-
-            isExtensible = true;
-        }
+        isExtensible = ResolveIsExtensible(model, forType, isRootType, hasSubTypes);
 #if COREFX || PROFILE259
 			TypeInfo constructTypeInfo = constructType.GetTypeInfo();
             hasConstructor = !constructTypeInfo.IsAbstract && Helpers.GetConstructor(constructTypeInfo, Helpers.EmptyTypes, true) != null;
@@ -131,6 +104,45 @@ internal sealed class TypeSerializer : IProtoTypeSerializer
 #else
     private static readonly Type iextensible = typeof(IExtensible);
 #endif
+
+    private static bool DetectSubTypes(int[] fieldNumbers, IProtoSerializer[] serializers, Type forType)
+    {
+        var hasSubTypes = false;
+        for (var i = 0; i < fieldNumbers.Length; i++)
+        {
+            if (i != 0 && fieldNumbers[i] == fieldNumbers[i - 1])
+            {
+                throw new InvalidOperationException("Duplicate field-number detected; " +
+                                                    fieldNumbers[i] + " on: " + forType.FullName);
+            }
+
+            if (!hasSubTypes && serializers[i].ExpectedType != forType)
+            {
+                hasSubTypes = true;
+            }
+        }
+        return hasSubTypes;
+    }
+
+    private bool ResolveIsExtensible(TypeModel model, Type forType, bool isRootType, bool hasSubTypes)
+    {
+#if COREFX || PROFILE259
+        if (iextensible.IsAssignableFrom(typeInfo))
+        {
+            if (typeInfo.IsValueType || !isRootType || hasSubTypes)
+#else
+        if (model.MapType(iextensible).IsAssignableFrom(forType))
+        {
+            if (forType.IsValueType || !isRootType || hasSubTypes)
+#endif
+            {
+                throw new NotSupportedException("IExtensible is not supported in structs or classes with inheritance");
+            }
+
+            return true;
+        }
+        return false;
+    }
 
     private bool CanHaveInheritance
     {
@@ -256,66 +268,12 @@ internal sealed class TypeSerializer : IProtoTypeSerializer
                 lastFieldNumber = lastFieldIndex = 0;
             }
 
-            for (var i = lastFieldIndex; i < fieldNumbers.Length; i++)
-            {
-                if (fieldNumbers[i] == fieldNumber)
-                {
-                    var ser = serializers[i];
-                    //Helpers.DebugWriteLine(": " + ser.ToString());
-                    var serType = ser.ExpectedType;
-                    if (value == null)
-                    {
-                        if (serType == ExpectedType)
-                        {
-                            value = CreateInstance(source, true);
-                        }
-                    }
-                    else
-                    {
-                        if (serType != ExpectedType && ((IProtoTypeSerializer)ser).CanCreateInstance()
-                                                    && serType
-#if COREFX || PROFILE259
-								.GetTypeInfo()
-#endif
-                                                        .IsSubclassOf(value.GetType()))
-                        {
-                            value = ProtoReader.Merge(source, value, ((IProtoTypeSerializer)ser).CreateInstance(source));
-                        }
-                    }
-
-                    if (ser.ReturnsValue)
-                    {
-                        value = ser.Read(value, source);
-                    }
-                    else
-                    {
-                        // pop
-                        ser.Read(value, source);
-                    }
-
-                    lastFieldIndex = i;
-                    lastFieldNumber = fieldNumber;
-                    fieldHandled = true;
-                    break;
-                }
-            }
+            fieldHandled = TryReadKnownField(fieldNumber, ref value, source, ref lastFieldIndex, ref lastFieldNumber);
 
             if (!fieldHandled)
             {
                 //Helpers.DebugWriteLine(": [" + fieldNumber + "] (unknown)");
-                if (value == null)
-                {
-                    value = CreateInstance(source, true);
-                }
-
-                if (isExtensible)
-                {
-                    source.AppendExtensionData((IExtensible)value);
-                }
-                else
-                {
-                    source.SkipField();
-                }
+                HandleUnknownField(ref value, source);
             }
         }
 
@@ -331,6 +289,75 @@ internal sealed class TypeSerializer : IProtoTypeSerializer
         }
 
         return value;
+    }
+
+    private bool TryReadKnownField(int fieldNumber, ref object value, ProtoReader source,
+        ref int lastFieldIndex, ref int lastFieldNumber)
+    {
+        for (var i = lastFieldIndex; i < fieldNumbers.Length; i++)
+        {
+            if (fieldNumbers[i] == fieldNumber)
+            {
+                ReadMatchedField(ref value, source, i);
+                lastFieldIndex = i;
+                lastFieldNumber = fieldNumber;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void ReadMatchedField(ref object value, ProtoReader source, int i)
+    {
+        var ser = serializers[i];
+        //Helpers.DebugWriteLine(": " + ser.ToString());
+        var serType = ser.ExpectedType;
+        if (value == null)
+        {
+            if (serType == ExpectedType)
+            {
+                value = CreateInstance(source, true);
+            }
+        }
+        else
+        {
+            if (serType != ExpectedType && ((IProtoTypeSerializer)ser).CanCreateInstance()
+                                        && serType
+#if COREFX || PROFILE259
+                                        .GetTypeInfo()
+#endif
+                                        .IsSubclassOf(value.GetType()))
+            {
+                value = ProtoReader.Merge(source, value, ((IProtoTypeSerializer)ser).CreateInstance(source));
+            }
+        }
+
+        if (ser.ReturnsValue)
+        {
+            value = ser.Read(value, source);
+        }
+        else
+        {
+            // pop
+            ser.Read(value, source);
+        }
+    }
+
+    private void HandleUnknownField(ref object value, ProtoReader source)
+    {
+        if (value == null)
+        {
+            value = CreateInstance(source, true);
+        }
+
+        if (isExtensible)
+        {
+            source.AppendExtensionData((IExtensible)value);
+        }
+        else
+        {
+            source.SkipField();
+        }
     }
 
     private object InvokeCallback(MethodInfo method, object obj, SerializationContext context)

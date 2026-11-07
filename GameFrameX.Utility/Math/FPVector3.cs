@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 /* Copyright (C) <2009-2011> <Thorben Linneweber, Jitter Physics>
  *
@@ -87,8 +55,8 @@ namespace GameFrameX.Utility.Math;
 public struct FPVector3
 {
     private static FP ZeroEpsilonSq = FPMath.Epsilon;
-    internal static FPVector3 InternalZero;
-    internal static FPVector3 Arbitrary;
+    internal static readonly FPVector3 InternalZero;
+    internal static readonly FPVector3 Arbitrary;
 
     /// <summary>
     /// 向量的 X 组件。
@@ -720,7 +688,13 @@ public struct FPVector3
     /// <returns>返回向量的哈希码。</returns>
     public override int GetHashCode()
     {
-        return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode();
+        unchecked
+        {
+            var hash = x.RawValue.GetHashCode();
+            hash = (hash * 397) ^ y.RawValue.GetHashCode();
+            hash = (hash * 397) ^ z.RawValue.GetHashCode();
+            return hash;
+        }
     }
 
     /// <summary>
@@ -791,6 +765,14 @@ public struct FPVector3
     public static void Normalize(ref FPVector3 value, out FPVector3 result)
     {
         var num2 = value.x * value.x + value.y * value.y + value.z * value.z;
+        if (num2 == FP.Zero)
+        {
+            // 零向量归一化保持零向量：避免 1/0 的 MaxValue 哨兵随运算（含 ClampMagnitude）扩散
+            // Normalizing a zero vector stays zero: prevents the MaxValue sentinel from 1/0 spreading through later math (ClampMagnitude included).
+            result = zero;
+            return;
+        }
+
         var num = FP.One / FP.Sqrt(num2);
         result.x = value.x * num;
         result.y = value.y * num;

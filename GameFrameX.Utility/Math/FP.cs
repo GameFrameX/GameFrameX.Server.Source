@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 #if FP
 using GameFrameX.Foundation.Localization.Core;
@@ -375,7 +343,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         if (x.RawValue <= 0)
         {
             throw new ArgumentOutOfRangeException(
-                LocalizationService.GetString(Keys.Utility.Exceptions.LnValueNonPositive),
+                LocalizationService.GetString(Keys.Utility.ExceptionMessages.LnValueNonPositive),
                 "x");
         }
 
@@ -806,7 +774,10 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
 
         if (yl == 0)
         {
-            return MAX_VALUE;
+            // 定点库无 NaN/±∞ 体系：除零按分子符号返回极值哨兵（0/0 归为 +MaxValue），调用方须自行避免零除数
+            // The fixed-point library has no NaN/±∞: division by zero returns the sign-correct extreme sentinel
+            // (0/0 maps to +MaxValue); callers must avoid zero divisors themselves.
+            return ((xl ^ yl) & MIN_VALUE) == 0 ? MaxValue : MinValue;
         }
 
         var remainder = (ulong)(xl >= 0 ? xl : -xl);
@@ -949,7 +920,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         {
             // 我们无法像 Single 和 Double 一样表示无穷大，且 Sqrt 在 x < 0 时
             // 数学上是未定义的。因此我们抛出异常。
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.Exceptions.SqrtValueNegative), "x");
+            throw new ArgumentOutOfRangeException(nameof(x), LocalizationService.GetString(Keys.Utility.ExceptionMessages.SqrtValueNegative));
         }
 
         var num = (ulong)xl;
@@ -1034,10 +1005,20 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         // 这就是该函数在 x86 上性能下降的原因 - x64 是可以的
         var rawIndex = FastMul(clamped, LutInterval);
         var roundedIndex = Round(rawIndex);
-        var indexError = 0;
+        // 与 Tan 同构：indexError ∈ [-0.5, 0.5]（量化前），用于线性插值。
+        // SinLut 长度 == LUT_SIZE；ClampSinValue 保证 clamped ≤ PI_OVER_2 - 1，
+        // 故 rawIndex ≤ LUT_SIZE - 1 - ε，顶格时 indexError 必为负。
+        // 第二个下标仍显式夹取，避免未来改 LUT_SIZE / Round / LutInterval 后越界。
+        var indexError = FastSub(rawIndex, roundedIndex);
 
-        var nearestValue = new FP(SinLut[flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex : (int)roundedIndex]);
-        var secondNearestValue = new FP(SinLut[flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex - Sign(indexError) : (int)roundedIndex + Sign(indexError)]);
+        var nearestIndex = System.Math.Clamp(flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex : (int)roundedIndex, 0, SinLut.Length - 1);
+        var secondNearestIndex = flipHorizontal
+            ? SinLut.Length - 1 - (int)roundedIndex - Sign(indexError)
+            : (int)roundedIndex + Sign(indexError);
+        secondNearestIndex = System.Math.Clamp(secondNearestIndex, 0, SinLut.Length - 1);
+
+        var nearestValue = new FP(SinLut[nearestIndex]);
+        var secondNearestValue = new FP(SinLut[secondNearestIndex]);
 
         var delta = FastMul(indexError, FastAbs(FastSub(nearestValue, secondNearestValue)))._serializedValue;
         var interpolatedValue = nearestValue._serializedValue + (flipHorizontal ? -delta : delta);
@@ -1309,7 +1290,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
     {
         if (x < -One || x > One)
         {
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.Exceptions.ValueOutOfRange), "x");
+            throw new ArgumentOutOfRangeException(nameof(x), LocalizationService.GetString(Keys.Utility.ExceptionMessages.ValueOutOfRange));
         }
 
         if (x.RawValue == 0)

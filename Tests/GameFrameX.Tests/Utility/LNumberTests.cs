@@ -1,33 +1,31 @@
 ﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
 
 using System;
 using Xunit;
@@ -259,23 +257,6 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
-        /// 测试除零
-        /// </summary>
-        [Fact]
-        public void Division_ByZero_ShouldReturnZero()
-        {
-            // Arrange
-            var a = LNumber.Create(10, 0);
-            var b = LNumber.Zero;
-
-            // Act
-            var result = a / b;
-
-            // Assert
-            Assert.Equal(0, (long)result);
-        }
-
-        /// <summary>
         /// 测试取模运算
         /// </summary>
         [Fact]
@@ -326,7 +307,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a < b);
             Assert.False(b < a);
-            Assert.False(a < a);
+            var sameValue = a;
+            Assert.False(a < sameValue);
         }
 
         /// <summary>
@@ -342,7 +324,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a <= b);
             Assert.False(b <= a);
-            Assert.True(a <= a);
+            var sameValue = a;
+            Assert.True(a <= sameValue);
         }
 
         /// <summary>
@@ -358,7 +341,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a > b);
             Assert.False(b > a);
-            Assert.False(a > a);
+            var sameValue = a;
+            Assert.False(a > sameValue);
         }
 
         /// <summary>
@@ -374,7 +358,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a >= b);
             Assert.False(b >= a);
-            Assert.True(a >= a);
+            var sameValue = a;
+            Assert.True(a >= sameValue);
         }
 
         /// <summary>
@@ -656,6 +641,30 @@ namespace GameFrameX.Tests.Utility
             // 由于精度限制，结果可能不完全等于原值，但应该很接近
             var difference = a - result;
             Assert.True((double)difference < 0.1);
+        }
+
+        #endregion
+
+        #region 大数路径测试（CR-L03）
+
+        /// <summary>
+        /// 超出 int 权重范围后走 BigInteger 路径的乘法：结果必须由数值转换得到，
+        /// 不得依赖 ToString/Parse 往返（正负对称）。
+        /// </summary>
+        [Fact]
+        public void Multiply_LargeValues_BigIntegerPathKeepsExactResult()
+        {
+            // Arrange
+            var large = LNumber.Create(40000, 0); // Raw = 2,621,440,000 > int.MaxValue
+            var factor = LNumber.Create(3, 0);
+
+            // Act
+            var positive = large * factor;
+            var negative = (large * LNumber.Create(-1, 0)) * factor;
+
+            // Assert
+            Assert.Equal(LNumber.Create(120000, 0).Raw, positive.Raw);
+            Assert.Equal(LNumber.Create(-120000, 0).Raw, negative.Raw);
         }
 
         #endregion

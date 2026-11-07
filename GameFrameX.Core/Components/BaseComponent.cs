@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -26,38 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
 
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Abstractions.Agent;
@@ -87,6 +55,27 @@ public abstract class BaseComponent : IComponent, IState
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// 激活流程（组件激活 + 代理三段激活回调）是否已全部完成。
+    /// </summary>
+    /// <remarks>
+    /// 由 actor 上下文写入，可能被 actor 外部线程读取，因此使用 volatile；
+    /// 与 <see cref="IsActive"/>（激活开始即置位）区分，供快速路径判断是否可以放行。
+    /// Whether the whole activation flow (component activation plus the agent's three-phase
+    /// activation callbacks) has completed; written on the actor context and read from outside,
+    /// hence volatile. Distinct from <see cref="IsActive"/> (set at activation start).
+    /// </remarks>
+    private volatile bool _isActivationCompleted;
+
+    /// <summary>
+    /// 激活流程是否已全部完成
+    /// </summary>
+    internal bool IsActivationCompleted
+    {
+        get { return _isActivationCompleted; }
+        set { _isActivationCompleted = value; }
+    }
+
+    /// <summary>
     /// 是否准备完毕
     /// </summary>
     /// <returns>是否准备完毕</returns>
@@ -109,12 +98,12 @@ public abstract class BaseComponent : IComponent, IState
     {
         lock (_cacheAgentLock)
         {
-            if (_cacheAgent != null && !HotfixManager.DoingHotfix)
+            if (_cacheAgent != null && !HotfixManager.Resolver.InTransition)
             {
                 return _cacheAgent;
             }
 
-            var agent = HotfixManager.GetAgent<IComponentAgent>(this, refAssemblyType);
+            var agent = HotfixManager.Resolver.GetAgent<IComponentAgent>(this, refAssemblyType);
             _cacheAgent = agent;
             return agent;
         }
@@ -132,7 +121,7 @@ public abstract class BaseComponent : IComponent, IState
     /// 激活组件
     /// </summary>
     /// <returns>激活任务</returns>
-    public virtual Task Active()
+    public virtual Task ActiveAsync()
     {
         if (IsActive)
         {
@@ -146,18 +135,30 @@ public abstract class BaseComponent : IComponent, IState
     /// <summary>
     /// 反激活组件
     /// </summary>
+    /// <remarks>
+    /// 代理反激活钩子抛异常时 <see cref="IsActive"/> 仍落为 false（异常继续上抛供调用方记录）：
+    /// 否则组件永远卡在激活态，Actor 的空闲回收判定一直不成立，Actor 永驻内存。
+    /// <see cref="IsActive"/> is always reset to false even when an agent hook throws (the exception
+    /// still propagates); otherwise the actor could never be recycled.
+    /// </remarks>
     /// <returns>反激活任务</returns>
-    public virtual async Task Inactive()
+    public virtual async Task InactiveAsync()
     {
-        var agent = GetAgent();
-        if (agent != null)
+        try
         {
-            await agent.BeforeInActivation();
-            await agent.Inactive();
-            await agent.AfterInActivation();
+            var agent = GetAgent();
+            if (agent != null)
+            {
+                await agent.BeforeInActivationAsync();
+                await agent.InactiveAsync();
+                await agent.AfterInActivationAsync();
+            }
         }
-
-        IsActive = false;
+        finally
+        {
+            IsActive = false;
+            _isActivationCompleted = false;
+        }
     }
 
     /// <summary>

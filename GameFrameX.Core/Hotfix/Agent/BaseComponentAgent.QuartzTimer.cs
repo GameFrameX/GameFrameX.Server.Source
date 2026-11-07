@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,42 +27,12 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Components;
 using GameFrameX.Core.Timer;
 using GameFrameX.Core.Timer.Handler;
+
+using GameFrameX.Foundation.Utility;
 
 namespace GameFrameX.Core.Hotfix.Agent;
 
@@ -75,9 +45,9 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// 取消订阅指定ID的定时任务，并从调度集合中移除
     /// </summary>
     /// <param name="id">要取消的定时任务ID</param>
-    public void Unscheduled(long id)
+    public async Task UnscheduledAsync(long id)
     {
-        QuartzTimer.Remove(id);
+        await QuartzTimer.RemoveAsync(id);
         ScheduleIdSet.Remove(id);
     }
 
@@ -85,18 +55,20 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// 暂停定时任务，不再执行
     /// </summary>
     /// <param name="id">定时任务ID</param>
-    public void Pause(long id)
+    /// <returns>任务存在且已暂停时返回 true；任务不存在时返回 false</returns>
+    public Task<bool> PauseAsync(long id)
     {
-        QuartzTimer.Pause(id);
+        return QuartzTimer.PauseAsync(id);
     }
 
     /// <summary>
     /// 恢复暂停的定时任务，继续执行
     /// </summary>
     /// <param name="id">定时任务ID</param>
-    public void Resume(long id)
+    /// <returns>任务存在且已恢复时返回 true；任务不存在时返回 false</returns>
+    public Task<bool> ResumeAsync(long id)
     {
-        QuartzTimer.Resume(id);
+        return QuartzTimer.ResumeAsync(id);
     }
 
     /// <summary>
@@ -106,27 +78,27 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="eventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Delay<T>(DateTime time, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> DelayAsync<T>(DateTime time, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Delay<T>(ActorId, time - DateTime.Now, eventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.DelayAsync<T>(ActorId, time - DateTime.Now, eventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
 
     /// <summary>
-    /// 延迟执行定时任务，将时间戳转换为DateTime后在指定时间点执行一次任务
+    /// 延迟执行定时任务，将 Unix 毫秒时间戳转换为DateTime后在指定时间点执行一次任务
     /// </summary>
-    /// <param name="time">Unix时间戳，将被转换为DateTime类型的执行时间点</param>
+    /// <param name="time">Unix 毫秒时间戳（经 TimestampMillisecondsToDateTime 转换为执行时间点，不是 Ticks）</param>
     /// <param name="eventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Delay<T>(long time, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> DelayAsync<T>(long time, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Delay<T>(ActorId, new DateTime(time) - DateTime.Now, eventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.DelayAsync<T>(ActorId, TimerHelper.TimestampMillisecondsToDateTime(time, utc: true) - DateTime.UtcNow, eventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -138,11 +110,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="eventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Delay<T>(TimeSpan delay, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> DelayAsync<T>(TimeSpan delay, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Delay<T>(ActorId, delay, eventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.DelayAsync<T>(ActorId, delay, eventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -156,11 +128,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="repeatCount">任务重复执行的次数，小于0表示无限重复执行</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Schedule<T>(TimeSpan delay, TimeSpan interval, GameEventArgs gameEventArgs = null, int repeatCount = -1, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> ScheduleAsync<T>(TimeSpan delay, TimeSpan interval, GameEventArgs gameEventArgs = null, int repeatCount = -1, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Schedule<T>(ActorId, delay, interval, gameEventArgs, repeatCount);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.ScheduleAsync<T>(ActorId, delay, interval, gameEventArgs, repeatCount);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -173,11 +145,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="gameEventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Daily<T>(int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> DailyAsync<T>(int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Daily<T>(ActorId, hour, minute, gameEventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.DailyAsync<T>(ActorId, hour, minute, gameEventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -191,11 +163,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="gameEventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Weekly<T>(DayOfWeek dayOfWeek, int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> WeeklyAsync<T>(DayOfWeek dayOfWeek, int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Weekly<T>(ActorId, dayOfWeek, hour, minute, gameEventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.WeeklyAsync<T>(ActorId, dayOfWeek, hour, minute, gameEventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -208,10 +180,10 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="gameEventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="dayOfWeeks">指定要执行的多个星期几，可变参数数组</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long WithDayOfWeeks<T>(int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> WithDayOfWeeksAsync<T>(int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
     {
-        var scheduleId = QuartzTimer.WithDayOfWeeks<T>(ActorId, hour, minute, gameEventArgs, dayOfWeeks);
+        var scheduleId = await QuartzTimer.WithDayOfWeeksAsync<T>(ActorId, hour, minute, gameEventArgs, dayOfWeeks);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -225,11 +197,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="gameEventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long Monthly<T>(int dayOfMonth, int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> MonthlyAsync<T>(int dayOfMonth, int hour = 0, int minute = 0, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.Monthly<T>(ActorId, dayOfMonth, hour, minute, gameEventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.MonthlyAsync<T>(ActorId, dayOfMonth, hour, minute, gameEventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }
@@ -241,11 +213,11 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     /// <param name="gameEventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
-    /// <returns>新创建的定时任务ID，可用于后续取消该任务</returns>
-    public long WithCronExpression<T>(string cronExpression, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
+    /// <returns>调度成功并登记到调度集合后返回新创建的定时任务ID；调度失败时异常直接抛出</returns>
+    public async Task<long> WithCronExpressionAsync<T>(string cronExpression, GameEventArgs gameEventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
-        Unscheduled(unScheduleId);
-        var scheduleId = QuartzTimer.WithCronExpression<T>(ActorId, cronExpression, gameEventArgs);
+        await UnscheduledAsync(unScheduleId);
+        var scheduleId = await QuartzTimer.WithCronExpressionAsync<T>(ActorId, cronExpression, gameEventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }

@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -95,5 +95,685 @@ public static partial class Keys
         /// 用途: 客户端成功连接到服务器时记录
         /// </remarks>
         public const string ConnectedSuccessfully = "Client.ConnectedSuccessfully";
+
+        /// <summary>
+        /// 机器人 HTTP 客户端相关消息资源键
+        /// </summary>
+        public static class Bot
+        {
+            /// <summary>
+            /// 发送 POST 数据失败。状态码：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PostFailed
+            /// 用途: 机器人客户端发送 POST 请求失败时抛出
+            /// 参数: {0} - HTTP 响应状态码
+            /// </remarks>
+            public const string PostFailed = "Client.Bot.PostFailed";
+
+            /// <summary>
+            /// 断开连接失败: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.DisconnectFailed
+            /// 用途: 机器人客户端断开连接发生异常时记录
+            /// 参数: {0} - 错误信息
+            /// </remarks>
+            public const string DisconnectFailed = "Client.Bot.DisconnectFailed";
+
+            /// <summary>
+            /// EntryAsync Error: {0}| Thread ID:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.EntryAsyncError
+            /// 用途: 机器人入口方法执行发生异常时记录
+            /// 参数: {0} - 错误信息, {1} - 托管线程 ID
+            /// </remarks>
+            public const string EntryAsyncError = "Client.Bot.EntryAsyncError";
+
+            /// <summary>
+            /// [METRICS] connect={0} auth={1} list={2} create={3} login={4} total={5}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.Metrics
+            /// 用途: 机器人压测各阶段耗时指标输出
+            /// 参数: {0} - 连接耗时, {1} - 验证耗时, {2} - 角色列表耗时, {3} - 创建角色耗时, {4} - 登录耗时, {5} - 总耗时
+            /// </remarks>
+            public const string Metrics = "Client.Bot.Metrics";
+
+            /// <summary>
+            /// SendAccountLoginMessage Error: {0}| Thread ID:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SendAccountLoginError
+            /// 用途: 机器人发送账号登录消息发生异常时记录
+            /// 参数: {0} - 错误信息, {1} - 托管线程 ID
+            /// </remarks>
+            public const string SendAccountLoginError = "Client.Bot.SendAccountLoginError";
+
+            /// <summary>
+            /// 机器人-{0}账号登录失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.AccountLoginFailed
+            /// 用途: 机器人账号登录返回错误码时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string AccountLoginFailed = "Client.Bot.AccountLoginFailed";
+
+            /// <summary>
+            /// 机器人-{0}账号验证成功,id:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.AccountLoginSuccess
+            /// 用途: 机器人账号验证成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 账号 ID
+            /// </remarks>
+            public const string AccountLoginSuccess = "Client.Bot.AccountLoginSuccess";
+
+            /// <summary>
+            /// 机器人-{0}请求角色列表失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerListFailed
+            /// 用途: 机器人请求角色列表返回错误码时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string PlayerListFailed = "Client.Bot.PlayerListFailed";
+
+            /// <summary>
+            /// 机器人-{0}角色列表为空，开始创建角色。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerListEmpty
+            /// 用途: 机器人角色列表为空转创建角色流程时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string PlayerListEmpty = "Client.Bot.PlayerListEmpty";
+
+            /// <summary>
+            /// 角色列表 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerListItem
+            /// 用途: 输出角色列表中的单个角色信息
+            /// 参数: {0} - 角色 ID, {1} - 昵称, {2} - 等级, {3} - 角色状态
+            /// </remarks>
+            public const string PlayerListItem = "Client.Bot.PlayerListItem";
+
+            /// <summary>
+            /// 机器人-{0}创建角色失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerCreateFailed
+            /// 用途: 机器人创建角色返回错误码时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string PlayerCreateFailed = "Client.Bot.PlayerCreateFailed";
+
+            /// <summary>
+            /// 创建角色 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerCreated
+            /// 用途: 输出新创建角色的信息
+            /// 参数: {0} - 角色 ID, {1} - 昵称, {2} - 等级, {3} - 角色状态
+            /// </remarks>
+            public const string PlayerCreated = "Client.Bot.PlayerCreated";
+
+            /// <summary>
+            /// 机器人-{0}登录成功,id:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.PlayerLoginSuccess
+            /// 用途: 机器人角色登录成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 角色 ID
+            /// </remarks>
+            public const string PlayerLoginSuccess = "Client.Bot.PlayerLoginSuccess";
+
+            /// <summary>
+            /// 机器人-{0}好友场景启动失败，玩家ID非法:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendScenarioInvalidPlayerId
+            /// 用途: 好友场景因玩家 ID 非法启动失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 玩家 ID
+            /// </remarks>
+            public const string FriendScenarioInvalidPlayerId = "Client.Bot.FriendScenarioInvalidPlayerId";
+
+            /// <summary>
+            /// 机器人-{0}好友场景启动失败，未找到可用好友目标。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendScenarioNoTarget
+            /// 用途: 好友场景未找到可用好友目标时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string FriendScenarioNoTarget = "Client.Bot.FriendScenarioNoTarget";
+
+            /// <summary>
+            /// 机器人-{0}开始执行好友场景，目标玩家:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendScenarioStarted
+            /// 用途: 好友场景开始执行时记录
+            /// 参数: {0} - 机器人名称, {1} - 目标玩家 ID
+            /// </remarks>
+            public const string FriendScenarioStarted = "Client.Bot.FriendScenarioStarted";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-加好友失败，Success:{1}, ErrorCode:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendAddFailed
+            /// 用途: 好友场景添加好友失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 是否成功, {2} - 错误码
+            /// </remarks>
+            public const string FriendAddFailed = "Client.Bot.FriendAddFailed";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-加好友成功，开始拉取好友列表。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendAddSuccess
+            /// 用途: 好友场景添加好友成功后转拉取列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string FriendAddSuccess = "Client.Bot.FriendAddSuccess";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-删好友失败，Success:{1}, ErrorCode:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendDeleteFailed
+            /// 用途: 好友场景删除好友失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 是否成功, {2} - 错误码
+            /// </remarks>
+            public const string FriendDeleteFailed = "Client.Bot.FriendDeleteFailed";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-删好友成功，开始二次拉取好友列表。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendDeleteSuccess
+            /// 用途: 好友场景删除好友成功后二次拉取列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string FriendDeleteSuccess = "Client.Bot.FriendDeleteSuccess";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-拉取列表失败，ErrorCode:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendListFailed
+            /// 用途: 好友场景拉取好友列表失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string FriendListFailed = "Client.Bot.FriendListFailed";
+
+            /// <summary>
+            /// 机器人-{0}好友场景-首次列表成功，数量:{1}，开始删好友。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendListFirstSuccess
+            /// 用途: 好友场景首次拉取列表成功转删好友时记录
+            /// 参数: {0} - 机器人名称, {1} - 好友数量
+            /// </remarks>
+            public const string FriendListFirstSuccess = "Client.Bot.FriendListFirstSuccess";
+
+            /// <summary>
+            /// 机器人-{0}好友场景执行完成，二次列表数量:{1}。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.FriendScenarioCompleted
+            /// 用途: 好友场景执行完成时记录
+            /// 参数: {0} - 机器人名称, {1} - 二次列表数量
+            /// </remarks>
+            public const string FriendScenarioCompleted = "Client.Bot.FriendScenarioCompleted";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景启动失败，玩家ID:{1}，出拳序列数量:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsScenarioInvalidOptions
+            /// 用途: RPS 场景启动参数非法（玩家ID或出拳序列）时记录
+            /// 参数: {0} - 机器人名称, {1} - 玩家ID, {2} - 出拳序列数量
+            /// </remarks>
+            public const string RpsScenarioInvalidOptions = "Client.Bot.RpsScenarioInvalidOptions";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-创建房间成功，房间ID:{1}，等待对手加入。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsRoomCreated
+            /// 用途: RPS 房主创建房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsRoomCreated = "Client.Bot.RpsRoomCreated";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-创建房间失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsCreateRoomFailed
+            /// 用途: RPS 房主创建房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsCreateRoomFailed = "Client.Bot.RpsCreateRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-开始轮询可加入的石头剪刀布房间。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinerWaiting
+            /// 用途: RPS 加入者开始轮询房间列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string RpsJoinerWaiting = "Client.Bot.RpsJoinerWaiting";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-已加入房间:{1}，等待开局。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinedRoom
+            /// 用途: RPS 加入者加入房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsJoinedRoom = "Client.Bot.RpsJoinedRoom";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-加入房间失败，房间ID:{1}，错误码:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinRoomFailed
+            /// 用途: RPS 加入者加入房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID, {2} - 错误码
+            /// </remarks>
+            public const string RpsJoinRoomFailed = "Client.Bot.RpsJoinRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-开局失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsStartGameFailed
+            /// 用途: RPS 房主开局失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsStartGameFailed = "Client.Bot.RpsStartGameFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-对局开始，房间ID:{1}。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameStarted
+            /// 用途: RPS 对局开始时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsGameStarted = "Client.Bot.RpsGameStarted";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-第{1}局出拳:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsSubmitGesture
+            /// 用途: RPS 每局提交出拳时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 出拳
+            /// </remarks>
+            public const string RpsSubmitGesture = "Client.Bot.RpsSubmitGesture";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-出拳失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsSubmitFailed
+            /// 用途: RPS 提交出拳失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsSubmitFailed = "Client.Bot.RpsSubmitFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-对局终局，总局数:{1}，胜者玩家ID:{2}，玩家出拳:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameFinished
+            /// 用途: RPS 对局终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 总局数, {2} - 胜者玩家ID, {3} - 玩家出拳明细
+            /// </remarks>
+            public const string RpsGameFinished = "Client.Bot.RpsGameFinished";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-房间状态终局:{1}，总局数:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameFinishedByRoomStatus
+            /// 用途: RPS 通过房间状态判定终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间状态, {2} - 总局数
+            /// </remarks>
+            public const string RpsGameFinishedByRoomStatus = "Client.Bot.RpsGameFinishedByRoomStatus";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-连续{1}次轮询无进展，终止。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsPollNoProgress
+            /// 用途: RPS 轮询长期无进展失败终止时记录
+            /// 参数: {0} - 机器人名称, {1} - 无进展轮询次数
+            /// </remarks>
+            public const string RpsPollNoProgress = "Client.Bot.RpsPollNoProgress";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-轮询循环异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsPollLoopError
+            /// 用途: RPS 轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string RpsPollLoopError = "Client.Bot.RpsPollLoopError";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-开始轮询可加入的四子棋房间。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinerWaiting
+            /// 用途: 四子棋加入者开始轮询房间列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string ConnectFourJoinerWaiting = "Client.Bot.ConnectFourJoinerWaiting";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-已加入房间:{1}，等待开局。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinedRoom
+            /// 用途: 四子棋加入者加入房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string ConnectFourJoinedRoom = "Client.Bot.ConnectFourJoinedRoom";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-加入房间失败，房间ID:{1}，错误码:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourJoinRoomFailed
+            /// 用途: 四子棋加入者加入房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID, {2} - 错误码
+            /// </remarks>
+            public const string ConnectFourJoinRoomFailed = "Client.Bot.ConnectFourJoinRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-对局开始，房间ID:{1}。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourGameStarted
+            /// 用途: 四子棋对局开始时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string ConnectFourGameStarted = "Client.Bot.ConnectFourGameStarted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-第{1}局落子列:{2}（第{3}手）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourMoveSubmitted
+            /// 用途: 四子棋按确定性列偏好落子时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 列号, {3} - 总落子数
+            /// </remarks>
+            public const string ConnectFourMoveSubmitted = "Client.Bot.ConnectFourMoveSubmitted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-第{1}局终局，胜者:{2}，平局:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourRoundFinished
+            /// 用途: 四子棋单局终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 胜者玩家ID, {3} - 是否平局
+            /// </remarks>
+            public const string ConnectFourRoundFinished = "Client.Bot.ConnectFourRoundFinished";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景执行完成（共{1}局）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourScenarioCompleted
+            /// 用途: 四子棋场景达到退出局数正常完成时记录
+            /// 参数: {0} - 机器人名称, {1} - 完成局数
+            /// </remarks>
+            public const string ConnectFourScenarioCompleted = "Client.Bot.ConnectFourScenarioCompleted";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-连续{1}次轮询无进展，终止。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourPollNoProgress
+            /// 用途: 四子棋轮询长期无进展时失败终止
+            /// 参数: {0} - 机器人名称, {1} - 无进展次数
+            /// </remarks>
+            public const string ConnectFourPollNoProgress = "Client.Bot.ConnectFourPollNoProgress";
+
+            /// <summary>
+            /// 机器人-{0}四子棋场景-轮询循环异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.ConnectFourPollLoopError
+            /// 用途: 四子棋轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string ConnectFourPollLoopError = "Client.Bot.ConnectFourPollLoopError";
+
+            /// <summary>
+            /// 机器人-{0}匹配场景启动（1v1，评分 1000）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchScenarioStarted
+            /// 用途: 匹配场景真会话 E2E 启动时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string MatchScenarioStarted = "Client.Bot.MatchScenarioStarted";
+
+            /// <summary>
+            /// 机器人-{0}入队响应 MatchId={1} ErrorCode={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchEnqueue
+            /// 用途: 匹配场景入队响应（即时窗口成组时 MatchId 非 0）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 错误码
+            /// </remarks>
+            public const string MatchEnqueue = "Client.Bot.MatchEnqueue";
+
+            /// <summary>
+            /// 机器人-{0}收到匹配成功推送 MatchId={1} Mode={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchPush
+            /// 用途: 匹配场景真会话推送实证（NotifyMatchMade 单向通知）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 匹配模式
+            /// </remarks>
+            public const string MatchPush = "Client.Bot.MatchPush";
+
+            /// <summary>
+            /// 机器人-{0}状态查询 Queuing={1} MatchId={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchStatus
+            /// 用途: 匹配场景状态轮询响应
+            /// 参数: {0} - 机器人名称, {1} - 是否排队中, {2} - 对局标识, {3} - 错误码
+            /// </remarks>
+            public const string MatchStatus = "Client.Bot.MatchStatus";
+
+            /// <summary>
+            /// 机器人-{0}入场响应 MatchId={1} Started={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchEnter
+            /// 用途: 匹配场景入场响应（双方到达同一运行态对局断言）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
+            /// </remarks>
+            public const string MatchEnter = "Client.Bot.MatchEnter";
+
+            /// <summary>
+            /// 机器人-{0}匹配场景-状态轮询异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchPollError
+            /// 用途: 匹配场景状态轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string MatchPollError = "Client.Bot.MatchPollError";
+
+            /// <summary>
+            /// 机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchReconnectArmed
+            /// 用途: match 场景入场成功后安排断线恢复演练时记录
+            /// 参数: {0} - 机器人名称, {1} - 延迟秒数
+            /// </remarks>
+            public const string MatchReconnectArmed = "Client.Bot.MatchReconnectArmed";
+
+            /// <summary>
+            /// 机器人-{0}会话恢复请求已发送（携带登录凭据）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeRequested
+            /// 用途: 断线后新连接发起会话恢复时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string SessionResumeRequested = "Client.Bot.SessionResumeRequested";
+
+            /// <summary>
+            /// 机器人-{0}会话恢复响应 PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeResponse
+            /// 用途: 会话恢复响应（身份与对局恢复断言证据）
+            /// 参数: {0} - 机器人名称, {1} - 恢复的玩家ID, {2} - 是否恢复对局, {3} - 对局标识, {4} - 错误码
+            /// </remarks>
+            public const string SessionResumeResponse = "Client.Bot.SessionResumeResponse";
+
+            /// <summary>
+            /// 机器人-{0}旧凭据重放被拒（ErrorCode={1}，符合预期）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeReplayRejected
+            /// 用途: 重放已轮换旧凭据被显式拒绝的证据
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string SessionResumeReplayRejected = "Client.Bot.SessionResumeReplayRejected";
+
+            /// <summary>
+            /// 机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchResumeEnterResponse
+            /// 用途: 恢复后在新连接上重入同一对局（幂等）的可观测业务交互证据
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
+            /// </remarks>
+            public const string MatchResumeEnterResponse = "Client.Bot.MatchResumeEnterResponse";
+
+            /// <summary>
+            /// 机器人-{0}主动断开连接，模拟离线。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.DisconnectSimulated
+            /// 用途: 机器人按计划主动断开连接模拟离线时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string DisconnectSimulated = "Client.Bot.DisconnectSimulated";
+
+            /// <summary>
+            /// 机器人 KCP 客户端相关日志消息资源键
+            /// </summary>
+            public static class Kcp
+            {
+                /// <summary>
+                /// 连接中状态超时（{0}毫秒），放弃当前会话
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Kcp.ConnectingTimeoutAbandonSession
+                /// 用途: KCP 客户端连接中状态超时放弃会话时记录
+                /// 参数: {0} - 超时毫秒数
+                /// </remarks>
+                public const string ConnectingTimeoutAbandonSession = "Client.Bot.Kcp.ConnectingTimeoutAbandonSession";
+
+                /// <summary>
+                /// SendToServer failed: {0}
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Kcp.SendToServerFailed
+                /// 用途: KCP 客户端发送消息到服务器失败时记录
+                /// 参数: {0} - 错误信息
+                /// </remarks>
+                public const string SendToServerFailed = "Client.Bot.Kcp.SendToServerFailed";
+
+                /// <summary>
+                /// KCP connect probe failed: {0}
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Kcp.ConnectProbeFailed
+                /// 用途: KCP 连接探测失败时记录
+                /// 参数: {0} - 错误信息
+                /// </remarks>
+                public const string ConnectProbeFailed = "Client.Bot.Kcp.ConnectProbeFailed";
+
+                /// <summary>
+                /// KCP receive error: {0}
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Kcp.ReceiveError
+                /// 用途: KCP 接收循环发生异常时记录
+                /// 参数: {0} - 错误信息
+                /// </remarks>
+                public const string ReceiveError = "Client.Bot.Kcp.ReceiveError";
+            }
+
+            /// <summary>
+            /// 机器人 TCP 客户端相关日志消息资源键
+            /// </summary>
+            public static class Tcp
+            {
+                /// <summary>
+                /// 连接中状态超时（{0}毫秒），重建会话
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Tcp.ConnectingTimeoutRecreateSession
+                /// 用途: TCP 客户端连接中状态超时重建会话时记录
+                /// 参数: {0} - 超时毫秒数
+                /// </remarks>
+                public const string ConnectingTimeoutRecreateSession = "Client.Bot.Tcp.ConnectingTimeoutRecreateSession";
+            }
+
+            /// <summary>
+            /// 机器人 HTTP 客户端相关日志消息资源键
+            /// </summary>
+            public static class Http
+            {
+                /// <summary>
+                /// 响应消息类型无效。期望“{0}”，实际为“{1}”。
+                /// </summary>
+                /// <remarks>
+                /// 键名: Client.Bot.Http.ResponseTypeInvalid
+                /// 用途: HTTP 响应消息类型与期望类型不符时记录
+                /// 参数: {0} - 期望类型全名, {1} - 实际类型全名
+                /// </remarks>
+                public const string ResponseTypeInvalid = "Client.Bot.Http.ResponseTypeInvalid";
+            }
+        }
+
+        /// <summary>
+        /// 客户端入口程序相关日志消息资源键
+        /// </summary>
+        public static class Program
+        {
+            /// <summary>
+            /// 机器人选项: 机器人数量={0}, tcp={1}:{2}, 场景={3}, 断开循环={4}, 登录后断开秒数={5}, 运行秒数={6}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Program.BotOptions
+            /// 用途: 压测机器人启动时输出运行选项
+            /// 参数: {0} - 机器人数量, {1} - TCP 主机, {2} - TCP 端口, {3} - 场景, {4} - 是否启用断开循环, {5} - 登录后断开秒数, {6} - 运行秒数
+            /// </remarks>
+            public const string BotOptions = "Client.Program.BotOptions";
+        }
     }
 }

@@ -1,0 +1,619 @@
+//  ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+namespace GameFrameX.Capability.Online.Matchmaking;
+
+/// <summary>
+/// 匹配票据存储的内存实现（单进程默认实现，持久化归运行时装配）。
+/// <para>
+/// 维护约束（红线）：票据、玩家反查索引、对局分配三者在**同一把锁**下变更——
+/// 这是「取消不产生旧结果」与「重复 assignment = 0」能够成立的前提。
+/// 任何把三者拆到不同临界区、或让索引与票据状态分两次更新的改写，
+/// 都会重新打开「取消与匹配成功同时生效」的竞态窗口。
+/// </para>
+/// <para>
+/// 天花板：单锁全串行，票据基数上万后成组扫描会成为热点；
+/// 升级路径是按键前缀分片加锁并保留同样的 CAS 语义，调用方无感。
+/// </para>
+/// </summary>
+public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
+{
+    /// <summary>全局读写锁。</summary>
+    private readonly object _syncRoot = new();
+
+    /// <summary>票据表：键 = TicketId。</summary>
+    private readonly Dictionary<string, OnlineMatchTicket> _tickets = new();
+
+    /// <summary>玩家反查索引：键 = PlayerId，值 = 其排队中票据标识。</summary>
+    private readonly Dictionary<string, string> _playerIndex = new();
+
+    /// <summary>对局分配表：键 = AssignmentId。</summary>
+    private readonly Dictionary<string, OnlineMatchAssignment> _assignments = new();
+
+    /// <summary>
+    /// 深拷贝票据后写入内存票据表（新增或覆盖），票据处于排队态时同步写入玩家反查索引。
+    /// </summary>
+    /// <remarks>
+    /// Stores a defensive copy of the ticket into the in-memory ticket table (insert or overwrite), and writes the player reverse-lookup index when the ticket is queued.
+    /// </remarks>
+    /// <param name="ticket">票据 / The match ticket</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>完成通知 / Completion notification</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="ticket"/> 为 null 时抛出 / Thrown when <paramref name="ticket"/> is null</exception>
+    public Task SaveAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default)
+    {
+        if (ticket == null)
+        {
+            throw new ArgumentNullException(nameof(ticket));
+        }
+
+        lock (_syncRoot)
+        {
+            _tickets[ticket.TicketId] = ticket.Copy();
+            if (ticket.State == OnlineMatchTicketState.Queued)
+            {
+                IndexPlayers(ticket);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 在同一临界区内完成「查重 + 写入」的原子入队：先按队伍标识、再按每个成员的玩家反查索引检查是否已有排队中票据；
+    /// 全部无冲突才写入票据表并登记玩家反查索引，返回刚写入的入参副本；任一冲突即不写入（零写入痕迹），返回已存在的活跃票据副本。
+    /// </summary>
+    /// <remarks>
+    /// Atomic enqueue within a single critical section: checks the party key first, then every member's player reverse-lookup index;
+    /// writes the ticket and the player index only when no conflict exists and returns a copy of the stored input; on any conflict nothing is written (zero write trace) and a copy of the existing active ticket is returned.
+    /// </remarks>
+    /// <param name="ticket">待入队票据（Queued 态） / The ticket to enqueue (queued state)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>生效票据副本：无冲突为刚写入的入参副本，有冲突为已存在的活跃票据副本 / Copy of the effective ticket (the just-stored input on success, or the existing active one on conflict)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="ticket"/> 为 null 时抛出 / Thrown when <paramref name="ticket"/> is null</exception>
+    public Task<OnlineMatchTicket> TryEnqueueIfAbsentAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default)
+    {
+        if (ticket == null)
+        {
+            throw new ArgumentNullException(nameof(ticket));
+        }
+
+        lock (_syncRoot)
+        {
+            // 队伍维度先查：同一队伍至多一张活跃票据，命中即整体拒绝。
+            if (!string.IsNullOrEmpty(ticket.PartyId))
+            {
+                var conflictingParty = FindActiveByPartyInternal(ticket.PartyId);
+                if (conflictingParty != null)
+                {
+                    return Task.FromResult(conflictingParty);
+                }
+            }
+
+            // 成员维度逐个查反查索引：任一成员已在队列即整体拒绝（队伍整队进整队不进）。
+            if (ticket.PlayerIds != null)
+            {
+                foreach (var playerId in ticket.PlayerIds)
+                {
+                    var conflictingPlayer = FindActiveByPlayerInternal(playerId);
+                    if (conflictingPlayer != null)
+                    {
+                        return Task.FromResult(conflictingPlayer);
+                    }
+                }
+            }
+
+            // 存档存副本而非调用方实例（调用方复用该实例不会回写库内记录）。
+            var stored = ticket.Copy();
+            _tickets[stored.TicketId] = stored;
+            if (stored.State == OnlineMatchTicketState.Queued)
+            {
+                IndexPlayers(stored);
+            }
+
+            return Task.FromResult(stored.Copy());
+        }
+    }
+
+    /// <summary>
+    /// 按作用域与票据标识从内存票据表读取票据副本（含终态历史）。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the ticket from the in-memory ticket table by scope and ticket id, including terminal-state history.
+    /// </remarks>
+    /// <param name="ticketId">票据标识 / Ticket id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>票据副本；不存在返回 null / A copy of the ticket, or null when not found</returns>
+    public Task<OnlineMatchTicket> FindAsync(string ticketId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            return Task.FromResult(FindInternal(ticketId));
+        }
+    }
+
+    /// <summary>
+    /// 全表扫描内存票据表，返回同作用域内处于排队态且队伍标识匹配的首张票据副本；<paramref name="partyId"/> 为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Scans the in-memory ticket table and returns a copy of the first queued ticket whose party id matches within the scope; returns null immediately when <paramref name="partyId"/> is empty.
+    /// </remarks>
+    /// <param name="partyId">队伍标识 / Party id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
+    public Task<OnlineMatchTicket> FindActiveByPartyAsync(string partyId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(partyId))
+        {
+            return Task.FromResult<OnlineMatchTicket>(null);
+        }
+
+        lock (_syncRoot)
+        {
+            return Task.FromResult(FindActiveByPartyInternal(partyId));
+        }
+    }
+
+    /// <summary>
+    /// 经玩家反查索引定位票据标识，并校验该票据仍处于排队态后返回其副本。
+    /// </summary>
+    /// <remarks>
+    /// Locates the ticket id through the player reverse-lookup index, verifies the ticket is still queued, and returns its copy.
+    /// </remarks>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
+    public Task<OnlineMatchTicket> FindActiveByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            return Task.FromResult(FindActiveByPlayerInternal(playerId));
+        }
+    }
+
+    /// <summary>
+    /// 经玩家反查索引定位票据标识，不校验状态直接返回其副本（最近一次匹配尝试；匹配域桥状态面读）。
+    /// </summary>
+    /// <remarks>
+    /// Locates the ticket id through the player reverse-lookup index and returns its copy regardless of state
+    /// (the latest matching attempt; the match-domain bridge status face).
+    /// </remarks>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>最近票据副本；从未入队返回 null / A copy of the latest ticket, or null when the player never enqueued</returns>
+    public Task<OnlineMatchTicket> FindLatestByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            OnlineMatchTicket latest = null;
+            foreach (var ticket in _tickets.Values)
+            {
+                if (ticket.PlayerIds == null || !ticket.PlayerIds.Contains(playerId))
+                {
+                    continue;
+                }
+
+                // 成组提交会释放玩家反查索引（立即可再入队），故此处按票据表扫描：
+                // 取创建时刻最新者，同刻以票据标识兜底（同输入同输出）。
+                if (latest == null || ticket.CreatedAtTime > latest.CreatedAtTime
+                    || (ticket.CreatedAtTime == latest.CreatedAtTime && string.CompareOrdinal(ticket.TicketId, latest.TicketId) > 0))
+                {
+                    latest = ticket;
+                }
+            }
+
+            return Task.FromResult(latest == null ? null : latest.Copy());
+        }
+    }
+
+    /// <summary>
+    /// 遍历内存票据表，收集作用域内全部处于排队态的票据副本。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory ticket table and collects copies of all queued tickets within the scope.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本列表 / The list of queued ticket copies</returns>
+    public Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(CancellationToken cancellationToken = default)
+    {
+        var queued = new List<OnlineMatchTicket>();
+
+        lock (_syncRoot)
+        {
+            foreach (var ticket in _tickets.Values)
+            {
+                if (ticket.State == OnlineMatchTicketState.Queued)
+                {
+                    queued.Add(ticket.Copy());
+                }
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchTicket>>(queued);
+    }
+
+    /// <summary>
+    /// 遍历内存票据表，收集作用域内全部票据副本（含终态历史）。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory ticket table and collects copies of all tickets within the scope, including terminal-state history.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>票据副本列表 / The list of ticket copies</returns>
+    public Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        var tickets = new List<OnlineMatchTicket>();
+
+        lock (_syncRoot)
+        {
+            foreach (var ticket in _tickets.Values)
+            {
+                tickets.Add(ticket.Copy());
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchTicket>>(tickets);
+    }
+
+    /// <summary>
+    /// 以 CAS 语义更新单张票据状态：票据不存在或当前状态与期望不符时整体失败返回 null、不留任何写入痕迹；成功时写入目标状态、失败原因与分配标识，并在离开排队态时释放玩家反查索引。
+    /// </summary>
+    /// <remarks>
+    /// Updates a single ticket state with CAS semantics: returns null without leaving any write trace when the ticket is missing or its current state does not match the expected one; on success writes the new state, failure reason and assignment id, and releases the player reverse-lookup index when leaving the queued state.
+    /// </remarks>
+    /// <param name="transition">状态 CAS 迁移载荷（票据标识 / 期望状态 / 目标状态 / 失败原因 / 分配标识）/ The ticket state CAS transition payload (ticket id, expected state, target state, failure reason, assignment id)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null / A copy of the updated ticket, or null when the CAS fails or the ticket does not exist</returns>
+    public Task<OnlineMatchTicket> UpdateStateAsync(MatchTicketStateTransition transition, CancellationToken cancellationToken = default)
+    {
+        var ticketId = transition.TicketId;
+        var expectedState = transition.ExpectedState;
+        var newState = transition.NewState;
+        var failureReason = transition.FailureReason;
+        var assignmentId = transition.AssignmentId;
+        lock (_syncRoot)
+        {
+            var current = FindInternal(ticketId);
+            if (current == null || current.State != expectedState)
+            {
+                return Task.FromResult<OnlineMatchTicket>(null);
+            }
+
+            var stored = _tickets[ticketId];
+            stored.State = newState;
+            stored.FailureReason = failureReason;
+            stored.AssignmentId = string.IsNullOrEmpty(assignmentId) ? stored.AssignmentId : assignmentId;
+
+            if (newState != OnlineMatchTicketState.Queued)
+            {
+                ReleasePlayers(stored);
+            }
+
+            return Task.FromResult(stored.Copy());
+        }
+    }
+
+    /// <summary>
+    /// 在同一临界区内原子提交一次成组：票据标识集合含空标识、重复标识，或任一票据不存在、不处于期望状态时整体不生效并返回 null；全部满足时一次性把票据置为 Matched、清空失败原因、写入分配标识、释放玩家反查索引并落档分配副本。
+    /// </summary>
+    /// <remarks>
+    /// Atomically commits a group within a single critical section: when the ticket id collection contains an empty or duplicate id, or any ticket is missing or not in the expected state, nothing is applied and null is returned; otherwise all tickets are set to Matched at once, their failure reasons cleared, assignment ids written, player reverse-lookup indexes released, and a copy of the assignment archived.
+    /// </remarks>
+    /// <param name="assignment">待落档的对局分配 / The match assignment to archive</param>
+    /// <param name="ticketIds">本分配消费的票据标识集合（不得重复、不得为空）/ The ticket ids consumed by this assignment (no duplicates, non-empty)</param>
+    /// <param name="expectedState">期望的票据当前状态 / The expected current state of the tickets</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>落档后的分配副本；任一前置条件不满足返回 null / A copy of the archived assignment, or null when any precondition is not met</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="assignment"/> 为 null 时抛出 / Thrown when <paramref name="assignment"/> is null</exception>
+    public Task<OnlineMatchAssignment> CommitMatchAsync(OnlineMatchAssignment assignment, IReadOnlyList<string> ticketIds, OnlineMatchTicketState expectedState, CancellationToken cancellationToken = default)
+    {
+        if (assignment == null)
+        {
+            throw new ArgumentNullException(nameof(assignment));
+        }
+
+        if (ticketIds == null || ticketIds.Count == 0)
+        {
+            return Task.FromResult<OnlineMatchAssignment>(null);
+        }
+
+        lock (_syncRoot)
+        {
+            var seen = new HashSet<string>();
+            var resolved = new List<OnlineMatchTicket>(ticketIds.Count);
+
+            foreach (var ticketId in ticketIds)
+            {
+                if (string.IsNullOrEmpty(ticketId) || !seen.Add(ticketId))
+                {
+                    return Task.FromResult<OnlineMatchAssignment>(null);
+                }
+
+                var current = FindInternal(ticketId);
+                if (current == null || current.State != expectedState)
+                {
+                    return Task.FromResult<OnlineMatchAssignment>(null);
+                }
+
+                resolved.Add(_tickets[ticketId]);
+            }
+
+            var storedAssignment = assignment.Copy();
+            foreach (var stored in resolved)
+            {
+                stored.State = OnlineMatchTicketState.Matched;
+                stored.FailureReason = OnlineMatchFailureReason.None;
+                stored.AssignmentId = storedAssignment.AssignmentId;
+                ReleasePlayers(stored);
+            }
+
+            _assignments[assignment.AssignmentId] = storedAssignment;
+
+            return Task.FromResult(storedAssignment.Copy());
+        }
+    }
+
+    /// <summary>
+    /// 按作用域与分配标识从内存分配表读取分配副本；<paramref name="assignmentId"/> 为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the assignment from the in-memory assignment table by scope and assignment id; returns null immediately when <paramref name="assignmentId"/> is empty.
+    /// </remarks>
+    /// <param name="assignmentId">分配标识 / Assignment id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分配副本；不存在返回 null / A copy of the assignment, or null when not found</returns>
+    public Task<OnlineMatchAssignment> FindAssignmentAsync(string assignmentId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(assignmentId))
+        {
+            return Task.FromResult<OnlineMatchAssignment>(null);
+        }
+
+        lock (_syncRoot)
+        {
+            if (_assignments.TryGetValue(assignmentId, out var assignment))
+            {
+                return Task.FromResult(assignment.Copy());
+            }
+
+            return Task.FromResult<OnlineMatchAssignment>(null);
+        }
+    }
+
+    /// <summary>
+    /// 遍历内存分配表，收集作用域内全部对局分配副本。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory assignment table and collects copies of all match assignments within the scope.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分配副本列表 / The list of assignment copies</returns>
+    public Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var assignments = new List<OnlineMatchAssignment>();
+
+        lock (_syncRoot)
+        {
+            foreach (var assignment in _assignments.Values)
+            {
+                assignments.Add(assignment.Copy());
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchAssignment>>(assignments);
+    }
+
+    /// <summary>
+    /// 在全局锁内聚合作用域内排队态票据，按 (Mode, Region) 槽位产出队列深度与等待时长合计（表内扫描不产出实体副本）。
+    /// </summary>
+    /// <remarks>
+    /// Aggregates queued tickets by (Mode, Region) slot under the global lock, without producing entity copies.
+    /// </remarks>
+    /// <param name="serverId">区服标识 / Server id</param>
+    /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒）/ Observation time (unix milliseconds)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>槽位聚合列表 / The list of slot aggregates</returns>
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    {
+        var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
+        lock (_syncRoot)
+        {
+            foreach (var ticket in _tickets.Values)
+            {
+                if (ticket.ServerId != serverId || ticket.State != OnlineMatchTicketState.Queued)
+                {
+                    continue;
+                }
+
+                var entry = ResolveSlot(accumulator, ticket.Mode, ticket.Region);
+                entry.TicketCount++;
+                entry.TotalWaitSeconds += OnlineMatchRule.WaitSeconds(ticket, nowUnixMilliseconds);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchQueueSlotAggregate>>(new List<OnlineMatchQueueSlotAggregate>(accumulator.Values));
+    }
+
+    /// <summary>
+    /// 在全局锁内统计时间窗 (start, end] 内落档的匹配分配所消费的票据数，按 (Mode, Region) 槽位聚合（表内扫描不产出实体副本）。
+    /// </summary>
+    /// <remarks>
+    /// Counts tickets consumed by assignments archived within the (start, end] window, grouped by (Mode, Region) slot under the global lock.
+    /// </remarks>
+    /// <param name="serverId">区服标识 / Server id</param>
+    /// <param name="windowStartExclusiveUnixMilliseconds">窗口起点（UTC 毫秒；不含）/ Window start (unix milliseconds, exclusive)</param>
+    /// <param name="windowEndInclusiveUnixMilliseconds">窗口终点（UTC 毫秒；含）/ Window end (unix milliseconds, inclusive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>槽位聚合列表（TotalWaitSeconds 恒为 0）/ The list of slot aggregates (TotalWaitSeconds always 0)</returns>
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default)
+    {
+        var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
+        lock (_syncRoot)
+        {
+            foreach (var assignment in _assignments.Values)
+            {
+                if (assignment.ServerId != serverId
+                    || assignment.CreatedAtTime <= windowStartExclusiveUnixMilliseconds || assignment.CreatedAtTime > windowEndInclusiveUnixMilliseconds)
+                {
+                    continue;
+                }
+
+                var entry = ResolveSlot(accumulator, assignment.Mode, assignment.Region);
+                entry.TicketCount += assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchQueueSlotAggregate>>(new List<OnlineMatchQueueSlotAggregate>(accumulator.Values));
+    }
+
+    /// <summary>
+    /// 按 (Mode, Region) 取或建聚合槽位（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="accumulator">聚合表。</param>
+    /// <param name="mode">玩法模式。</param>
+    /// <param name="region">区域。</param>
+    /// <returns>该分组的聚合槽位。</returns>
+    private static OnlineMatchQueueSlotAggregate ResolveSlot(Dictionary<string, OnlineMatchQueueSlotAggregate> accumulator, int mode, int region)
+    {
+        var key = mode + ":" + region;
+        if (!accumulator.TryGetValue(key, out var entry))
+        {
+            entry = new OnlineMatchQueueSlotAggregate { Mode = mode, Region = region, };
+            accumulator[key] = entry;
+        }
+
+        return entry;
+    }
+
+    /// <summary>
+    /// 按标识读取票据副本（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="ticketId">票据标识。</param>
+    /// <returns>票据副本；不存在返回 null。</returns>
+    private OnlineMatchTicket FindInternal(string ticketId)
+    {
+        if (string.IsNullOrEmpty(ticketId))
+        {
+            return null;
+        }
+
+        if (_tickets.TryGetValue(ticketId, out var ticket))
+        {
+            return ticket.Copy();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 按队伍标识读取其排队中票据副本（调用方必须已持有 <see cref="_syncRoot"/>；<paramref name="partyId"/> 为空返回 null）。
+    /// </summary>
+    /// <param name="partyId">队伍标识。</param>
+    /// <returns>票据副本；无则返回 null。</returns>
+    private OnlineMatchTicket FindActiveByPartyInternal(string partyId)
+    {
+        if (string.IsNullOrEmpty(partyId))
+        {
+            return null;
+        }
+
+        foreach (var ticket in _tickets.Values)
+        {
+            if (ticket.State == OnlineMatchTicketState.Queued && ticket.PartyId == partyId)
+            {
+                return ticket.Copy();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 按玩家读取其排队中票据副本（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="playerId">玩家标识。</param>
+    /// <returns>票据副本；无则返回 null。</returns>
+    private OnlineMatchTicket FindActiveByPlayerInternal(long playerId)
+    {
+        if (!_playerIndex.TryGetValue(playerId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var ticketId))
+        {
+            return null;
+        }
+
+        var ticket = FindInternal(ticketId);
+        if (ticket == null || ticket.State != OnlineMatchTicketState.Queued)
+        {
+            return null;
+        }
+
+        return ticket;
+    }
+
+    /// <summary>
+    /// 把票据携带的玩家写入反查索引（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="ticket">票据。</param>
+    private void IndexPlayers(OnlineMatchTicket ticket)
+    {
+        if (ticket.PlayerIds == null)
+        {
+            return;
+        }
+
+        foreach (var playerId in ticket.PlayerIds)
+        {
+            _playerIndex[playerId.ToString(System.Globalization.CultureInfo.InvariantCulture)] = ticket.TicketId;
+        }
+    }
+
+    /// <summary>
+    /// 释放票据携带的玩家反查索引（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// <para>
+    /// 仅删除仍指向本票据的条目——同一玩家若已进入新票据（理论上被唯一性拦截，
+    /// 但索引必须自愈），不得误删新票据的索引。
+    /// </para>
+    /// </summary>
+    /// <param name="ticket">票据。</param>
+    private void ReleasePlayers(OnlineMatchTicket ticket)
+    {
+        if (ticket.PlayerIds == null)
+        {
+            return;
+        }
+
+        foreach (var playerId in ticket.PlayerIds)
+        {
+            var key = playerId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (_playerIndex.TryGetValue(key, out var indexedTicketId) && indexedTicketId == ticket.TicketId)
+            {
+                _playerIndex.Remove(key);
+            }
+        }
+    }
+}

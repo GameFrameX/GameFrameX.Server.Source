@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -30,6 +30,9 @@
 
 using System.Reflection;
 using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Localization;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Utility;
 
@@ -77,10 +80,20 @@ public sealed class StartUpTypeRegistry : Singleton<StartUpTypeRegistry>
             }
 
             var startUpTag = type.GetCustomAttribute<StartUpTagAttribute>();
-            if (startUpTag != null)
+            if (startUpTag == null)
             {
-                _startUpTypes.Add(type, startUpTag);
+                continue;
             }
+
+            if (startUpTag.ServerType.Contains(','))
+            {
+                // Role 名为标识符、不得含逗号（--ServerType 列表分隔符）；显式拒绝注册，把领域不变量钉在入口
+                // Localization: StartUp.Application.ServerTypeCommaNotAllowed - 服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.ServerTypeCommaNotAllowed, startUpTag.ServerType));
+                continue;
+            }
+
+            _startUpTypes.Add(type, startUpTag);
         }
     }
 

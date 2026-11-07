@@ -1,0 +1,273 @@
+//  ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
+
+/// <summary>
+/// 队伍内存默认存储（单进程/测试默认实现；持久化实现归运行时装配）。
+/// <para>
+/// 维护约束（天花板）：全量驻留内存，进程重启即全部丢失——持久化与重启恢复由 Server 仓运行时装配
+/// 以持久化实现替换（存储层职责）；全局锁保护，读写均为轻量操作，粗粒度锁足够；
+/// <c>_partyIdByPlayer</c> 索引在每次保存时按成员集合整体重建，不允许残留指向已移除成员的索引。
+/// </para>
+/// </summary>
+public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
+{
+    /// <summary>全局读写锁。</summary>
+    private readonly object _syncRoot = new();
+
+    /// <summary>队伍表：键 = PartyId。</summary>
+    private readonly Dictionary<string, OnlineParty> _parties = new();
+
+    /// <summary>玩家 → 队伍索引：键 = PlayerId。</summary>
+    private readonly Dictionary<string, string> _partyIdByPlayer = new();
+
+    /// <summary>邀请表：键 = InviteId。</summary>
+    private readonly Dictionary<string, OnlinePartyInvite> _invites = new();
+
+    /// <summary>保存队伍（深拷贝入库并重建玩家索引）。</summary>
+    /// <param name="party">队伍聚合。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public Task SavePartyAsync(OnlineParty party, CancellationToken cancellationToken = default)
+    {
+        if (party == null)
+        {
+            throw new ArgumentNullException(nameof(party));
+        }
+
+        lock (_syncRoot)
+        {
+            _parties[party.PartyId] = party.Copy();
+            RebuildPlayerIndex(party.PartyId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>按队伍标识查找队伍。</summary>
+    /// <param name="partyId">队伍标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>队伍副本；不存在返回 null。</returns>
+    public Task<OnlineParty> FindPartyAsync(string partyId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            _parties.TryGetValue(partyId, out var party);
+            return Task.FromResult(party == null ? null : party.Copy());
+        }
+    }
+
+    /// <summary>按玩家反查其所在队伍。</summary>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>队伍副本；不在任何队伍返回 null。</returns>
+    public Task<OnlineParty> FindPartyByPlayerAsync(long playerId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            if (!_partyIdByPlayer.TryGetValue(playerId.ToString(System.Globalization.CultureInfo.InvariantCulture), out var partyId))
+            {
+                return Task.FromResult<OnlineParty>(null);
+            }
+
+            _parties.TryGetValue(partyId, out var party);
+            return Task.FromResult(party == null ? null : party.Copy());
+        }
+    }
+
+    /// <summary>移除队伍并清理其玩家索引。</summary>
+    /// <param name="partyId">队伍标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public Task RemovePartyAsync(string partyId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            _parties.Remove(partyId);
+            RebuildPlayerIndex(partyId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>列出作用域内全部队伍。</summary>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>队伍副本列表。</returns>
+    public Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var result = new List<OnlineParty>();
+            foreach (var party in _parties.Values)
+            {
+                result.Add(party.Copy());
+            }
+
+            return Task.FromResult<IReadOnlyList<OnlineParty>>(result);
+        }
+    }
+
+    /// <summary>
+    /// 统计作用域 (ServerId) 内非终态队伍的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。
+    /// </summary>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>状态 → 队伍数（只含非终态状态；无非终态队伍时为空表）。</returns>
+    public Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long serverId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var counts = new SortedDictionary<OnlinePartyState, int>();
+            foreach (var party in _parties.Values)
+            {
+                if (party.ServerId == serverId && !OnlinePartyStateMachine.IsTerminal(party.State))
+                {
+                    counts.TryGetValue(party.State, out var current);
+                    counts[party.State] = current + 1;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<OnlinePartyState, int>>(counts);
+        }
+    }
+
+    /// <summary>保存邀请（深拷贝入库）。</summary>
+    /// <param name="invite">邀请条目。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    public Task SaveInviteAsync(OnlinePartyInvite invite, CancellationToken cancellationToken = default)
+    {
+        if (invite == null)
+        {
+            throw new ArgumentNullException(nameof(invite));
+        }
+
+        lock (_syncRoot)
+        {
+            _invites[invite.InviteId] = invite.Copy();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>按邀请标识查找邀请。</summary>
+    /// <param name="inviteId">邀请标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>邀请副本；不存在返回 null。</returns>
+    public Task<OnlinePartyInvite> FindInviteAsync(string inviteId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            _invites.TryGetValue(inviteId, out var invite);
+            return Task.FromResult(invite == null ? null : invite.Copy());
+        }
+    }
+
+    /// <summary>查找被邀请人的待答复邀请。</summary>
+    /// <param name="inviteeId">被邀请玩家标识。</param>
+    /// <param name="partyId">队伍标识（null 表示不限队伍）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>待答复邀请副本；无则返回 null。</returns>
+    public Task<OnlinePartyInvite> FindPendingInviteAsync(long inviteeId, string partyId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            foreach (var invite in _invites.Values)
+            {
+                if (invite.InviteeId != inviteeId)
+                {
+                    continue;
+                }
+
+                if (invite.State != OnlinePartyInviteState.Pending)
+                {
+                    continue;
+                }
+
+                if (partyId != null && invite.PartyId != partyId)
+                {
+                    continue;
+                }
+
+                return Task.FromResult(invite.Copy());
+            }
+
+            return Task.FromResult<OnlinePartyInvite>(null);
+        }
+    }
+
+    /// <summary>列出作用域内全部邀请。</summary>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>邀请副本列表。</returns>
+    public Task<IReadOnlyList<OnlinePartyInvite>> ListInvitesAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var result = new List<OnlinePartyInvite>();
+            foreach (var invite in _invites.Values)
+            {
+                result.Add(invite.Copy());
+            }
+
+            return Task.FromResult<IReadOnlyList<OnlinePartyInvite>>(result);
+        }
+    }
+
+    /// <summary>按队伍当前成员集合整体重建玩家索引（先清该队伍的旧索引，再按成员重挂）。</summary>
+    /// <param name="partyId">队伍标识。</param>
+    private void RebuildPlayerIndex(string partyId)
+    {
+        var staleKeys = new List<string>();
+        foreach (var pair in _partyIdByPlayer)
+        {
+            if (pair.Value == partyId)
+            {
+                staleKeys.Add(pair.Key);
+            }
+        }
+
+        foreach (var staleKey in staleKeys)
+        {
+            _partyIdByPlayer.Remove(staleKey);
+        }
+
+        if (!_parties.TryGetValue(partyId, out var party))
+        {
+            return;
+        }
+
+        if (OnlinePartyStateMachine.IsTerminal(party.State))
+        {
+            return;
+        }
+
+        foreach (var member in party.Members)
+        {
+            _partyIdByPlayer[member.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture)] = partyId;
+        }
+    }
+}

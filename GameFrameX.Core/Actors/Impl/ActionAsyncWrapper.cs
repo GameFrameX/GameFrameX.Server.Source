@@ -5,8 +5,8 @@
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//   This project is dual-licensed under the MIT License and Apache License 2.0,
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,38 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-﻿// ==========================================================================================
-//  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
-//  
-//  使用本项目须严格遵守相应法律法规及开源许可证之规定。
-//  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
-//  
-//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
-//  This project is dual-licensed under the MIT License and Apache License 2.0,
-//  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//  please refer to the LICENSE file in the root directory of the source code for the full license text.
-//  
-//  禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//  侵犯他人合法权益等法律法规所禁止的行为！
-//  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
-//  因基于本项目二次开发所产生的一切法律纠纷与责任，
-//  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-//  
-//  GitHub 仓库：https://github.com/GameFrameX
-//  GitHub Repository: https://github.com/GameFrameX
-//  Gitee  仓库：https://gitee.com/GameFrameX
-//  Gitee Repository:  https://gitee.com/GameFrameX
-//  官方文档：https://gameframex.doc.alianblank.com/
-//  Official Documentation: https://gameframex.doc.alianblank.com/
-// ==========================================================================================
-
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Core.Actors.Impl;
@@ -75,7 +43,7 @@ public class ActionAsyncWrapper : WorkWrapper
     public ActionAsyncWrapper(Func<Task> work)
     {
         Work = work;
-        Tcs = new TaskCompletionSource<bool>();
+        Tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     /// <summary>
@@ -92,21 +60,22 @@ public class ActionAsyncWrapper : WorkWrapper
     /// 执行
     /// </summary>
     /// <returns></returns>
-    public override async Task DoTask()
+    public override async Task DoTaskAsync()
     {
         try
         {
             SetContext();
             await Work();
+            Tcs.TrySetResult(true);
         }
         catch (Exception e)
         {
             LogHelper.Error(e.ToString());
+            Tcs.TrySetException(e);
         }
         finally
         {
             ResetContext();
-            Tcs.TrySetResult(true);
         }
     }
 
@@ -120,11 +89,46 @@ public class ActionAsyncWrapper : WorkWrapper
     }
 
     /// <summary>
+    /// 以超时异常完成等待方任务（不重置上下文，见 <see cref="WorkWrapper.OnTimeout"/>）
+    /// </summary>
+    /// <param name="exception">超时异常</param>
+    protected override void SetTimeoutException(Exception exception)
+    {
+        Tcs.TrySetException(exception);
+    }
+
+    /// <summary>
     /// 强制设置结果
     /// </summary>
     public override void ForceSetResult()
     {
         ResetContext();
         Tcs.TrySetResult(false);
+    }
+
+    /// <summary>
+    /// 重置上下文后将内部任务完成源设置为取消状态。
+    /// </summary>
+    /// <remarks>
+    /// Resets the context, then transitions the inner task completion source to the canceled state.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    public override void TrySetCanceled(CancellationToken cancellationToken)
+    {
+        ResetContext();
+        Tcs.TrySetCanceled(cancellationToken);
+    }
+
+    /// <summary>
+    /// 重置上下文后将内部任务完成源设置为异常状态。
+    /// </summary>
+    /// <remarks>
+    /// Resets the context, then transitions the inner task completion source to the faulted state with the given exception.
+    /// </remarks>
+    /// <param name="exception">异常 / Exception</param>
+    public override void TrySetException(Exception exception)
+    {
+        ResetContext();
+        Tcs.TrySetException(exception);
     }
 }
