@@ -94,6 +94,9 @@ public sealed class BotKcpClient
         m_KcpClient.Closed += OnKcpClientOnClosed;
         m_KcpClientApi = m_KcpClient.AsClient();
         messageCompressHandler = new DefaultMessageCompressHandler();
+        // KCP 走 MessageObjectPipelineFilter → MessageHelper.DecoderHandler 静态管线；Bot 进程不经服务器启动路径，
+        // 该静态处理器从未初始化，首个下行包触发 NRE 被当作协议错误关连接。此处与服务器侧同构初始化（幂等赋值）。
+        MessageHelper.SetMessageDecoderHandler(new DefaultMessageDecoderHandler(), new DefaultMessageDecompressHandler());
     }
 
     /// <summary>
