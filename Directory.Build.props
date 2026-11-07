@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
-        <!-- 支持多目标框架: .NET 8 -->
-        <TargetFrameworks>net10.0;</TargetFrameworks>
+        <!-- 仅支持 .NET 10，当前目标框架固定为 net10.0 -->
+        <TargetFramework>net10.0</TargetFramework>
         <!-- 禁用特定于版本或特定于发行版的运行时标识符警告 -->
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
         <!-- 或者使用更具体的警告抑制 -->
@@ -11,7 +11,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>disable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <LangVersion>10</LangVersion>
+        <LangVersion>latest</LangVersion>
+        <!-- 让 .editorconfig 中的 IDE 风格规则（含 csharp_prefer_braces = true:error）在构建期生效 -->
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 
         <!-- NuGet包通用属性 (仅对非测试项目) -->
@@ -32,12 +34,22 @@
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageId>$(AssemblyName)</PackageId>
-        <AssemblyOriginatorKeyFile Condition="'$(IsTestProject)' != 'true'">$(MSBuildProjectDirectory)/../gameframex.key.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile Condition="'$(IsTestProject)' != 'true'">$(MSBuildThisFileDirectory)gameframex.key.snk</AssemblyOriginatorKeyFile>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
         <!-- 输出路径配置 -->
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <!--
+        显式落默认值：不经解决方案直接对 csproj 求值（如 dotnet test 的 no-build 模式）时，
+        本文件先于 SDK 默认值求值，$(Platform) 为空会导致下方 OutputPath 条件组被跳过，
+        测试容器路径与实际构建输出（../bin/app_debug）不一致。
+    -->
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -50,12 +62,12 @@
 
     <!-- 通用文件项 (仅对非测试项目) -->
     <ItemGroup Condition="'$(IsTestProject)' != 'true'">
-        <None Include="$(MSBuildProjectDirectory)/../logo.png" Condition="Exists('$(MSBuildProjectDirectory)/../logo.png')">
+        <None Include="$(MSBuildThisFileDirectory)logo.png" Condition="Exists('$(MSBuildThisFileDirectory)logo.png')">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
             <Link>logo.png</Link>
         </None>
-        <None Include="$(MSBuildProjectDirectory)/../README.md" Condition="Exists('$(MSBuildProjectDirectory)/../README.md')">
+        <None Include="$(MSBuildThisFileDirectory)README.md" Condition="Exists('$(MSBuildThisFileDirectory)README.md')">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>

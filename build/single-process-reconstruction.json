@@ -1,0 +1,29 @@
+{
+  "historicalBase": "da1907ba33233c8e109dd5093174c6f418393dd8",
+  "sourceSnapshot": "ddb7440ac1e8a2799fc5fc42765fcca778e4dc73",
+  "archiveBranch": "codex/archive/multiprocess-history-2026-11-07",
+  "reconstructionBranch": "codex/single-process-framework-rebuild",
+  "archiveProtection": {
+    "rulesetIdentifier": 26753542,
+    "updatesBlocked": true,
+    "forcePushBlocked": true,
+    "deletionBlocked": true,
+    "bypassActors": []
+  },
+  "preserved": [
+    "Single-process framework",
+    "MongoDB",
+    "SQLite",
+    "PostgreSQL",
+    "Naming normalization",
+    "Current application and gameplay implementations"
+  ],
+  "archivedOnly": [
+    "Discovery and heartbeat registration",
+    "Cross-process player routing",
+    "RemoteMessaging and ServerLink",
+    "Multi-role process topology",
+    "Inter-node hotfix distribution"
+  ],
+  "integrationPolicy": "Keep current application behavior; adapt framework consumers without deleting business implementations. Do not merge the archived post-base history."
+}

@@ -1,4 +1,4 @@
-﻿
+
 .vs/
 .idea
 /database
@@ -9,3 +9,20 @@ bin
 *.user
 docs/_site
 running
+data
+.claude
+Blog
+AGENTS.md
+CLAUDE.md
+
+# gfx-project
+/gfx-doc
+.codegraph
+
+# C221：gfx-role 模板产出的 .proto 源暂存（移入 Protobuf 仓后即弃，不入库）
+scripts/scaffold-out/
+
+# 本地环境变量（compose 凭据注入用），不入库
+.env
+.env.*
+!.env.example
