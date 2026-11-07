@@ -239,7 +239,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>处理器实例 / The handler instance.</returns>
     public IMessageHandler GetRpcHandler(Type requestType)
     {
-        return CurrentModule.GetRpcHandler(requestType);
+        return CurrentModule?.GetRpcHandler(requestType);
     }
 
     /// <summary>
@@ -250,7 +250,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>处理器实例 / The handler instance.</returns>
     public IMessageHandler GetMessageHandler(int messageId)
     {
-        return CurrentModule.GetMessageHandler(messageId);
+        return CurrentModule?.GetMessageHandler(messageId);
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>处理器实例 / The handler instance.</returns>
     public BaseHttpHandler GetHttpHandler(string command)
     {
-        return CurrentModule.GetHttpHandler(command);
+        return CurrentModule?.GetHttpHandler(command);
     }
 
     /// <summary>
@@ -271,7 +271,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>处理器列表 / The handler list.</returns>
     public List<BaseHttpHandler> GetListHttpHandler()
     {
-        return CurrentModule.GetListHttpHandler();
+        return CurrentModule?.GetListHttpHandler() ?? new List<BaseHttpHandler>();
     }
 
     /// <summary>
@@ -283,7 +283,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>监听器列表，如果没有则空列表 / The listener list; empty when none.</returns>
     public List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
     {
-        return CurrentModule.FindListeners(actorType, eventArgsType) ?? _emptyListenerList;
+        return CurrentModule?.FindListeners(actorType, eventArgsType) ?? _emptyListenerList;
     }
 
     /// <summary>
@@ -294,7 +294,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <returns>监听器列表，如果没有则空列表 / The listener list; empty when none.</returns>
     public List<IEventListener> FindListeners(Type eventArgsType)
     {
-        return CurrentModule.FindListeners(eventArgsType) ?? _emptyListenerList;
+        return CurrentModule?.FindListeners(eventArgsType) ?? _emptyListenerList;
     }
 
     /// <summary>
