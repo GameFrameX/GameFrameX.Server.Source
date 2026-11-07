@@ -1,101 +1,83 @@
 name: Publish Release
 
 on:
-  push:
-    branches: [src]
-
-permissions:
-  contents: write
+# 发布仅手动触发（workflow_dispatch），push 自动发布以注释形式退役；
+# 版本号仍由共享流水线按提交历史自动推断，发布链路不变。恢复自动发布：取消下两行注释即可。
+# push:
+#   branches: [main]
+  workflow_dispatch:
 
 jobs:
-  release:
+  # 数据库契约双绿门禁：PG + Mongo 双主线全验证档的发布前提
+  # （A1 裁决：DatabaseConditionalWritePrimitivesTests + 可翻译子集契约在两家 Provider 上必须全部通过；
+  # Sqlite 档随套件常开，作为零依赖上手+测试档的回归网）。
+  database-contract-gate:
+    name: Database Contract Gate (PostgreSQL + MongoDB)
     runs-on: ubuntu-latest
-    if: "!startsWith(github.event.head_commit.message, 'chore(release)')"
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gameframex
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING: mongodb://localhost:27017
+      GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: 'Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Mongo 以单节点副本集运行（独立 service 容器无法传 mongod 参数）：
+      # 发布门禁必须实际执行事务回滚/嵌套断言（hello.setName 探测），不能停在独立服务跳过路径。
+      # 独立服务的跳过路径由 topology-equivalence 工作流的常开 mongo service 覆盖。
+      - name: Start MongoDB Single-Node Replica Set
+        run: |
+          docker run -d --name mongo-replica-set -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for attempt in $(seq 1 30); do
+            if docker exec mongo-replica-set mongosh --quiet --eval "db.adminCommand('ping').ok" | grep -q 1; then break; fi
+            sleep 2
+          done
+          docker exec mongo-replica-set mongosh --quiet --eval "try { rs.initiate({ _id: 'rs0', members: [ { _id: 0, host: 'localhost:27017' } ] }) } catch (error) { }"
+          for attempt in $(seq 1 30); do
+            if docker exec mongo-replica-set mongosh --quiet --eval "db.hello().isWritablePrimary" | grep -q true; then exit 0; fi
+            sleep 2
+          done
+          echo "mongodb replica set did not become primary in time" >&2
+          exit 1
+      - name: Checkout Repository
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: |
-            10.0.x
+          dotnet-version: 10.0.x
 
-      - name: Get latest tag
-        id: tag
-        run: |
-          latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-          echo "tag=$latest" >> $GITHUB_OUTPUT
-
-      - name: Analyze commits and calculate version
-        id: version
-        uses: paulhatch/semantic-version@v5.4.0
-        with:
-          tag_prefix: ""
-          major_pattern: "BREAKING CHANGE:"
-          minor_pattern: "feat"
-          format: "${major}.${minor}.${patch}"
-
-      - name: Check if release needed
-        id: check
-        run: |
-          if [ "${{ steps.version.outputs.version }}" != "${{ steps.tag.outputs.tag }}" ]; then
-            echo "need_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "need_release=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Update Version.props
-        if: steps.check.outputs.need_release == 'true'
-        run: |
-          sed -i "s|<Version>.*</Version>|<Version>${{ steps.version.outputs.version }}</Version>|" Version.props
-
-      - name: Generate CHANGELOG
-        if: steps.check.outputs.need_release == 'true'
-        uses: orhun/git-cliff-action@v4
-        id: git-cliff
-        with:
-          config: cliff.toml
-          args: --tag ${{ steps.version.outputs.version }} --strip header
-        env:
-          OUTPUT: CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
-
-      - name: Commit changes
-        if: steps.check.outputs.need_release == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Version.props CHANGELOG.md
-          git commit -m "chore(release): ${{ steps.version.outputs.version }}"
+      - name: Restore
+        run: dotnet restore Server.slnx
 
       - name: Build
-        if: steps.check.outputs.need_release == 'true'
-        run: dotnet build --configuration Release
+        run: dotnet build Server.slnx --no-restore --no-incremental -warnaserror:CS9057
 
-      - name: Pack NuGet packages
-        if: steps.check.outputs.need_release == 'true'
-        run: dotnet pack --configuration Release --no-build --output ./artifacts
+      - name: Run Database Contract Suite (SQLite always + PostgreSQL + MongoDB)
+        run: >
+          dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
+          --filter "FullyQualifiedName~GameFrameX.Tests.DataBase"
+          --logger GitHubActions
 
-      - name: Publish to NuGet
-        if: steps.check.outputs.need_release == 'true'
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-
-      - name: Push changes
-        if: steps.check.outputs.need_release == 'true'
-        run: |
-          git push origin src
-          git tag ${{ steps.version.outputs.version }}
-          git push origin ${{ steps.version.outputs.version }}
-
-      - name: Create GitHub Release
-        if: steps.check.outputs.need_release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          body_path: CHANGELOG.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    needs: database-contract-gate
+    # GITHUB_TOKEN 权限由复用工作流内部统一声明（contents: write / packages: write），调用方无需重复声明。
+    uses: GameFrameX/public-github-actions/.github/workflows/publish-dotnet-release.yml@main
+    with:
+      dotnet_version: "10.0.x"
+      version_props_path: "Version.props"
+    # 上游 publish-dotnet-release.yml 未声明 on.workflow_call.secrets
+    # （NUGET_API_KEY / DOCKERHUB_* / BLUESKY_APP_PASSWORD 靠 inherit 透传），
+    # 改显式列表会导致发布链路拿不到凭据；如需收敛，先在 public-github-actions 补 secrets 声明。
+    secrets: inherit

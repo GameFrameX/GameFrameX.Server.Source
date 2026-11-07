@@ -1,0 +1,27 @@
+name: Sonar Issues
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    # 每 48 小时（每 2 天 UTC 0:00 / 北京时间 8:00）同步一次 SonarCloud issue
+    - cron: "0 0 */2 * *"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  sync:
+    uses: GameFrameX/public-github-actions/.github/workflows/sonar-issue-sync.yml@main
+    with:
+      sonar_project_key: ${{ github.event.repository.name }}
+      sonar_host_url: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+      sonar_organization: ${{ vars.SONAR_ORGANIZATION || 'gameframex' }}
+      sonar_branch: main
+      github_repository: ${{ github.repository }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

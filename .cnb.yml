@@ -1,0 +1,42 @@
+# ==============================================================================
+# CNB 云原生构建流水线（文档：https://docs.cnb.cool/zh/build/grammar.html）
+#
+# 触发规则：'*' tag_push → 构建镜像 (git tag 版本号) + 推送 + 调用部署脚本
+#
+# 镜像产物（唯一）：${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:<git tag>
+#
+# 部署约定参考 GameFrameX.Admin.Unified.Api：
+#   镜像推送 CNB Docker 制品库后，POST 调用部署 API（DEPLOY_API_URL），
+#   在目标服务器的共用 Docker 网络上以静态 IP 重建容器。
+#   部署配置通过 imports 从共享配置仓库导入：
+#     https://cnb.cool/GameFrameX/Admin/cnb-shared-config/-/blob/main/envs.yml
+#   公共变量（DEPLOY_API_URL / DEPLOY_AUTH_* / DEPLOY_NETWORK_*）与 Admin 共用，
+#   Game 专属变量（DEPLOY_GAME_*）见 build/deploy-game.sh 头注。
+#
+# 单一镜像多角色：镜像不承载任何参数逻辑，
+# 启动参数由 GAMEFRAMEX_SERVER_ARGS 环境变量原样透传（含 --ServerType 与数据库连接等完整参数）。
+# ==============================================================================
+
+'*':
+  tag_push:
+    - name: 发布镜像并部署
+      docker:
+        image: mcr.microsoft.com/dotnet/sdk:10.0
+      runner:
+        cpus: 4
+      services:
+        - docker
+      imports: https://cnb.cool/GameFrameX/Admin/cnb-shared-config/-/blob/main/envs.yml
+      stages:
+        - name: 设置镜像标签（git tag 版本号）
+          script: |
+            GIT_TAG=$(git tag --points-at HEAD | head -1)
+            echo -n "${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${GIT_TAG:?未找到指向当前提交的 tag}"
+          exports:
+            info: IMAGE_TAG
+        - name: 构建镜像
+          script: docker build -t "${IMAGE_TAG}" .
+        - name: 推送镜像
+          script: docker push "${IMAGE_TAG}"
+        - name: 部署（Game）
+          script: bash build/deploy-game.sh

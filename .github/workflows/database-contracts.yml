@@ -1,0 +1,68 @@
+name: Database Contracts Gate
+
+# 单进程数据库契约：保留 Mongo standalone 回退与 PostgreSQL/SQLite 真库验证。
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  database-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval \"db.adminCommand('ping')\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gameframex
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING: mongodb://localhost:27017
+      GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: 'Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Server.slnx
+
+      - name: Build
+        run: dotnet build Server.slnx --no-restore --no-incremental -warnaserror:CS9057
+
+      - name: Run Database Contract Suite
+        run: >
+          dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
+
+          --logger GitHubActions
+
+      - name: Run Hotfix and Wrapper Assembly Tests
+        run: dotnet test Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj --no-build --logger GitHubActions
+
+      - name: Verify Localization
+        run: |
+          python3 GameFrameX.Localization/check_keys.py
+          python3 GameFrameX.Localization/check_keys_test.py
