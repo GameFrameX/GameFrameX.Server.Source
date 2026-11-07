@@ -49,6 +49,8 @@ GameFrameX Server は C# .NET 10 の単一プロセス型ゲームサーバー�
 ```bash
 dotnet restore Server.slnx
 dotnet build Server.slnx --no-restore --no-incremental -warnaserror:CS9057
+dotnet build GameFrameX.Hotfix/GameFrameX.Hotfix.csproj -o bin/app_debug/hotfix --no-restore
+cp -R GameFrameX.Config/json bin/app_debug/
 cp -R Configs bin/app_debug/
 cd bin/app_debug
 dotnet GameFrameX.Launcher.dll
