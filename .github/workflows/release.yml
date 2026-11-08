@@ -72,12 +72,32 @@ jobs:
 
   release:
     needs: database-contract-gate
-    # GITHUB_TOKEN 权限由复用工作流内部统一声明（contents: write / packages: write），调用方无需重复声明。
+    permissions:
+      contents: write
+      packages: write
     uses: GameFrameX/public-github-actions/.github/workflows/publish-dotnet-release.yml@main
     with:
       dotnet_version: "10.0.x"
       version_props_path: "Version.props"
-    # 上游 publish-dotnet-release.yml 未声明 on.workflow_call.secrets
-    # （NUGET_API_KEY / DOCKERHUB_* / BLUESKY_APP_PASSWORD 靠 inherit 透传），
-    # 改显式列表会导致发布链路拿不到凭据；如需收敛，先在 public-github-actions 补 secrets 声明。
     secrets: inherit
+
+  publish-nuget:
+    needs: release
+    if: ${{ needs.release.outputs.release_needed == 'true' && needs.release.outputs.nuget_packages == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: ./artifacts
+
+      - name: Publish with NuGet Trusted Publishing
+        uses: GameFrameX/public-github-actions/.github/actions/publish-nuget@main
+        with:
+          package-path: ./artifacts/*.nupkg
+          nuget-user: ${{ secrets.NUGET_USER }}
