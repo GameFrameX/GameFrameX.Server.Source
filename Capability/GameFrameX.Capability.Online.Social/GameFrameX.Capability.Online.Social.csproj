@@ -10,7 +10,7 @@
 
     <ItemGroup>
         <!-- admin handler 载荷序列化（此前经 DataBase/Apps 传递获得；引用拆除后显式直引） -->
-        <PackageReference Include="GameFrameX.Foundation.Json" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Json" Version="5.1.0"/>
     </ItemGroup>
 
     <ItemGroup>

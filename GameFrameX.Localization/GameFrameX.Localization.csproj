@@ -8,6 +8,6 @@
 
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Localization" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Localization" Version="5.1.0"/>
     </ItemGroup>
 </Project>
