@@ -445,13 +445,15 @@ public abstract partial class AppStartUpBase
                 continue;
             }
 
-            // 注册驼峰格式路由
-            RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.OriginalCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
+            // 注册驼峰格式路由（命令由处理器类名派生）
+            var originalCmd = HttpMessageMappingAttribute.GetOriginalCmd(handlerType);
+            RegisterHandlerRoute(app, mappingAttribute, originalCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
 
             // 注册下划线格式路由（如果与驼峰格式不同）
-            if (mappingAttribute.OriginalCmd != mappingAttribute.StandardCmd)
+            var standardCmd = HttpMessageMappingAttribute.GetStandardCmd(handlerType);
+            if (originalCmd != standardCmd)
             {
-                RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.StandardCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
+                RegisterHandlerRoute(app, mappingAttribute, standardCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
             }
         }
     }

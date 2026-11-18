@@ -114,20 +114,31 @@ public class HttpMessageMappingAttributeTests
         Assert.Equal(20, request.Age);
     }
 
-    // (c) RequestType 位置参数传非 HttpMessageRequestBase 子类 → GetCustomAttribute 抛 InvalidCastException
+    // (c) RequestType 传非 HttpMessageRequestBase 子类 → 注册期校验抛 InvalidCastException
     [Fact]
-    public void GetCustomAttribute_ShouldThrowInvalidCastException_WhenRequestTypeIsNotMessageRequestSubclass()
+    public void Validate_ShouldThrowInvalidCastException_WhenRequestTypeIsNotMessageRequestSubclass()
     {
-        Assert.Throws<InvalidCastException>(() =>
-            typeof(BadRequestTypeHttpHandler).GetCustomAttribute<HttpMessageMappingAttribute>());
+        var attribute = typeof(BadRequestTypeHttpHandler).GetCustomAttribute<HttpMessageMappingAttribute>();
+
+        Assert.Throws<InvalidCastException>(() => HttpMessageMappingAttribute.Validate(typeof(BadRequestTypeHttpHandler), attribute));
     }
 
-    // (c) ResponseType 位置参数传非 HttpMessageResponseBase 子类 → GetCustomAttribute 抛 InvalidCastException
+    // (c) ResponseType 传非 HttpMessageResponseBase 子类 → 注册期校验抛 InvalidCastException（命名实参同样经 Validate 兜底）
     [Fact]
-    public void GetCustomAttribute_ShouldThrowInvalidCastException_WhenResponseTypeIsNotMessageResponseSubclass()
+    public void Validate_ShouldThrowInvalidCastException_WhenResponseTypeIsNotMessageResponseSubclass()
     {
-        Assert.Throws<InvalidCastException>(() =>
-            typeof(BadResponseTypeHttpHandler).GetCustomAttribute<HttpMessageMappingAttribute>());
+        var attribute = typeof(BadResponseTypeHttpHandler).GetCustomAttribute<HttpMessageMappingAttribute>();
+
+        Assert.Throws<InvalidCastException>(() => HttpMessageMappingAttribute.Validate(typeof(BadResponseTypeHttpHandler), attribute));
+    }
+
+    // 合法声明（位置实参 + 命名实参）通过注册期校验
+    [Fact]
+    public void Validate_ShouldPass_WhenDeclarationIsValid()
+    {
+        var attribute = typeof(TypedPostHttpHandler).GetCustomAttribute<HttpMessageMappingAttribute>();
+
+        HttpMessageMappingAttribute.Validate(typeof(TypedPostHttpHandler), attribute);
     }
 
     // 合并形态的命名属性在特性上可正确读取
@@ -230,7 +241,7 @@ public class HttpMessageMappingAttributeTests
         public string Name { get; set; }
     }
 
-    [HttpMessageMapping(typeof(TypedPostHttpHandler), typeof(TypedPostRequest), typeof(TypedPostResponse))]
+    [HttpMessageMapping(typeof(TypedPostRequest), typeof(TypedPostResponse))]
     private sealed class TypedPostHttpHandler : BaseHttpHandler
     {
         private readonly Func<HttpActionContext, string> _action;
@@ -246,7 +257,7 @@ public class HttpMessageMappingAttributeTests
         }
     }
 
-    [HttpMessageMapping(typeof(PlainJsonHttpHandler))]
+    [HttpMessageMapping]
     private sealed class PlainJsonHttpHandler : BaseHttpHandler
     {
         private readonly Func<HttpActionContext, string> _action;
@@ -270,7 +281,7 @@ public class HttpMessageMappingAttributeTests
     {
     }
 
-    [HttpMessageMapping(typeof(BadRequestTypeHttpHandler), typeof(NotAMessageRequest))]
+    [HttpMessageMapping(typeof(NotAMessageRequest))]
     private sealed class BadRequestTypeHttpHandler : BaseHttpHandler
     {
         public override Task<string> ActionAsync(HttpActionContext context)
@@ -279,7 +290,7 @@ public class HttpMessageMappingAttributeTests
         }
     }
 
-    [HttpMessageMapping(typeof(BadResponseTypeHttpHandler), null, typeof(NotAMessageResponse))]
+    [HttpMessageMapping(ResponseType = typeof(NotAMessageResponse))]
     private sealed class BadResponseTypeHttpHandler : BaseHttpHandler
     {
         public override Task<string> ActionAsync(HttpActionContext context)

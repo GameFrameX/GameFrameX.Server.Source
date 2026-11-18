@@ -348,7 +348,7 @@ public class HttpHandlerPipelineConsistencyTests
     /// <summary>
     /// 带 [Required] 强类型请求的处理器：用于 DataAnnotations 校验失败业务码回归。
     /// </summary>
-    [HttpMessageMapping(typeof(DataAnnotationsProbeHttpHandler), typeof(ValidationProbeRequest))]
+    [HttpMessageMapping(typeof(ValidationProbeRequest))]
     private sealed class DataAnnotationsProbeHttpHandler : BaseHttpHandler
     {
         private readonly Action _probe;

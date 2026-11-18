@@ -37,7 +37,7 @@ namespace GameFrameX.Network.HTTP;
 /// </summary>
 /// <remarks>
 /// HTTP message handler attribute for marking HTTP message handler classes.
-/// 本特性是 HTTP 处理器的唯一声明入口：路由命令派生、HTTP 方法、强类型请求 / 响应消息类型均在此声明（请求 / 响应为可选命名属性）。
+/// 本特性是 HTTP 处理器的唯一声明入口：HTTP 方法与强类型请求 / 响应消息类型在此声明；路由命令由处理器类名派生（见 <see cref="GetOriginalCmd(Type)"/>），特性不重复声明处理器类型。
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class HttpMessageMappingAttribute : Attribute
@@ -65,62 +65,50 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// </summary>
     /// <remarks>
     /// Initializes a new instance of <see cref="HttpMessageMappingAttribute"/>.
-    /// 消息类型校验在构造函数内完成（特性物化即触发，启动期路由注册 / Swagger 扫描 fail-fast，异常不被反射包装）。
+    /// 特性只做声明，不携带校验：位置实参与命名实参（<c>RequestType = ...</c> / <c>ResponseType = ...</c>）统一由注册期的 <see cref="Validate"/> 校验（命名实参经反射物化时 setter 异常会被包装，不宜在访问器内校验）。
     /// </remarks>
-    /// <param name="classType">处理器类的类型 / Handler class type</param>
-    /// <param name="requestType">强类型请求消息类型，可选，须继承 <see cref="HttpMessageRequestBase"/>；仅声明响应时传 <c>null</c> 占位 / Typed request message type, optional, must inherit from <see cref="HttpMessageRequestBase"/>; pass <c>null</c> as placeholder when only a response type is declared</param>
+    /// <param name="requestType">强类型请求消息类型，可选，须继承 <see cref="HttpMessageRequestBase"/> / Typed request message type, optional, must inherit from <see cref="HttpMessageRequestBase"/></param>
     /// <param name="responseType">强类型响应消息类型，可选，须继承 <see cref="HttpMessageResponseBase"/> / Typed response message type, optional, must inherit from <see cref="HttpMessageResponseBase"/></param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="classType"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="classType"/> is <c>null</c></exception>
-    /// <exception cref="InvalidOperationException">当 <paramref name="classType"/> 不是密封类或不以 <see cref="HttpSuffix"/> 结尾时抛出 / Thrown when <paramref name="classType"/> is not sealed or does not end with <see cref="HttpSuffix"/></exception>
-    /// <exception cref="InvalidCastException">当 <paramref name="requestType"/> 未继承 <see cref="HttpMessageRequestBase"/> 或 <paramref name="responseType"/> 未继承 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when <paramref name="requestType"/> does not inherit from <see cref="HttpMessageRequestBase"/> or <paramref name="responseType"/> does not inherit from <see cref="HttpMessageResponseBase"/></exception>
-    public HttpMessageMappingAttribute(Type classType, Type requestType = null, Type responseType = null)
+    public HttpMessageMappingAttribute(Type requestType = null, Type responseType = null)
     {
-        ArgumentNullException.ThrowIfNull(classType);
-        var className = classType.Name;
-        if (!classType.IsSealed)
-        {
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ClassMustBeSealed, className));
-        }
-
-        if (!className.EndsWith(HttpSuffix, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ClassMustEndWithSuffix, className, HttpSuffix));
-        }
-
-        OriginalCmd = className.Substring(HttpPrefix.Length, className.Length - HttpPrefix.Length - HttpSuffix.Length);
-        StandardCmd = OriginalCmd.ConvertToSnakeCase();
-
-        if (requestType != null && !requestType.IsSubclassOf(typeof(HttpMessageRequestBase)))
-        {
-            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.MessageTypeInheritanceError, requestType.Name));
-        }
-
-        if (responseType != null && !responseType.IsSubclassOf(typeof(HttpMessageResponseBase)))
-        {
-            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ResponseMessageTypeInheritanceError, responseType.Name));
-        }
-
         RequestType = requestType;
         ResponseType = responseType;
     }
 
     /// <summary>
-    /// 获取原始命令名称。
+    /// 从处理器类型名派生原始命令名称（去除命名前缀与后缀）。
     /// </summary>
     /// <remarks>
-    /// Gets the original command name extracted from the handler class name.
+    /// Derives the original command name from the handler type name (stripping the naming prefix and suffix). 命令只能来自处理器真实类名，杜绝特性参数与宿主类型不一致导致的路由错位。
     /// </remarks>
-    /// <value>原始命令名称 / Original command name</value>
-    public string OriginalCmd { get; }
+    /// <param name="handlerType">处理器类型 / Handler type</param>
+    /// <returns>原始命令名称 / Original command name</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="handlerType"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="handlerType"/> is <c>null</c></exception>
+    /// <exception cref="InvalidOperationException">当 <paramref name="handlerType"/> 的名称不以 <see cref="HttpSuffix"/> 结尾时抛出 / Thrown when the name of <paramref name="handlerType"/> does not end with <see cref="HttpSuffix"/></exception>
+    public static string GetOriginalCmd(Type handlerType)
+    {
+        ArgumentNullException.ThrowIfNull(handlerType);
+        var className = handlerType.Name;
+        if (!className.EndsWith(HttpSuffix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ClassMustEndWithSuffix, className, HttpSuffix));
+        }
+
+        return className.Substring(HttpPrefix.Length, className.Length - HttpPrefix.Length - HttpSuffix.Length);
+    }
 
     /// <summary>
-    /// 获取标准化后的命令名称（蛇形命名）。
+    /// 从处理器类型名派生标准化后的命令名称（蛇形命名）。
     /// </summary>
     /// <remarks>
-    /// Gets the standardized command name (snake case).
+    /// Derives the standardized command name (snake case) from the handler type name.
     /// </remarks>
-    /// <value>标准化后的命令名称 / Standardized command name</value>
-    public string StandardCmd { get; }
+    /// <param name="handlerType">处理器类型 / Handler type</param>
+    /// <returns>标准化后的命令名称 / Standardized command name</returns>
+    public static string GetStandardCmd(Type handlerType)
+    {
+        return GetOriginalCmd(handlerType).ConvertToSnakeCase();
+    }
 
     /// <summary>
     /// 获取或设置 HTTP 请求方法类型，默认为 POST。
@@ -135,17 +123,52 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// 获取强类型请求消息的类型；未设置（<c>null</c>）时处理器走普通 JSON 执行路径，设置后走请求绑定 + DataAnnotations 校验路径。
     /// </summary>
     /// <remarks>
-    /// Gets the typed request message type. When <c>null</c> (default) the handler takes the plain JSON execution path; when set, the typed request-binding path with DataAnnotations validation applies. 类型合法性在构造函数校验。
+    /// Gets or init-sets the typed request message type. When <c>null</c> (default) the handler takes the plain JSON execution path; when set, the typed request-binding path with DataAnnotations validation applies. 类型合法性由 <see cref="Validate"/> 在注册期校验。
     /// </remarks>
     /// <value>请求消息类型 / Request message type</value>
-    public Type RequestType { get; }
+    public Type RequestType { get; init; }
 
     /// <summary>
     /// 获取强类型响应消息的类型；未设置（<c>null</c>）时 Swagger 文档的 data 字段使用通用对象。
     /// </summary>
     /// <remarks>
-    /// Gets the typed response message type. When <c>null</c> (default) the Swagger document falls back to a generic object for the data field. 本类型仅用于 OpenAPI 文档生成，运行时不消费；类型合法性在构造函数校验。
+    /// Gets or init-sets the typed response message type. When <c>null</c> (default) the Swagger document falls back to a generic object for the data field. 本类型仅用于 OpenAPI 文档生成，运行时不消费；类型合法性由 <see cref="Validate"/> 在注册期校验。
     /// </remarks>
     /// <value>响应消息类型 / Response message type</value>
-    public Type ResponseType { get; }
+    public Type ResponseType { get; init; }
+
+    /// <summary>
+    /// 校验处理器类型与映射声明的合法性（密封、命名后缀、请求 / 响应消息类型继承约束），注册期调用，fail-fast。
+    /// </summary>
+    /// <remarks>
+    /// Validates the handler type and mapping declaration (sealed, naming suffix, request / response message inheritance constraints); called at registration time for fail-fast. 位置实参与命名实参在此统一校验。
+    /// </remarks>
+    /// <param name="handlerType">处理器类型 / Handler type</param>
+    /// <param name="attribute">处理器上的映射特性实例 / The mapping attribute applied to the handler</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="handlerType"/> 或 <paramref name="attribute"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="handlerType"/> or <paramref name="attribute"/> is <c>null</c></exception>
+    /// <exception cref="InvalidOperationException">当 <paramref name="handlerType"/> 不是密封类或名称不以 <see cref="HttpSuffix"/> 结尾时抛出 / Thrown when <paramref name="handlerType"/> is not sealed or its name does not end with <see cref="HttpSuffix"/></exception>
+    /// <exception cref="InvalidCastException">当 <see cref="RequestType"/> 未继承 <see cref="HttpMessageRequestBase"/> 或 <see cref="ResponseType"/> 未继承 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when <see cref="RequestType"/> does not inherit from <see cref="HttpMessageRequestBase"/> or <see cref="ResponseType"/> does not inherit from <see cref="HttpMessageResponseBase"/></exception>
+    public static void Validate(Type handlerType, HttpMessageMappingAttribute attribute)
+    {
+        ArgumentNullException.ThrowIfNull(handlerType);
+        ArgumentNullException.ThrowIfNull(attribute);
+
+        if (!handlerType.IsSealed)
+        {
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ClassMustBeSealed, handlerType.Name));
+        }
+
+        if (attribute.RequestType != null && !attribute.RequestType.IsSubclassOf(typeof(HttpMessageRequestBase)))
+        {
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.MessageTypeInheritanceError, attribute.RequestType.Name));
+        }
+
+        if (attribute.ResponseType != null && !attribute.ResponseType.IsSubclassOf(typeof(HttpMessageResponseBase)))
+        {
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ResponseMessageTypeInheritanceError, attribute.ResponseType.Name));
+        }
+
+        // 后缀校验：与命令派生共享同一前置条件
+        GetOriginalCmd(handlerType);
+    }
 }

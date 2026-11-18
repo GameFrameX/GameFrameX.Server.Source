@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// <summary>
 /// 获取角色列表
 /// </summary>
-[HttpMessageMapping(typeof(ReqPlayerListHttpHandler))]
+[HttpMessageMapping]
 [Description("获取角色列表,仅限前端调用")]
 public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
 {

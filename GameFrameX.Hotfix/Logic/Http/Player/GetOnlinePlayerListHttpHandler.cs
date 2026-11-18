@@ -36,7 +36,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// 获取在线玩家列表
 /// http://localhost:20001/game/api/GetOnlinePlayerList
 /// </summary>
-[HttpMessageMapping(typeof(GetOnlinePlayerListHttpHandler), typeof(GetOnlinePlayerListRequest), typeof(GetOnlinePlayerListResponse))]
+[HttpMessageMapping(typeof(GetOnlinePlayerListRequest), typeof(GetOnlinePlayerListResponse))]
 [RequireHttpSignature]
 [Description("获取在线玩家列表")]
 public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler

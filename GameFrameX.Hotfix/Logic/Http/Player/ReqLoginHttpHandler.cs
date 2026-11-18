@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// <summary>
 /// 账号登录
 /// </summary>
-[HttpMessageMapping(typeof(ReqLoginHttpHandler))]
+[HttpMessageMapping]
 [Description("账号登录,仅限前端调用")]
 public sealed class ReqLoginHttpHandler : BaseHttpHandler
 {

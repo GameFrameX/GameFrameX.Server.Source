@@ -143,8 +143,9 @@ public sealed class SwaggerOperationFilter : IOperationFilter
         return _handlers.FirstOrDefault(h =>
         {
             var handlerType = h.GetType();
-            var mappingAttr = MappingAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<HttpMessageMappingAttribute>());
-            return string.Equals(command, mappingAttr?.OriginalCmd, StringComparison.OrdinalIgnoreCase) || string.Equals(command, mappingAttr?.StandardCmd, StringComparison.OrdinalIgnoreCase);
+            var originalCmd = HttpMessageMappingAttribute.GetOriginalCmd(handlerType);
+            var standardCmd = HttpMessageMappingAttribute.GetStandardCmd(handlerType);
+            return string.Equals(command, originalCmd, StringComparison.OrdinalIgnoreCase) || string.Equals(command, standardCmd, StringComparison.OrdinalIgnoreCase);
         });
     }
 

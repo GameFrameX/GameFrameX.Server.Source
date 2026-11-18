@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// <summary>
 /// 角色创建
 /// </summary>
-[HttpMessageMapping(typeof(ReqPlayerCreateHttpHandler))]
+[HttpMessageMapping]
 [Description("角色创建,仅限前端调用")]
 public sealed class ReqPlayerCreateHttpHandler : BaseHttpHandler
 {

@@ -286,9 +286,11 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
 
         string actualSha256;
         using (var fileStream = File.OpenRead(_dllPath))
-        using (var sha256 = SHA256.Create())
         {
-            actualSha256 = Convert.ToHexString(sha256.ComputeHash(fileStream));
+            using (var sha256 = SHA256.Create())
+            {
+                actualSha256 = Convert.ToHexString(sha256.ComputeHash(fileStream));
+            }
         }
 
         if (!string.Equals(expectedSha256, actualSha256, StringComparison.OrdinalIgnoreCase))
@@ -399,25 +401,30 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
             return true;
         }
 
+        // 注册期统一校验：密封、命名后缀、请求 / 响应消息类型继承约束
+        HttpMessageMappingAttribute.Validate(type, attr);
+
         var handler = CreateFactory<BaseHttpHandler>(type)();
+        var originalCmd = HttpMessageMappingAttribute.GetOriginalCmd(type);
         // 注册原始命令
-        if (!_httpHandlerMap.TryAdd(attr.OriginalCmd, handler))
+        if (!_httpHandlerMap.TryAdd(originalCmd, handler))
         {
             // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, originalCmd));
         }
 
+        var standardCmd = HttpMessageMappingAttribute.GetStandardCmd(type);
         // 注册标准化的命名：与原始命令仅大小写等价（全小写类名）时同一命令，跳过二次注册
-        if (string.Equals(attr.OriginalCmd, attr.StandardCmd, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(originalCmd, standardCmd, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
         // 注册标准化的命名
-        if (!_httpHandlerMap.TryAdd(attr.StandardCmd, handler))
+        if (!_httpHandlerMap.TryAdd(standardCmd, handler))
         {
             // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.StandardCmd));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, standardCmd));
         }
 
         return true;

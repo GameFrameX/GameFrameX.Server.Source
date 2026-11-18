@@ -365,7 +365,7 @@ public static class HotfixRegistrationProbes
     /// 全小写命令 HTTP 探针：类名去掉 HttpHandler 后缀的 OriginalCmd 与 StandardCmd 完全相等，
     /// 单命令只应注册一次（旧实现第二次 TryAdd 同键失败抛"重复注册"）。
     /// </summary>
-    [HttpMessageMapping(typeof(statusHttpHandler))]
+    [HttpMessageMapping]
     public sealed class statusHttpHandler : BaseHttpHandler
     {
     }
@@ -374,7 +374,7 @@ public static class HotfixRegistrationProbes
     /// 大小写变体 HTTP 探针：OriginalCmd 含大写字母（PlayerInfo / player_info 双命令），
     /// 大小写变体查询必须命中同一处理器（旧字典区分大小写返回 null）。
     /// </summary>
-    [HttpMessageMapping(typeof(PlayerInfoHttpHandler))]
+    [HttpMessageMapping]
     public sealed class PlayerInfoHttpHandler : BaseHttpHandler
     {
     }

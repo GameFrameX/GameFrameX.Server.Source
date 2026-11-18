@@ -115,22 +115,22 @@ public class SwaggerOperationFilterMatchTests
         }
     }
 
-    [HttpMessageMapping(typeof(LoginHttpHandler), typeof(LoginSwaggerRequest))]
+    [HttpMessageMapping(typeof(LoginSwaggerRequest))]
     private sealed class LoginHttpHandler : ProbeHttpHandlerBase
     {
     }
 
-    [HttpMessageMapping(typeof(ReqLoginHttpHandler), typeof(ReqLoginSwaggerRequest))]
+    [HttpMessageMapping(typeof(ReqLoginSwaggerRequest))]
     private sealed class ReqLoginHttpHandler : ProbeHttpHandlerBase
     {
     }
 
-    [HttpMessageMapping(typeof(ReqPlayerListHttpHandler), typeof(ReqPlayerListSwaggerRequest))]
+    [HttpMessageMapping(typeof(ReqPlayerListSwaggerRequest))]
     private sealed class ReqPlayerListHttpHandler : ProbeHttpHandlerBase
     {
     }
 
-    [HttpMessageMapping(typeof(PlayerListQueryHttpHandler), typeof(PlayerListQueryRequest), HttpMethod = HttpMethodType.GET)]
+    [HttpMessageMapping(typeof(PlayerListQueryRequest), HttpMethod = HttpMethodType.GET)]
     private sealed class PlayerListQueryHttpHandler : ProbeHttpHandlerBase
     {
     }
