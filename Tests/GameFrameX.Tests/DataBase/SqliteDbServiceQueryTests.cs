@@ -781,6 +781,39 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
+    /// 测试事务壳内批量软删除：DeleteListAsync 加入环境事务（不嵌套 BEGIN），数据随外层一起提交；外层回滚则软删一并撤销。
+    /// </summary>
+    [Fact]
+    public async Task DeleteListAsync_InsideTransactionShell_ShouldJoinAmbientTransaction()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var survivor = CreateState("tx-softdelete-survivor", group: 31, score: 1);
+            var doomed = CreateState("tx-softdelete-doomed", group: 31, score: 2);
+            var doomedInner = CreateState("tx-softdelete-doomed-inner", group: 31, score: 3);
+            await service.AddAsync(survivor);
+            await service.AddAsync(doomed);
+            await service.AddAsync(doomedInner);
+
+            // 提交路径：壳内软删随外层提交落库
+            await service.ExecuteInTransactionAsync(async () =>
+            {
+                Assert.Equal(2, await service.DeleteListAsync<SqliteQueryTestState>(x => x.Group == 31 && x.Score >= 2));
+            });
+            Assert.Equal(1, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 31));
+            Assert.Equal(3, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 31, includeDeleted: true));
+
+            // 回滚路径：外层失败时壳内软删一并撤销
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.ExecuteInTransactionAsync(async () =>
+            {
+                Assert.Equal(1, await service.DeleteListAsync<SqliteQueryTestState>(x => x.Group == 31));
+                throw new InvalidOperationException("outer boom");
+            }));
+            Assert.Equal(1, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 31));
+        });
+    }
+
+    /// <summary>
     /// 测试取消令牌在查询与写入路径生效。
     /// </summary>
     [Fact]

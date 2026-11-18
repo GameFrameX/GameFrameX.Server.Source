@@ -1254,13 +1254,14 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 按 id 批量软删除（单闸单事务批写：闸内按 id 分块重读 → 同毫秒幂等跳过 → 单事务写回；逐条计数语义与单条路径一致）。
+    /// 按 id 批量软删除（单闸批写：闸内按 id 分块重读 → 同毫秒幂等跳过 → 单事务写回；已有环境事务时加入该事务，提交权归事务壳）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes the given ids as ONE gated, single-transaction batch: the rows are re-read by id
-    /// inside the gate (chunked id-IN), a same-timestamp already-deleted row counts as unchanged (0),
-    /// and every other re-read row is marked and written inside one transaction — the per-row counting
-    /// semantics are identical to the single-row path.
+    /// Soft-deletes the given ids as ONE gated batch: the rows are re-read by id inside the gate
+    /// (chunked id-IN), a same-timestamp already-deleted row counts as unchanged (0), and every other
+    /// re-read row is marked and written inside one transaction — the per-row counting semantics are
+    /// identical to the single-row path. Inside an ambient transaction shell the ambient transaction
+    /// is joined (no BEGIN/COMMIT — the outermost shell owns the commit), matching the other write paths.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">去重后的ID集合 / The distinct IDs</param>
@@ -1280,7 +1281,8 @@ public sealed partial class SqliteDbService
             }
 
             long modifiedCount = 0;
-            await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
                 foreach (var document in rows)
                 {
@@ -1301,8 +1303,19 @@ public sealed partial class SqliteDbService
                     }
                 }
 
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
                 return modifiedCount;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }), cancellationToken, operationName, true).ConfigureAwait(false);
     }
