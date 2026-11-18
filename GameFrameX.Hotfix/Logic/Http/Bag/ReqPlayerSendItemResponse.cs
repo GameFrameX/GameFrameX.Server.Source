@@ -36,7 +36,7 @@ using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Http.Bag;
 
-public sealed class ReqPlayerSendItemResponse : HttpMessageResponseBase
+public sealed class ReqPlayerSendItemResponse : IHttpMessageResponse
 {
     [Description("成功的道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
 }

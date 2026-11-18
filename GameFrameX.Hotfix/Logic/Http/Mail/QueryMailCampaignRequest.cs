@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 查询 Campaign 请求体。所有过滤条件为 AND 关系，空 / 0 表示不限。
     /// </summary>
-    public sealed class QueryMailCampaignRequest : HttpMessageRequestBase
+    public sealed class QueryMailCampaignRequest : IHttpMessageRequest
     {
         /// <summary>Campaign ID。大于 0 时精确查询单条，忽略其余过滤条件。</summary>
         [Description("Campaign ID")]

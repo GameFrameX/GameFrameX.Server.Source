@@ -192,10 +192,10 @@
     <value>{0}, 发生异常. {1} {2}</value>
   </data>
     <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
-    <value>消息类型 {0} 必须继承自 HttpMessageRequestBase</value>
+    <value>消息类型 {0} 必须实现 IHttpMessageRequest 接口</value>
   </data>
     <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
-    <value>消息类型 {0} 必须继承自 HttpMessageResponseBase</value>
+    <value>消息类型 {0} 必须实现 IHttpMessageResponse 接口</value>
   </data>
     <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} 必须是标记为sealed的类</value>

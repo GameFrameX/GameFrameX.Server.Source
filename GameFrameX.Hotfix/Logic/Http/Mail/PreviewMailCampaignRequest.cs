@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 预览 / 校验 Campaign 请求体。字段与发布请求一致，但不分配 CampaignId。
     /// </summary>
-    public sealed class PreviewMailCampaignRequest : HttpMessageRequestBase
+    public sealed class PreviewMailCampaignRequest : IHttpMessageRequest
     {
         /// <summary>邮件类型。</summary>
         [Required]

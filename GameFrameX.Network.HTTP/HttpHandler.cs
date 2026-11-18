@@ -384,18 +384,18 @@ public static class HttpHandler
         }
     }
 
-    // 按是否有 Query String 参数 / 原始 JSON Body 选择反序列化路径，构造请求消息基类 / Choose the deserialization path based on query-string params and raw JSON body, building the request message base.
-    private static HttpMessageRequestBase BuildHttpMessageRequest(Type requestType, Dictionary<string, object> paramMap, string jsonBody, int queryStringParamCount)
+    // 按是否有 Query String 参数 / 原始 JSON Body 选择反序列化路径，构造请求消息接口实例 / Choose the deserialization path based on query-string params and raw JSON body, building the typed request message.
+    private static IHttpMessageRequest BuildHttpMessageRequest(Type requestType, Dictionary<string, object> paramMap, string jsonBody, int queryStringParamCount)
     {
         // 优化：如果没有 Query String 参数，直接使用原始 JSON 字符串反序列化，避免重复序列化
         if (queryStringParamCount == 0 && !string.IsNullOrEmpty(jsonBody))
         {
             // 直接使用原始 JSON 字符串反序列化
-            return (HttpMessageRequestBase)JsonHelper.Deserialize(jsonBody, requestType);
+            return (IHttpMessageRequest)JsonHelper.Deserialize(jsonBody, requestType);
         }
 
         // 有 Query String 参数时，需要合并参数
-        return (HttpMessageRequestBase)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), requestType);
+        return (IHttpMessageRequest)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), requestType);
     }
 
     // 标注 RequestType 的 JSON 执行：Validator 校验，通过则执行 + 日志 + 写出，否则写出校验错误 / JSON execution for handlers with a typed RequestType: validate, on pass execute + log + write, otherwise write validation errors.

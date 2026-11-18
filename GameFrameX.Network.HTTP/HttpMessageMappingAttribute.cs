@@ -67,8 +67,8 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// Initializes a new instance of <see cref="HttpMessageMappingAttribute"/>.
     /// 特性只做声明，不携带校验：位置实参与命名实参（<c>RequestType = ...</c> / <c>ResponseType = ...</c>）统一由注册期的 <see cref="Validate"/> 校验（命名实参经反射物化时 setter 异常会被包装，不宜在访问器内校验）。
     /// </remarks>
-    /// <param name="requestType">强类型请求消息类型，可选，须继承 <see cref="HttpMessageRequestBase"/> / Typed request message type, optional, must inherit from <see cref="HttpMessageRequestBase"/></param>
-    /// <param name="responseType">强类型响应消息类型，可选，须继承 <see cref="HttpMessageResponseBase"/> / Typed response message type, optional, must inherit from <see cref="HttpMessageResponseBase"/></param>
+    /// <param name="requestType">强类型请求消息类型，可选，须实现 <see cref="IHttpMessageRequest"/> / Typed request message type, optional, must implement <see cref="IHttpMessageRequest"/></param>
+    /// <param name="responseType">强类型响应消息类型，可选，须实现 <see cref="IHttpMessageResponse"/> / Typed response message type, optional, must implement <see cref="IHttpMessageResponse"/></param>
     public HttpMessageMappingAttribute(Type requestType = null, Type responseType = null)
     {
         RequestType = requestType;
@@ -147,7 +147,7 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// <param name="attribute">处理器上的映射特性实例 / The mapping attribute applied to the handler</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="handlerType"/> 或 <paramref name="attribute"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="handlerType"/> or <paramref name="attribute"/> is <c>null</c></exception>
     /// <exception cref="InvalidOperationException">当 <paramref name="handlerType"/> 不是密封类或名称不以 <see cref="HttpSuffix"/> 结尾时抛出 / Thrown when <paramref name="handlerType"/> is not sealed or its name does not end with <see cref="HttpSuffix"/></exception>
-    /// <exception cref="InvalidCastException">当 <see cref="RequestType"/> 未继承 <see cref="HttpMessageRequestBase"/> 或 <see cref="ResponseType"/> 未继承 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when <see cref="RequestType"/> does not inherit from <see cref="HttpMessageRequestBase"/> or <see cref="ResponseType"/> does not inherit from <see cref="HttpMessageResponseBase"/></exception>
+    /// <exception cref="InvalidCastException">当 <see cref="RequestType"/> 未实现 <see cref="IHttpMessageRequest"/> 或 <see cref="ResponseType"/> 未实现 <see cref="IHttpMessageResponse"/> 时抛出 / Thrown when <see cref="RequestType"/> does not implement <see cref="IHttpMessageRequest"/> or <see cref="ResponseType"/> does not implement <see cref="IHttpMessageResponse"/></exception>
     public static void Validate(Type handlerType, HttpMessageMappingAttribute attribute)
     {
         ArgumentNullException.ThrowIfNull(handlerType);
@@ -158,12 +158,12 @@ public sealed class HttpMessageMappingAttribute : Attribute
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ClassMustBeSealed, handlerType.Name));
         }
 
-        if (attribute.RequestType != null && !attribute.RequestType.IsSubclassOf(typeof(HttpMessageRequestBase)))
+        if (attribute.RequestType != null && !typeof(IHttpMessageRequest).IsAssignableFrom(attribute.RequestType))
         {
             throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.MessageTypeInheritanceError, attribute.RequestType.Name));
         }
 
-        if (attribute.ResponseType != null && !attribute.ResponseType.IsSubclassOf(typeof(HttpMessageResponseBase)))
+        if (attribute.ResponseType != null && !typeof(IHttpMessageResponse).IsAssignableFrom(attribute.ResponseType))
         {
             throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetworkHttp.ResponseMessageTypeInheritanceError, attribute.ResponseType.Name));
         }

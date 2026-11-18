@@ -36,7 +36,7 @@ using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Http.Bag;
 
-public sealed class ReqPlayerSendItemRequest : HttpMessageRequestBase
+public sealed class ReqPlayerSendItemRequest : IHttpMessageRequest
 {
     [Required]
     [Description("玩家ID")]

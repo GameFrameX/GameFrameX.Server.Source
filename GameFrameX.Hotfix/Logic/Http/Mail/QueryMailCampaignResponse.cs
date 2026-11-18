@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 查询 Campaign 响应体。
     /// </summary>
-    public sealed class QueryMailCampaignResponse : HttpMessageResponseBase
+    public sealed class QueryMailCampaignResponse : IHttpMessageResponse
     {
         /// <summary>业务码。</summary>
         [Description("业务码")]

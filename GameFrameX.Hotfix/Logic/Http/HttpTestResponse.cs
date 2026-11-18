@@ -34,7 +34,7 @@ using GameFrameX.Hotfix.Logic.ServerRole.Match;
 using GameFrameX.Hotfix.Logic.Player.Friend;
 
 
-public sealed class HttpTestResponse : HttpMessageResponseBase
+public sealed class HttpTestResponse : IHttpMessageResponse
 {
     [Description("返回信息")] public string Message { get; set; }
 }

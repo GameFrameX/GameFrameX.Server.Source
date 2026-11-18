@@ -32,7 +32,7 @@ using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
-public sealed class GetOnlinePlayerResponse : HttpMessageResponseBase
+public sealed class GetOnlinePlayerResponse : IHttpMessageResponse
 {
     [Description("当前在线人数")] public int Count { get; set; }
 }

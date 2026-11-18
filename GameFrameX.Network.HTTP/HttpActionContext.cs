@@ -82,5 +82,5 @@ public sealed class HttpActionContext
     /// Gets the request message object declared by <see cref="HttpMessageMappingAttribute.RequestType"/>.
     /// </remarks>
     /// <value>请求消息对象 / Request message object</value>
-    public HttpMessageRequestBase Request { get; init; }
+    public IHttpMessageRequest Request { get; init; }
 }

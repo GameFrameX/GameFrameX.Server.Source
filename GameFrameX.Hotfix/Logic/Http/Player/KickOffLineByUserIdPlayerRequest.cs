@@ -32,7 +32,7 @@ using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
-public sealed class KickOffLineByUserIdPlayerRequest : HttpMessageRequestBase
+public sealed class KickOffLineByUserIdPlayerRequest : IHttpMessageRequest
 {
     [Description("玩家ID")]
     [Required]

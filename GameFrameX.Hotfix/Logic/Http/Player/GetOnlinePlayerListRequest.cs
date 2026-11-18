@@ -32,7 +32,7 @@ using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
-public sealed class GetOnlinePlayerListRequest : HttpMessageRequestBase
+public sealed class GetOnlinePlayerListRequest : IHttpMessageRequest
 {
     /// <summary>
     /// 当前页

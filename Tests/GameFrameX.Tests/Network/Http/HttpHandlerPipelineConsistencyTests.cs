@@ -365,7 +365,7 @@ public class HttpHandlerPipelineConsistencyTests
         }
     }
 
-    private sealed class ValidationProbeRequest : HttpMessageRequestBase
+    private sealed class ValidationProbeRequest : IHttpMessageRequest
     {
         [Required]
         public string RequiredName { get; set; }

@@ -110,21 +110,21 @@ public static partial class Keys
         public const string ExceptionOccurred = "Network.Http.ExceptionOccurred";
 
         /// <summary>
-        /// 消息类型 {0} 必须继承自 HttpMessageRequestBase
+        /// 消息类型 {0} 必须实现 IHttpMessageRequest 接口
         /// </summary>
         /// <remarks>
         /// 键名: Network.Http.MessageTypeInheritanceError
-        /// 用途: 当HTTP消息请求类型未继承自HttpMessageRequestBase时抛出异常
+        /// 用途: 当HTTP消息请求类型未实现IHttpMessageRequest接口时抛出异常
         /// 参数: {0} - 消息类型名称
         /// </remarks>
         public const string MessageTypeInheritanceError = "Network.Http.MessageTypeInheritanceError";
 
         /// <summary>
-        /// 消息类型 {0} 必须继承自 HttpMessageResponseBase
+        /// 消息类型 {0} 必须实现 IHttpMessageResponse 接口
         /// </summary>
         /// <remarks>
         /// 键名: Network.Http.ResponseMessageTypeInheritanceError
-        /// 用途: 当HTTP消息响应类型未继承自HttpMessageResponseBase时抛出异常
+        /// 用途: 当HTTP消息响应类型未实现IHttpMessageResponse接口时抛出异常
         /// 参数: {0} - 消息类型名称
         /// </remarks>
         public const string ResponseMessageTypeInheritanceError = "Network.Http.ResponseMessageTypeInheritanceError";

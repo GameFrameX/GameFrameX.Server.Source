@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 预览 / 校验 Campaign 响应体。
     /// </summary>
-    public sealed class PreviewMailCampaignResponse : HttpMessageResponseBase
+    public sealed class PreviewMailCampaignResponse : IHttpMessageResponse
     {
         /// <summary>业务码（Ok / InvalidCampaignParameter）。</summary>
         [Description("业务码")]

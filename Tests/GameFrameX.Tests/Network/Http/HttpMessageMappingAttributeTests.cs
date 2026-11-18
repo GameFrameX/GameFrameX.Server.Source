@@ -226,7 +226,7 @@ public class HttpMessageMappingAttributeTests
         GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }
 
-    public sealed class TypedPostRequest : HttpMessageRequestBase
+    public sealed class TypedPostRequest : IHttpMessageRequest
     {
         public string Name { get; set; }
 
@@ -236,7 +236,7 @@ public class HttpMessageMappingAttributeTests
         public int Age { get; set; }
     }
 
-    public sealed class TypedPostResponse : HttpMessageResponseBase
+    public sealed class TypedPostResponse : IHttpMessageResponse
     {
         public string Name { get; set; }
     }

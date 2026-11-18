@@ -135,22 +135,22 @@ public class SwaggerOperationFilterMatchTests
     {
     }
 
-    private sealed class LoginSwaggerRequest : HttpMessageRequestBase
+    private sealed class LoginSwaggerRequest : IHttpMessageRequest
     {
         public string LoginName { get; set; }
     }
 
-    private sealed class ReqLoginSwaggerRequest : HttpMessageRequestBase
+    private sealed class ReqLoginSwaggerRequest : IHttpMessageRequest
     {
         public string CredentialCode { get; set; }
     }
 
-    private sealed class ReqPlayerListSwaggerRequest : HttpMessageRequestBase
+    private sealed class ReqPlayerListSwaggerRequest : IHttpMessageRequest
     {
         public string PlayerListKeyword { get; set; }
     }
 
-    private sealed class PlayerListQueryRequest : HttpMessageRequestBase
+    private sealed class PlayerListQueryRequest : IHttpMessageRequest
     {
         [Required]
         public int RequiredPlayerId { get; set; }

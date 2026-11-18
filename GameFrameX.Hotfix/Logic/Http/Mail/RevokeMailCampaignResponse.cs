@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 撤回 Campaign 响应体。
     /// </summary>
-    public sealed class RevokeMailCampaignResponse : HttpMessageResponseBase
+    public sealed class RevokeMailCampaignResponse : IHttpMessageResponse
     {
         /// <summary>业务码。</summary>
         [Description("业务码")]

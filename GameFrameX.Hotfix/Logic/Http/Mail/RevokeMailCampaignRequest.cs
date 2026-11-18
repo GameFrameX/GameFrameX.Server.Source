@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 撤回 Campaign 请求体。
     /// </summary>
-    public sealed class RevokeMailCampaignRequest : HttpMessageRequestBase
+    public sealed class RevokeMailCampaignRequest : IHttpMessageRequest
     {
         /// <summary>Campaign ID。</summary>
         [Required]

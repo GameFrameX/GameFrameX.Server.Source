@@ -34,7 +34,7 @@ using GameFrameX.Hotfix.Logic.ServerRole.Match;
 using GameFrameX.Hotfix.Logic.Player.Friend;
 
 
-public sealed class HttpOnlineFriendActionResponse : HttpMessageResponseBase
+public sealed class HttpOnlineFriendActionResponse : IHttpMessageResponse
 {
     [Description("测试模式")] public string Mode { get; set; }
     [Description("动作名")] public string Action { get; set; }

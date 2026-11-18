@@ -174,10 +174,10 @@
     <value>{0}, exception occurred. {1} {2}</value>
   </data>
     <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
-    <value>Message type {0} must inherit from HttpMessageRequestBase</value>
+    <value>Message type {0} must implement the IHttpMessageRequest interface</value>
   </data>
     <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
-    <value>Message type {0} must inherit from HttpMessageResponseBase</value>
+    <value>Message type {0} must implement the IHttpMessageResponse interface</value>
   </data>
     <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} must be marked as sealed class</value>

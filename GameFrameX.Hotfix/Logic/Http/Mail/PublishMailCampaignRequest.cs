@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// <summary>
     /// 发布 Campaign 请求体。<see cref="CampaignId"/> 为 0 表示新建；非 0 表示覆盖未发布的草稿。
     /// </summary>
-    public sealed class PublishMailCampaignRequest : HttpMessageRequestBase
+    public sealed class PublishMailCampaignRequest : IHttpMessageRequest
     {
         /// <summary>Campaign ID，0 表示新建。</summary>
         [Description("Campaign ID，0 表示新建")]
