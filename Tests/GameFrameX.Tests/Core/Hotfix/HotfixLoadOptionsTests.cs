@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Hotfix;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.Hotfix;
 

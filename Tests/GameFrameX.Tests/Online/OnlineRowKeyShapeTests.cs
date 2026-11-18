@@ -30,7 +30,6 @@
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Keys;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

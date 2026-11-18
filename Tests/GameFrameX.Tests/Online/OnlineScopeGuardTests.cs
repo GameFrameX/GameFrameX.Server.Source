@@ -29,7 +29,6 @@
 
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

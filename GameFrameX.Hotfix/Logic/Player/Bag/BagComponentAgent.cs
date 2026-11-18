@@ -30,10 +30,6 @@
 
 using GameFrameX.Apps.Player.Bag.Component;
 using GameFrameX.Apps.Player.Bag.Entity;
-using GameFrameX.Config;
-using GameFrameX.Config.Tables;
-
-
 using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Player.Bag;

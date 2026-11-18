@@ -29,8 +29,6 @@
 
 
 using System.Linq.Expressions;
-using System.Threading;
-using GameFrameX.DataBase.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameFrameX.DataBase.PostgreSql;

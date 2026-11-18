@@ -30,7 +30,6 @@
 
 using System.Linq.Expressions;
 using GameFrameX.DataBase.Abstractions;
-using GameFrameX.DataBase;
 
 namespace GameFrameX.DataBase.PostgreSql;
 

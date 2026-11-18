@@ -35,7 +35,6 @@ using GameFrameX.Foundation.Hash;
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.Foundation.Utility;
 using GameFrameX.Network.Messages;
 using GameFrameX.Utility.Setting;
 

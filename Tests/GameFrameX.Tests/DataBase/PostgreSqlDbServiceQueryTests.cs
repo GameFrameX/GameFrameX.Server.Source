@@ -28,17 +28,11 @@
 //  ==========================================================================================
 
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.PostgreSql;
 using Npgsql;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

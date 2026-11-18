@@ -15,7 +15,6 @@
 
 namespace GameFrameX.Capability.Online.Persistence.Match;
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;

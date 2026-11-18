@@ -31,7 +31,6 @@ using GameFrameX.StartUp;
 using GameFrameX.Utility.Setting;
 using GameFrameX.Foundation.Options;
 using GameFrameX.StartUp.Options;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

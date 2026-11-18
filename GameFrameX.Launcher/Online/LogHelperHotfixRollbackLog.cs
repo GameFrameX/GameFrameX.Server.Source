@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
-using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Launcher.Online;
 

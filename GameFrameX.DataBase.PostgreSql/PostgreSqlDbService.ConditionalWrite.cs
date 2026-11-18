@@ -28,16 +28,11 @@
 //  ==========================================================================================
 
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Localization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;

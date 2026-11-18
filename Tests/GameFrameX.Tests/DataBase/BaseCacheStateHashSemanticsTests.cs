@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.DataBase;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

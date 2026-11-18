@@ -32,7 +32,6 @@
 using GameFrameX.Apps.ServerRole.Trade.Component;
 using GameFrameX.Apps.ServerRole.Trade.Entity;
 using GameFrameX.Foundation.Utility;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Trade;
 

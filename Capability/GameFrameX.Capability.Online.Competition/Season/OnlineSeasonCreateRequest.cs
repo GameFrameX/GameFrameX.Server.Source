@@ -27,7 +27,6 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Competition.Season;

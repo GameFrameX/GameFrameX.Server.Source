@@ -36,7 +36,6 @@ using GameFrameX.Network.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.Tests.Utility;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.BaseHandler;
 

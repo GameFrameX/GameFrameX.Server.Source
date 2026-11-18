@@ -32,8 +32,6 @@ using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Reward;
 using GameFrameX.Apps.Player.Reward.Component;
 using GameFrameX.Apps.Player.Reward.Entity;
-using GameFrameX.Config;
-using GameFrameX.Config.Tables;
 using GameFrameX.Core.Abstractions.Attribute;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Hotfix.Logic.Player.Bag;

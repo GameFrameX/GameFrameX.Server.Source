@@ -26,7 +26,6 @@
 
 using System.Text.Json;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;

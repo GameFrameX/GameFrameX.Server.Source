@@ -28,11 +28,9 @@
 //  ==========================================================================================
 
 
-using System.Collections.Generic;
 using GameFrameX.Apps.Player.Attribute;
 using GameFrameX.Apps.Player.Attribute.Entity;
 using GameFrameX.Hotfix.Logic.Player.Attribute;
-using GameFrameX.Proto.Proto;
 using Xunit;
 
 namespace GameFrameX.Hotfix.Tests;

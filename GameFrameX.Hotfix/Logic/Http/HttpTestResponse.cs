@@ -28,12 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
-using GameFrameX.Hotfix.Logic.ServerRole.Match;
-using GameFrameX.Hotfix.Logic.Player.Friend;
-
-
 public sealed class HttpTestResponse : IHttpMessageResponse
 {
     [Description("返回信息")] public string Message { get; set; }

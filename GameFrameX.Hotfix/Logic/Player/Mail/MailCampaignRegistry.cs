@@ -28,10 +28,7 @@
 //  ==========================================================================================
 
 
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Apps.Player.Mail.Entity;
 using GameFrameX.Foundation.Localization.Core;

@@ -31,7 +31,6 @@ using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Foundation.Logger;
 using System.Diagnostics;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Utility.Setting;
 using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.StartUp;

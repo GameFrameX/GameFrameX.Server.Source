@@ -30,7 +30,6 @@
 // ==========================================================================================
 
 using GameFrameX.Apps.ServerRole.Gm.Entity;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Gm;
 

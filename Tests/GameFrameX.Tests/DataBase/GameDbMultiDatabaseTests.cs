@@ -30,7 +30,6 @@
 using System.Linq.Expressions;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

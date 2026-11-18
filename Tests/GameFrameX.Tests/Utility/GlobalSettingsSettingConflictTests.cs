@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Utility;
 

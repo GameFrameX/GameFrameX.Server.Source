@@ -29,8 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-using System.Collections.Generic;
 using GameFrameX.Apps.ServerRole.Battle.Entity;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Battle;

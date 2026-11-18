@@ -28,12 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Reflection;
-using GameFrameX.DataBase;
-using GameFrameX.Foundation.Localization.Core;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace GameFrameX.DataBase.PostgreSql;
 
 /// <summary>

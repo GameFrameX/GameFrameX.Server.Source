@@ -30,7 +30,6 @@
 using GameFrameX.Utility;
 using GameFrameX.Utility.Math;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Utility;
 

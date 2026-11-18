@@ -41,7 +41,6 @@ using GameFrameX.Localization;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.StartUp.Configuration;
 using GameFrameX.StartUp.Options;
-using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.StartUp;

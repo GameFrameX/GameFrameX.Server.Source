@@ -43,7 +43,6 @@ using GameFrameX.SuperSocket.ProtoBase;
 using GameFrameX.SuperSocket.Server;
 using GameFrameX.SuperSocket.Server.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Host;
-using GameFrameX.SuperSocket.Server.Abstractions.Middleware;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.SuperSocket.Server.Host;
 using GameFrameX.SuperSocket.Kcp;

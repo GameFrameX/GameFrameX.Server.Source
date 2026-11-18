@@ -28,9 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.DataBase.Abstractions;
-using Microsoft.EntityFrameworkCore;
-
 namespace GameFrameX.DataBase.PostgreSql;
 
 public sealed partial class PostgreSqlDbService

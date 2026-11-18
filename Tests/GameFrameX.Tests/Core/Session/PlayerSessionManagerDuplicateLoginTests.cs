@@ -30,7 +30,6 @@
 using GameFrameX.Core.Session;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.Session;
 

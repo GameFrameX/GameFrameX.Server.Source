@@ -30,10 +30,6 @@
 
 using System.Diagnostics.CodeAnalysis;
 using GameFrameX.DataBase.Abstractions;
-using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Logger;
-using GameFrameX.Localization;
-using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.DataBase;
 

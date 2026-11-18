@@ -31,7 +31,6 @@ using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Tests.Utility;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.Actors;
 

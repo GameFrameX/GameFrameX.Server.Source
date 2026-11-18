@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Core.Session;
-
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
 public sealed class KickOffLineByUserIdPlayerRequest : IHttpMessageRequest

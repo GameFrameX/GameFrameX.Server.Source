@@ -27,9 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Reflection;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Utility;
 

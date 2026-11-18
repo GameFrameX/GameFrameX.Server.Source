@@ -27,13 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Foundation.Presence;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

@@ -7,7 +7,6 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System;
 using GameFrameX.Core.Config;
 using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Config

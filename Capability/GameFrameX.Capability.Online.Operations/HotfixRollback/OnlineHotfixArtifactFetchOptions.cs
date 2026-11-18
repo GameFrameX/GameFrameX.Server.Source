@@ -26,8 +26,6 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System;
-
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>

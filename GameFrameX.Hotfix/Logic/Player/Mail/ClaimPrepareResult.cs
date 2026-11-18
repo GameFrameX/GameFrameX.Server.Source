@@ -28,9 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Collections.Generic;
-using System.Text;
-using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Apps.Player.Mail.Entity;
 
 namespace GameFrameX.Hotfix.Logic.Player.Mail;

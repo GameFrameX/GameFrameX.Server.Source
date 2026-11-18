@@ -29,9 +29,7 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
 using GameFrameX.Apps.ServerRole.Auction.Entity;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 

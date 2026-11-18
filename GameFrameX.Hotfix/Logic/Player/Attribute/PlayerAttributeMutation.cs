@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using System;
-using System.Collections.Generic;
 using GameFrameX.Apps.Player.Attribute;
 
 namespace GameFrameX.Hotfix.Logic.Player.Attribute;

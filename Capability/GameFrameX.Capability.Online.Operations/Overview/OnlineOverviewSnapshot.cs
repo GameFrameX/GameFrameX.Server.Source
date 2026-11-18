@@ -27,10 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking.Party;
-using GameFrameX.Capability.Online.Foundation.Presence;
 using GameFrameX.Capability.Online.Foundation.Session;
 
 namespace GameFrameX.Capability.Online.Operations.Overview;

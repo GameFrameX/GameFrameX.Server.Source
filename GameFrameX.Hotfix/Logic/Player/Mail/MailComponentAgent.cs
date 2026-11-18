@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using System;
-using System.Collections.Generic;
 using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Apps.Player.Mail.Component;

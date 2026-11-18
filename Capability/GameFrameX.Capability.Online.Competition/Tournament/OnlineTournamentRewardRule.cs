@@ -27,7 +27,6 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Online.Assets;
 
 namespace GameFrameX.Capability.Online.Competition.Tournament;

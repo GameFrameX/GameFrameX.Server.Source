@@ -27,8 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System;
-using Xunit;
 using GameFrameX.Utility.Math;
 
 namespace GameFrameX.Tests.Utility.Math

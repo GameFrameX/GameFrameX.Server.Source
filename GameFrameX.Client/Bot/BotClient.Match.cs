@@ -29,8 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-using System.Threading;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Proto.Proto;

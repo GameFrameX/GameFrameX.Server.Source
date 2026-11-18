@@ -6,7 +6,6 @@ using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.Messages;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.Session;
 

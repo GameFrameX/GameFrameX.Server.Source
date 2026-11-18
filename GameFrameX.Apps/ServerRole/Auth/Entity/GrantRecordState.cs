@@ -29,8 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using GameFrameX.Proto.Proto;
-
 namespace GameFrameX.Apps.ServerRole.Auth.Entity;
 
 /// <summary>

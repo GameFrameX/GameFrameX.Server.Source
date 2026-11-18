@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Hash;
-using GameFrameX.Foundation.Logger;
-using GameFrameX.Foundation.Localization.Core;
 using Standart.Hash.xxHash;
 
 namespace GameFrameX.DataBase.Storage;

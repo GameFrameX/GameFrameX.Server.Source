@@ -26,8 +26,6 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Foundation.Localization.Core;
-
 namespace GameFrameX.Capability.Hosting.AdminApi;
 
 

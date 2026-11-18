@@ -35,7 +35,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.ServerLifecycle.ServerMerge;
 
 /// <summary>

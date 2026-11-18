@@ -29,7 +29,6 @@
 
 using GameFrameX.Config;
 using GameFrameX.Core.Config;
-using Xunit;
 
 namespace GameFrameX.Tests.Config;
 

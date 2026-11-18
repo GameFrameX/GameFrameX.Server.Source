@@ -31,7 +31,6 @@
 using System.Collections.Concurrent;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests;
 

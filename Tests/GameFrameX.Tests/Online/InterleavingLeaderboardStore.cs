@@ -27,9 +27,6 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Competition.Leaderboard;
 
 namespace GameFrameX.Tests.Online

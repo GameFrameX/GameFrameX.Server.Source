@@ -29,7 +29,6 @@ using GameFrameX.Foundation.Options;
 using GameFrameX.Localization;
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Options;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

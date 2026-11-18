@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 

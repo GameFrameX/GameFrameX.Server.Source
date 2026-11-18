@@ -37,7 +37,6 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.Capability.Online.Foundation.Storage;
-using GameFrameX.Capability.Online.Persistence;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Persistence.Assets;
 using GameFrameX.Capability.Online.Persistence.Identity;

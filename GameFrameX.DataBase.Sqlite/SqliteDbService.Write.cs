@@ -32,7 +32,6 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Orm.Attribute;

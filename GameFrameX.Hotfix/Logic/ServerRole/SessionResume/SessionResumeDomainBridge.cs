@@ -20,20 +20,15 @@
 //  Gitee Repository:  https://gitee.com/GameFrameX
 // ==========================================================================================
 
-using System.Threading.Tasks;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using GameFrameX.Core.Events;
 using GameFrameX.Core.Session;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Hotfix.Logic.Player.Attribute;
 using GameFrameX.Hotfix.Logic.Player.Mail;
-using GameFrameX.Network.Abstractions;
-using GameFrameX.Proto.Proto;
-using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 

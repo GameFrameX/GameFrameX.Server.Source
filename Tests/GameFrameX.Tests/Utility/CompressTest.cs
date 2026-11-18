@@ -27,10 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.IO.Compression;
 using System.Text;
 using GameFrameX.Utility;
-using Xunit;
 
 namespace GameFrameX.Tests;
 

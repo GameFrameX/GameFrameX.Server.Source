@@ -27,7 +27,6 @@
 
 using GameFrameX.Launcher.Online;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.Online;
 

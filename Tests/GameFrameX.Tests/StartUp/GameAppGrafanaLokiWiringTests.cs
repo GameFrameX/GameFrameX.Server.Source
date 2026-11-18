@@ -31,11 +31,9 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Options;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

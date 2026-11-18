@@ -30,7 +30,6 @@
 
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Logger;
 using MongoDB.Bson;
 using MongoDB.Driver;
 

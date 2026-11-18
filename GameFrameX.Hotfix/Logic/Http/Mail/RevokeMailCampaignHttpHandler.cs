@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using System;
-using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Hotfix.Logic.Player.Mail;
 
 namespace GameFrameX.Hotfix.Logic.Http.Mail

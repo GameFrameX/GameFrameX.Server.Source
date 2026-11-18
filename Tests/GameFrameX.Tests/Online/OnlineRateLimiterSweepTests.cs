@@ -28,7 +28,6 @@
 using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Social;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

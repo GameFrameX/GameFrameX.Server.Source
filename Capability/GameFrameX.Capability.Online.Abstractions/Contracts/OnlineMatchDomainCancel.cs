@@ -19,8 +19,6 @@
 //   The organization shall not be responsible for any disputes; developers shall bear the responsibility.
 //  ==========================================================================================
 
-using System.Collections.Generic;
-
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>

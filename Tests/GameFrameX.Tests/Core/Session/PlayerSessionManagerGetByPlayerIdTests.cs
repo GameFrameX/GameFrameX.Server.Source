@@ -29,8 +29,6 @@
 
 using GameFrameX.Core.Session;
 using GameFrameX.Network.Abstractions;
-using Xunit;
-
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 
 namespace GameFrameX.Tests.Core.Session;

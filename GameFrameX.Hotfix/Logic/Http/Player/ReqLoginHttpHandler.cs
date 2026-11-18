@@ -30,8 +30,6 @@
 
 using GameFrameX.Apps;
 using GameFrameX.Apps.Account.Login.Entity;
-using GameFrameX.DataBase;
-using GameFrameX.Network.Messages;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 

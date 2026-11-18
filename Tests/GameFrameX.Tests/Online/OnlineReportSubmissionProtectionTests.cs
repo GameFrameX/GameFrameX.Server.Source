@@ -1,11 +1,6 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Social;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

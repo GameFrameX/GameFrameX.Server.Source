@@ -26,24 +26,15 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System;
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
-using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Launcher.Online;
-using Xunit;
 
 namespace GameFrameX.Tests.Online;
 

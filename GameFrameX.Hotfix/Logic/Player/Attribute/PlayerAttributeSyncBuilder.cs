@@ -28,10 +28,8 @@
 //  ==========================================================================================
 
 
-using System;
 using GameFrameX.Apps.Player.Attribute;
 using GameFrameX.Apps.Player.Attribute.Entity;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.Player.Attribute;
 

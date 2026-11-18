@@ -31,8 +31,6 @@ namespace GameFrameX.Capability.Online.Social;
 
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 
-using Social;
-
 /// <summary>
 /// 聊天审计检索条件（<see cref="OnlineChatAuditProjection.QueryAsync"/> 除作用域外的全部过滤维度，
 /// 形态对齐统一审计的 <c>OnlineAuditQuery</c> 先例：可选过滤 + 不透明游标 + 页大小）。

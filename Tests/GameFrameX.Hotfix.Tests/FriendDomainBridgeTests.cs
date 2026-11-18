@@ -29,13 +29,8 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using GameFrameX.Hotfix.Logic.Player.Friend;
 using GameFrameX.Proto.Proto;
 using Xunit;
 using FriendDomainBridge = GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge;

@@ -29,7 +29,6 @@
 
 
 using GameFrameX.Foundation.Options;
-using GameFrameX.StartUp;
 using GameFrameX.StartUp.Configuration;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility.Setting;

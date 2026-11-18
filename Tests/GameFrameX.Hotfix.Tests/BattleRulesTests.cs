@@ -29,7 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using GameFrameX.Apps.ServerRole.Battle.Entity;
 using GameFrameX.Hotfix.Logic.ServerRole.Battle;
 using Xunit;
 

@@ -29,7 +29,6 @@
 
 
 using GameFrameX.StartUp;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

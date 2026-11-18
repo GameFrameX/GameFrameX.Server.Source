@@ -28,12 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Apps.Player.Bag.Entity;
-using GameFrameX.Hotfix.Logic.Player.Bag;
-
-using GameFrameX.Foundation.Localization.Core;
-
 namespace GameFrameX.Hotfix.Logic.Http.Bag;
 
 public sealed class ReqPlayerSendItemResponse : IHttpMessageResponse

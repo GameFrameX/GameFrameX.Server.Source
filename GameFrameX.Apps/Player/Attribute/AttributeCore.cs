@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using System;
-using System.Collections.Generic;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Apps.Player.Attribute;

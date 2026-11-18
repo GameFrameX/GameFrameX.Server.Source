@@ -27,9 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Online.Foundation.Presence;
-using Xunit;
 
 namespace GameFrameX.Tests.Online
 {

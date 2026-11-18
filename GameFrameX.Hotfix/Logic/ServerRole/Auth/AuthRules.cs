@@ -29,8 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-
 namespace GameFrameX.Hotfix.Logic.ServerRole.Auth;
 
 /// <summary>

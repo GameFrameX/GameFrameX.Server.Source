@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Foundation.Options;
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility.Setting;

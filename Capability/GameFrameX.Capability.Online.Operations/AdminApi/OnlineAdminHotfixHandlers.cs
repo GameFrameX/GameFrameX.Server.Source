@@ -28,7 +28,6 @@ using System.Text.Json;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
-using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Operations.AdminApi;
 

@@ -32,7 +32,6 @@
 using GameFrameX.Apps.ServerRole.Gm.Component;
 using GameFrameX.Apps.ServerRole.Gm.Entity;
 using GameFrameX.Foundation.Utility;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Gm;
 

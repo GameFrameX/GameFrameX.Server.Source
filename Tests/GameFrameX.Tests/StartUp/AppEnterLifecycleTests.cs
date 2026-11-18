@@ -31,7 +31,6 @@
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Utility.Setting;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

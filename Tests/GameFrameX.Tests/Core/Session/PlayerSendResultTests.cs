@@ -1,5 +1,4 @@
 using GameFrameX.Core.Session;
-using Xunit;
 
 namespace GameFrameX.Tests.Core.Session;
 

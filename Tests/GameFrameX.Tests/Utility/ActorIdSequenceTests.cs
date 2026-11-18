@@ -29,7 +29,6 @@
 
 
 using GameFrameX.Utility;
-using Xunit;
 
 namespace GameFrameX.Tests.Utility;
 

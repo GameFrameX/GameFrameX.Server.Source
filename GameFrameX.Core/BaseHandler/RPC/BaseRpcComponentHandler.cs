@@ -34,7 +34,6 @@ using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network;
 using GameFrameX.Network.Abstractions;
-using Serilog;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
 

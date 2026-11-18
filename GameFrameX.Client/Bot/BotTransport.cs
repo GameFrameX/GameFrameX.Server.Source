@@ -27,8 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Linq;
-
 namespace GameFrameX.Client.Bot;
 
 /// <summary>

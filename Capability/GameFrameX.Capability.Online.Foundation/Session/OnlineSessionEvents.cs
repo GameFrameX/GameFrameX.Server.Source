@@ -29,7 +29,6 @@
 
 namespace GameFrameX.Capability.Online.Foundation.Session;
 
-using System.Text;
 using System.Text.Json;
 using GameFrameX.Capability.Online.Abstractions.Events;
 

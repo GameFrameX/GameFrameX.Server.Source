@@ -32,7 +32,6 @@
 using GameFrameX.Apps.ServerRole.Auction.Component;
 using GameFrameX.Apps.ServerRole.Auction.Entity;
 using GameFrameX.Foundation.Utility;
-using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 

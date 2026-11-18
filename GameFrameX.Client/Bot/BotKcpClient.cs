@@ -40,7 +40,6 @@ using GameFrameX.Network.Messages;
 using GameFrameX.Proto.Proto;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.SuperSocket.Client;
-using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Kcp;
 
 namespace GameFrameX.Client.Bot;

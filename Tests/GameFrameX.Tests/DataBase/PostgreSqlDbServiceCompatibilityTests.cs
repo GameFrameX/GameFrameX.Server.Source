@@ -34,7 +34,6 @@ using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.PostgreSql;
 using GameFrameX.Foundation.Orm.Attribute;
 using Npgsql;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

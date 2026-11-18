@@ -28,12 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
-using GameFrameX.Hotfix.Logic.ServerRole.Match;
-using GameFrameX.Hotfix.Logic.Player.Friend;
-
-
 public sealed class HttpOnlineBridgeFriendResponse : IHttpMessageResponse
 {
     [Description("测试模式")] public string Mode { get; set; }

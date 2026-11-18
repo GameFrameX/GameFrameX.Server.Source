@@ -36,7 +36,6 @@ using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Hotfix.Logic.Player.Attribute;
 using GameFrameX.Hotfix.Logic.Player.Mail;
-using GameFrameX.Core.Events;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
 

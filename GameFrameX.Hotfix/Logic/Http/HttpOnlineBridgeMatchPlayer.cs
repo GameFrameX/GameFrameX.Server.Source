@@ -28,12 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
-using GameFrameX.Hotfix.Logic.ServerRole.Match;
-using GameFrameX.Hotfix.Logic.Player.Friend;
-
-
 public sealed class HttpOnlineBridgeMatchPlayer
 {
     [Description("玩家ID")] public long PlayerId { get; set; }

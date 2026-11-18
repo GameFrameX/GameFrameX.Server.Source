@@ -13,7 +13,6 @@
 using GameFrameX.Core.Components;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Hotfix.Logic.Player.Login;
-using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 using Xunit;
 

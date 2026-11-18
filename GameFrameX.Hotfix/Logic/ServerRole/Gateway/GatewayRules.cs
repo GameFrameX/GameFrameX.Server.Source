@@ -29,7 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Apps.ServerRole.Gateway.Entity;
 
 namespace GameFrameX.Hotfix.Logic.ServerRole.Gateway;

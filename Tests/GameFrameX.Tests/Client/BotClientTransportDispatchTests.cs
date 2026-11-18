@@ -27,9 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System;
 using GameFrameX.Client.Bot;
-using Xunit;
 
 namespace GameFrameX.Tests.Client;
 

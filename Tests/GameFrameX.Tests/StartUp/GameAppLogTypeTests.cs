@@ -28,7 +28,6 @@
 
 using GameFrameX.Foundation.Logger;
 using GameFrameX.StartUp;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

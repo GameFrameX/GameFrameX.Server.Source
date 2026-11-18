@@ -35,7 +35,6 @@ using GameFrameX.Proto.Proto;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.SuperSocket.ClientEngine;
-using GameFrameX.Utility;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Utility;

@@ -28,17 +28,11 @@
 //  ==========================================================================================
 
 
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.Sqlite;
 using GameFrameX.Foundation.Orm.Attribute;
 using Microsoft.Data.Sqlite;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

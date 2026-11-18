@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Generic;
 using GameFrameX.Capability.Hosting.Abstractions;
 
 namespace GameFrameX.Hotfix.Tests;

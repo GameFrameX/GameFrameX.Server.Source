@@ -28,12 +28,10 @@
 //  ==========================================================================================
 
 
-using System;
 using System.Linq.Expressions;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Sqlite;
 using GameFrameX.Foundation.Orm.Attribute;
-using Xunit;
 
 namespace GameFrameX.Tests.DataBase;
 

@@ -28,8 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Collections.Generic;
-
 namespace GameFrameX.Apps.Player.Mail.Entity
 {
     /// <summary>

@@ -29,8 +29,6 @@
 
 using GameFrameX.Foundation.Utility;
 using Microsoft.Extensions.Hosting;
-using Xunit;
-using GameFrameX.Utility;
 
 namespace GameFrameX.Tests.Utility;
 

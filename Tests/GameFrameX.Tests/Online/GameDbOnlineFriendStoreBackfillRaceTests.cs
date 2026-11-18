@@ -33,7 +33,6 @@ using GameFrameX.Capability.Online.Social;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Tests.DataBase;
-using Xunit;
 
 namespace GameFrameX.Tests.Online;
 

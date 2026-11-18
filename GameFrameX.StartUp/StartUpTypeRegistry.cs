@@ -32,7 +32,6 @@ using System.Reflection;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.Localization;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Utility;
 

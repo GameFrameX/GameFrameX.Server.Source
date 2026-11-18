@@ -44,9 +44,7 @@ using GameFrameX.Capability.Online.Persistence.Storage;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Persistence.Match;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Logger;
 using GameFrameX.Launcher.Online;
-using GameFrameX.Localization;
 using GameFrameX.Capability.Online.Social;
 
 namespace GameFrameX.Launcher.Composition;

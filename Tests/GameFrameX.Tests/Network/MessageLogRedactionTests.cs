@@ -30,7 +30,6 @@
 using System.Text.Json;
 using GameFrameX.Network;
 using GameFrameX.Proto.Proto;
-using Xunit;
 
 namespace GameFrameX.Tests.Network;
 

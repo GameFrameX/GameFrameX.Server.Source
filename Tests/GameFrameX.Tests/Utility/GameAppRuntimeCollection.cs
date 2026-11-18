@@ -27,8 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Utility.Runtime;
-
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>

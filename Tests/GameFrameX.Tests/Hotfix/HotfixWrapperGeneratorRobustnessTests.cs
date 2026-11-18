@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Linq;
 using GameFrameX.Hotfix.WrapperGenerator.Agent;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;

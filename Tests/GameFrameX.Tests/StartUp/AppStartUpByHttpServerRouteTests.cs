@@ -30,7 +30,6 @@
 using System.Reflection;
 using GameFrameX.Network.HTTP;
 using GameFrameX.StartUp;
-using Xunit;
 
 namespace GameFrameX.Tests.StartUp;
 

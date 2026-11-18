@@ -1,11 +1,8 @@
 using System.Reflection;
 using GameFrameX.Apps.ServerRole.Chat.Component;
 using GameFrameX.Apps.ServerRole.Chat.Entity;
-using GameFrameX.Apps.ServerRole.Guild.Component;
 using GameFrameX.Apps.ServerRole.Guild.Entity;
-using GameFrameX.Apps.ServerRole.Mail.Component;
 using GameFrameX.Apps.ServerRole.Mail.Entity;
-using GameFrameX.Apps.ServerRole.Team.Component;
 using GameFrameX.Apps.ServerRole.Team.Entity;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Components;

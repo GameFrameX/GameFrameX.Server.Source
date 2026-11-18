@@ -45,7 +45,6 @@ using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.SuperSocket.Server.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Xunit;
 
 namespace GameFrameX.Tests.Network.SuperSocket;
 

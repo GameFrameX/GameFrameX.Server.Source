@@ -27,8 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Utility.Setting;
-
 namespace GameFrameX.Launcher.Composition;
 
 /// <summary>应用提供的单宿主装配和清理回调。</summary>

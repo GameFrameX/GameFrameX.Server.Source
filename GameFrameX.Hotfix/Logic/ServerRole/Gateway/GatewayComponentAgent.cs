@@ -29,7 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System.Linq;
 using GameFrameX.Apps.ServerRole.Gateway.Component;
 using GameFrameX.Apps.ServerRole.Gateway.Entity;
 using GameFrameX.Foundation.Utility;

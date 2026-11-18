@@ -1,6 +1,4 @@
-using System.Threading.Tasks;
 using GameFrameX.Core.Config;
-using Xunit;
 
 namespace GameFrameX.Tests.Core;
 

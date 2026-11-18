@@ -30,7 +30,6 @@
 
 using System.Reflection;
 using System.Text;
-using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Options;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility.Setting;

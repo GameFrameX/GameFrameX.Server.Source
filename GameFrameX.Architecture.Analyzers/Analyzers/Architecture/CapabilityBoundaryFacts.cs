@@ -27,10 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Collections.Immutable;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace GameFrameX.Architecture.Analyzers;
 
 /// <summary>Capability 边界共享事实；白名单来自已验证的 Online 契约编译闭包。</summary>

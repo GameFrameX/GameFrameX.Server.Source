@@ -29,7 +29,6 @@
 
 
 using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Core.Hotfix;
 using GameFrameX.Core.Timer;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;

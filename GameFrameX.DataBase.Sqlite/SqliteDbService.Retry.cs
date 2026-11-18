@@ -32,7 +32,6 @@ using System.Diagnostics.Metrics;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.Localization;
 
 namespace GameFrameX.DataBase.Sqlite;
 
