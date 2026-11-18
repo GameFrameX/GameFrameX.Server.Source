@@ -253,9 +253,11 @@ public sealed class HotfixModuleRegistrationContractTests
         File.Copy(sourceAssemblyFilePath, assemblyFilePath);
 
         using (var fileStream = File.OpenRead(assemblyFilePath))
-        using (var sha256 = SHA256.Create())
         {
-            return (assemblyFilePath, Convert.ToHexString(sha256.ComputeHash(fileStream)));
+            using (var sha256 = SHA256.Create())
+            {
+                return (assemblyFilePath, Convert.ToHexString(sha256.ComputeHash(fileStream)));
+            }
         }
     }
 
