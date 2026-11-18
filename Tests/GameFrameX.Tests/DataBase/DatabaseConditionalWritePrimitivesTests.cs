@@ -70,7 +70,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 版本推进：版本匹配写入成功并递增 RowVersion。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_MatchedVersion_ShouldWriteAndBumpRowVersion()
     {
         await ForEachProviderAsync(async service =>
@@ -99,7 +99,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 失败可见性：版本不符或行缺失返回 false 且存量档不受影响。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_StaleVersionOrMissingRow_ShouldReturnFalseAndKeepDocument()
     {
         await ForEachProviderAsync(async service =>
@@ -124,7 +124,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// 测试 CAS 失败不污染调用方对象：stale / 缺行失败路径回滚写前的临时版本递增，
     /// 调用方 state.RowVersion 保持调用前值（写前递增不回滚会使后续 CAS 持续 Stale）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_StaleFailure_ShouldNotPolluteCallerRowVersion()
     {
         await ForEachProviderAsync(async service =>
@@ -145,7 +145,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 参数守卫：state 的 Id 与 id 不一致抛 ArgumentException。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_StateIdMismatch_ShouldThrowArgumentException()
     {
         await ForEachProviderAsync(async service =>
@@ -158,7 +158,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 审计字段口径：不触碰 UpdateTime/UpdateCount（按原样持久化）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_ShouldNotTouchAuditFields()
     {
         await ForEachProviderAsync(async service =>
@@ -187,7 +187,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 溢出守卫：long.MaxValue 匹配成功时 checked 递增抛 OverflowException 且不写库。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_RowVersionAtMaxValue_ShouldOverflowWithoutWriting()
     {
         await ForEachProviderAsync(async service =>
@@ -208,7 +208,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 CAS 并发竞态（验收 #1）：同 id 同期望版本双写仅一个成功。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersion_ConcurrentDoubleWrite_OnlyOneWinnerPerRound()
     {
         await ForEachProviderAsync(async service =>
@@ -236,7 +236,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试回填原语命中路径：存量行版本缺失（显式 null）时整档写入并落 RowVersion = 0（null ≡ 版本 -1 的补全基点）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersionIsNull_NullVersion_ShouldWriteAndStampRowVersionZero()
     {
         await ForEachProviderAsync(async service =>
@@ -263,7 +263,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试回填原语失败可见性：存量行版本非 null 或行缺失返回 false、存量档不变、不污染调用方对象。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersionIsNull_NonNullVersionOrMissingRow_ShouldReturnFalseAndKeepDocument()
     {
         await ForEachProviderAsync(async service =>
@@ -289,7 +289,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试回填原语并发竞态：同 id 的 null 行并发回填恰一胜者（败者 false 后重读转正常 CAS）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateIfRowVersionIsNull_ConcurrentBackfill_OnlyOneWinner()
     {
         await ForEachProviderAsync(async service =>
@@ -316,7 +316,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试唯一插入顺序路径：新键插入成功并补齐 AddAsync 口径时间戳。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_FreshKey_ShouldInsertWithAddTimestamps()
     {
         await ForEachProviderAsync(async service =>
@@ -336,7 +336,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试唯一插入冲突返回：唯一键命中或 Id 已占用返回 false 不抛。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_ExistingKeyOrOccupiedId_ShouldReturnFalse()
     {
         await ForEachProviderAsync(async service =>
@@ -357,7 +357,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试唯一性口径无视软删：软删行同样占用唯一键（物理唯一索引口径）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_SoftDeletedRow_ShouldStillOccupyKey()
     {
         await ForEachProviderAsync(async service =>
@@ -374,7 +374,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试无 provider 唯一索引时的顺序冲突兜底：先查后插同样返回 false。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_WithoutProviderIndex_SequentialConflict_ShouldReturnFalse()
     {
         await ForEachProviderAsync(async service =>
@@ -391,7 +391,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试唯一插入并发竞态（验收 #2）：同唯一键并发插入仅一条入表。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_ConcurrentSameKey_OnlyOneRowLands()
     {
         await ForEachProviderAsync(async service =>
@@ -417,7 +417,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试序列基本语义：首次为 1、单调递增、不同序列名互相独立。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task NextSequence_ShouldStartAtOneAndIncrementPerName()
     {
         await ForEachProviderAsync(async service =>
@@ -432,7 +432,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试序列键控：序列名与状态类型名联合键控，同名不同类型互不干扰。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task NextSequence_IsKeyedByStateType()
     {
         await ForEachProviderAsync(async service =>
@@ -447,7 +447,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试序列名守卫：null 或空白序列名抛 ArgumentException。
     /// </summary>
-    [Theory]
+    [SkippableTheory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
@@ -462,7 +462,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试序列并发竞态（验收 #3）：并发取号无重复、无回退（结果恰为 1..N）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task NextSequence_ConcurrentClaims_ShouldYieldDistinctMonotonicValues()
     {
         await ForEachProviderAsync(async service =>
@@ -481,7 +481,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     /// <summary>
     /// 测试 GameDb 门面转发条件写三原语（转发语义冒烟，SQLite 载体）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task GameDb_Facade_ShouldForwardConditionalWritePrimitives()
     {
         var service = new SqliteDbService();
@@ -534,8 +534,30 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     private static async Task ForEachProviderAsync(Func<IDatabaseService, Task> scenario)
     {
         await ExecuteWithSqliteAsync(scenario);
-        await ExecuteWithMongoAsync(scenario);
-        await ExecuteWithPostgreSqlAsync(scenario);
+        var skippedProviders = new List<string>();
+        try
+        {
+            await ExecuteWithMongoAsync(scenario);
+        }
+        catch (SkipException)
+        {
+            skippedProviders.Add("MongoDB");
+        }
+
+        try
+        {
+            await ExecuteWithPostgreSqlAsync(scenario);
+        }
+        catch (SkipException)
+        {
+            skippedProviders.Add("PostgreSQL");
+        }
+
+        if (skippedProviders.Count > 0)
+        {
+            // SQLite 分支已实跑并通过；外部 Provider 缺环境属部分覆盖，显式标记跳过（--full 档补齐）。
+            throw new SkipException($"Skipping: 外部数据库未配置（{string.Join(", ", skippedProviders)}），仅 SQLite 分支实跑");
+        }
     }
 
     /// <summary>
@@ -567,10 +589,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     private static async Task ExecuteWithMongoAsync(Func<IDatabaseService, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var service = new MongoDbService();
@@ -607,10 +626,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     private static async Task ExecuteWithPostgreSqlAsync(Func<IDatabaseService, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}".ToLowerInvariant();
         var adminConnectionString = WithDatabase(connectionString, "postgres");

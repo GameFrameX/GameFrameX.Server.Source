@@ -47,7 +47,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 查询已存在数据。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ById_ShouldReturnExistingState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -67,7 +67,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 查询不存在数据且不自动创建时返回空。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ById_WhenNotExistsAndNoCreate_ShouldReturnNull()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -80,7 +80,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试条件查询与软删除过滤的一致性。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindList_Count_Any_ShouldRespectSoftDeleteFilter()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -107,7 +107,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试根据ID判断存在性接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExistsByIdAsync_ShouldRespectSoftDeleteFilter()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -130,7 +130,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试取消令牌重载在查询接口上生效。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindListAsync_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -146,7 +146,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试取消令牌重载在批量写入与部分更新接口上生效。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateListAndUpdatePartial_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -162,7 +162,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CountAnyAndDelete_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -177,7 +177,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListAndRestore_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -193,7 +193,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task FindSortAndWrite_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -219,7 +219,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试 GameDb 门面层查询类取消令牌重载在令牌已取消时抛出异常。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task GameDb_QueryOverloads_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithGameDbAsync(async () =>
@@ -250,7 +250,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试 GameDb 门面层写入与删除类取消令牌重载在令牌已取消时抛出异常。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task GameDb_WriteDeleteOverloads_WithCanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithGameDbAsync(async () =>
@@ -283,7 +283,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试 GameDb 门面层查询类新增重载在有效取消令牌下返回正确结果。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task GameDb_QueryOverloads_WithActiveToken_ShouldReturnExpectedResult()
     {
         await ExecuteWithGameDbAsync(async () =>
@@ -335,7 +335,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试 GameDb 门面层写入删除类新增重载在有效取消令牌下完成完整生命周期。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task GameDb_WriteDeleteOverloads_WithActiveToken_ShouldCompleteLifecycle()
     {
         await ExecuteWithGameDbAsync(async () =>
@@ -381,7 +381,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试升降序首条查询与分页查询结果。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SortQueries_ShouldReturnExpectedOrder()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -409,7 +409,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按条件查询在不存在时自动创建新对象。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ByFilter_WhenNotExistsAndCreate_ShouldCreateState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -426,7 +426,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试新增单条数据接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddAsync_ShouldInsertOneRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -446,7 +446,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量新增空集合接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddListAsync_WithEmptyCollection_ShouldNotInsertAnyRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -460,7 +460,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试新增或更新接口的插入与更新流程。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateAsync_ShouldInsertThenUpdate()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -486,7 +486,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试单条更新接口支持字段置空。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_Single_ShouldSupportUnsetNullField()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -514,7 +514,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量更新接口仅更新已变更对象。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_List_ShouldReturnChangedCount()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -546,7 +546,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量更新空集合接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_List_WithEmptyCollection_ShouldReturnZero()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -559,7 +559,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按对象删除接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteAsync_ByState_ShouldSoftDeleteRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -578,7 +578,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按条件删除接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteAsync_ByFilter_ShouldSoftDeleteFirstMatchedRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -598,7 +598,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按条件批量删除接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListAsync_ShouldSoftDeleteMatchedRecords()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -621,7 +621,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按ID批量删除接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListIdAsync_ShouldSoftDeleteSpecifiedIds()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -643,7 +643,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按ID批量删除空集合接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListIdAsync_WithEmptyCollection_ShouldReturnZero()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -653,7 +653,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Concurrent_AddAsync_ShouldInsertAllRecords()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -669,7 +669,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Concurrent_DeleteAsync_SameRecord_ShouldRemainSoftDeleted()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -694,7 +694,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Concurrent_UpdateAndDelete_ShouldKeepRecordSoftDeleted()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -722,7 +722,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Chunked_UpdateAsync_BatchedChunks_ShouldUpdateAllChangedRecords()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -759,7 +759,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Concurrent_MixedDeleteAndUpdate_ByDifferentIdSets_ShouldKeepConsistentVisibility()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -794,7 +794,7 @@ public sealed class MongoDbServiceQueryTests
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task DeleteAsync_ByFilter_MultipleTimes_ShouldBeIdempotent()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -816,7 +816,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试两个服务实例并发新增数据的一致性。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_ConcurrentAddAsync_ShouldInsertAllRecords()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -839,7 +839,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试两个服务实例对同一记录并发更新时的最终可见性。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_ConcurrentAddOrUpdateSameId_ShouldKeepSingleRecord()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -876,7 +876,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试两个服务实例并发删除与查询时软删除过滤保持一致。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_ConcurrentDeleteAndQuery_ShouldRespectSoftDeleteFilter()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -903,7 +903,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试分页超出范围时返回空集合。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindSortAscendingAsync_PageOutOfRange_ShouldReturnEmpty()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -921,7 +921,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试条件批量删除无命中时返回0且数据保持可见。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListAsync_WhenNoMatch_ShouldReturnZeroAndKeepData()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -941,7 +941,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试两个服务实例重叠ID并发删除后数据不泄露。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_ConcurrentDeleteListId_WithOverlappingIds_ShouldDeleteUnion()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -966,7 +966,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试软删除后使用新增或更新接口可恢复可见性。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateAsync_AfterSoftDelete_ShouldRestoreVisibility()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -997,7 +997,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试多轮混合更新与删除后计数和可见性保持一致。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiRound_MixedUpdateAndDelete_ShouldKeepConsistentCount()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -1041,7 +1041,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量更新对象全部未修改时返回0。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_List_AllUnchanged_ShouldReturnZero()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1065,7 +1065,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按条件创建在命中软删除记录时返回未持久化新对象。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ByFilter_CreateAfterSoftDelete_ShouldReturnTransientNewState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1088,7 +1088,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试固定随机种子的跨服务混合回放后两侧快照一致。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_SeededReplayMixedOperations_ShouldKeepSameSnapshot()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -1151,7 +1151,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按条件创建得到瞬态对象后通过新增或更新接口可持久化。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ByFilter_TransientThenAddOrUpdate_ShouldPersistState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1178,7 +1178,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试跨服务并发创建瞬态对象并持久化后最终可见集合一致。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_ConcurrentTransientCreateThenPersist_ShouldKeepConsistentVisibility()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -1227,7 +1227,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试瞬态对象重复持久化时保持单条记录并采用最后一次写入值。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ByFilter_TransientPersistTwice_ShouldKeepSingleRecordAndLastValue()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1255,7 +1255,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试跨服务先软删除后同ID重建时最终可见记录保持一致。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_DeleteThenRecreateSameId_ShouldKeepSingleVisibleRecord()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -1286,7 +1286,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试同ID按删除更新重建顺序执行后最终以重建结果为准。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SameId_DeleteThenUpdateThenAddOrUpdate_ShouldUseRecreatedState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1319,7 +1319,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试跨服务同ID三种顺序矩阵下最终可见性符合预期。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task MultiService_SameId_OperationOrderMatrix_ShouldMatchExpectedVisibility()
     {
         await ExecuteWithTwoServicesAsync(async (serviceA, serviceB) =>
@@ -1368,7 +1368,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试按ID列表查询接口返回可见数据。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindByIdsAsync_ShouldReturnVisibleRecordsOnly()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1390,7 +1390,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试分页查询与总数返回。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindPageAsync_ShouldReturnPagedItemsAndTotal()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1408,7 +1408,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量增加或更新接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateListAsync_ShouldInsertThenUpdate()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1431,7 +1431,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量保存接口的分批 upsert 与 ack 返回（batchSize 小于总量时按批执行）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_ShouldBatchUpsertAndReturnAllStates()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1451,7 +1451,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量保存的幂等 upsert 且不修改状态时间戳（与 AddOrUpdateListAsync 的语义差异契约）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_ShouldBeIdempotentUpsertWithoutTouchingTimestamps()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1478,7 +1478,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试批量保存的 batchSize 参数校验（无需真实连接：参数校验先于连接初始化）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_InvalidBatchSize_ShouldThrowArgumentOutOfRangeException()
     {
         var service = new MongoDbService();
@@ -1490,7 +1490,7 @@ public sealed class MongoDbServiceQueryTests
     /// <summary>
     /// 测试部分更新、恢复与物理删除接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdatePartial_Restore_HardDelete_ShouldWorkAsExpected()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1532,7 +1532,7 @@ public sealed class MongoDbServiceQueryTests
     /// 保护 MongoSerializationRegistry 懒注册 ClassMap 的 SetIgnoreExtraElements 语义
     /// （等价于旧 Mongo.CacheState 基类上的 [BsonIgnoreExtraElements(true, Inherited = true)]）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_LegacyDocumentWithRemovedField_ShouldDeserializeWithoutError()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1559,7 +1559,7 @@ public sealed class MongoDbServiceQueryTests
     /// 保护 MongoSerializationRegistry 在 Open 注册的 DictionaryRepresentationConvention 时序
     /// （ConventionPack 先于任何 ClassMap AutoMap，否则字典形态退回 Dynamic 破坏存量文档读写）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddAsync_DictionaryMember_ShouldPersistAsArrayOfDocuments()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -1591,10 +1591,7 @@ public sealed class MongoDbServiceQueryTests
     private static async Task ExecuteWithServiceAsync(Func<MongoDbService, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var service = new MongoDbService();
@@ -1631,10 +1628,7 @@ public sealed class MongoDbServiceQueryTests
     private static async Task ExecuteWithTwoServicesAsync(Func<MongoDbService, MongoDbService, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var options = new DbOptions
@@ -1676,10 +1670,7 @@ public sealed class MongoDbServiceQueryTests
     private static async Task ExecuteWithGameDbAsync(Func<Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var options = new DbOptions

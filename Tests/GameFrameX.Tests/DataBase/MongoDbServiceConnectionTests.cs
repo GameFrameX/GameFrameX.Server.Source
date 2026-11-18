@@ -44,14 +44,11 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试在相同配置下重复打开连接时复用已有数据库对象。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task Open_WithSameOptions_ShouldReuseCurrentDatabaseInstance()
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_conn_reuse_{Guid.NewGuid():N}";
         var service = new MongoDbService();
@@ -81,7 +78,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试连续失败时健康检查会从降级升级为不健康状态。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task HealthCheck_WhenConsecutiveFailuresReachThreshold_ShouldBecomeUnhealthy()
     {
         var settings = new MongoClientSettings
@@ -119,7 +116,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试连接目标标识不会泄露用户名和密码。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void BuildConnectionTargetTag_ShouldNotContainCredentials()
     {
         var method = typeof(MongoDbService).GetMethod("BuildConnectionTargetTag", BindingFlags.NonPublic | BindingFlags.Static);
@@ -135,7 +132,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试状态机在连续可重试失败后从 Healthy 进入 Degraded 再进入 Unhealthy。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void AvailabilityState_WhenConsecutiveRetryableFailures_ShouldTransitToUnhealthy()
     {
         var service = new MongoDbService();
@@ -153,7 +150,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试 Recovering 状态下连续成功达到阈值后回切 Healthy。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void AvailabilityState_WhenRecoveringGetsConsecutiveSuccesses_ShouldTransitToHealthy()
     {
         var service = new MongoDbService();
@@ -174,7 +171,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试 Unhealthy 状态下白名单读接口会触发降级返回。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void DegradeReadFallback_WhenUnhealthyAndWhitelistedRead_ShouldReturnFallback()
     {
         var service = new MongoDbService();
@@ -196,7 +193,7 @@ public sealed class MongoDbServiceConnectionTests
     /// <summary>
     /// 测试 Unhealthy 状态下核心写接口会被快速失败策略拒绝。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void CoreWriteAllowed_WhenUnhealthyAndCoreWrite_ShouldReturnFalse()
     {
         var service = new MongoDbService();

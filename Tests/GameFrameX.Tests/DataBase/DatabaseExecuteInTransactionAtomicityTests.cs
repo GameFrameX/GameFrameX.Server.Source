@@ -63,7 +63,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// <summary>
     /// 提交路径：事务壳内混合全部写路径（单插/批插/upsert 单+批/唯一插入/CAS/序列）提交后全部持久化。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_Commit_ShouldPersistAllWritePaths()
     {
         await ForEachProviderAsync(async (service, _, _) =>
@@ -111,7 +111,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// <summary>
     /// 回滚路径：action 抛异常时事务内全部写路径整体回滚（含序列不推进、删除撤销）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_Rollback_WhenActionThrows_ShouldDiscardAllWrites()
     {
         await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
@@ -153,7 +153,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// <summary>
     /// 嵌套壳：内层 ExecuteInTransactionAsync 加入环境事务，外层回滚连带内层写入。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_NestedShell_ShouldJoinAmbientTransaction()
     {
         await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
@@ -192,7 +192,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// <summary>
     /// Mongo standalone 回退：非副本集上事务壳降级为单次直通执行（action 恰执行一次、无双写）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_MongoStandalone_FallbackShouldRunActionExactlyOnce()
     {
         await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
@@ -227,7 +227,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// keeping the derived flow "inside" a finished transaction — its writes fault on the real
     /// providers or silently skip their own transaction and commit.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_DerivedAsyncFlowAfterShellCompletes_ShouldCommitIndependentTransaction()
     {
         await ForEachProviderAsync(async (service, _, _) =>
@@ -270,7 +270,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// write outright). standalone mongod is excluded (no multi-document transactions — the shell
     /// degrades to a single non-transactional pass where rollback assertions do not apply).
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_DerivedAsyncFlowAfterShellCompletes_ShouldRollbackIndependentTransaction()
     {
         await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
@@ -317,7 +317,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// serializes the shells on its single-connection gate; Mongo and PostgreSQL run them as parallel
     /// transactions on the real-server paths.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransaction_ConcurrentShellsFromNonDerivedFlows_ShouldCommitIndependently()
     {
         await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
@@ -366,7 +366,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     /// <summary>
     /// 提交错误经过真实事务外壳后，仅明确的瞬时事务失败允许重放 action。
     /// </summary>
-    [Theory]
+    [SkippableTheory]
     [InlineData(true, false, 2)]
     [InlineData(false, true, 1)]
     [InlineData(true, true, 1)]
@@ -444,8 +444,30 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     private static async Task ForEachProviderAsync(Func<IDatabaseService, ProviderKind, bool, Task> scenario)
     {
         await ExecuteWithSqliteAsync(scenario);
-        await ExecuteWithMongoAsync(scenario);
-        await ExecuteWithPostgreSqlAsync(scenario);
+        var skippedProviders = new List<string>();
+        try
+        {
+            await ExecuteWithMongoAsync(scenario);
+        }
+        catch (SkipException)
+        {
+            skippedProviders.Add("MongoDB");
+        }
+
+        try
+        {
+            await ExecuteWithPostgreSqlAsync(scenario);
+        }
+        catch (SkipException)
+        {
+            skippedProviders.Add("PostgreSQL");
+        }
+
+        if (skippedProviders.Count > 0)
+        {
+            // SQLite 分支已实跑并通过；外部 Provider 缺环境属部分覆盖，显式标记跳过（--full 档补齐）。
+            throw new SkipException($"Skipping: 外部数据库未配置（{string.Join(", ", skippedProviders)}），仅 SQLite 分支实跑");
+        }
     }
 
     /// <summary>
@@ -477,10 +499,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     private static async Task ExecuteWithMongoAsync(Func<IDatabaseService, ProviderKind, bool, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var service = new MongoDbService();
@@ -519,10 +538,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     private static async Task ExecuteWithPostgreSqlAsync(Func<IDatabaseService, ProviderKind, bool, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}".ToLowerInvariant();
         var adminConnectionString = WithDatabase(connectionString, "postgres");

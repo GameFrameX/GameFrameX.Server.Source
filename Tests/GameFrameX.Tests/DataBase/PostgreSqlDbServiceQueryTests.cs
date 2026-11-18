@@ -52,7 +52,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 查询已存在数据。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ById_ShouldReturnExistingState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -72,7 +72,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 查询不存在数据且不自动创建时返回空。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ById_WhenNotExistsAndNoCreate_ShouldReturnNull()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -85,7 +85,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试条件查询与软删除过滤的一致性。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindList_Count_Any_ShouldRespectSoftDeleteFilter()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -114,7 +114,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试根据ID判断存在性接口。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExistsByIdAsync_ShouldRespectSoftDeleteFilter()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -137,7 +137,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按条件查询不存在且允许创建时返回新实例（Id 由生成器分配）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindAsync_ByFilter_WhenNotExistsAndCreate_ShouldCreateState()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -155,7 +155,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试插入一条数据。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddAsync_ShouldInsertOneRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -171,7 +171,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试空集合插入不做任何写入。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddListAsync_WithEmptyCollection_ShouldNotInsertAnyRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -185,7 +185,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试 Upsert：先插入后更新保持单行。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateAsync_ShouldInsertThenUpdate()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -205,7 +205,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试软删后 AddOrUpdate 恢复可见（对齐 Mongo ReplaceOne 整文档替换语义）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task AddOrUpdateAsync_AfterSoftDelete_ShouldRestoreVisibility()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -226,7 +226,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试单条更新将 null 字段移除（对齐 Mongo $unset 语义，读回为 null）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_Single_ShouldSupportUnsetNullField()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -247,7 +247,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试列表更新返回实际变更数，未变更项不计。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdateAsync_List_ShouldReturnChangedCount()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -278,7 +278,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按对象软删除。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteAsync_ByState_ShouldSoftDeleteRecord()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -296,7 +296,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按条件软删除首条匹配，重复删除幂等返回 0。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteAsync_ByFilter_MultipleTimes_ShouldBeIdempotent()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -315,7 +315,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试批量条件软删除。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListAsync_ShouldSoftDeleteMatchedRecords()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -334,7 +334,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 列表软删除与空集合返回 0。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListIdAsync_ShouldSoftDeleteSpecifiedIds()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -356,7 +356,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试恢复软删除数据（IsDeleted 置 false 且 DeleteTime 移除）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task RestoreAsync_ShouldRestoreSoftDeleted()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -378,7 +378,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试物理删除彻底移除（includeDeleted 也查不到）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task HardDeleteAsync_ShouldPhysicallyRemove()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -395,7 +395,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试排序与分页查询（FindSort* / FindPageAsync）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SortAndPageQueries_ShouldReturnExpectedOrder()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -424,7 +424,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试投影查询（成员绑定投影）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindProjectedAsync_ShouldProjectMembers()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -443,7 +443,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试部分更新：字段写入、字段移除、时间戳与更新计数推进。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UpdatePartialAsync_ShouldSetAndUnsetFields()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -469,7 +469,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试 SaveBulk 批量 upsert：逐批 ack、不触碰时间戳、重复保存幂等。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_ShouldUpsertBatchesAndKeepTimestamps()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -505,7 +505,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <c>IsAcknowledged</c>) and the last write must win; the former <c>affected >= batchCount</c> check
     /// flagged such batches as unacknowledged although the rows were written.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_WithDuplicateIdsInBatch_ShouldAcknowledgeBatchAndPersistLastWrite()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -541,7 +541,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// The existence probe bypasses the soft-delete filter, so a soft-deleted row is updated via the stub
     /// path and the whole-document replacement revives it (aligned with Mongo ReplaceOne upsert semantics).
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task SaveBulkAsync_AfterSoftDelete_ShouldReviveDocumentViaWholeDocReplacement()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -570,7 +570,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// cancelling mid-flight only detaches itself (the shared task runs on <c>CancellationToken.None</c>),
     /// leaving the cached entry usable for the next write.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task SchemaSingleFlight_ConcurrentColdStartAndWaiterCancellation_ShouldStayHealthy()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -608,7 +608,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试按 ID 列表软删除对重复 Id 输入按行计数一次。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task DeleteListIdAsync_WithDuplicateIds_ShouldCountEachRowOnce()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -626,7 +626,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试事务壳：action 成功提交、失败不产生 DatabaseUnavailableException 且 action 已执行。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInTransactionAsync_ShouldRunActionOnce()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -649,7 +649,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试表达式方言：字符串方法与 null 语义（NotEqual 包含缺失字段行，对齐 C#/MQL）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExpressionDialect_StringMethodsAndNullSemantics()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -680,7 +680,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试不可翻译节点显式失败（EF 翻译器接管方言，超集节点可翻译，不可翻译节点抛 InvalidOperationException，绝不静默内存过滤）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task UntranslatableExpression_ShouldThrowExplicitly()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -707,7 +707,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试取消令牌在查询与写入路径生效。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CanceledToken_ShouldThrowOperationCanceledException()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -726,7 +726,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     /// <summary>
     /// 测试 FindByIds 只返回可见记录。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task FindByIdsAsync_ShouldReturnVisibleRecordsOnly()
     {
         await ExecuteWithServiceAsync(async service =>
@@ -763,10 +763,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     private static async Task ExecuteWithServiceAsync(Func<PostgreSqlDbService, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}".ToLowerInvariant();
         var adminConnectionString = WithDatabase(connectionString, "postgres");

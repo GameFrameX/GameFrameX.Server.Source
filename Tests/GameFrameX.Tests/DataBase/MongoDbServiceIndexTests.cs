@@ -59,7 +59,7 @@ public sealed class MongoDbServiceIndexTests
     /// <summary>
     /// 测试新集合首建：CreateIndex 在空集合上真实创建索引并返回索引名（旧实现反向判重导致从不创建、返回空字符串）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CreateIndex_FreshCollection_ShouldCreateAndReturnName()
     {
         await ExecuteWithMongoAsync(async (service, database) =>
@@ -78,7 +78,7 @@ public sealed class MongoDbServiceIndexTests
     /// <summary>
     /// 测试同名判重：同名索引二调返回空字符串且不重复建（旧实现首批未命中即建，可重复建同名索引）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CreateIndex_SameExactName_SecondCall_ShouldReturnEmptyWithoutDuplicate()
     {
         await ExecuteWithMongoAsync(async (service, database) =>
@@ -97,7 +97,7 @@ public sealed class MongoDbServiceIndexTests
     /// <summary>
     /// 测试前缀陷阱：前缀相近的显式名互不误判抑制；既有名为 "Level" 的索引（恰好以字段名 Level 为前缀）不得误判抑制字段 Level 默认名索引的真实创建（旧实现 StartsWith(Key) 前缀匹配漏建）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CreateIndex_AdjacentPrefixName_ShouldNotBeSuppressed()
     {
         await ExecuteWithMongoAsync(async (service, database) =>
@@ -130,7 +130,7 @@ public sealed class MongoDbServiceIndexTests
     /// <summary>
     /// 测试无名定义默认名判重：Name 为空时按渲染键推导服务端默认名（Level_1），二调返回空字符串。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CreateIndex_UnnamedDefinition_ShouldDedupByDerivedDefaultName()
     {
         await ExecuteWithMongoAsync(async (service, database) =>
@@ -149,7 +149,7 @@ public sealed class MongoDbServiceIndexTests
     /// <summary>
     /// 测试泛型异步索引判重：同名二调返回空字符串且不重复建（IndexDefinition&lt;TState&gt; 路径）。
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task CreateIndexAsync_Generic_SameName_ShouldDedup()
     {
         await ExecuteWithMongoAsync(async (service, database) =>
@@ -173,7 +173,7 @@ public sealed class MongoDbServiceIndexTests
     /// be built before any probe-and-insert pair runs, or duplicates would slip through the
     /// uniqueness window (exactly the guarantee the bootstrap must preserve).
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task TryAddUnique_ColdCollection_ConcurrentSameKey_OnlyOneRowLands()
     {
         await ExecuteWithMongoAsync(async service =>
@@ -223,10 +223,7 @@ public sealed class MongoDbServiceIndexTests
     private static async Task ExecuteWithMongoAsync(Func<MongoDbService, IMongoDatabase, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var service = new MongoDbService();

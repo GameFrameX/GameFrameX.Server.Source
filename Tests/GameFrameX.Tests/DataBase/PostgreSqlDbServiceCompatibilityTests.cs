@@ -57,7 +57,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// Verifies that a legacy stored document (PascalCase keys, explicit JSON nulls, enum-as-number)
     /// reads back byte-equivalently through the EF owned-JSON pipeline.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task LegacyC166Document_ShouldReadBackFieldEquivalent()
     {
         await ExecuteWithServiceAsync(async (service, connectionString) =>
@@ -101,7 +101,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// Index/predicate shape equivalence for the EF pipeline: the adapter's index DDL must match the EF-translated predicate
     /// shape (<c>int → ::integer</c>) so the planner picks the index.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task Index_ShouldMatchEfPredicateShape_AndHitInExplain()
     {
         await ExecuteWithServiceAsync(async (service, connectionString) =>
@@ -145,7 +145,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// Rolling migration path off legacy indexes: a same-name index with the legacy <c>::bigint</c> cast must be
     /// dropped and recreated with the EF-aligned <c>::integer</c> cast on first schema sync.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task DriftedLegacyIndex_ShouldBeRebuiltToEfAlignedShape()
     {
         await ExecuteWithServiceAsync(async (service, connectionString) =>
@@ -185,7 +185,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// MongoDB places missing/null first ascending and last descending; the adapter must add the null-flag
     /// ordering key for value-type keys too instead of falling back to PostgreSQL's default null placement.
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public async Task SortOnMissingNonNullableKey_ShouldAlignNullPlacementWithMongo()
     {
         await ExecuteWithServiceAsync(async (service, connectionString) =>
@@ -234,10 +234,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     private static async Task ExecuteWithServiceAsync(Func<PostgreSqlDbService, string, Task> action)
     {
         var connectionString = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        Skip.If(string.IsNullOrWhiteSpace(connectionString), $"Skipping: GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 未配置，跳过真实数据库验证");
 
         var dbName = $"gameframex_test_{Guid.NewGuid():N}".ToLowerInvariant();
         var adminConnectionString = WithDatabase(connectionString, "postgres");
