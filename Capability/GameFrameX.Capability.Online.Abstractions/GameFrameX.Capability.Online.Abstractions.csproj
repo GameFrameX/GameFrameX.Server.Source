@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Idempotency" Version="5.1.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Idempotency" Version="$(GameFrameXFoundationVersion)"/>
     </ItemGroup>
 
     <ItemGroup>

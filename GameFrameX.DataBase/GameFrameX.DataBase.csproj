@@ -11,9 +11,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Orm.Attribute" Version="5.1.0"/>
-        <PackageReference Include="GameFrameX.Foundation.Orm.Entity" Version="5.1.0"/>
-        <PackageReference Include="GameFrameX.Foundation.Hash" Version="5.1.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Orm.Attribute" Version="$(GameFrameXFoundationVersion)"/>
+        <PackageReference Include="GameFrameX.Foundation.Orm.Entity" Version="$(GameFrameXFoundationVersion)"/>
+        <PackageReference Include="GameFrameX.Foundation.Hash" Version="$(GameFrameXFoundationVersion)"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -1,5 +1,7 @@
 <Project>
     <PropertyGroup>
+        <!-- GameFrameX.Foundation 全系 NuGet 包统一版本号：改这一处即可全量更新 -->
+        <GameFrameXFoundationVersion>5.1.0</GameFrameXFoundationVersion>
         <!-- 仅支持 .NET 10，当前目标框架固定为 net10.0 -->
         <TargetFramework>net10.0</TargetFramework>
         <!-- 禁用特定于版本或特定于发行版的运行时标识符警告 -->

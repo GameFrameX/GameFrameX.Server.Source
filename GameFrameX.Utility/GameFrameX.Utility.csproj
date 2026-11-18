@@ -24,9 +24,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Logger" Version="5.1.0"/>
-        <PackageReference Include="GameFrameX.Foundation.Options" Version="5.1.0"/>
-        <PackageReference Include="GameFrameX.Foundation.Utility" Version="5.1.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Logger" Version="$(GameFrameXFoundationVersion)"/>
+        <PackageReference Include="GameFrameX.Foundation.Options" Version="$(GameFrameXFoundationVersion)"/>
+        <PackageReference Include="GameFrameX.Foundation.Utility" Version="$(GameFrameXFoundationVersion)"/>
         <PackageReference Include="Lib.Harmony" Version="2.4.2"/>
         <PackageReference Include="SharpZipLib" Version="1.4.2"/>
         <PackageReference Include="Tedd.RandomUtils" Version="1.0.6"/>
