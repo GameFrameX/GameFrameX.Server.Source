@@ -27,6 +27,7 @@
 - 保留现行 `Network`、`PlayerSession`/`PlayerId`、`MessageHandler` 和 `Async` 命名，以及消息契约与 Core 配置整合。接入方应按当前程序集和 API 编译，不恢复已退役的旧 API 示例或增加旧版兼容层。
 - 数据库选择不包含已有数据的跨 Provider 迁移；MongoDB 事务需要副本集。SQLite 保留嵌入式文件/内存模式及串行写入边界。
 - 配置热重载不承诺跨表事务，热更失败恢复不承诺事务回滚，开发模式健康端点不代表生产默认公开。完整构建、真实客户端监听和三数据库测试须单独验收。
+- 退役 `Capability.Hosting` 宿主模块包装机制：删除 `CapabilityCompositionOptions.AddHostModule`/`HostModules`、无族组合入口 `Compose(options)`、`CapabilityHostModulePhase` 相位定序边与 `HostOnlyCapabilityFamily`；启动模板 `AppStartUpGameServerBase` 直排固定启停序列，`ILegacyRuntimeHostOwner` 与早晚宿主模块删除。2.0.0 仅为内部 feed 投放、未公开发布，本项属公开发布前的 API 收敛：对外零破坏，对内部 feed 源码级消费方（官方游戏仓组合层）为编译级破坏，须随包重投前完成迁移。
 
 ### 历史说明
 

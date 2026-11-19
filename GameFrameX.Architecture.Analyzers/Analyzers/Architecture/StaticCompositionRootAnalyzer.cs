@@ -183,7 +183,7 @@ public sealed class StaticCompositionRootAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// 注册组合入口面分析：非豁免程序集的静态类成员方法内调用 <c>CapabilityComposition.Compose</c>（两个重载均算）
+    /// 注册组合入口面分析：非豁免程序集的静态类成员方法内调用 <c>CapabilityComposition.Compose</c>
     /// 时按调用点上报 GFX0022。
     /// </summary>
     private static void RegisterComposeEntryAnalysis(CompilationStartAnalysisContext compilationContext, INamedTypeSymbol compositionType)
@@ -212,7 +212,7 @@ public sealed class StaticCompositionRootAnalyzer : DiagnosticAnalyzer
         }, OperationKind.Invocation);
     }
 
-    /// <summary>目标方法判定：名为 Compose 且声明于 CapabilityComposition 类型（两个重载均命中）。</summary>
+    /// <summary>目标方法判定：名为 Compose 且声明于 CapabilityComposition 类型。</summary>
     private static bool IsCapabilityCompositionEntryPoint(IMethodSymbol targetMethod, INamedTypeSymbol compositionType)
     {
         if (targetMethod == null || !string.Equals(targetMethod.Name, "Compose", System.StringComparison.Ordinal))

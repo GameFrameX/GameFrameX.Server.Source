@@ -40,18 +40,19 @@ namespace GameFrameX.Launcher.StartUp;
 /// 游戏服务器
 /// </summary>
 /// <remarks>
-/// 组合根边界：本类所在启动模板序列（<see cref="AppStartUpGameServerBase"/>
-/// 模板钩子 + 各 Role 差异覆写）负责基础设施装配——网络监听、GameDb 数据库、发现层、热更模块装载与退出编排；
-/// 平台业务域服务（好友 / 资产 / 对局等）的组合经统一组合根（<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/>
-/// → <c>CapabilityComposition.Compose</c> 单入口）承载：旧栈固定序列包装为早晚宿主模块与能力模块进入同一运行时
-///（"Online" 配置段声明启用 Role）。两层边界经好友查询桥实证：Hotfix 协议面薄适配器经 Online 契约面
+/// 组合根边界：启动模板（<see cref="AppStartUpGameServerBase"/> 直排固定启停序列 + 各 Role 差异覆写）
+/// 负责基础设施装配——网络监听、GameDb 数据库、热更模块装载与退出编排；平台业务域服务
+///（好友 / 资产 / 对局等）的组合经统一组合根（<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/>
+/// → <c>CapabilityComposition.Compose</c> 单入口）承载（"Online" 配置段声明启用 Role）。
+/// 两层边界经好友查询桥实证：Hotfix 协议面薄适配器经 Online 契约面
 /// 进程内消费平台服务，不经本地注册表绕行。
-/// Composition-root boundary: the startup template assembles the role differences through hooks while
-/// since the dual-assembly convergence the composition of the legacy fixed sequence (wrapped as the
-/// early/late host modules) and the platform domain services (friends, assets, matches, ...) both ride
-/// the single composition root (<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/> →
-/// <c>CapabilityComposition.Compose</c>, enabled roles declared in the "Online" configuration section)
-/// into one runtime. The two-layer boundary is proven by the friend-query bridge: the Hotfix protocol
+/// Composition-root boundary: the startup template (<see cref="AppStartUpGameServerBase"/> inlining the
+/// fixed start/stop sequence plus per-role hook overrides) assembles the infrastructure — network
+/// listeners, GameDb databases, hotfix module loading and exit orchestration; the platform domain
+/// services (friends, assets, matches, ...) are composed through the single composition root
+/// (<see cref="GameFrameX.Launcher.Composition.RuntimeCompositionRoot"/> →
+/// <c>CapabilityComposition.Compose</c>, enabled roles declared in the "Online" configuration section).
+/// The two-layer boundary is proven by the friend-query bridge: the Hotfix protocol
 /// thin adapter consumes the platform services in-process through the Online contract face, never
 /// through the local registry.
 /// </remarks>

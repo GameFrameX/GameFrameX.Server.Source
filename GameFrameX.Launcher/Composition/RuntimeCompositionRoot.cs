@@ -50,20 +50,24 @@ using GameFrameX.Capability.Online.Social;
 namespace GameFrameX.Launcher.Composition;
 
 /// <summary>
-/// 应用组合入口：保留 Online 存储、玩法、通知与管理面注册，通用 Hosting 仅接收模块契约。
+/// 应用组合入口：保留 Online 存储、玩法、通知与管理面注册，通用 Hosting 只承载能力族组合。
 /// </summary>
 internal sealed class RuntimeCompositionRoot
 {
     private CapabilityRuntime _adminOnlyFamilyRuntime;
 
-    public async Task<CapabilityRuntime> ComposeAndStartAsync(ILegacyRuntimeHostOwner owner)
+    /// <summary>
+    /// 组合并启动能力运行时：Online 运行面启用时启动族运行时；仅管理面启用时单独启动 admin-only 族运行时
+    ///（返回 null，运行时由停机序经 <c>DetachAdminOnlyFamilyRuntime</c> 摘取停止）；双闸全关时返回 null。
+    /// </summary>
+    /// <param name="setting">当前 Role 的应用配置。</param>
+    /// <returns>已启动的族运行时；无任何能力运行时形态返回 null。</returns>
+    public async Task<CapabilityRuntime> ComposeAndStartAsync(AppSetting setting)
     {
-        var setting = owner.Setting;
         var online = setting.Online;
         if (online != null && online.EnableRuntime)
         {
             var options = BuildFamilyCompositionOptions(setting, enableRuntime: true);
-            AddHostModules(options, owner);
             var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
             try
             {
@@ -77,7 +81,6 @@ internal sealed class RuntimeCompositionRoot
             }
         }
 
-        var hostRuntime = await ComposeAndStartHostRuntimeAsync(setting, owner);
         if (online != null && online.EnableAdminApi)
         {
             try
@@ -90,12 +93,11 @@ internal sealed class RuntimeCompositionRoot
             {
                 await StopFailedRuntimeAsync(_adminOnlyFamilyRuntime);
                 _adminOnlyFamilyRuntime = null;
-                await StopFailedRuntimeAsync(hostRuntime);
                 throw;
             }
         }
 
-        return hostRuntime;
+        return null;
     }
 
     public CapabilityRuntime DetachAdminOnlyFamilyRuntime(string serverType)
@@ -103,60 +105,6 @@ internal sealed class RuntimeCompositionRoot
         var runtime = _adminOnlyFamilyRuntime;
         _adminOnlyFamilyRuntime = null;
         return runtime;
-    }
-
-    /// <summary>
-    /// 组装并启动无族宿主运行时（早晚宿主模块 only；无族组合不渲染装配报告——旧栈步骤自身有日志，现状等价）。
-    /// </summary>
-    /// <param name="setting">当前 Role 的应用配置。</param>
-    /// <param name="owner">宿主回调面。</param>
-    /// <returns>宿主组合产物。</returns>
-    private static async Task<CapabilityRuntime> ComposeAndStartHostRuntimeAsync(AppSetting setting, ILegacyRuntimeHostOwner owner)
-    {
-        var options = new CapabilityCompositionOptions(default(JsonElement), new LogHelperCapabilityAssemblyLog())
-        {
-            EnableRuntime = true,
-            // 无族形态无能力模块消费作用域三元组；机制要求合法值（>0），未配置段回落 1 占位。
-            HostOptions = BuildHostOptions(setting),
-        };
-        AddHostModules(options, owner);
-
-        CapabilityRuntime runtime = null;
-        try
-        {
-            runtime = CapabilityComposition.Compose(options);
-            await runtime.StartAsync();
-            return runtime;
-        }
-        catch
-        {
-            await StopFailedRuntimeAsync(runtime);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 构造宿主选项（作用域单键化 D4 后仅 ServerId，未配置（&lt;=0）回落 1 占位——宿主模块不消费作用域，仅满足机制合法性校验）。
-    /// </summary>
-    /// <param name="setting">当前 Role 的应用配置。</param>
-    /// <returns>宿主选项。</returns>
-    private static CapabilityHostOptions BuildHostOptions(AppSetting setting)
-    {
-        return new CapabilityHostOptions
-        {
-            ServerId = setting.ServerId > 0 ? setting.ServerId : 1,
-        };
-    }
-
-    /// <summary>
-    /// 声明早晚宿主模块（早段承载 DB/发现/组件/热更；晚段承载监听/ServiceOnline/屏障/Active）。
-    /// </summary>
-    /// <param name="options">组合选项。</param>
-    /// <param name="owner">宿主回调面。</param>
-    private static void AddHostModules(CapabilityCompositionOptions options, ILegacyRuntimeHostOwner owner)
-    {
-        options.AddHostModule(new LegacyRuntimeHostModule(owner), CapabilityHostModulePhase.BeforeCapabilities);
-        options.AddHostModule(new LegacyNetworkListenerHostModule(owner), CapabilityHostModulePhase.AfterCapabilities);
     }
 
     /// <summary>
@@ -219,7 +167,7 @@ internal sealed class RuntimeCompositionRoot
         // 玩法注入：RPS 验收夹具游戏（对局能力零具体玩法；宿主组合根注入演示黄金路径用的样例玩法）。
         options.Configure<OnlineMatchOptions>(match => match.AddGame(new OnlineRockPaperScissorsGame()));
 
-        // GameDb 一级 store 覆盖（Online.UseGameDbStores 三态）：true 预置五个持久化适配器（业务库已就绪由宿主模块早段保证）；
+        // GameDb 一级 store 覆盖（Online.UseGameDbStores 三态）：true 预置五个持久化适配器（业务库已就绪由启动序前置保证）；
         // 未声明（null）= 无声降级防护位——启用族但未声明存储模式时告警（不 fail-fast，保护既有无键部署），随后保持 InMemory 默认。
         if (online.UseGameDbStores == true)
         {

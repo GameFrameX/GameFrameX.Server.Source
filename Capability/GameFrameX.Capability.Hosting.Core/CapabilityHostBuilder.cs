@@ -80,10 +80,9 @@ internal sealed class CapabilityHostBuilder
     }
 
     /// <summary>
-    /// 装配（同 Id 查重 → 过滤器校验 → 过滤（宿主模块豁免）→ 依赖检查（含相位合成定序边）→ 定序 →
-    /// 来源策略 → Options 合并 → Register → 产出宿主）。
+    /// 装配（同 Id 查重 → 过滤器校验 → 过滤 → 依赖检查 → 定序 → 来源策略 → Options 合并 → Register → 产出宿主）。
     /// </summary>
-    /// <param name="modules">全部模块（发现序 + 宿主模块尾部追加）。</param>
+    /// <param name="modules">全部模块（发现序）。</param>
     /// <returns>能力宿主（含报告与调度壳）。</returns>
     public CapabilityHost Build(IReadOnlyList<ICapabilityModule> modules)
     {
@@ -94,7 +93,7 @@ internal sealed class CapabilityHostBuilder
 
         // 依赖检查在任何模块 Register 之前：检查不通过就不执行任何模块代码，不会留下装了一半的状态。
         var enabledModules = CollectEnabledModules(modules, filter);
-        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter, _options.HostModules);
+        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter);
         if (dependencyResult.Problems.Count > 0)
         {
             throw new CapabilityAssemblyException(dependencyResult.Problems);
@@ -191,7 +190,7 @@ internal sealed class CapabilityHostBuilder
     /// <summary>
     /// 建立能力 Id → 模块表（同 Id 查重：重复注册 = fail-fast）。
     /// </summary>
-    /// <param name="modules">全部模块（发现序 + 宿主模块尾部追加）。</param>
+    /// <param name="modules">全部模块（发现序）。</param>
     /// <returns>能力 Id → 模块表。</returns>
     private static Dictionary<string, ICapabilityModule> CollectModulesById(IReadOnlyList<ICapabilityModule> modules)
     {
@@ -212,24 +211,17 @@ internal sealed class CapabilityHostBuilder
     }
 
     /// <summary>
-    /// 收集启用模块（宿主基础设施模块不受过滤器影响，恒启用；能力模块照常走过滤）。
+    /// 收集启用模块（照常走过滤器判定）。
     /// </summary>
     /// <param name="modules">全部模块（发现序）。</param>
     /// <param name="filter">过滤器。</param>
     /// <returns>启用模块列表（发现序）。</returns>
     private List<ICapabilityModule> CollectEnabledModules(IReadOnlyList<ICapabilityModule> modules, CapabilityAssemblyFilter filter)
     {
-        var hostModuleIds = new HashSet<string>(StringComparer.Ordinal);
-        var hostModules = _options.HostModules;
-        for (var i = 0; i < hostModules.Count; i++)
-        {
-            hostModuleIds.Add(hostModules[i].Module.Manifest.Id);
-        }
-
         var enabledModules = new List<ICapabilityModule>();
         for (var i = 0; i < modules.Count; i++)
         {
-            if (hostModuleIds.Contains(modules[i].Manifest.Id) || filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
+            if (filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
             {
                 enabledModules.Add(modules[i]);
             }
