@@ -66,6 +66,8 @@
 * 更新多个项目中的 GameFrameX.Foundation 包版本至 2.2.8
 * 更新多个项目中的 GameFrameX.Foundation 包版本至 2.2.10
 * 为多个文件添加开源许可证头部注释
+* 临时 OIDC claims 诊断 workflow
+* 移除临时 OIDC claims 诊断 workflow
 
 ### Performance
 
@@ -107,6 +109,10 @@
 * 升级 Foundation 系列包到 5.1.0
 * Foundation 包版本号统一到全局配置
 * 发布流水线支持手动指定版本发布预览版
+
+### ci
+
+* workflow 名称对齐 Foundation 为 Release
 ## [1.5.1] - 2026-03-24
 
 ### Bug Fixes
