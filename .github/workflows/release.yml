@@ -6,6 +6,15 @@ on:
 # push:
 #   branches: [main]
   workflow_dispatch:
+    inputs:
+      # 发布版本号；留空按提交历史自动推断。预览版填带 - 后缀的版本（如 2.0.0-preview.1）：
+      # GitHub Release 标记 prerelease、跳过 Bluesky 公告，NuGet 包为 prerelease 不占默认稳定版。
+      # 注意：预览 tag 会成为后续自动推断基线，正式 2.0.0 稳定版届时需在此手动填 2.0.0。
+      version:
+        description: 'Version to release (e.g. 2.0.0-preview.1). Empty = auto.'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   # 数据库契约双绿门禁：PG + Mongo 双主线全验证档的发布前提
@@ -79,6 +88,7 @@ jobs:
     with:
       dotnet_version: "10.0.x"
       version_props_path: "Version.props"
+      version: ${{ inputs.version }}
     secrets: inherit
 
   publish-nuget:
