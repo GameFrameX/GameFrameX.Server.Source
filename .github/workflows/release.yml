@@ -1,4 +1,4 @@
-name: Publish Release
+name: Release
 
 on:
 # 发布仅手动触发（workflow_dispatch），push 自动发布以注释形式退役；
