@@ -1,3 +1,16 @@
+## [2.0.0-preview.2] - 2026-11-23
+
+### Bug Fixes
+
+* 收口敏感词后台初始化用例的静态词库竞态
+
+### Features
+
+* HttpActionContext 透传请求原样信息
+
+### build
+
+* 修复 database-contracts 折叠标量空行拆断命令
 ## [2.0.0-preview.1] - 2026-11-21
 
 ### Bug Fixes
