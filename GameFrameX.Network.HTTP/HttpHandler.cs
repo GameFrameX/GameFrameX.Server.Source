@@ -123,7 +123,27 @@ public static class HttpHandler
                 LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetworkHttp.RequestParameters, JsonHelper.Serialize(paramMap)));
             }
 
-            var actionContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, MessageObject = message };
+            // 请求原样信息快照（头/方法/Content-Type/追踪标识/查询串/Cookie/Scheme/本机判定/中断令牌），供业务处理器按需读取
+            var requestHeaders = new Dictionary<string, string>(context.Request.Headers.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var header in context.Request.Headers)
+            {
+                requestHeaders[header.Key] = string.Join(", ", header.Value);
+            }
+
+            var requestCookies = new Dictionary<string, string>(context.Request.Cookies.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var cookie in context.Request.Cookies)
+            {
+                requestCookies[cookie.Key] = cookie.Value;
+            }
+
+            var requestMethod = context.Request.Method;
+            var requestContentType = context.Request.ContentType;
+            var traceIdentifier = context.TraceIdentifier;
+            var requestQueryString = context.Request.QueryString.Value ?? string.Empty;
+            var requestScheme = context.Request.Scheme;
+            var isLocalRequest = context.Connection.RemoteIpAddress is not null && System.Net.IPAddress.IsLoopback(context.Connection.RemoteIpAddress);
+            var requestAborted = context.RequestAborted;
+            var actionContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, Headers = requestHeaders, Method = requestMethod, ContentType = requestContentType, TraceIdentifier = traceIdentifier, QueryString = requestQueryString, Cookies = requestCookies, Scheme = requestScheme, IsLocal = isLocalRequest, RequestAborted = requestAborted, MessageObject = message };
             var validation = await TryValidateAndResolveHandlerAsync(context, baseHandler, command, actionContext, aopHandlerTypes);
             if (!validation.IsValid)
             {
@@ -147,7 +167,7 @@ public static class HttpHandler
                 else
                 {
                     var messageRequest = BuildHttpMessageRequest(mappingAttribute.RequestType, paramMap, jsonBody, queryStringParamCount);
-                    var typedContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, Request = messageRequest };
+                    var typedContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, Headers = requestHeaders, Method = requestMethod, ContentType = requestContentType, TraceIdentifier = traceIdentifier, QueryString = requestQueryString, Cookies = requestCookies, Scheme = requestScheme, IsLocal = isLocalRequest, RequestAborted = requestAborted, Request = messageRequest };
                     await ExecuteJsonMessageRequestAsync(context, handler, typedContext, logHeader);
                 }
             }

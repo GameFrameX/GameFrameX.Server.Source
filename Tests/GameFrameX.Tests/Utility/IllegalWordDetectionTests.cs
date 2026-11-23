@@ -110,8 +110,9 @@ namespace GameFrameX.Tests.Utility
         [Fact]
         public void Init_WithBackgroundThread_ShouldNotBlock()
         {
-            // Arrange
-            var badWords = new[] { "background1", "background2" };
+            // Arrange：探测词须不超过 10 字符——算法 FastLength/StartCache 按 8 位截断，
+            // 更长的词扫描会在到达末字符前被 StartCache 上限截断而不可检出，无法充当完成探针
+            var badWords = new[] { "bgword1", "bgword2" };
             var startTime = DateTime.Now;
 
             // Act
@@ -121,6 +122,16 @@ namespace GameFrameX.Tests.Utility
             // Assert
             // 后台初始化应该很快返回
             Assert.True((endTime - startTime).TotalMilliseconds < 100);
+
+            // 等待后台注册真正完成再收尾：慢机上 Task.Run 可能延迟到同序列后续用例执行期间才重置静态词库，
+            // 会把先同步注册好的词表冲掉造成 HasBlockWords 假失败（CI database-contracts 门禁偶发红）
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (!IllegalWordDetection.HasBlockWords("bgword1") && DateTime.UtcNow < deadline)
+            {
+                System.Threading.Thread.Sleep(10);
+            }
+
+            Assert.True(IllegalWordDetection.HasBlockWords("bgword1"));
         }
 
         #endregion
