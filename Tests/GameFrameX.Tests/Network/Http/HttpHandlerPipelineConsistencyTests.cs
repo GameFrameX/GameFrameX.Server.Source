@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System.ComponentModel.DataAnnotations;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Features;
@@ -41,6 +42,7 @@ using GameFrameX.Tests.Utility;
 using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 
 namespace GameFrameX.Tests.Network.Http;
 
@@ -222,6 +224,34 @@ public class HttpHandlerPipelineConsistencyTests
     }
 
     [Fact]
+    public async Task HandleRequest_ShouldExposeRequestSnapshot_ForPlainJsonHandler()
+    {
+        EnsureSettings();
+        HttpActionContext captured = null;
+        var context = CreateContext("application/json", new MemoryStream(Encoding.UTF8.GetBytes("{\"userId\":2}")));
+        PrepareSnapshotRequest(context);
+
+        await HttpHandler.HandleRequestAsync(context, _ => new SnapshotCaptureHttpHandler(c => captured = c));
+
+        AssertSnapshot(captured, context);
+        Assert.Null(captured.Request);
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldExposeRequestSnapshot_ForTypedRequestHandler()
+    {
+        EnsureSettings();
+        HttpActionContext captured = null;
+        var context = CreateContext("application/json", new MemoryStream(Encoding.UTF8.GetBytes("{\"userId\":2}")));
+        PrepareSnapshotRequest(context);
+
+        await HttpHandler.HandleRequestAsync(context, _ => new TypedSnapshotCaptureHttpHandler(c => captured = c));
+
+        AssertSnapshot(captured, context);
+        Assert.IsType<SnapshotProbeRequest>(captured.Request);
+    }
+
+    [Fact]
     public void CheckSign_ShouldReturnLocalizedMessage_WhenSignParametersMissing()
     {
         EnsureSettings();
@@ -256,6 +286,35 @@ public class HttpHandlerPipelineConsistencyTests
         context.Request.Body = body;
         context.Response.Body = new MemoryStream();
         return context;
+    }
+
+    // 构造携带自定义鉴权头、多值头、Cookie、查询串与回环地址的请求，用于断言 HttpActionContext 的原样信息快照
+    // Build a request with custom auth header, multi-value header, cookies, query string and loopback address to assert the verbatim snapshot on HttpActionContext
+    private static void PrepareSnapshotRequest(DefaultHttpContext context)
+    {
+        context.Request.Scheme = "http";
+        context.Request.QueryString = new QueryString("?trace=abc");
+        context.Request.Headers["X-HandshakeAuthorization"] = "session-token";
+        context.Request.Headers["Accept-Language"] = new StringValues(new[] { "zh-CN", "en-US", });
+        context.Request.Headers["Cookie"] = "session=cookie-value";
+        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+    }
+
+    private static void AssertSnapshot(HttpActionContext captured, DefaultHttpContext context)
+    {
+        Assert.NotNull(captured);
+        Assert.Equal("POST", captured.Method);
+        Assert.Equal("application/json", captured.ContentType);
+        Assert.Equal("?trace=abc", captured.QueryString);
+        Assert.Equal("http", captured.Scheme);
+        Assert.True(captured.IsLocal);
+        Assert.Equal(context.TraceIdentifier, captured.TraceIdentifier);
+        Assert.False(string.IsNullOrEmpty(captured.TraceIdentifier));
+        Assert.Equal(context.RequestAborted, captured.RequestAborted);
+        // 键大小写不敏感：以与原头不同的大小写读取
+        Assert.Equal("session-token", captured.Headers["X-HANDSHAKEAUTHORIZATION"]);
+        Assert.Equal("zh-CN, en-US", captured.Headers["Accept-Language"]);
+        Assert.Equal("cookie-value", captured.Cookies["SESSION"]);
     }
 
     private static async Task<JsonElement> ReadEnvelopeAsync(DefaultHttpContext context)
@@ -371,6 +430,50 @@ public class HttpHandlerPipelineConsistencyTests
         public string RequiredName { get; set; }
 
         public string OptionalName { get; set; }
+    }
+
+    /// <summary>
+    /// 快照捕获处理器（普通 JSON 路径）：捕获 <see cref="HttpActionContext"/> 以断言请求原样信息快照。
+    /// </summary>
+    private sealed class SnapshotCaptureHttpHandler : BaseHttpHandler
+    {
+        private readonly Action<HttpActionContext> _capture;
+
+        public SnapshotCaptureHttpHandler(Action<HttpActionContext> capture)
+        {
+            _capture = capture;
+        }
+
+        public override Task<string> ActionAsync(HttpActionContext context)
+        {
+            _capture(context);
+            return Task.FromResult(HttpJsonResultData<string>.SuccessString());
+        }
+    }
+
+    /// <summary>
+    /// 快照捕获处理器（强类型 Request 路径）：验证第二个 HttpActionContext 构造点同样填充快照。
+    /// </summary>
+    [HttpMessageMapping(typeof(SnapshotProbeRequest))]
+    private sealed class TypedSnapshotCaptureHttpHandler : BaseHttpHandler
+    {
+        private readonly Action<HttpActionContext> _capture;
+
+        public TypedSnapshotCaptureHttpHandler(Action<HttpActionContext> capture)
+        {
+            _capture = capture;
+        }
+
+        public override Task<string> ActionAsync(HttpActionContext context)
+        {
+            _capture(context);
+            return Task.FromResult(HttpJsonResultData<string>.SuccessString());
+        }
+    }
+
+    private sealed class SnapshotProbeRequest : IHttpMessageRequest
+    {
+        public string Token { get; set; }
     }
 
     private sealed class RejectingAopHandler : IHttpAopHandler

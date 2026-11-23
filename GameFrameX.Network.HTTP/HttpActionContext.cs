@@ -32,10 +32,12 @@ using GameFrameX.Network.Messages;
 namespace GameFrameX.Network.HTTP;
 
 /// <summary>
-/// HTTP 处理管线统一请求上下文，承载客户端 IP、请求 URL、参数字典、消息对象与请求消息对象。
+/// HTTP 处理管线统一请求上下文，承载客户端 IP、请求 URL、参数字典、消息对象与请求消息对象，
+/// 以及请求头快照、HTTP 方法、Content-Type、追踪标识、原始查询串、Cookie、Scheme、本机判定与请求中断令牌。
 /// </summary>
 /// <remarks>
-/// Unified request context for the HTTP handling pipeline, carrying the client IP, request URL, parameter dictionary, message object, and request message object.
+/// Unified request context for the HTTP handling pipeline, carrying the client IP, request URL, parameter dictionary, message object, and request message object,
+/// plus the request header snapshot, HTTP method, Content-Type, trace identifier, raw query string, cookies, scheme, loopback flag, and request-abort token.
 /// </remarks>
 public sealed class HttpActionContext
 {
@@ -65,6 +67,87 @@ public sealed class HttpActionContext
     /// </remarks>
     /// <value>请求参数字典 / Request parameter dictionary</value>
     public Dictionary<string, object> Parameters { get; init; }
+
+    /// <summary>
+    /// 获取请求头快照（键不区分大小写；同名多值以逗号合并），供业务处理器读取鉴权头、User-Agent 等原样信息。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request header snapshot (case-insensitive keys; multiple values of the same name joined by comma), allowing business handlers to read authorization headers, User-Agent, etc. verbatim.
+    /// </remarks>
+    /// <value>请求头快照 / Request header snapshot</value>
+    public Dictionary<string, string> Headers { get; init; }
+
+    /// <summary>
+    /// 获取 HTTP 请求方法（GET/POST 等）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the HTTP request method (GET/POST, etc.).
+    /// </remarks>
+    /// <value>HTTP 请求方法 / HTTP request method</value>
+    public string Method { get; init; }
+
+    /// <summary>
+    /// 获取请求体的 Content-Type；无请求体时为 null。
+    /// </summary>
+    /// <remarks>
+    /// Gets the Content-Type of the request body; null when the request has no body.
+    /// </remarks>
+    /// <value>请求体 Content-Type / Request body Content-Type</value>
+    public string ContentType { get; init; }
+
+    /// <summary>
+    /// 获取请求的追踪标识（关联标识），用于日志与链路追踪对齐。
+    /// </summary>
+    /// <remarks>
+    /// Gets the trace identifier (correlation identifier) of the request, used for log and tracing alignment.
+    /// </remarks>
+    /// <value>追踪标识 / Trace identifier</value>
+    public string TraceIdentifier { get; init; }
+
+    /// <summary>
+    /// 获取原始查询串（含前导 '?'；无查询参数时为空串），供签名校验与原样日志使用。
+    /// </summary>
+    /// <remarks>
+    /// Gets the raw query string (with leading '?'; empty when absent), for signature validation and verbatim logging.
+    /// </remarks>
+    /// <value>原始查询串 / Raw query string</value>
+    public string QueryString { get; init; }
+
+    /// <summary>
+    /// 获取解析后的请求 Cookie（键不区分大小写）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the parsed request cookies (case-insensitive keys).
+    /// </remarks>
+    /// <value>请求 Cookie 字典 / Request cookie dictionary</value>
+    public IReadOnlyDictionary<string, string> Cookies { get; init; }
+
+    /// <summary>
+    /// 获取请求协议方案（http/https），供构造回调绝对地址。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request scheme (http/https), for building absolute callback URLs.
+    /// </remarks>
+    /// <value>请求方案 / Request scheme</value>
+    public string Scheme { get; init; }
+
+    /// <summary>
+    /// 获取请求是否来自本机回环地址（GM / 运维端点信任本机的判定依据）。
+    /// </summary>
+    /// <remarks>
+    /// Gets whether the request originates from a loopback address (basis for trusting local GM / operation endpoints).
+    /// </remarks>
+    /// <value>是否本机请求 / Whether the request is local</value>
+    public bool IsLocal { get; init; }
+
+    /// <summary>
+    /// 获取请求中断令牌：客户端断开连接时触发，长轮询 / 慢处理器应观测该令牌提前释放资源。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request-abort token: fired when client disconnects; long-poll or slow handlers should observe it to release early.
+    /// </remarks>
+    /// <value>请求中断令牌 / Request abort token</value>
+    public CancellationToken RequestAborted { get; init; }
 
     /// <summary>
     /// 获取 ProtoBuf 形态的消息对象。
