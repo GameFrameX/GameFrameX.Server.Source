@@ -55,9 +55,7 @@ jobs:
 
       - name: Run Database Contract Suite
         run: >
-          dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
-
-          --logger GitHubActions
+          dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build --logger GitHubActions
 
       - name: Run Hotfix and Wrapper Assembly Tests
         run: dotnet test Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj --no-build --logger GitHubActions
